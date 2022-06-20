@@ -68,9 +68,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
 import java.math.BigInteger;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -88,7 +86,7 @@ import java.util.function.Predicate;
 public final class JavaRegexParser implements RegexParser {
 
     /**
-     * Characters that are considered special in ECMAScript regexes. To match these characters, they
+     * Characters that are considered special in Java regexes. To match these characters, they
      * need to be escaped using a backslash.
      */
     private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '?', '[', '\\', ']', '^', '{', '|', '}');
@@ -98,18 +96,22 @@ public final class JavaRegexParser implements RegexParser {
      */
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' '); // '\x0B' = '\u000b'
 
-//    /**
-//     * Characters that are considered special in ECMAScript regex character classes.
-//     */
-//    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
-
+    /**
+     * Characters considered as predefined character classes in Java.
+     */
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
 
-    // This map contains the character sets of POSIX character classes
+    /**
+     * This map contains the character sets of POSIX character classes
+     */
     private static final Map<String, CodePointSet> UNICODE_POSIX_CHAR_CLASSES;
-    // This is the same as above but restricted to ASCII.
+
+    /**
+     * This is the same as above but restricted to ASCII
+     */
     private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
 
+    // Filling the two maps above
     static {
         CodePointSet asciiRange = CodePointSet.create(0x00, 0x7F);
 
@@ -137,20 +139,6 @@ public final class JavaRegexParser implements RegexParser {
 
         for (Map.Entry<String, CodePointSet> entry : UNICODE_POSIX_CHAR_CLASSES.entrySet()) {
             ASCII_POSIX_CHAR_CLASSES.put(entry.getKey(), asciiRange.createIntersectionSingleRange(entry.getValue()));
-        }
-    }
-
-    /**
-     * Metadata about an enclosing capture group.
-     */
-    private static final class Group {
-        /**
-         * The index of the capture group.
-         */
-        public final int groupNumber;
-
-        Group(int groupNumber) {
-            this.groupNumber = groupNumber;
         }
     }
 
@@ -215,80 +203,31 @@ public final class JavaRegexParser implements RegexParser {
      */
     private final List<CodePointSetAccumulator> charClassPool = new ArrayList<>();
 
-//    /**
-//     * What can be the result of trying to parse a POSIX character class, e.g. [[:alpha:]].
-//     */
-//    private enum PosixClassParseResult {    // TODO remove and instead implement nested character classes
-//        /**
-//         * We successfully parsed a (nested) POSIX character class.
-//         */
-//        WasNestedPosixClass,
-//        /**
-//         * We haven't found a POSIX character class, but we should check for a regular nested
-//         * character class, e.g. [a[b]].
-//         */
-//        TryNestedClass,
-//        /**
-//         * We haven't found a POSIX character class. Furthermore, we should *not* treat this as a
-//         * nested character class, but interpret the opening bracket as a literal character.
-//         */
-//        NotNestedClass
-//    }
-
-
-//    /**
-//     * For syntax checking purposes, we need to know if we are inside a lookbehind assertion, where
-//     * backreferences are not allowed.
-//     */
-//    private int lookbehindDepth;
-
     /**
      * The global flags are the flags given when compiling the regular expression.
      */
     private final JavaFlags globalFlags;
     /**
-     * A stack of the locally enabled flags. Ruby enables establishing new flags and modifying flags
+     * A stack of the locally enabled flags. Java enables establishing new flags and modifying flags
      * within the scope of certain expressions.
      */
     private final Deque<JavaFlags> flagsStack;
-
-    /**
-     * For syntax checking purposes, we need to maintain some metadata about the current enclosing
-     * capture groups.
-     */
-    private final Deque<JavaRegexParser.Group> groupStack;
     /**
      * A map from names of capture groups to their indices. Is null if the pattern contained no
      * named capture groups so far.
      */
     private Map<String, Integer> namedCaptureGroups;
-//    /**
-//     * A set of capture groups names which occur repeatedly in the expression. Backreferences to
-//     * such capture groups can refer to either of the homonymous capture groups, depending on which
-//     * of them matched most recently. Such backreferences are not supported in TRegex.
-//     */
-//    private Set<String> ambiguousCaptureGroups;
+
+    private boolean identifiedAllGroups = false;
 
     /**
-     * The number of capture groups encountered in the input pattern so far, i.e. the (zero-based)
-     * index of the next capture group to be processed.
+     * The Number of groups
+     * TODO maybe necessary to adjust it to also increase when namedCaptureGroup
      */
-    private final int groupIndex;
-//    /**
-//     * The total number of capture groups present in the expression.
-//     */
-//    private int numberOfCaptureGroups;
+    private int nGroups;
 
-//    private RegexLanguage language;
-//    private CompilationBuffer compilationBuffer;
     private final RegexASTBuilder astBuilder;
 
-//    /**
-//     * A reusable buffer for storing the codepoint contents of literal strings. We need to scan the
-//     * entire string before case folding so that we correctly handle cases when several codepoints
-//     * in sequence can case-unfold to a single codepoint.
-//     */
-//    private final IntArrayBuffer codepointsBuffer = new IntArrayBuffer();
 
     private static RegexFlags makeTRegexFlags(boolean sticky) {
         // We need to set the Unicode flag to true so that character classes will treat the entire
@@ -305,9 +244,8 @@ public final class JavaRegexParser implements RegexParser {
         this.inFlags = inSource.getFlags();
         this.position = 0;
 
-        this.groupStack = new ArrayDeque<>();
         this.namedCaptureGroups = null;
-        this.groupIndex = 0;
+        this.nGroups = 1;
 
         this.globalFlags = new JavaFlags(inFlags);
         this.flagsStack = new LinkedList<>();
@@ -333,17 +271,15 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     @Override
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return Collections.emptyMap();
-    }
-
-    @Override
     public AbstractRegexObject getFlags() {
         return globalFlags;
     }
 
+    private JavaFlags getLocalFlags() {
+        return flagsStack.peek();
+    }
+
     // The parser
-    // equivalent to run() in Ruby
 
     private void parseInternal() {
         flagsStack.push(globalFlags);
@@ -375,11 +311,6 @@ public final class JavaRegexParser implements RegexParser {
         }
     }
 
-//    final String wordBoundarySrc = "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)";
-//    final String nonWordBoundarySrc = "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)";
-//    final Function<String, String> includeExtraCases = s -> s.replace("\\w", "[\\w\\u017F\\u212A]").replace("\\W", "[^\\w\\u017F\\u212A]");
-
-
     /**
      * An alternative is a sequence of Terms.
      */
@@ -387,64 +318,13 @@ public final class JavaRegexParser implements RegexParser {
         boolean openInlineFlag = true;
         while (!atEnd() && curChar() != '|'/* && curChar() != ')'*/) {
             Token token = term();
-            if(token != null) {
+            if (token != null) {
                 switch (token.kind) {
                     case caret: // java version of it
-                        // (?:^|(?<=[\n])(?=.)) only, when multiline flag is set, otherwise just caret
-                        if (getLocalFlags().isMultiline()) {
-                            pushGroup(); // (?:
-                            addCaret(); // ^
-                            nextSequence(); // |
-                            pushLookBehindAssertion(false); // (?<=
-                            addCharClass(CodePointSet.create('\n')); // [\n]
-                            popGroup(); // )
-                            pushLookAheadAssertion(false); // (?=
-                            addCharClass(inSource.getEncoding().getFullSet()); // .
-                            popGroup(); // )
-                            popGroup(); // )
-                        } else {
-                            addCaret();
-                        }
+                        caret();
                         break;
                     case dollar: // java version of it
-                        // (?:$|(?=[\n])) only, when multiline flag is set, otherwise just dollar
-                        if (getLocalFlags().isMultiline()) {
-                            pushGroup(); // (?:
-                            addDollar(); // $
-                            nextSequence(); // |
-                            pushLookAheadAssertion(false); // (?=
-                            addCharClass(CodePointSet.create('\n')); // [\n]
-                            popGroup(); // )
-                            popGroup(); // )
-                        } else {
-                            /* From doc of Dollar extends Node in java.util.Pattern
-                             * Node to anchor at the end of a line or the end of input based on the
-                             * multiline mode.
-                             *
-                             * When not in multiline mode, the $ can only match at the very end
-                             * of the input, unless the input ends in a line terminator in which
-                             * it matches right before the last line terminator.
-                             *
-                             * Note that \r\n is considered an atomic line terminator.
-                             *
-                             * Like ^ the $ operator matches at a position, it does not match the
-                             * line terminators themselves.
-                             */
-//                        (?:$|(?=(?:\r\n|\n)$))
-                            pushGroup();    // (?:
-                            addDollar();    // $
-                            nextSequence(); // |
-                            pushLookAheadAssertion(false);  // (?=
-                            pushGroup();    // (?:
-                            addCharClass(CodePointSet.create('\r'));
-                            addCharClass(CodePointSet.create('\n'));
-                            nextSequence();
-                            addCharClass(CodePointSet.create('\n'));
-                            popGroup();
-                            addDollar();
-                            popGroup();
-                            popGroup();
-                        }
+                        dollar();
                         break;
                     case wordBoundary:
                         if (getLocalFlags().isUnicode()) {
@@ -522,8 +402,7 @@ public final class JavaRegexParser implements RegexParser {
                         if (!openInlineFlag) {
                             flagsStack.pop();
                             openInlineFlag = true;
-                        }
-                        else if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
+                        } else if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
                             throw syntaxErrorHere(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
                         }
                         astBuilder.popGroup(token);
@@ -536,69 +415,6 @@ public final class JavaRegexParser implements RegexParser {
                 lastToken = token;
             }
         }
-    }
-
-    // The behavior of the word-boundary assertions depends on the notion of a word character.
-    // Ruby's notion differs from that of ECMAScript and so we cannot compile Ruby word-boundary
-    // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
-    // character is dependent on whether the Ruby regular expression is set to use the ASCII range
-    // only.
-    private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        popGroup(); // )
-    }
-
-    private void buildWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        popGroup(); // )
-    }
-
-    private JavaFlags getLocalFlags() {
-        return flagsStack.peek();
     }
 
     /// Input scanning
@@ -655,15 +471,34 @@ public final class JavaRegexParser implements RegexParser {
         }
     }
 
-    private void mustMatch(String next) {       // TODO can be inlined but rename for understanding
-        assert "}".equals(next) || ")".equals(next);
-        if (!match(next)) {
-            throw syntaxErrorHere("}".equals(next) ? JavaErrorMessages.EXPECTED_BRACE : JavaErrorMessages.EXPECTED_PAREN);      // TODO create JavaErrorMessages, maybe copy them of Java original error messages
+    private void mustMatchClosingCurlyBracket() {
+        if (!match("}")) {
+            throw syntaxErrorHere(JavaErrorMessages.EXPECTED_BRACE);
         }
     }
 
+//    private void mustMatch(String next) {
+//        assert "}".equals(next) || ")".equals(next);
+//        if (!match(next)) {
+//            throw syntaxErrorHere("}".equals(next) ? JavaErrorMessages.EXPECTED_BRACE : JavaErrorMessages.EXPECTED_PAREN);
+//        }
+//    }
+
     private boolean atEnd() {
         return position >= inPattern.length();
+    }
+
+    private boolean findChars(char... chars) {
+        if (atEnd()) {
+            return false;
+        }
+        int i = ArrayUtils.indexOf(inPattern, position, inPattern.length(), chars);
+        if (i < 0) {
+            position = inPattern.length();
+            return false;
+        }
+        position = i;
+        return true;
     }
 
     // Error reporting
@@ -680,20 +515,13 @@ public final class JavaRegexParser implements RegexParser {
         return RegexSyntaxException.createPattern(inSource, message, pos);
     }
 
-    /**
-     * A comment starts with a '#' and ends at the end of the line. The leading '#' is assumed to
-     * have already been parsed.
-     */
-    private void comment() {
-        while (!atEnd()) {
-            int ch = consumeChar();
-            if (ch == '\\' && !atEnd()) {
-                advance();
-            } else if (ch == '\n') {
-                break;
-            }
+    private void bailOut(String reason) throws UnsupportedRegexException {
+        if (!silent) {
+            throw new UnsupportedRegexException(reason);
         }
     }
+
+    // further parsing
 
     /**
      * Parses a term. A term is either:
@@ -737,7 +565,7 @@ public final class JavaRegexParser implements RegexParser {
 //                } else {
 //                    addCharClass(CodePointSet.create('\n').createInverse(inSource.getEncoding()));
 //                }
-                if(getLocalFlags().isDotAll())
+                if (getLocalFlags().isDotAll())
                     return Token.createCharClass(inSource.getEncoding().getFullSet());
                 return Token.createCharClass(Constants.DOT);
             case '(':
@@ -762,6 +590,139 @@ public final class JavaRegexParser implements RegexParser {
                 } else {
                     return Token.createCharClass(CodePointSet.create(ch), true);
                 }
+        }
+    }
+
+    // The behavior of the word-boundary assertions depends on the notion of a word character.
+    // Java's notion differs from that of ECMAScript and so we cannot compile Java word-boundary
+    // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
+    // character is dependent on whether the Java regular expression is set to use the ASCII range
+    // only.
+    private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
+        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
+        pushGroup(); // (?:
+        pushGroup(); // (?:
+        addCaret(); // ^
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        pushGroup(); // (?:
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        addDollar(); // $
+        popGroup(); // )
+        popGroup(); // )
+    }
+
+    private void buildWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
+        // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
+        pushGroup(); // (?:
+        pushGroup(); // (?:
+        addCaret(); // ^
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        popGroup(); // )
+        pushGroup(); // (?:
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        addDollar(); // $
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        popGroup(); // )
+    }
+
+    private void dollar() {
+        // (?:$|(?=[\n])) only, when multiline flag is set, otherwise just dollar
+        if (getLocalFlags().isMultiline()) {
+            pushGroup(); // (?:
+            addDollar(); // $
+            nextSequence(); // |
+            pushLookAheadAssertion(false); // (?=
+            addCharClass(CodePointSet.create('\n')); // [\n]
+            popGroup(); // )
+            popGroup(); // )
+        } else {
+            /* From doc of Dollar extends Node in java.util.Pattern
+             * Node to anchor at the end of a line or the end of input based on the
+             * multiline mode.
+             *
+             * When not in multiline mode, the $ can only match at the very end
+             * of the input, unless the input ends in a line terminator in which
+             * it matches right before the last line terminator.
+             *
+             * Note that \r\n is considered an atomic line terminator.
+             *
+             * Like ^ the $ operator matches at a position, it does not match the
+             * line terminators themselves.
+             */
+            // (?:$|(?=(?:\r\n|\n)$))
+            pushGroup();    // (?:
+            addDollar();    // $
+            nextSequence(); // |
+            pushLookAheadAssertion(false);  // (?=
+            pushGroup();    // (?:
+            addCharClass(CodePointSet.create('\r'));
+            addCharClass(CodePointSet.create('\n'));
+            nextSequence();
+            addCharClass(CodePointSet.create('\n'));
+            popGroup();
+            addDollar();
+            popGroup();
+            popGroup();
+        }
+    }
+
+    private void caret() {
+        // (?:^|(?<=[\n])(?=.)) only, when multiline flag is set, otherwise just caret
+        if (getLocalFlags().isMultiline()) {
+            pushGroup(); // (?:
+            addCaret(); // ^
+            nextSequence(); // |
+            pushLookBehindAssertion(false); // (?<=
+            addCharClass(CodePointSet.create('\n')); // [\n]
+            popGroup(); // )
+            pushLookAheadAssertion(false); // (?=
+            addCharClass(inSource.getEncoding().getFullSet()); // .
+            popGroup(); // )
+            popGroup(); // )
+        } else {
+            addCaret();
+        }
+    }
+
+    /**
+     * A comment starts with a '#' and ends at the end of the line. The leading '#' is assumed to
+     * have already been parsed.
+     */
+    private void comment() {
+        while (!atEnd()) {
+            int ch = consumeChar();
+            if (ch == '\\' && !atEnd()) {
+                advance();
+            } else if (ch == '\n') {
+                break;
+            }
         }
     }
 
@@ -859,7 +820,6 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 default:
                     lowerBound = Optional.of(ch);
-//                    System.out.println("lower Bound: " + (char) ch);
             }
             // a hyphen following a nested char class is never interpreted as a range operator
             if (!wasNestedCharClass && match("-")) {
@@ -916,6 +876,42 @@ public final class JavaRegexParser implements RegexParser {
 
     }
 
+    private Token charClass(int codePoint) {
+        if (getLocalFlags().isIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.appendRange(codePoint, codePoint);
+            return charClass(false);
+        } else {
+            return Token.createCharClass(CodePointSet.create(codePoint), true);
+        }
+    }
+
+    private Token charClass(boolean invert) {
+        boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
+        if (getLocalFlags().isIgnoreCase()) {
+            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+            CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
+        }
+        CodePointSet cps = curCharClass.toCodePointSet();
+        return Token.createCharClass(invert ? cps.createInverse(inSource.getEncoding()) : cps, wasSingleChar);
+    }
+
+    /**
+     * Parses a nested character class.
+     *
+     * @return true iff a nested character class was found, otherwise, the input should be treated
+     * as literal characters
+     */
+    private boolean nestedCharClass() {
+        CodePointSetAccumulator curCharClassBackup = curCharClass;
+        curCharClass = acquireCodePointSetAccumulator();
+        collectCharClass();
+        curCharClassBackup.addSet(curCharClass.get());
+        releaseCodePointSetAccumulator(curCharClass);
+        curCharClass = curCharClassBackup;
+        return true;
+    }
+
     /**
      * This method modifies {@code curCharClass} to contains its closure on case mapping.
      */
@@ -961,9 +957,7 @@ public final class JavaRegexParser implements RegexParser {
     private void caseFoldCharClass(BiConsumer<Integer, int[]> caseFoldItem) {
         if (curCharClass.get().size() < RubyCaseFoldingData.CASE_FOLD.size()) {
             for (Range r : curCharClass) {
-                RubyCaseFoldingData.CASE_FOLD.subMap(r.lo, r.hi + 1).forEach((Integer from, int[] to) -> {
-                    caseFoldItem.accept(from, to);
-                });
+                RubyCaseFoldingData.CASE_FOLD.subMap(r.lo, r.hi + 1).forEach(caseFoldItem);
             }
         } else {
             RubyCaseFoldingData.CASE_FOLD.forEach((Integer from, int[] to) -> {
@@ -1025,7 +1019,7 @@ public final class JavaRegexParser implements RegexParser {
         CodePointSetAccumulator curCharClassBackup = curCharClass;
         CodePointSetAccumulator foldableCharsBackup = fullyFoldableCharacters;
         curCharClass = acquireCodePointSetAccumulator();
-        if (getLocalFlags().isIgnoreCase()) {                             // TODO add foldable characters or not necessary? --> change and uncomment all isIgnoreCase-parts?
+        if (getLocalFlags().isIgnoreCase()) {
             fullyFoldableCharacters = acquireCodePointSetAccumulator();
         }
         collectCharClass();
@@ -1035,107 +1029,6 @@ public final class JavaRegexParser implements RegexParser {
             foldableCharsBackup.addSet(fullyFoldableCharacters.get());
             fullyFoldableCharacters = foldableCharsBackup;
         }
-    }
-
-    /**
-     * Parses a nested character class.
-     *
-     * @return true iff a nested character class was found, otherwise, the input should be treated
-     * as literal characters
-     */
-    private boolean nestedCharClass() {
-        CodePointSetAccumulator curCharClassBackup = curCharClass;
-        curCharClass = acquireCodePointSetAccumulator();
-        collectCharClass();
-        curCharClassBackup.addSet(curCharClass.get());
-        releaseCodePointSetAccumulator(curCharClass);
-        curCharClass = curCharClassBackup;
-        return true;
-    }
-
-    private boolean identifiedAllGroups = false;
-    private int nGroups = 1;
-
-    public int numberOfCaptureGroups() throws RegexSyntaxException {
-        if (!identifiedAllGroups) {
-            identifyCaptureGroups();
-            identifiedAllGroups = true;
-        }
-        return nGroups;
-    }
-
-    private boolean findChars(char... chars) {
-        if (atEnd()) {
-            return false;
-        }
-        int i = ArrayUtils.indexOf(inPattern, position, inPattern.length(), chars);
-        if (i < 0) {
-            position = inPattern.length();
-            return false;
-        }
-        position = i;
-        return true;
-    }
-
-    private void registerCaptureGroup() {
-        if (!identifiedAllGroups) {
-            nGroups++;
-        }
-    }
-
-    /**
-     * Checks whether this regular expression contains any named capture groups.
-     * <p>
-     * This method is a way to check whether we are parsing the goal symbol Pattern[~U, +N] or
-     * Pattern[~U, ~N] (see the ECMAScript RegExp grammar).
-     */
-    private boolean hasNamedCaptureGroups() throws RegexSyntaxException {
-        return getNamedCaptureGroups() != null;
-    }
-
-    private void registerNamedCaptureGroup(String name) {
-        if (!identifiedAllGroups) {
-            if (namedCaptureGroups == null) {
-                namedCaptureGroups = new HashMap<>();
-            }
-            if (namedCaptureGroups.containsKey(name)) {
-                throw syntaxErrorHere(ErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
-            }
-            namedCaptureGroups.put(name, nGroups);
-        }
-        registerCaptureGroup();
-    }
-
-
-    private void identifyCaptureGroups() throws RegexSyntaxException {
-        // We are counting capture groups, so we only care about '(' characters and special
-        // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
-        // character classes (where '(' stands for a literal '(') and any characters after the '('
-        // which might turn into a non-capturing group or a look-around assertion.
-        boolean insideCharClass = false;
-        final int restoreIndex = position;
-        while (findChars('\\', '[', ']', '(')) {
-            switch (consumeChar()) {
-                case '\\':
-                    // skip escaped char
-                    advance();
-                    break;
-                case '[':
-                    insideCharClass = true;
-                    break;
-                case ']':
-                    insideCharClass = false;
-                    break;
-                case '(':
-                    if (!insideCharClass) {
-                        parens();
-                    }
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-        }
-        position = restoreIndex;
     }
 
     /**
@@ -1187,7 +1080,7 @@ public final class JavaRegexParser implements RegexParser {
                     if (consumeChar() != '<') {
                         throw syntaxErrorHere(ErrorMessages.MISSING_GROUP_NAME);
                     }
-                    String groupName = parseGroupName('>');
+                    String groupName = parseGroupName();
                     // backward reference
                     if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
                         return Token.createBackReference(namedCaptureGroups.get(groupName));
@@ -1206,7 +1099,7 @@ public final class JavaRegexParser implements RegexParser {
             case 'B':
                 return Token.createNonWordBoundary();
             case 'p':
-            case 'P':   // TODO maybe outsource as the code is duplicated in another function
+            case 'P':
                 retreat();
                 boolean capitalP = curChar() == 'P';
                 advance();
@@ -1222,9 +1115,9 @@ public final class JavaRegexParser implements RegexParser {
                     CodePointSet property = unicodeParseProperty(capitalP, propertySpec);
 //                    if (inCharClass) {
 //                        curCharClass.addSet(property);
-                        if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
-                            fullyFoldableCharacters.addSet(property);
-                        }
+                    if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
+                        fullyFoldableCharacters.addSet(property);
+                    }
 //                    } else {
 //                        addCharClass(property);
 //                    }
@@ -1240,10 +1133,8 @@ public final class JavaRegexParser implements RegexParser {
                 // escapes. Both result in sets of characters, but in the former case, we can skip
                 // the case-folding step in the `charClass` method and call `Token::createCharClass`
                 // directly.
-                if (isPredefCharClass(ch)) {
+                if (isPredefCharClass(ch)) {        // TODO combine those two paths and make the function return Token.createCharClass?
                     return Token.createCharClass(parsePredefCharClass(ch));
-//                } else if (getLocalFlags().isUnicode() && (ch == 'p' || ch == 'P')) {
-//                    return charClass(parseUnicodeCharacterProperty(ch == 'P'));
                 } else {
                     return Token.createCharClass(CodePointSet.create(parseEscapeChar(ch, false)), true);
                 }
@@ -1294,9 +1185,7 @@ public final class JavaRegexParser implements RegexParser {
 
     // Note that the CodePointSet returned by this function has already been
     // case-folded and negated.
-    // TODO combine the other Escape and PredefCharClass Methods!!!
     private CodePointSet parsePredefCharClass(int c) {
-        int restorePosition = position;
         switch (c) {
             case 's':
                 if (inSource.getOptions().isU180EWhitespace()) {
@@ -1319,21 +1208,7 @@ public final class JavaRegexParser implements RegexParser {
             case 'D':
                 return Constants.NON_DIGITS;
             case 'w':
-                if (getLocalFlags().isUnicodeCharacterClass()) {    // TODO done right? https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html#UNICODE_CHARACTER_CLASS
-                    // In JavaScript CaseFoldTable.applyCaseFold oder caseClosure(), nimmt alle equivalenten Groß- und Kleinbuchstaben dazu für flag 'u'
-                    /*
-                    private Token charClass(boolean invert) {
-                        boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
-                        if (flags.isIgnoreCase()) {
-                            CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
-                            CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
-                        }
-                        CodePointSet cps = curCharClass.toCodePointSet();
-                        return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);
-                    }
-
-                    TODO wie in JavaScript, also ECMAScript eins zu eins übernehmen
-                     */
+                if (getLocalFlags().isUnicodeCharacterClass()) {
                     return UNICODE_POSIX_CHAR_CLASSES.get("word");
                 } else if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
                     return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
@@ -1385,24 +1260,9 @@ public final class JavaRegexParser implements RegexParser {
                         0x3001, 0x10ffff
                 );
             default:
-                return null;
-//                throw CompilerDirectives.shouldNotReachHere();
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
-
-    private CodePointSet getUnicodePosixCharClass(String className) {
-        if (inSource.getEncoding() == Encodings.ASCII) {
-            return ASCII_POSIX_CHAR_CLASSES.get(className);
-        }
-
-        return trimToEncoding(UNICODE_POSIX_CHAR_CLASSES.get(className));
-    }
-
-    private CodePointSet trimToEncoding(CodePointSet codePointSet) {
-        return inSource.getEncoding().getFullSet().createIntersectionSingleRange(codePointSet);
-    }
-
-    // TODO: do something like parseUnicodeEscapeChar() or parseUnicodeCharacterProperty() here too maybe?
 
     private int parseEscapeChar(int c, boolean inCharClass) throws RegexSyntaxException {
         if (inCharClass && c == 'b') {
@@ -1438,40 +1298,6 @@ public final class JavaRegexParser implements RegexParser {
         }
     }
 
-    private int parseOctal(int firstDigit) {
-        int ret = firstDigit;
-        for (int i = 0; !atEnd() && isOctDigit(curChar()) && i < 2; i++) {
-            if (ret * 8 > 255) {
-                return ret;
-            }
-            ret *= 8;
-            ret += consumeChar() - '0';
-        }
-        return ret;
-    }
-
-    /**
-     * Like {@link #escape}, but restricted to the forms of escapes usable in character classes.
-     * This includes character escapes and character class escapes, but not assertion escapes or
-     * backreferences.
-     *
-     * @return {@code Optional.of(ch)} if the escape sequence was a character escape sequence for
-     * some character {@code ch}; {@code Optional.empty()} if it was a character class
-     * escape sequence
-     */
-    private Optional<Integer> classEscape() {
-        if (parsePredefCharClass(curChar()) != null) {
-            return Optional.empty();
-        }
-
-        Optional<Integer> characterEscape = characterEscape();
-        if (characterEscape.isPresent()) {
-            return characterEscape;
-        } else {
-            return Optional.of(parseEscapeChar(consumeChar(), true));
-        }
-    }
-
     /**
      * Parses a character escape sequence. A character escape sequence can be one of the following:
      * <ul>
@@ -1480,7 +1306,7 @@ public final class JavaRegexParser implements RegexParser {
      * <li>an octal escape sequence</li>
      * </ul>
      */
-    private Optional<Integer> characterEscape() {   // TODO combine the other escape method with this one?
+    private Optional<Integer> characterEscape() {
         int beginPos = position;
         switch (curChar()) {
             case 'x': {
@@ -1505,7 +1331,7 @@ public final class JavaRegexParser implements RegexParser {
                 String code;
                 if (match("{")) {
                     code = getMany(JavaRegexParser::isHexDigit);
-                    mustMatch("}");
+                    mustMatchClosingCurlyBracket();
                 } else {
                     code = getUpTo(4, JavaRegexParser::isHexDigit);
                     if (code.length() < 4) {
@@ -1542,9 +1368,37 @@ public final class JavaRegexParser implements RegexParser {
         }
     }
 
-    private void bailOut(String reason) throws UnsupportedRegexException {
-        if (!silent) {
-            throw new UnsupportedRegexException(reason);
+    private CodePointSet getUnicodePosixCharClass(String className) {
+        if (inSource.getEncoding() == Encodings.ASCII) {
+            return ASCII_POSIX_CHAR_CLASSES.get(className);
+        }
+
+        return trimToEncoding(UNICODE_POSIX_CHAR_CLASSES.get(className));
+    }
+
+    private CodePointSet trimToEncoding(CodePointSet codePointSet) {
+        return inSource.getEncoding().getFullSet().createIntersectionSingleRange(codePointSet);
+    }
+
+    /**
+     * Like {@link #escape}, but restricted to the forms of escapes usable in character classes.
+     * This includes character escapes and character class escapes, but not assertion escapes or
+     * backreferences.
+     *
+     * @return {@code Optional.of(ch)} if the escape sequence was a character escape sequence for
+     * some character {@code ch}; {@code Optional.empty()} if it was a character class
+     * escape sequence
+     */
+    private Optional<Integer> classEscape() {
+        if (isPredefCharClass(curChar())) {
+            return Optional.empty();
+        }
+
+        Optional<Integer> characterEscape = characterEscape();
+        if (characterEscape.isPresent()) {
+            return characterEscape;
+        } else {
+            return Optional.of(parseEscapeChar(consumeChar(), true));
         }
     }
 
@@ -1658,6 +1512,31 @@ public final class JavaRegexParser implements RegexParser {
         return c < 128;
     }
 
+    private BigInteger parseDecimal() {
+        if (atEnd() || !isDecDigit(curChar())) {
+            return BigInteger.valueOf(-1);
+        }
+
+        BigInteger ret = BigInteger.ZERO;
+        while (!atEnd() && isDecDigit(curChar())) {
+            ret = ret.multiply(BigInteger.TEN);
+            ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
+        }
+        return ret;
+    }
+
+    private int parseOctal(int firstDigit) {
+        int ret = firstDigit;
+        for (int i = 0; !atEnd() && isOctDigit(curChar()) && i < 2; i++) {
+            if (ret * 8 > 255) {
+                return ret;
+            }
+            ret *= 8;
+            ret += consumeChar() - '0';
+        }
+        return ret;
+    }
+
     // ---- Quantifier
 
     private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
@@ -1673,7 +1552,6 @@ public final class JavaRegexParser implements RegexParser {
                 return countedRepetitionSyntaxError(resetIndex);
             }
             min = literalMin.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMin.intValue() : -1;
-//            System.out.println("min: " + min);
             if (consumingLookahead(",}")) {
                 greedy = !consumingLookahead("?");
             } else if (consumingLookahead("}")) {
@@ -1709,58 +1587,12 @@ public final class JavaRegexParser implements RegexParser {
         return Token.createQuantifier(min, max, greedy);
     }
 
-    private BigInteger parseDecimal() {
-        if (atEnd() || !isDecDigit(curChar())) {
-            return BigInteger.valueOf(-1);
-        }
-        return parseDecimal(BigInteger.ZERO);
-    }
-
-    private BigInteger parseDecimal(BigInteger firstDigit) {
-        BigInteger ret = firstDigit;
-        while (!atEnd() && isDecDigit(curChar())) {
-            ret = ret.multiply(BigInteger.TEN);
-            ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
-        }
-        return ret;
-    }
-
     private Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
         if (getLocalFlags().isUnicode()) {
             throw syntaxErrorHere(ErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         position = resetIndex;
         return charClass('{');
-    }
-
-    private Token charClass(int codePoint) {
-        if (getLocalFlags().isIgnoreCase()) {
-            curCharClass.clear();
-            curCharClass.appendRange(codePoint, codePoint);
-            return charClass(false);
-        } else {
-            return Token.createCharClass(CodePointSet.create(codePoint), true);
-        }
-    }
-
-    private Token charClass(CodePointSet codePointSet) {
-        if (getLocalFlags().isIgnoreCase()) {
-            curCharClass.clear();
-            curCharClass.addSet(codePointSet);
-            return charClass(false);
-        } else {
-            return Token.createCharClass(codePointSet);
-        }
-    }
-
-    private Token charClass(boolean invert) {
-        boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
-        if (getLocalFlags().isIgnoreCase()) {
-            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
-            CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
-        }
-        CodePointSet cps = curCharClass.toCodePointSet();
-        return Token.createCharClass(invert ? cps.createInverse(inSource.getEncoding()) : cps, wasSingleChar);
     }
 
     private boolean consumingLookahead(String match) {
@@ -1811,7 +1643,7 @@ public final class JavaRegexParser implements RegexParser {
                             return Token.createLookBehindAssertionBegin(true);
                         default:
                             retreat();
-                            String groupName = parseGroupName('>');
+                            String groupName = parseGroupName();
                             registerNamedCaptureGroup(groupName);
                             return Token.createCaptureGroupBegin();
                     }
@@ -1845,19 +1677,94 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     /**
-     * Parses a group name terminated by the given character.
+     * Parses a group name terminated by '>'.
      *
      * @return the group name
      */
-    private String parseGroupName(char terminator) {
-        String groupName = getMany(c -> c != terminator);
-        if (!match(Character.toString(terminator))) {
-            throw syntaxErrorHere(JavaErrorMessages.unterminatedName(terminator));
+    private String parseGroupName() {
+        String groupName = getMany(c -> c != '>');
+        if (!match(Character.toString('>'))) {
+            throw syntaxErrorHere(JavaErrorMessages.unterminatedName('>'));
         }
         if (groupName.isEmpty()) {
             throw syntaxErrorHere(JavaErrorMessages.MISSING_GROUP_NAME);
         }
         return groupName;
+    }
+
+    public int numberOfCaptureGroups() throws RegexSyntaxException {
+        if (!identifiedAllGroups) {
+            identifyCaptureGroups();
+            identifiedAllGroups = true;
+        }
+        return nGroups;
+    }
+
+    private void registerCaptureGroup() {
+        if (!identifiedAllGroups) {
+            nGroups++;
+        }
+    }
+
+    @Override
+    public Map<String, Integer> getNamedCaptureGroups() {
+//        return Collections.emptyMap();  // TODO what to be done here?
+        return namedCaptureGroups;
+    }
+
+    /**
+     * Checks whether this regular expression contains any named capture groups.
+     * <p>
+     * This method is a way to check whether we are parsing the goal symbol Pattern[~U, +N] or
+     * Pattern[~U, ~N] (see the ECMAScript RegExp grammar).
+     */
+    private boolean hasNamedCaptureGroups() throws RegexSyntaxException {
+        return getNamedCaptureGroups() != null;
+    }
+
+    private void registerNamedCaptureGroup(String name) {
+        if (!identifiedAllGroups) {
+            if (namedCaptureGroups == null) {
+                namedCaptureGroups = new HashMap<>();
+            }
+            if (namedCaptureGroups.containsKey(name)) {
+                throw syntaxErrorHere(ErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+            }
+            namedCaptureGroups.put(name, nGroups);
+        }
+        registerCaptureGroup();
+    }
+
+
+    private void identifyCaptureGroups() throws RegexSyntaxException {
+        // We are counting capture groups, so we only care about '(' characters and special
+        // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
+        // character classes (where '(' stands for a literal '(') and any characters after the '('
+        // which might turn into a non-capturing group or a look-around assertion.
+        boolean insideCharClass = false;
+        final int restoreIndex = position;
+        while (findChars('\\', '[', ']', '(')) {
+            switch (consumeChar()) {
+                case '\\':
+                    // skip escaped char
+                    advance();
+                    break;
+                case '[':
+                    insideCharClass = true;
+                    break;
+                case ']':
+                    insideCharClass = false;
+                    break;
+                case '(':
+                    if (!insideCharClass) {
+                        parens();
+                    }
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+        position = restoreIndex;
     }
 
 
