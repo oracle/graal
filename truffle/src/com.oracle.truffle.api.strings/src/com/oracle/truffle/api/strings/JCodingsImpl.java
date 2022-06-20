@@ -271,13 +271,14 @@ final class JCodingsImpl implements JCodings {
                     ConditionProfile outOfMemoryProfile,
                     ConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
+        final int encoding = a.encoding();
         final JCodings.Encoding jCodingSrc;
-        if (isUTF16Or32(a) && isStride0(a)) {
+        if (isUTF16Or32(encoding) && isStride0(a)) {
             jCodingSrc = TruffleString.Encoding.ISO_8859_1.getJCoding();
-        } else if (isUTF32(a) && isStride1(a)) {
+        } else if (isUTF32(encoding) && isStride1(a)) {
             jCodingSrc = TruffleString.Encoding.UTF_16.getJCoding();
         } else {
-            jCodingSrc = JCodings.getInstance().get(a.encoding());
+            jCodingSrc = JCodings.getInstance().get(encoding);
         }
         JCodings.Encoding jCodingDst = JCodings.getInstance().get(targetEncoding);
         byte[] buffer = new byte[(int) Math.min(TStringConstants.MAX_ARRAY_SIZE, ((long) codePointLengthA) * JCodings.getInstance().maxLength(jCodingDst))];

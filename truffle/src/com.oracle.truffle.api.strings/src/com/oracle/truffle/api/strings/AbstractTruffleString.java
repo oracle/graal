@@ -324,12 +324,12 @@ public abstract class AbstractTruffleString {
         return data instanceof String;
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA) {
-        return new TruffleStringIterator(a, arrayA, codeRangeA, 0);
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding) {
+        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, 0);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA) {
-        return new TruffleStringIterator(a, arrayA, codeRangeA, a.length());
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding) {
+        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, a.length());
     }
 
     final void checkEncoding(TruffleString.Encoding expectedEncoding) {

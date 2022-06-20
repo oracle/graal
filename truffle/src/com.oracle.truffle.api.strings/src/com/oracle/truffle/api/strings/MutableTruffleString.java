@@ -556,8 +556,8 @@ public final class MutableTruffleString extends AbstractTruffleString {
             a.boundsCheckRegion(fromIndex, length, getCodePointLengthNode);
             Object arrayA = toIndexableNode.execute(a, a.data());
             final int codeRangeA = getCodeRangeANode.execute(a);
-            int fromIndexRaw = translateIndexNode.execute(a, arrayA, codeRangeA, 0, fromIndex, length == 0);
-            int lengthRaw = translateIndexNode.execute(a, arrayA, codeRangeA, fromIndexRaw, length, true);
+            int fromIndexRaw = translateIndexNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, 0, fromIndex, length == 0);
+            int lengthRaw = translateIndexNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, fromIndexRaw, length, true);
             int stride = expectedEncoding.naturalStride;
             return SubstringByteIndexNode.createSubstring(a, fromIndexRaw << stride, lengthRaw << stride, expectedEncoding, copyToByteArrayNode);
         }

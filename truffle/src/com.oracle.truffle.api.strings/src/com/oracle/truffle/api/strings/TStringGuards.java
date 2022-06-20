@@ -123,20 +123,12 @@ final class TStringGuards {
                         TSCodeRange.isMoreRestrictiveThan(codeRangeA, codeRangeB);
     }
 
-    static boolean isAscii(AbstractTruffleString a) {
-        return isAscii(a.encoding());
-    }
-
     static boolean isAscii(TruffleString.Encoding enc) {
         return isAscii(enc.id);
     }
 
     static boolean isAscii(int enc) {
         return enc == TruffleString.Encoding.US_ASCII.id;
-    }
-
-    static boolean isBytes(AbstractTruffleString a) {
-        return isBytes(a.encoding());
     }
 
     static boolean isBytes(TruffleString.Encoding enc) {
@@ -167,20 +159,12 @@ final class TStringGuards {
         return enc == TruffleString.Encoding.UTF_8.id;
     }
 
-    static boolean isUTF8(AbstractTruffleString a) {
-        return isUTF8(a.encoding());
-    }
-
     static boolean isUTF16(TruffleString.Encoding enc) {
         return isUTF16(enc.id);
     }
 
     static boolean isUTF16(int enc) {
         return enc == TruffleString.Encoding.UTF_16.id;
-    }
-
-    static boolean isUTF16(AbstractTruffleString a) {
-        return isUTF16(a.encoding());
     }
 
     static boolean isUTF16(TruffleStringBuilder sb) {
@@ -195,10 +179,6 @@ final class TStringGuards {
         return enc == TruffleString.Encoding.UTF_32.id;
     }
 
-    static boolean isUTF32(AbstractTruffleString a) {
-        return isUTF32(a.encoding());
-    }
-
     static boolean isUTF16Or32(TruffleString.Encoding enc) {
         return isUTF16Or32(enc.id);
     }
@@ -208,10 +188,6 @@ final class TStringGuards {
         assert TruffleString.Encoding.UTF_32.id == 0;
         assert TruffleString.Encoding.UTF_16.id == 1;
         return enc <= 1;
-    }
-
-    static boolean isUTF16Or32(AbstractTruffleString a) {
-        return isUTF16Or32(a.encoding());
     }
 
     static boolean identical(Object a, Object b) {
@@ -226,20 +202,12 @@ final class TStringGuards {
         return TruffleString.Encoding.isSupported(encoding);
     }
 
-    static boolean isSupportedEncoding(AbstractTruffleString a) {
-        return isSupportedEncoding(a.encoding());
-    }
-
     static boolean isUnsupportedEncoding(TruffleString.Encoding encoding) {
         return isUnsupportedEncoding(encoding.id);
     }
 
     static boolean isUnsupportedEncoding(int encoding) {
         return TruffleString.Encoding.isUnsupported(encoding);
-    }
-
-    static boolean isUnsupportedEncoding(AbstractTruffleString a) {
-        return isUnsupportedEncoding(a.encoding());
     }
 
     static int stride(AbstractTruffleString a) {
