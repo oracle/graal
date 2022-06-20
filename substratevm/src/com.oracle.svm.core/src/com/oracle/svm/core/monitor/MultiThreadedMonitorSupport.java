@@ -25,7 +25,10 @@
 package com.oracle.svm.core.monitor;
 
 import java.lang.ref.ReferenceQueue;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
@@ -37,7 +40,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -260,15 +262,20 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
 
-        if (lockObject.tryLock()) return;
-
+        if (lockObject.tryLock()) {
+            return;
+        }
         lockObject.lock();
 
-        // Prevent deadlock from locking monitorOwnersLock in conjunction with the synchronized block on ReferenceQueue monitor in WeakIdentityHashMap
-        if ( obj.getClass() == Target_java_lang_ref_ReferenceQueue_Lock.class ) return;
-
+        // Prevent deadlock from locking monitorOwnersLock in conjunction with the
+        // synchronized block on ReferenceQueue monitor in WeakIdentityHashMap
+        if (obj.getClass() == Target_java_lang_ref_ReferenceQueue_Lock.class) {
+            return;
+        }
         // prevent recursive manipulation of the monitorOwners lock
-        if (monitorOwnersLock.isHeldByCurrentThread()) return;
+        if (monitorOwnersLock.isHeldByCurrentThread()) {
+            return;
+        }
         Long prevOwner;
         long currentOwnerId = com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
 
@@ -279,8 +286,10 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         } finally {
             monitorOwnersLock.unlock();
         }
-        if ( prevOwner==null ) prevOwner = 0L;
-        JavaMonitorEnterEvent.emit(obj,prevOwner, startTicks);
+        if (prevOwner == null) {
+            prevOwner = 0L;
+        }
+        JavaMonitorEnterEvent.emit(obj, prevOwner, startTicks);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
