@@ -57,10 +57,12 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -158,44 +160,35 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             // place guards before returning from cache.
             return proxyCache.get(metaName);
         }
-        String[] parentNames = getParentNames(metaObject, interop);
-        if (parentNames.length == 0) {
-            proxyCache.put(metaName, null);
-            return null;
-        }
-        ArrayList<ObjectKlass> guestInterfaces = new ArrayList<>(parentNames.length);
-
-        for (String parentName : parentNames) {
-            ObjectKlass guestInterface = polyglotInterfaceMappings.mapName(parentName);
-            if (guestInterface != null) {
-                guestInterfaces.add(guestInterface);
-            }
-        }
-        if (guestInterfaces.isEmpty()) {
+        ObjectKlass[] guestInterfaces = getParents(metaObject, interop, polyglotInterfaceMappings);
+        if (guestInterfaces.length == 0) {
             proxyCache.put(metaName, null);
             return null;
         }
 
-        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(meta, guestInterfaces.toArray(new ObjectKlass[guestInterfaces.size()]));
+        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(meta, guestInterfaces);
         GeneratedProxyBytes generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
         proxyCache.put(metaName, generatedProxyBytes);
         return generatedProxyBytes;
     }
 
-    private static String[] getParentNames(Object metaObject, InteropLibrary interop) throws ClassCastException {
+    private static ObjectKlass[] getParents(Object metaObject, InteropLibrary interop, PolyglotInterfaceMappings mappings) throws ClassCastException {
         try {
-            ArrayList<String> names = new ArrayList<>();
+            Set<ObjectKlass> parents = new HashSet<>();
             if (interop.hasMetaParents(metaObject)) {
                 Object metaParents = interop.getMetaParents(metaObject);
 
                 long arraySize = interop.getArraySize(metaParents);
                 for (long i = 0; i < arraySize; i++) {
                     Object parent = interop.readArrayElement(metaParents, i);
-                    names.add(interop.asString(interop.getMetaQualifiedName(parent)));
-                    names.addAll(Arrays.asList(getParentNames(parent, interop)));
+                    ObjectKlass mappedKlass = mappings.mapName(interop.asString(interop.getMetaQualifiedName(parent)));
+                    if (mappedKlass != null) {
+                        parents.add(mappedKlass);
+                    }
+                    parents.addAll(Arrays.asList(getParents(parent, interop, mappings)));
                 }
             }
-            return names.toArray(new String[names.size()]);
+            return parents.toArray(new ObjectKlass[parents.size()]);
         } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
             throw new ClassCastException();
         }
