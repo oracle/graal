@@ -1497,10 +1497,36 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Creates a new TruffleString from a given code point.
          *
+         * @deprecated since 22.3, use {@link #executeChecked(int, Encoding, boolean)} instead.
+         *
          * @since 22.1
          */
+        @Deprecated(since = "22.3")
         public final TruffleString execute(int codepoint, Encoding encoding) {
             return execute(codepoint, encoding, encoding == Encoding.UTF_16);
+        }
+
+        /**
+         * Creates a new TruffleString from a given code point.
+         *
+         * If {@code allowUTF16Surrogates} is {@code true}, {@link Character#isSurrogate(char)
+         * UTF-16 surrogate values} passed as {@code codepoint} will not cause an
+         * {@link IllegalArgumentException}, but instead be encoded on a best-effort basis. This
+         * option is only supported on {@link TruffleString.Encoding#UTF_16} and
+         * {@link TruffleString.Encoding#UTF_32}.
+         * 
+         * @deprecated since 22.3, use {@link #executeChecked(int, Encoding, boolean)} instead.
+         *
+         * @since 22.2
+         */
+        @Deprecated(since = "22.3")
+        public final TruffleString execute(int codepoint, Encoding encoding, boolean allowUTF16Surrogates) {
+            try {
+                return executeChecked(codepoint, encoding, allowUTF16Surrogates);
+            } catch (InvalidCodePointException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException(e);
+            }
         }
 
         /**
@@ -1508,13 +1534,16 @@ public final class TruffleString extends AbstractTruffleString {
          * 
          * If {@code allowUTF16Surrogates} is {@code true}, {@link Character#isSurrogate(char)
          * UTF-16 surrogate values} passed as {@code codepoint} will not cause an
-         * {@link IllegalArgumentException}, but instead be encoded on a best-effort basis. This
+         * {@link InvalidCodePointException}, but instead be encoded on a best-effort basis. This
          * option is only supported on {@link TruffleString.Encoding#UTF_16} and
          * {@link TruffleString.Encoding#UTF_32}.
          *
-         * @since 22.2
+         * @throws InvalidCodePointException if the given codepoint is not defined in the given
+         *             encoding.
+         *
+         * @since 22.3
          */
-        public abstract TruffleString execute(int codepoint, Encoding encoding, boolean allowUTF16Surrogates);
+        public abstract TruffleString executeChecked(int codepoint, Encoding encoding, boolean allowUTF16Surrogates) throws InvalidCodePointException;
 
         @Specialization
         static TruffleString fromCodePoint(int c, Encoding enc, boolean allowUTF16Surrogates,
@@ -1523,10 +1552,12 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ConditionProfile utf16Profile,
                         @Cached ConditionProfile utf32Profile,
                         @Cached ConditionProfile exoticProfile,
-                        @Cached ConditionProfile bmpProfile) {
+                        @Cached ConditionProfile bmpProfile,
+                        @Cached BranchProfile invalidCodePoint) throws InvalidCodePointException {
             assert !allowUTF16Surrogates || isUTF16Or32(enc) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
             if (Integer.toUnsignedLong(c) > 0x10ffff) {
-                throw InternalErrors.invalidCodePoint(c);
+                invalidCodePoint.enter();
+                throw InvalidCodePointException.create();
             }
             if (is7BitCompatible(enc) && c <= 0x7f) {
                 return TStringConstants.getSingleByteAscii(enc.id, c);
@@ -1537,7 +1568,8 @@ public final class TruffleString extends AbstractTruffleString {
             }
             if (bytesProfile.profile(isBytes(enc))) {
                 if (c > 0xff) {
-                    throw InternalErrors.invalidCodePoint(c);
+                    invalidCodePoint.enter();
+                    throw InvalidCodePointException.create();
                 }
                 return TStringConstants.getSingleByte(Encoding.BYTES.id, c);
             }
@@ -1548,7 +1580,8 @@ public final class TruffleString extends AbstractTruffleString {
             if (utf8Profile.profile(isUTF8(enc))) {
                 assert c > 0x7f;
                 if (Encodings.isUTF16Surrogate(c)) {
-                    throw InternalErrors.invalidCodePoint(c);
+                    invalidCodePoint.enter();
+                    throw InvalidCodePointException.create();
                 }
                 bytes = Encodings.utf8Encode(c);
                 length = bytes.length;
@@ -1564,7 +1597,8 @@ public final class TruffleString extends AbstractTruffleString {
                         if (allowUTF16Surrogates) {
                             codeRange = TSCodeRange.getBrokenMultiByte();
                         } else {
-                            throw InternalErrors.invalidCodePoint(c);
+                            invalidCodePoint.enter();
+                            throw InvalidCodePointException.create();
                         }
                     } else {
                         codeRange = TSCodeRange.get16Bit();
@@ -1582,7 +1616,8 @@ public final class TruffleString extends AbstractTruffleString {
                         if (allowUTF16Surrogates) {
                             codeRange = TSCodeRange.getBrokenFixedWidth();
                         } else {
-                            throw InternalErrors.invalidCodePoint(c);
+                            invalidCodePoint.enter();
+                            throw InvalidCodePointException.create();
                         }
                     } else {
                         codeRange = TSCodeRange.get16Bit();
@@ -1607,16 +1642,19 @@ public final class TruffleString extends AbstractTruffleString {
                 stride = 0;
                 codeRange = JCodings.getInstance().isSingleByte(jCodingsEnc) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getValidMultiByte();
                 if (length < 1) {
-                    throw InternalErrors.invalidCodePoint(c);
+                    invalidCodePoint.enter();
+                    throw InvalidCodePointException.create();
                 }
                 bytes = new byte[length];
                 int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, c, bytes, 0);
                 if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, bytes, 0, length) != ret || JCodings.getInstance().readCodePoint(jCodingsEnc, bytes, 0, length) != c) {
-                    throw InternalErrors.invalidCodePoint(c);
+                    invalidCodePoint.enter();
+                    throw InvalidCodePointException.create();
                 }
             } else {
                 assert isAscii(enc) && c > 0x7f || (isLatin1(enc) && c > 0xff);
-                throw InternalErrors.invalidCodePoint(c);
+                invalidCodePoint.enter();
+                throw InvalidCodePointException.create();
             }
             return TruffleString.createFromByteArray(bytes, length, stride, enc.id, 1, codeRange);
         }
@@ -1637,6 +1675,34 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public static FromCodePointNode getUncached() {
             return TruffleStringFactory.FromCodePointNodeGen.getUncached();
+        }
+    }
+
+    /**
+     * This exception may be thrown by {@link FromCodePointNode} to indicate that the given
+     * codepoint is not defined in the given encoding. This exception does not record stack traces
+     * for performance reasons.
+     *
+     * @since 22.3
+     */
+    public static final class InvalidCodePointException extends Exception {
+
+        InvalidCodePointException() {
+        }
+
+        /**
+         * No stack trace for this exception.
+         *
+         * @since 22.3
+         */
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+
+        static InvalidCodePointException create() {
+            return new InvalidCodePointException();
         }
     }
 
