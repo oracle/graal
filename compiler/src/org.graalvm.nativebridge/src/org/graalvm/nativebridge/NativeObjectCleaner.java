@@ -70,9 +70,8 @@ public abstract class NativeObjectCleaner<T> extends WeakReference<T> {
      * This method should perform cleanup in the isolate heap.
      *
      * @param isolateThread the isolate thread address to call into isolate.
-     * @return {@code true} on success and {@code false} on failure.
      */
-    protected abstract boolean cleanUp(long isolateThread);
+    protected abstract void cleanUp(long isolateThread);
 
     /**
      * Performs an explicit clean up of enqueued {@link NativeObjectCleaner}s.
@@ -99,7 +98,7 @@ public abstract class NativeObjectCleaner<T> extends WeakReference<T> {
                         enteredThreads.put(isolate, enteredThread);
                     }
                     if (enteredThread != INVALID_ISOLATE_THREAD) {
-                        cleanImpl(isolate.getIsolateId(), ((NativeIsolateThread) enteredThread).getIsolateThreadId(), cleaner);
+                        cleanImpl(((NativeIsolateThread) enteredThread).getIsolateThreadId(), cleaner);
                     }
                 }
             }
@@ -114,17 +113,7 @@ public abstract class NativeObjectCleaner<T> extends WeakReference<T> {
         }
     }
 
-    private static void cleanImpl(long isolate, long isolateThread, NativeObjectCleaner<?> cleaner) {
-        try {
-            if (!cleaner.cleanUp(isolateThread)) {
-                throw new Exception(String.format("Error releasing %s in isolate 0x%x.", cleaner, isolate));
-            }
-        } catch (Throwable t) {
-            boolean ae = false;
-            assert (ae = true) == true;
-            if (ae) {
-                t.printStackTrace();
-            }
-        }
+    private static void cleanImpl(long isolateThread, NativeObjectCleaner<?> cleaner) {
+        cleaner.cleanUp(isolateThread);
     }
 }

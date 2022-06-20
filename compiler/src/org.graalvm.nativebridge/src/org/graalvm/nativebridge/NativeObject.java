@@ -88,8 +88,8 @@ public class NativeObject {
         }
 
         @Override
-        public boolean cleanUp(long isolateThread) {
-            return isolate.getConfig().releaseNativeObject(isolateThread, handle);
+        public void cleanUp(long isolateThread) {
+            isolate.getConfig().releaseNativeObject(isolateThread, handle);
         }
 
         @Override
