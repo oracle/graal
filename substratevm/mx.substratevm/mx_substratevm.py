@@ -69,7 +69,7 @@ def get_jdk():
 def graal_compiler_flags():
     version_tag = get_jdk().javaCompliance.value
     compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map()
-    if version_tag not in compiler_flags:
+    if str(version_tag) not in compiler_flags:
         missing_flags_message = 'Missing graal-compiler-flags for {0}.\n Did you forget to run "mx build"?'
         mx.abort(missing_flags_message.format(version_tag))
     def adjusted_exports(line):
@@ -84,7 +84,8 @@ def graal_compiler_flags():
             return before + sep + 'ALL-UNNAMED'
         else:
             return line
-    return [adjusted_exports(line) for line in compiler_flags[version_tag]]
+
+    return [adjusted_exports(line) for line in compiler_flags[str(version_tag)]]
 
 def svm_unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -1654,12 +1655,12 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
     def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
-        graal_compiler_flags_map[8] = [
+        graal_compiler_flags_map['8'] = [
             '-d64',
             '-XX:-UseJVMCIClassLoader'
         ]
 
-        graal_compiler_flags_map[11] = [
+        graal_compiler_flags_map['11'] = [
             # Disable the check for JDK-8 graal version.
             '-Dsubstratevm.IgnoreGraalVersionCheck=true',
         ]
@@ -1668,11 +1669,12 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         distributions_transitive = mx.classpath_entries(self.buildDependencies)
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
-        graal_compiler_flags_map[11].extend(exports_flags)
+        graal_compiler_flags_map['11'].extend(exports_flags)
         # Currently JDK 17 and JDK 11 have the same flags
-        graal_compiler_flags_map[17] = graal_compiler_flags_map[11]
+        graal_compiler_flags_map['17'] = graal_compiler_flags_map['11']
         # Currently JDK 19 and JDK 17 have the same flags
-        graal_compiler_flags_map[19] = graal_compiler_flags_map[17]
+        graal_compiler_flags_map['19'] = graal_compiler_flags_map['17']
+        graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo
