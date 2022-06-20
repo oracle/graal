@@ -24,24 +24,26 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import org.graalvm.bisect.util.Writer;
+import java.util.List;
+
 import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.ExperimentId;
+import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.util.Writer;
 
 /**
  * Represents a Java method that was not matched with any other Java method from the other experiment.
  */
 public class ExtraMethod {
     /**
-     * Gets the ID of the experiment to which this Java method belongs.
+     * Gets the experiment to which this Java method belongs.
      *
-     * @return the ID of the experiment of this Java method
+     * @return the experiment of this Java method
      */
-    public ExperimentId getExperimentId() {
-        return experimentId;
+    public Experiment getExperiment() {
+        return experiment;
     }
 
-    private final ExperimentId experimentId;
+    private final Experiment experiment;
 
     /**
      * Gets the compilation method name of this Java method.
@@ -55,16 +57,51 @@ public class ExtraMethod {
 
     private final String compilationMethodName;
 
-    ExtraMethod(ExperimentId experimentId, String compilationMethodName) {
-        this.experimentId = experimentId;
+    /**
+     * The list of hot compilations of this method.
+     */
+    private final List<ExecutedMethod> executedMethods;
+
+    ExtraMethod(Experiment experiment, String compilationMethodName, List<ExecutedMethod> executedMethods) {
+        this.experiment = experiment;
         this.compilationMethodName = compilationMethodName;
+        this.executedMethods = executedMethods;
     }
 
     /**
-     * Writes a string describing that this method appeared only in one of the experiments.
+     * Writes a header identifying this method and
+     * {@link Experiment#writeMethodCompilationList(Writer, String) the list of compilations} of
+     * this method.
+     * 
      * @param writer the destination writer
+     * @param experiment1 the first experiment
+     * @param experiment2 the second experiment
      */
-    public void writeHeader(Writer writer) {
-        writer.writeln("Method " + compilationMethodName + " is only in experiment " + experimentId);
+    public void writeHeaderAndCompilationList(Writer writer, Experiment experiment1, Experiment experiment2) {
+        writer.writeln("Method " + compilationMethodName + " is hot only in experiment " + experiment.getExperimentId());
+        writer.increaseIndent();
+        experiment1.writeMethodCompilationList(writer, compilationMethodName);
+        experiment2.writeMethodCompilationList(writer, compilationMethodName);
+        writer.decreaseIndent();
+    }
+
+    /**
+     * Writes the full description of the method. Includes {@link #writeHeaderAndCompilationList a
+     * header and the list of compilations} and optimization trees for each compilation.
+     * 
+     * @param writer the destination writer
+     * @param experiment1 the first experiment
+     * @param experiment2 the second experiment
+     */
+    public void write(Writer writer, Experiment experiment1, Experiment experiment2) {
+        writeHeaderAndCompilationList(writer, experiment1, experiment2);
+        writer.increaseIndent();
+        for (ExecutedMethod method : executedMethods) {
+            writer.writeln("Compilation " + method.getCompilationId() + " (" + method.createSummaryOfMethodExecution() + ") in experiment " + method.getExperiment().getExperimentId());
+            writer.increaseIndent();
+            method.getRootPhase().writeRecursive(writer);
+            writer.decreaseIndent();
+        }
+        writer.decreaseIndent();
     }
 }

@@ -104,7 +104,7 @@ public class ProfBisect {
         ExperimentParser parser1 = new ExperimentParser(experimentFiles1);
         Experiment experiment1 = parseOrExit(parser1);
         hotMethodPolicy.markHotMethods(experiment1);
-        experiment1.writeSummary(writer);
+        experiment1.writeExperimentSummary(writer);
         writer.writeln();
 
         ExperimentFiles experimentFiles2 = new ExperimentFilesImpl(
@@ -113,15 +113,15 @@ public class ProfBisect {
         ExperimentParser parser2 = new ExperimentParser(experimentFiles2);
         Experiment experiment2 = parseOrExit(parser2);
         hotMethodPolicy.markHotMethods(experiment2);
-        experiment2.writeSummary(writer);
-        writer.writeln();
+        experiment2.writeExperimentSummary(writer);
 
         GreedyMethodMatcher matcher = new GreedyMethodMatcher();
         MethodMatching matching = matcher.match(experiment1, experiment2);
         TreeMatcher treeMatcher = new SelkowTreeMatcher();
 
         for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
-            matchedMethod.writeSummary(writer, experiment1, experiment2);
+            writer.writeln();
+            matchedMethod.writeHeaderAndCompilationLists(writer, experiment1, experiment2);
             writer.increaseIndent();
             for (MatchedExecutedMethod matchedExecutedMethod : matchedMethod.getMatchedExecutedMethods()) {
                 matchedExecutedMethod.writeHeader(writer);
@@ -133,10 +133,13 @@ public class ProfBisect {
                 treeMatching.write(writer);
                 writer.decreaseIndent();
             }
-            matchedMethod.summarizeExtraExecutedMethods(writer);
+            matchedMethod.writeExtraExecutedMethods(writer);
             writer.decreaseIndent();
         }
-        matching.getExtraMethods().iterator().forEachRemaining(extraMethod -> extraMethod.writeHeader(writer));
+        matching.getExtraMethods().iterator().forEachRemaining(extraMethod -> {
+            writer.writeln();
+            extraMethod.write(writer, experiment1, experiment2);
+        });
     }
 
     private static Experiment parseOrExit(ExperimentParser parser) {

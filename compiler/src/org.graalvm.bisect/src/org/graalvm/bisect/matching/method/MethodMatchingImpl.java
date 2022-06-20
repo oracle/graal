@@ -24,10 +24,11 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import org.graalvm.bisect.core.ExperimentId;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.Experiment;
 
 class MethodMatchingImpl implements MethodMatching {
     private final ArrayList<MatchedMethod> matchedMethods = new ArrayList<>();
@@ -44,8 +45,8 @@ class MethodMatchingImpl implements MethodMatching {
         return matchedMethods;
     }
 
-    public ExtraMethod addExtraMethod(String compilationMethodName, ExperimentId experimentId) {
-        ExtraMethod extraMethod = new ExtraMethod(experimentId, compilationMethodName);
+    public ExtraMethod addExtraMethod(String compilationMethodName, Experiment experiment, List<ExecutedMethod> executedMethods) {
+        ExtraMethod extraMethod = new ExtraMethod(experiment, compilationMethodName, executedMethods);
         extraMethods.add(extraMethod);
         return extraMethod;
     }

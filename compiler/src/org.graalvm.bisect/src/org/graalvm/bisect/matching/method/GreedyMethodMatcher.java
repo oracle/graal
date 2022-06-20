@@ -24,15 +24,14 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.Experiment;
-import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.util.IteratorUtil;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.util.IteratorUtil;
 
 /**
  * Matches methods of two experiments by compilation method names and then greedily matches their respective
@@ -81,8 +80,8 @@ public class GreedyMethodMatcher implements MethodMatcher {
             });
         }
 
-        analyzeExtraMethods(methodMap1, methodMap2, matching, experiment1.getExperimentId());
-        analyzeExtraMethods(methodMap2, methodMap1, matching, experiment2.getExperimentId());
+        analyzeExtraMethods(methodMap1, methodMap2, matching, experiment1);
+        analyzeExtraMethods(methodMap2, methodMap1, matching, experiment2);
 
         return matching;
     }
@@ -94,11 +93,11 @@ public class GreedyMethodMatcher implements MethodMatcher {
     private void analyzeExtraMethods(Map<String, List<ExecutedMethod>> methodMap1,
                                      Map<String, List<ExecutedMethod>> methodMap2,
                                      MethodMatchingImpl matching,
-                                     ExperimentId lhsExperimentId) {
+                    Experiment lhsExperiment) {
         Set<String> difference = new HashSet<>(methodMap1.keySet());
         difference.removeAll(methodMap2.keySet());
         for (String compilationMethodName : difference) {
-            matching.addExtraMethod(compilationMethodName, lhsExperimentId);
+            matching.addExtraMethod(compilationMethodName, lhsExperiment, methodMap1.get(compilationMethodName));
         }
     }
 }

@@ -24,8 +24,8 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import org.graalvm.bisect.util.Writer;
 import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.util.Writer;
 
 /**
  * Represents an executed method that was not matched with any method from the other experiment.
@@ -42,11 +42,14 @@ public class ExtraExecutedMethod {
     }
 
     /**
-     * Writes a string that describes that this compilation is unpaired.
+     * Writes a string that describes the compilation ID of this method, including
+     * {@link ExecutedMethod#createSummaryOfMethodExecution() the summary of its execution} and its
+     * experiment ID.
+     * 
      * @param writer the destination writer
      */
     public void writeHeader(Writer writer) {
-        writer.writeln("Compilation " + executedMethod.getCompilationId() +
-                " only in experiment " + executedMethod.getExperiment().getExperimentId());
+        writer.writeln("Compilation " + executedMethod.getCompilationId() + " (" + executedMethod.createSummaryOfMethodExecution() + ") only in experiment " +
+                        executedMethod.getExperiment().getExperimentId());
     }
 }

@@ -24,12 +24,14 @@
  */
 package org.graalvm.bisect.core;
 
-import org.graalvm.bisect.util.Writer;
-
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.graalvm.bisect.util.Writer;
 
 public class ExperimentImpl implements Experiment {
     private final List<ExecutedMethod> executedMethods;
@@ -100,7 +102,7 @@ public class ExperimentImpl implements Experiment {
     }
 
     @Override
-    public void writeSummary(Writer writer) {
+    public void writeExperimentSummary(Writer writer) {
         String graalExecutionPercent = String.format("%.2f", (double) getGraalPeriod() / totalPeriod * 100);
         String graalHotExecutionPercent = String.format("%.2f", (double) countHotGraalPeriod() / totalPeriod * 100);
         writer.writeln("Experiment " + experimentId + " with execution ID " + executionId);
@@ -110,6 +112,26 @@ public class ExperimentImpl implements Experiment {
         writer.writeln("Graal-compiled methods account for " + graalExecutionPercent + "% of execution");
         writer.writeln(countHotMethods() + " hot methods account for " + graalHotExecutionPercent + "% of execution");
         writer.decreaseIndent();
+    }
+
+    @Override
+    public void writeMethodCompilationList(Writer writer, String compilationMethodName) {
+        writer.writeln("In experiment " + experimentId);
+        writer.increaseIndent();
+        List<ExecutedMethod> executedMethods = methodsByName.get(compilationMethodName)
+                        .stream()
+                        .sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod()))
+                        .collect(Collectors.toList());
+        long hotMethodCount = executedMethods.stream()
+                        .filter(ExecutedMethod::isHot)
+                        .count();
+        writer.writeln(executedMethods.size() + " compilations (" + hotMethodCount + " of which are hot)");
+        writer.writeln("Compilations");
+        writer.increaseIndent();
+        for (ExecutedMethod executedMethod : executedMethods) {
+            writer.writeln(executedMethod.getCompilationId() + " (" + executedMethod.createSummaryOfMethodExecution() + ((executedMethod.isHot()) ? ") *hot*" : ")"));
+        }
+        writer.decreaseIndent(2);
     }
 
     private long countHotMethods() {

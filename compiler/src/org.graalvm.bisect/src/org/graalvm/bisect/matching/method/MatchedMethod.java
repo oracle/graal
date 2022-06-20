@@ -25,9 +25,7 @@
 package org.graalvm.bisect.matching.method;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.Experiment;
@@ -86,58 +84,31 @@ public class MatchedMethod {
     }
 
     /**
-     * Writes the method header and list of compilations for each experiment.
+     * Writes the name of the method and the list of compilations for each experiment.
+     * 
      * @param writer the destination writer
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment
      */
-    public void writeSummary(Writer writer, Experiment experiment1, Experiment experiment2) {
+    public void writeHeaderAndCompilationLists(Writer writer, Experiment experiment1, Experiment experiment2) {
         writer.writeln("Method " + compilationMethodName);
         writer.increaseIndent();
-        summarizeMethodForExperiment(writer, experiment1);
-        summarizeMethodForExperiment(writer, experiment2);
+        experiment1.writeMethodCompilationList(writer, compilationMethodName);
+        experiment2.writeMethodCompilationList(writer, compilationMethodName);
         writer.decreaseIndent();
     }
 
     /**
-     * Writes the list of compilations of this Java method in the experiment.
-     * @param writer the destination writer
-     * @param experiment the experiment to be summarized
-     */
-    private void summarizeMethodForExperiment(Writer writer, Experiment experiment) {
-        StringBuilder sb = new StringBuilder();
-        writer.writeln("In experiment " + experiment.getExperimentId());
-        List<ExecutedMethod> executedMethods = experiment.getMethodsByName(compilationMethodName)
-                .stream()
-                .sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod()))
-                .collect(Collectors.toList());
-        long hotMethodCount = executedMethods.stream()
-                .filter(ExecutedMethod::isHot)
-                .count();
-        writer.increaseIndent();
-        writer.writeln(executedMethods.size() + " compilations (" + hotMethodCount + " of which are hot)");
-        writer.writeln("Compilations");
-        for (ExecutedMethod executedMethod : executedMethods) {
-            writer.increaseIndent();
-            writer.writeln(executedMethod.getCompilationId() + " ("
-                    + executedMethod.createSummaryOfMethodExecution()
-                    + ((executedMethod.isHot()) ? ") *hot*" : ")"));
-            writer.decreaseIndent();
-        }
-        writer.decreaseIndent();
-    }
-
-    /**
-     * Writes the header and the list of optimizations for each extra (unpaired) executed method.
+     * Writes the header and the optimization tree for each extra (unpaired) executed method.
+     * 
      * @param writer the destination writer
      */
-    public void summarizeExtraExecutedMethods(Writer writer) {
+    public void writeExtraExecutedMethods(Writer writer) {
         for (ExtraExecutedMethod extraExecutedMethod : extraExecutedMethods) {
             extraExecutedMethod.writeHeader(writer);
-            writer.writeln("Optimizations in experiment "
-                    + extraExecutedMethod.getExecutedMethod().getExperiment().getExperimentId());
-            extraExecutedMethod.getExecutedMethod().getOptimizationsRecursive()
-                            .forEach(optimization -> optimization.writeRecursive(writer));
+            writer.increaseIndent();
+            extraExecutedMethod.getExecutedMethod().getRootPhase().writeRecursive(writer);
+            writer.decreaseIndent();
         }
     }
 }

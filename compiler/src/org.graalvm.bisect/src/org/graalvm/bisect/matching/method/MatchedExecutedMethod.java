@@ -24,11 +24,11 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import org.graalvm.bisect.util.Writer;
 import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.util.Writer;
 
 /**
- * Represents a pair of two matched compilations (executions) of the same method.
+ * Represents a pair of two matched hot compilations (executions) of the same method.
  */
 public class MatchedExecutedMethod {
     /**
@@ -53,18 +53,21 @@ public class MatchedExecutedMethod {
     private final ExecutedMethod method2;
 
     MatchedExecutedMethod(ExecutedMethod method1, ExecutedMethod method2) {
+        assert method1.isHot() && method2.isHot();
         this.method1 = method1;
         this.method2 = method2;
     }
 
     /**
      * Writes a string describing this pair of matched compilations.
+     * 
      * @param writer the destination writer
      */
     public void writeHeader(Writer writer) {
         writer.writeln("Compilation " + method1.getCompilationId() + " (" + method1.createSummaryOfMethodExecution()
-                + ") in experiment" + method1.getExperiment().getExperimentId()
+                        + ") in experiment " + method1.getExperiment()
+                                        .getExperimentId()
                 + " vs compilation " + method2.getCompilationId() + " (" + method2.createSummaryOfMethodExecution()
-                + ") in experiment" + method2.getExperiment().getExperimentId());
+                        + ") in experiment " + method2.getExperiment().getExperimentId());
     }
 }
