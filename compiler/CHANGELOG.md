@@ -2,6 +2,11 @@
 
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
+## Version 21.3.0
+* (GR-38857): Deprecated the libgraal JMX management bean and disabled it by default. The bean is scheduled to be
+  removed completely in GraalVM 22.3.0. Until then, it can be explicitly re-enabled with
+  `-Dgraal.LibGraalManagementDelay=1000`.
+
 ## Version 21.2.0
 * (GR-29770) Loop safepoint elimination: Not only consider 32bit loops for safepoint removal but also 64bit ones
 that iterate in 32bit ranges.
