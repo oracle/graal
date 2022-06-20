@@ -96,23 +96,23 @@ local jdks = common_json.jdks;
     requireArtifacts: [
       {name: 'post-merge-deploy-vm-java11-linux-amd64'},
       {name: 'post-merge-deploy-vm-java17-linux-amd64'},
-      {name: 'daily-deploy-vm-java11-linux-aarch64'},
-      {name: 'daily-deploy-vm-java17-linux-aarch64'},
-      {name: 'daily-deploy-vm-base-java11-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java11-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java11-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java11-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java11-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java11-windows-amd64'},
-      {name: 'daily-deploy-vm-base-java17-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-windows-amd64'},
-      {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
-      {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
-      {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-java11-linux-aarch64'},
+      {name: 'post-merge-deploy-vm-java17-linux-aarch64'},
+      {name: 'post-merge-deploy-vm-base-java11-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java11-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-base-java17-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java17-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-base-java11-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-installable-java11-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-base-java17-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-installable-java17-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-base-java11-windows-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java11-windows-amd64'},
+      {name: 'post-merge-deploy-vm-base-java17-windows-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java17-windows-amd64'},
+      {name: 'post-merge-deploy-vm-ruby-java11-linux-amd64'},
+      {name: 'post-merge-deploy-vm-ruby-java11-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-ruby-java11-darwin-aarch64'},
     ],
     targets+: ['daily'],
   },
@@ -210,19 +210,19 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-maven-dry-run-darwin-aarch64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_11_17_only_native + {
+    vm_common.darwin_deploy + vm_common.deploy_vm_darwin_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
-     name: 'daily-deploy-vm-maven-darwin-amd64',
+     name: 'post-merge-deploy-vm-maven-darwin-amd64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_11_17_only_native + {
+    vm_common.darwin_deploy + vm_common.deploy_vm_darwin_aarch64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
-     name: 'daily-deploy-vm-maven-darwin-aarch64',
+     name: 'post-merge-deploy-vm-maven-darwin-aarch64',
     },
     vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_11_17_only_native + {
      run: [
@@ -231,12 +231,12 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_11_17_only_native + {
+    vm_common.svm_common_windows_jdk11 + vm_common.deploy_vm_windows + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
-     name: 'daily-deploy-vm-maven-windows-amd64',
+     name: 'post-merge-deploy-vm-maven-windows-amd64',
     },
 
     #
