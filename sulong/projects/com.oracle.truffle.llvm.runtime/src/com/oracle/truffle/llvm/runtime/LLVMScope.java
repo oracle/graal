@@ -85,7 +85,7 @@ public class LLVMScope implements TruffleObject {
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
-        final String newName = getMangledName(name);// linkageNames.get(name);
+        final String newName = getMangledName(name);
         if (newName != null) {
             symbol = get(newName);
             if (symbol != null && symbol.isFunction()) {

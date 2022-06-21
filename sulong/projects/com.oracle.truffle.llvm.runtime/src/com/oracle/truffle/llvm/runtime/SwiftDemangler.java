@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
  * This class implements parts of the Swift name mangling and demangling. Full documentation:
  * https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst [2021-11-15]
  */
-public class SwiftDemangler {
+public final class SwiftDemangler {
     private static final String NAMESPACE_PREFIX_DEFAULT = "$s";
     private static final Set<String> NAMESPACE_PREFIXES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("$s", "$S", "_T0")));
 
@@ -452,8 +452,8 @@ public class SwiftDemangler {
 
     public static String getSwiftTypeAccessorName(String[] namespaces) {
         StringBuilder sb = new StringBuilder(NAMESPACE_PREFIX_DEFAULT);
-        for (String namespace : namespaces) {
-
+        for (String string : namespaces) {
+            String namespace = string;
             if (namespace != null) {
                 if (namespace.contains(".")) {
                     namespace = namespace.substring(0, namespace.indexOf("."));

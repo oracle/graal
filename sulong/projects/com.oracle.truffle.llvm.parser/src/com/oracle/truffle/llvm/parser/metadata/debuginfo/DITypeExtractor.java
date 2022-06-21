@@ -212,7 +212,7 @@ final class DITypeExtractor implements MetadataVisitor {
                 } else if (tag == MDType.DwarfTag.DW_TAG_UNION_TYPE) {
                     name = String.format("union %s", name);
                     tmpType = new LLVMSourceStructLikeType(name, size, align, offset, location);
-                } else {// DW_TAG_STRUCTURE_TYPE: keep existing name
+                } else { // DW_TAG_STRUCTURE_TYPE: keep existing name
                     name = String.format("struct %s", name);
                     tmpType = new LLVMSourceStructLikeType(name, size, align, offset, location);
                 }

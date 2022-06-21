@@ -74,25 +74,25 @@ public abstract class FloatingPointConstant extends AbstractConstant {
     private static float readHalfAsFloat(RecordBuffer buffer) {
         // half: s|eee ee|mm mmmm mmmm (s=sign, e=exponent, m=mantissa)
         boolean sgn = buffer.readBoolean();
-        final int N_EXP_BITS = 5;
-        final int N_MANTISSA_BITS = 10;
-        final int EXP_OFFSET = -15;
+        final int exponentBits = 5;
+        final int mantissaBits = 10;
+        final int exponentOffset = -15;
         int exp = 0;
-        for (int i = 0; i < N_EXP_BITS; i++) {
+        for (int i = 0; i < exponentBits; i++) {
             exp <<= 1;
             if (buffer.readBoolean()) {
                 exp++;
             }
         }
         int mant = 0;
-        for (int i = 0; i < N_MANTISSA_BITS; i++) {
+        for (int i = 0; i < mantissaBits; i++) {
             mant <<= 1;
             if (buffer.readBoolean()) {
                 mant++;
             }
         }
-        double ret = mant / Math.pow(2, N_MANTISSA_BITS) + 1;
-        ret *= Math.pow(2, exp + EXP_OFFSET);
+        double ret = mant / Math.pow(2, mantissaBits) + 1;
+        ret *= Math.pow(2, exp + exponentOffset);
         return (float) (sgn ? -ret : ret);
     }
 
