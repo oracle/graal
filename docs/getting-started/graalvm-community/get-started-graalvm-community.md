@@ -136,6 +136,17 @@ For more detailed documentation and information on compatibility with Node.js, p
 ## Run LLVM Languages
 
 The GraalVM LLVM runtime can execute C/C++, Rust, and other programming language that can be compiled to LLVM bitcode.
+
+Since GraalVM 22.2, the LLVM runtime is packaged in a separate GraalVM component. It can be installed with GraalVM Updater:
+
+```shell
+$GRAALVM_HOME/bin/gu install llvm
+```
+
+This installs GraalVM's implementation of `lli` in the `$GRAALVM_HOME/bin` directory.
+With the LLVM runtime installed, you can execute programs in LLVM bitcode format on GraalVM.
+
+
 A native program has to be compiled to LLVM bitcode using an LLVM frontend such as `clang`.
 The C/C++ code can be compiled to LLVM bitcode using `clang` shipped with GraalVM via a prebuilt LLVM toolchain.
 
