@@ -405,7 +405,7 @@ public class BitSet {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
         builder.tree(createReference(frameState)).string(" = ");
-        if (type.getKind() == TypeKind.BYTE) {
+        if (type.getKind() != TypeKind.INT) {
             builder.cast(type);
         }
         builder.startParantheses();

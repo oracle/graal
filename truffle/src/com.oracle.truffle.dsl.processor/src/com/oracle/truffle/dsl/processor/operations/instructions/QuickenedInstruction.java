@@ -55,7 +55,7 @@ public class QuickenedInstruction extends CustomInstruction {
 
         if (activeSpecNames.isEmpty()) {
             data.addWarning("Invalid quickened instruction %s: no specializations defined.", data.getName());
-            activeSpecs = null;
+            activeSpecs = new ArrayList<>();
             return;
         }
 

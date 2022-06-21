@@ -110,9 +110,8 @@ public class CustomInstruction extends Instruction {
                     break;
                 case CHILD:
                     b.startStatement();
-                    b.startCall("LE_BYTES", "putShort");
                     b.variable(vars.bc);
-                    b.tree(index);
+                    b.string("[").tree(index).string("] = ");
                     b.startCall("createChildNodes").string("" + numChildNodes).end();
                     b.end();
                     break;
@@ -120,9 +119,8 @@ public class CustomInstruction extends Instruction {
                     b.startAssign("int constantOffset").startCall(vars.consts, "reserve").string("" + numConsts).end(2);
 
                     b.startStatement();
-                    b.startCall("LE_BYTES", "putShort");
                     b.variable(vars.bc);
-                    b.tree(index);
+                    b.string("[").tree(index).string("] = ");
                     b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).string("constantOffset").end();
                     b.end();
                     break;
@@ -170,7 +168,7 @@ public class CustomInstruction extends Instruction {
 
         if (data.getMainProperties().isVariadic) {
 
-            b.declaration("int", "numVariadics", "LE_BYTES.getShort(bc, bci + " + getArgumentOffset(inputs.length - 1) + ")");
+            b.declaration("int", "numVariadics", "bc[bci + " + getArgumentOffset(inputs.length - 1) + "]");
 
             int additionalInputs = inputs.length - 1;
 
@@ -280,6 +278,9 @@ public class CustomInstruction extends Instruction {
         for (SpecializationData sd : data.getNodeData().getSpecializations()) {
             sb.append("    ").append(sd.getId()).append("\n");
         }
+
+        sb.append("  Num children:  ").append(numChildNodes).append("\n");
+        sb.append("  Num constants: ").append(numConsts).append("\n");
 
         return sb.toString();
     }

@@ -1,3 +1,43 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.oracle.truffle.dsl.processor.operations;
 
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createCreateLabel;
@@ -216,9 +256,9 @@ public abstract class Operation {
 
             b.startIf().variable(vars.childIndex).string(" != 0").end();
             b.startBlock();
-            {
-                b.tree(createPopLastChildCode(vars));
-            }
+            // {
+            b.tree(createPopLastChildCode(vars));
+            // }
             b.end();
 
             return b.build();
@@ -251,22 +291,22 @@ public abstract class Operation {
 
             b.startIf().variable(vars.childIndex).string(" == 0").end();
             b.startBlock();
-            {
-                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+            // {
+            b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
 
-                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
-                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
 
-                b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varEndLabel)));
+            b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varEndLabel)));
 
-                b.tree(createEmitInstruction(vars, builder.commonBranchFalse, varEndLabel));
-            }
+            b.tree(createEmitInstruction(vars, builder.commonBranchFalse, varEndLabel));
+            // }
             b.end().startElseBlock();
-            {
-                b.tree(createPopLastChildCode(vars));
+            // {
+            b.tree(createPopLastChildCode(vars));
 
-                b.tree(createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
-            }
+            b.tree(createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            // }
             b.end();
 
             return b.build();
@@ -319,46 +359,46 @@ public abstract class Operation {
 
             b.startIf().variable(vars.childIndex).string(" == 0").end();
             b.startBlock();
-            {
-                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+            // {
+            b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
 
-                CodeVariableElement varElseLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "elseLabel");
-                b.declaration(getTypes().BuilderOperationLabel, varElseLabel.getName(), createCreateLabel());
+            CodeVariableElement varElseLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "elseLabel");
+            b.declaration(getTypes().BuilderOperationLabel, varElseLabel.getName(), createCreateLabel());
 
-                b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varElseLabel)));
+            b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varElseLabel)));
 
-                b.tree(createEmitInstruction(vars, builder.commonBranchFalse, varElseLabel));
-            }
+            b.tree(createEmitInstruction(vars, builder.commonBranchFalse, varElseLabel));
+            // }
             b.end();
             b.startElseIf().variable(vars.childIndex).string(" == 1").end();
             b.startBlock(); // {
-            {
-                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            // {
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
 
-                if (hasValue) {
-                    b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
-                } else {
-                    b.tree(createPopLastChildCode(vars));
-                }
-
-                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
-
-                b.tree(createSetAux(vars, 1, CodeTreeBuilder.singleVariable(varEndLabel)));
-
-                b.tree(createEmitInstruction(vars, builder.commonBranch, varEndLabel));
-                b.tree(createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            if (hasValue) {
+                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+            } else {
+                b.tree(createPopLastChildCode(vars));
             }
+
+            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+
+            b.tree(createSetAux(vars, 1, CodeTreeBuilder.singleVariable(varEndLabel)));
+
+            b.tree(createEmitInstruction(vars, builder.commonBranch, varEndLabel));
+            b.tree(createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            // }
             b.end().startElseBlock();
-            {
+            // {
 
-                if (hasValue) {
-                    b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
-                } else {
-                    b.tree(createPopLastChildCode(vars));
-                }
-
-                b.tree(createEmitLabel(vars, createGetAux(vars, 1, getTypes().BuilderOperationLabel)));
+            if (hasValue) {
+                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+            } else {
+                b.tree(createPopLastChildCode(vars));
             }
+
+            b.tree(createEmitLabel(vars, createGetAux(vars, 1, getTypes().BuilderOperationLabel)));
+            // }
             b.end();
 
             return b.build();
@@ -403,24 +443,24 @@ public abstract class Operation {
 
             b.startIf().variable(vars.childIndex).string(" == 0").end();
             b.startBlock();
-            {
-                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            // {
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
 
-                b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
-                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+            b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
+            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
 
-                b.tree(createSetAux(vars, AUX_END_LABEL, CodeTreeBuilder.singleVariable(varEndLabel)));
+            b.tree(createSetAux(vars, AUX_END_LABEL, CodeTreeBuilder.singleVariable(varEndLabel)));
 
-                b.tree(createEmitInstruction(vars, builder.commonBranchFalse, CodeTreeBuilder.singleVariable(varEndLabel)));
-            }
+            b.tree(createEmitInstruction(vars, builder.commonBranchFalse, CodeTreeBuilder.singleVariable(varEndLabel)));
+            // }
             b.end().startElseBlock();
-            {
-                b.tree(createPopLastChildCode(vars));
+            // {
+            b.tree(createPopLastChildCode(vars));
 
-                b.tree(createEmitInstruction(vars, builder.commonBranch, createGetAux(vars, AUX_START_LABEL, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitInstruction(vars, builder.commonBranch, createGetAux(vars, AUX_START_LABEL, getTypes().BuilderOperationLabel)));
 
-                b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, getTypes().BuilderOperationLabel)));
-            }
+            b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, getTypes().BuilderOperationLabel)));
+            // }
 
             b.end();
 
@@ -643,9 +683,9 @@ public abstract class Operation {
 
     public static class FinallyTry extends Operation {
 
-        private final int AUX_CONTEXT = 0;
-        private final int AUX_BEH = 1;
-        private final int AUX_LOCAL = 2;
+        private static final int AUX_CONTEXT = 0;
+        private static final int AUX_BEH = 1;
+        private static final int AUX_LOCAL = 2;
 
         private final boolean noExcept;
 
@@ -661,7 +701,7 @@ public abstract class Operation {
 
         @Override
         public CodeTree createPushCountCode(BuilderVariables vars) {
-            // TODO - this could be made to return Try value on exit
+            // todo: this could be made to return Try value on exit
             return CodeTreeBuilder.singleString("0");
         }
 
@@ -687,25 +727,25 @@ public abstract class Operation {
             b.tree(createPopLastChildCode(vars));
 
             b.startIf().variable(vars.childIndex).string(" == 0").end().startBlock();
-            {
-                b.startStatement().startCall("doEndFinallyBlock").end(2);
+            // {
+            b.startStatement().startCall("doEndFinallyBlock").end(2);
 
-                if (!noExcept) {
-                    CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
-                    b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
+            if (!noExcept) {
+                CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
+                b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
 
-                    b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
-                    b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
-                    b.startStatement().variable(varBeh).string(".exceptionIndex = ");
-                    b.startCall("getLocalIndex");
-                    b.startGroup().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "]").end();
-                    b.end();
-                    b.end();
-                    b.startStatement().startCall("addExceptionHandler").variable(varBeh).end(2);
-                    b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
-                }
-
+                b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
+                b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
+                b.startStatement().variable(varBeh).string(".exceptionIndex = ");
+                b.startCall("getLocalIndex");
+                b.startGroup().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "]").end();
+                b.end();
+                b.end();
+                b.startStatement().startCall("addExceptionHandler").variable(varBeh).end(2);
+                b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
             }
+
+            // }
             b.end();
             return b.build();
         }
@@ -820,9 +860,9 @@ public abstract class Operation {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.startIf().variable(vars.childIndex).string(" > 0").end().startBlock();
-            {
-                b.tree(OperationGeneratorUtils.createEmitInstruction(vars, instruction, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
-            }
+            // {
+            b.tree(OperationGeneratorUtils.createEmitInstruction(vars, instruction, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            // }
             b.end();
 
             return b.build();
@@ -911,14 +951,11 @@ public abstract class Operation {
         }
     }
 
-    private static final CodeTree createSetAux(BuilderVariables vars, int index, CodeTree value) {
-        return CodeTreeBuilder.createBuilder().startStatement()//
-                        .variable(vars.operationData).string(".aux[" + index + "] = ") //
-                        .tree(value) //
-                        .end().build();
+    private static CodeTree createSetAux(BuilderVariables vars, int index, CodeTree value) {
+        return CodeTreeBuilder.createBuilder().startStatement().variable(vars.operationData).string(".aux[" + index + "] = ").tree(value).end().build();
     }
 
-    private static final CodeTree createGetAux(BuilderVariables vars, int index, TypeMirror cast) {
+    private static CodeTree createGetAux(BuilderVariables vars, int index, TypeMirror cast) {
         return CodeTreeBuilder.createBuilder().string("(").cast(cast).variable(vars.operationData).string(".aux[" + index + "]").string(")").build();
     }
 

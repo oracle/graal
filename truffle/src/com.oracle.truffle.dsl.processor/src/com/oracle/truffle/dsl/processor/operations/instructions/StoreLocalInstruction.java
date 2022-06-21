@@ -87,10 +87,8 @@ public class StoreLocalInstruction extends Instruction {
         // TODO: implement version w/o BE, if a language does not need it
 
         b.startAssign("int localIdx");
-        b.startCall("LE_BYTES", "getShort");
         b.variable(vars.bc);
-        b.startGroup().variable(vars.bci).string(" + " + getArgumentOffset(1)).end();
-        b.end();
+        b.string("[").variable(vars.bci).string(" + " + getArgumentOffset(1)).string("]");
         b.string(" + VALUES_OFFSET");
         b.end();
 
@@ -246,7 +244,7 @@ public class StoreLocalInstruction extends Instruction {
     public CodeTree[] createTracingArguments(ExecutionVariables vars) {
         return new CodeTree[]{
                         CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_STORE_LOCAL"),
-                        CodeTreeBuilder.singleString("LE_BYTES.getShort(bc, bci + " + getArgumentOffset(1) + ")"),
+                        CodeTreeBuilder.singleString("bc[bci + " + getArgumentOffset(1) + "]"),
                         CodeTreeBuilder.singleString("frame.getValue(sp - 1).getClass()")
         };
     }

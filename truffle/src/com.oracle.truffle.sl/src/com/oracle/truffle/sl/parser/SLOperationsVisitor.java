@@ -138,7 +138,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             try {
                 System.out.println("----------------------------------------------");
                 System.out.printf(" Node: %s%n", name);
-                System.out.println(node);
+                System.out.println(node.dump());
                 System.out.println("----------------------------------------------");
             } catch (Exception ignored) {
             }

@@ -1,3 +1,43 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.oracle.truffle.api.operation;
 
 import java.util.ArrayList;
@@ -31,11 +71,9 @@ public abstract class OperationBuilder {
     protected final boolean withSource;
     protected final boolean withInstrumentation;
 
-    protected final byte[] bc = new byte[65536];
+    protected final short[] bc = new short[65536];
     protected int bci = 0;
     protected final OperationsConstantPool constPool = new OperationsConstantPool();
-
-    protected static final ByteArraySupport LE_BYTES = ByteArraySupport.littleEndian();
 
     protected BuilderOperationData operationData;
     protected BuilderFinallyTryContext finallyTryContext;
@@ -123,7 +161,7 @@ public abstract class OperationBuilder {
 
         labelPass();
 
-        byte[] bcCopy = Arrays.copyOf(bc, bci);
+        short[] bcCopy = Arrays.copyOf(bc, bci);
         Object[] consts = constPool.getValues();
         Node[] childrenCopy = new Node[numChildNodes];
         BuilderExceptionHandler[] handlers = exceptionHandlers.toArray(new BuilderExceptionHandler[0]);
@@ -142,9 +180,9 @@ public abstract class OperationBuilder {
 
     protected abstract OperationNode createNode(OperationNodes arg0, Object arg1, BytecodeNode arg2);
 
-    protected abstract BytecodeNode createBytecode(int arg0, int arg1, byte[] arg2, Object[] arg3, Node[] arg4, BuilderExceptionHandler[] arg5, ConditionProfile[] arg6);
+    protected abstract BytecodeNode createBytecode(int arg0, int arg1, short[] arg2, Object[] arg3, Node[] arg4, BuilderExceptionHandler[] arg5, ConditionProfile[] arg6);
 
-    protected abstract InstrumentedBytecodeNode createInstrumentedBytecode(int arg0, int arg1, byte[] arg2, Object[] arg3, Node[] arg4, BuilderExceptionHandler[] arg5,
+    protected abstract InstrumentedBytecodeNode createInstrumentedBytecode(int arg0, int arg1, short[] arg2, Object[] arg3, Node[] arg4, BuilderExceptionHandler[] arg5,
                     ConditionProfile[] arg6);
 
     protected abstract int getBlockOperationIndex();
@@ -295,7 +333,7 @@ public abstract class OperationBuilder {
         labelPass(null);
     }
 
-    private final void labelPass(BuilderFinallyTryContext finallyTry) {
+    private void labelPass(BuilderFinallyTryContext finallyTry) {
         for (BuilderLabelFill fill : labelFills) {
             if (finallyTry != null) {
                 if (fill.label.belongsTo(finallyTry)) {
@@ -305,7 +343,8 @@ public abstract class OperationBuilder {
                     finallyTry.handlerLabelFills.add(fill);
                 }
             }
-            LE_BYTES.putShort(bc, fill.locationBci, (short) fill.label.targetBci);
+
+            bc[fill.locationBci] = (short) fill.label.targetBci;
         }
     }
 
@@ -429,8 +468,9 @@ public abstract class OperationBuilder {
         System.arraycopy(context.handlerBc, 0, bc, bci, context.handlerBc.length);
 
         for (int offset : context.relocationOffsets) {
-            short oldOffset = LE_BYTES.getShort(bc, bci + offset);
-            LE_BYTES.putShort(bc, bci + offset, (short) (oldOffset + bci));
+            short oldOffset = bc[bci + offset];
+
+            bc[bci + offset] = (short) (oldOffset + bci);
         }
 
         for (BuilderExceptionHandler handler : context.handlerHandlers) {
@@ -487,12 +527,10 @@ public abstract class OperationBuilder {
             assert FRAME_TYPE_ILLEGAL == FrameSlotKind.Illegal.tag;
         }
 
-        private static final ByteArraySupport LE_BYTES = ByteArraySupport.littleEndian();
-
         protected final int maxStack;
         protected final int maxLocals;
 
-        @CompilationFinal(dimensions = 1) protected final byte[] bc;
+        @CompilationFinal(dimensions = 1) protected final short[] bc;
         @CompilationFinal(dimensions = 1) protected final Object[] consts;
         @Children protected final Node[] children;
         @CompilationFinal(dimensions = 1) protected final BuilderExceptionHandler[] handlers;
@@ -500,7 +538,7 @@ public abstract class OperationBuilder {
 
         protected static final int VALUES_OFFSET = 0;
 
-        protected BytecodeNode(int maxStack, int maxLocals, byte[] bc, Object[] consts, Node[] children, BuilderExceptionHandler[] handlers, ConditionProfile[] conditionProfiles) {
+        protected BytecodeNode(int maxStack, int maxLocals, short[] bc, Object[] consts, Node[] children, BuilderExceptionHandler[] handlers, ConditionProfile[] conditionProfiles) {
             this.maxStack = maxStack;
             this.maxLocals = maxLocals;
             this.bc = bc;
@@ -545,13 +583,13 @@ public abstract class OperationBuilder {
 
         // boxing elim
 
-        protected static void setResultBoxedImpl(byte[] bc, int bci, int targetType, short[] descriptor) {
-            int op = LE_BYTES.getShort(bc, bci) & 0xffff;
+        protected static void setResultBoxedImpl(short[] bc, int bci, int targetType, short[] descriptor) {
+            int op = bc[bci] & 0xffff;
             short todo = descriptor[op];
 
             if (todo > 0) {
                 // quicken
-                LE_BYTES.putShort(bc, bci, todo);
+                bc[bci] = todo;
             } else {
                 // set bit
                 int offset = (todo >> 8) & 0x7f;
@@ -569,10 +607,8 @@ public abstract class OperationBuilder {
                 return frame.getObject(slot);
             } else {
                 // this should only happen in edge cases, when we have specialized to a generic case
-                // on
-                // one thread, but other threads have already executed the child with primitive
-                // return
-                // type
+                // on one thread, but other threads have already executed the child with primitive
+                // return type
                 return frame.getValue(slot);
             }
         }
@@ -677,7 +713,7 @@ public abstract class OperationBuilder {
 
     protected abstract static class InstrumentedBytecodeNode extends BytecodeNode {
 
-        protected InstrumentedBytecodeNode(int maxStack, int maxLocals, byte[] bc, Object[] consts, Node[] children, BuilderExceptionHandler[] handlers,
+        protected InstrumentedBytecodeNode(int maxStack, int maxLocals, short[] bc, Object[] consts, Node[] children, BuilderExceptionHandler[] handlers,
                         ConditionProfile[] conditionProfiles) {
             super(maxStack, maxLocals, bc, consts, children, handlers, conditionProfiles);
         }

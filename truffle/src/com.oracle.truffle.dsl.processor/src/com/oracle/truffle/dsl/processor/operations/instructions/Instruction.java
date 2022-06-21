@@ -1,3 +1,43 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import java.util.ArrayList;
@@ -33,20 +73,20 @@ public abstract class Instruction {
         public CodeVariableElement tracer;
     }
 
-    public static enum InputType {
+    public enum InputType {
         STACK_VALUE(1),
         STACK_VALUE_IGNORED(0),
-        VARARG_VALUE(2),
-        CONST_POOL(2),
-        LOCAL(2),
-        ARGUMENT(2),
-        INSTRUMENT(2),
-        BRANCH_PROFILE(2),
-        BRANCH_TARGET(2);
+        VARARG_VALUE(1),
+        CONST_POOL(1),
+        LOCAL(1),
+        ARGUMENT(1),
+        INSTRUMENT(1),
+        BRANCH_PROFILE(1),
+        BRANCH_TARGET(1);
 
         final int argumentLength;
 
-        private InputType(int argumentLength) {
+        InputType(int argumentLength) {
             this.argumentLength = argumentLength;
         }
 
@@ -132,45 +172,29 @@ public abstract class Instruction {
         public CodeTree createDumpCode(int n, Instruction op, ExecutionVariables vars) {
             switch (this) {
                 case STACK_VALUE:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("pop[-%d]") //
-                                    .startGroup().variable(vars.bc).string("[").variable(vars.bci).string(" + " + op.getArgumentOffset(n) + "]").end() //
-                                    .end(3).build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("pop[-%d]").startGroup().variable(vars.bc).string(
+                                    "[").variable(vars.bci).string(" + " + op.getArgumentOffset(n) + "]").end().end(3).build();
                 case STACK_VALUE_IGNORED:
                     return CodeTreeBuilder.createBuilder().statement("sb.append(\"_\")").build();
                 case CONST_POOL:
-                    return CodeTreeBuilder.createBuilder().startBlock()//
-                                    .declaration("Object", "o", CodeTreeBuilder.createBuilder().variable(vars.consts).string("[").tree(op.createReadArgumentCode(n, vars)).string("]").build()) //
-                                    .startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("%s %s") //
-                                    .string("o.getClass().getSimpleName()") //
-                                    .string("o") //
-                                    .end(4).build();
+                    return CodeTreeBuilder.createBuilder().startBlock().declaration("Object", "o",
+                                    CodeTreeBuilder.createBuilder().variable(vars.consts).string("[").tree(op.createReadArgumentCode(n, vars)).string("]").build()).startStatement().startCall("sb",
+                                                    "append").startCall("String", "format").doubleQuote("%s %s").string("o.getClass().getSimpleName()").string("o").end(4).build();
                 case LOCAL:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("loc[%d]") //
-                                    .tree(op.createReadArgumentCode(n, vars)) //
-                                    .end(3).build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("loc[%d]").tree(op.createReadArgumentCode(n, vars)).end(
+                                    3).build();
                 case ARGUMENT:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("arg[%d]") //
-                                    .tree(op.createReadArgumentCode(n, vars)) //
-                                    .end(3).build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("arg[%d]").tree(op.createReadArgumentCode(n, vars)).end(
+                                    3).build();
                 case BRANCH_TARGET:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("%04x") //
-                                    .tree(op.createReadArgumentCode(n, vars)) //
-                                    .end(3).build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("%04x").tree(op.createReadArgumentCode(n, vars)).end(
+                                    3).build();
                 case INSTRUMENT:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("instrument[%d]") //
-                                    .tree(op.createReadArgumentCode(n, vars)) //
-                                    .end(3).build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("instrument[%d]").tree(
+                                    op.createReadArgumentCode(n, vars)).end(3).build();
                 case VARARG_VALUE:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("**%d") //
-                                    .tree(op.createReadArgumentCode(n, vars)) //
-                                    .end(3).build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("**%d").tree(op.createReadArgumentCode(n, vars)).end(
+                                    3).build();
                 case BRANCH_PROFILE:
                     return null;
                 default:
@@ -184,15 +208,15 @@ public abstract class Instruction {
 
     }
 
-    public static enum ResultType {
+    public enum ResultType {
         STACK_VALUE(0),
-        SET_LOCAL(2),
+        SET_LOCAL(1),
         BRANCH(0),
         RETURN(0);
 
         final int argumentLength;
 
-        private ResultType(int argumentLength) {
+        ResultType(int argumentLength) {
             this.argumentLength = argumentLength;
         }
 
@@ -231,10 +255,8 @@ public abstract class Instruction {
                 case RETURN:
                     return CodeTreeBuilder.createBuilder().statement("sb.append(\"return\")").build();
                 case SET_LOCAL:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
-                                    .doubleQuote("loc[%d]") //
-                                    .tree(op.createReadArgumentCode(i + op.inputs.length, vars)) //
-                                    .end(3).build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("loc[%d]").tree(
+                                    op.createReadArgumentCode(i + op.inputs.length, vars)).end(3).build();
                 default:
                     throw new IllegalArgumentException("Unexpected value: " + this);
             }
@@ -322,10 +344,7 @@ public abstract class Instruction {
             return null;
         }
 
-        return CodeTreeBuilder.createBuilder().startCall("LE_BYTES", "getShort") //
-                        .variable(vars.bc) //
-                        .startGroup().variable(vars.bci).string(" + " + getArgumentOffset(n)).end() //
-                        .end().build();
+        return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("]").build();
     }
 
     public final CodeTree createWriteArgumentCode(int n, BuilderVariables vars, CodeTree val) {
@@ -336,25 +355,20 @@ public abstract class Instruction {
         CodeTree value = val;
 
         if (n < inputs.length && inputs[n] == InputType.BRANCH_TARGET) {
-            return CodeTreeBuilder.createBuilder().startStatement().startCall("createOffset") //
-                            .startGroup().variable(vars.bci).string(" + " + getArgumentOffset(n)).end()//
-                            .tree(value) //
-                            .end(2).build();
+            return CodeTreeBuilder.createBuilder().startStatement().startCall("createOffset").startGroup().variable(vars.bci).string(" + " + getArgumentOffset(n)).end().tree(value).end(2).build();
         }
 
         if (n < inputs.length && inputs[n] == InputType.STACK_VALUE) {
             int svIndex = 0;
             for (int i = 0; i < n; i++) {
-                if (inputs[i].isStackValue())
+                if (inputs[i].isStackValue()) {
                     svIndex++;
+                }
             }
 
-            return CodeTreeBuilder.createBuilder().startStatement().variable(vars.bc) //
-                            .string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("] = ") //
-                            .string("predecessorBcis[" + svIndex + "] < ").variable(vars.bci).string(" - 255") //
-                            .string(" ? 0") //
-                            .string(" : (byte)(").variable(vars.bci).string(" - predecessorBcis[" + svIndex + "])") //
-                            .end().build();
+            return CodeTreeBuilder.createBuilder().startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("] = ").string(
+                            "predecessorBcis[" + svIndex + "] < ").variable(vars.bci).string(" - 255").string(" ? 0").string(" : (byte)(").variable(vars.bci).string(
+                                            " - predecessorBcis[" + svIndex + "])").end().build();
         }
 
         if (n < inputs.length && inputs[n] == InputType.VARARG_VALUE) {
@@ -373,15 +387,12 @@ public abstract class Instruction {
             value = CodeTreeBuilder.createBuilder().startCall("getLocalIndex").tree(value).end().build();
         }
 
-        return CodeTreeBuilder.createBuilder().startStatement().startCall("LE_BYTES", "putShort") //
-                        .variable(vars.bc) //
-                        .startGroup().variable(vars.bci).string(" + " + getArgumentOffset(n)).end()  //
-                        .startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).cast(new CodeTypeMirror(TypeKind.INT)).tree(value).end() //
-                        .end(2).build();
+        return CodeTreeBuilder.createBuilder().startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("] = ").cast(
+                        new CodeTypeMirror(TypeKind.SHORT)).cast(new CodeTypeMirror(TypeKind.INT)).tree(value).end().build();
     }
 
     public int opcodeLength() {
-        return 2;
+        return 1;
     }
 
     public int getArgumentOffset(int index) {
@@ -614,12 +625,7 @@ public abstract class Instruction {
         for (int i = 0; i < inputs.length; i++) {
             if (inputs[i] == InputType.STACK_VALUE || inputs[i] == InputType.STACK_VALUE_IGNORED) {
                 if (curIndex-- == 0) {
-                    return CodeTreeBuilder.createBuilder().startParantheses() //
-                                    .variable(vars.bc) //
-                                    .string("[") //
-                                    .variable(vars.bci).string(" + " + getArgumentOffset(i)) //
-                                    .string("] & 0xff") //
-                                    .end().build();
+                    return CodeTreeBuilder.createBuilder().startParantheses().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(i)).string("] & 0xff").end().build();
                 }
             }
         }

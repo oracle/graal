@@ -169,12 +169,12 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public int getMaxStateBits(int defaultValue) {
-        return 8;
+        return 16;
     }
 
     @Override
     public TypeMirror getBitSetType(TypeMirror defaultType) {
-        return new CodeTypeMirror(TypeKind.BYTE);
+        return new CodeTypeMirror(TypeKind.SHORT);
     }
 
     private int bitSetOffset(BitSet bits) {
@@ -198,7 +198,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public CodeTree transformValueBeforePersist(CodeTree tree) {
-        return CodeTreeBuilder.createBuilder().cast(new CodeTypeMirror(TypeKind.BYTE)).startParantheses().tree(tree).end().build();
+        return CodeTreeBuilder.createBuilder().cast(getBitSetType(null)).startParantheses().tree(tree).end().build();
     }
 
     private static final String CHILD_OFFSET_NAME = "childArrayOffset_";
@@ -219,10 +219,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             if (baseIndex == -1) {
                 baseIndex = additionalData.size();
                 additionalData.add(isChild ? OperationsBytecodeCodeGenerator.MARKER_CHILD : OperationsBytecodeCodeGenerator.MARKER_CONST);
-                additionalData.add(null);
 
                 additionalDataKinds.add(isChild ? DataKind.CHILD : DataKind.CONST);
-                additionalDataKinds.add(DataKind.CONTINUATION);
             }
 
             index = refList.size();
@@ -245,20 +243,16 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         b.variable(targetField).string("[");
 
-        if (frame == null) {
-            b.startCall("LE_BYTES", "getShort");
+        if (frame == null || !frame.getBoolean("definedOffsets", false)) {
             b.variable(fldBc);
-            b.string("$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex);
-            b.end();
+            b.string("[$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex + "]");
         } else if (frame.getBoolean("has_" + offsetName, false)) {
             b.string(offsetName);
         } else {
             frame.setBoolean("has_" + offsetName, true);
             b.string("(" + offsetName + " = ");
-            b.startCall("LE_BYTES", "getShort");
             b.variable(fldBc);
-            b.string("$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex);
-            b.end();
+            b.string("[$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex + "]");
             b.string(")");
 
         }
@@ -346,6 +340,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         frameState.set("frameValue", new LocalVariable(types.VirtualFrame, "$frame", null));
         builder.declaration("int", CHILD_OFFSET_NAME, (CodeTree) null);
         builder.declaration("int", CONST_OFFSET_NAME, (CodeTree) null);
+        frameState.setBoolean("definedOffsets", true);
     }
 
     private void createPushResult(FrameState frameState, CodeTreeBuilder b, CodeTree specializationCall, TypeMirror retType) {
@@ -440,6 +435,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return isVariadic || data.isShortCircuit();
     }
 
+    private static final boolean DO_LOG_ENS_CALLS = false;
+    private int ensCall = 0;
+
     @Override
     public boolean createCallExecuteAndSpecialize(FrameState frameState, CodeTreeBuilder builder, CodeTree call) {
         String easName = transformNodeMethodName("executeAndSpecialize");
@@ -447,7 +445,12 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
 
             // unquicken call parent EAS
+            builder.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.getOrig().opcodeIdField));
             easName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
+        }
+
+        if (DO_LOG_ENS_CALLS) {
+            builder.statement("System.out.printf(\" [!!] calling E&S @ %04x : " + cinstr.name + " " + (ensCall++) + "%n\", $bci)");
         }
 
         if (regularReturn()) {
