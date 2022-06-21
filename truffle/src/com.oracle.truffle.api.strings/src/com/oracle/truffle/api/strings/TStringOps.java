@@ -739,7 +739,7 @@ final class TStringOps {
             long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
             if (TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs))) {
                 int codePointLength = 0;
-                for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i)) {
+                for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, TruffleString.ErrorHandling.BEST_EFFORT)) {
                     codePointLength++;
                     TStringConstants.truffleSafePointPoll(location, codePointLength);
                 }

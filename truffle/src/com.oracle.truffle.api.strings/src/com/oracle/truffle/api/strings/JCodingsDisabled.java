@@ -114,7 +114,7 @@ final class JCodingsDisabled implements JCodings {
     }
 
     @Override
-    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding) {
+    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding, TruffleString.ErrorHandling errorHandling) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 

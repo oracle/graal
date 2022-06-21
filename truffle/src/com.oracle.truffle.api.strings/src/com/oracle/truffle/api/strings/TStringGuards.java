@@ -258,6 +258,14 @@ final class TStringGuards {
         return TruffleString.Encoding.is8BitCompatible(encoding);
     }
 
+    static boolean isBestEffort(TruffleString.ErrorHandling errorHandling) {
+        return errorHandling == TruffleString.ErrorHandling.BEST_EFFORT;
+    }
+
+    static boolean isReturnNegative(TruffleString.ErrorHandling errorHandling) {
+        return errorHandling == TruffleString.ErrorHandling.RETURN_NEGATIVE;
+    }
+
     static boolean bigEndian() {
         return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
     }

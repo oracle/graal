@@ -1098,8 +1098,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         static int getNaturalStride(int encoding) {
-            assert isUTF16Or32(encoding) || get(encoding).naturalStride == 0;
-            return isUTF32(encoding) ? UTF_32.naturalStride : isUTF16(encoding) ? UTF_16.naturalStride : 0;
+            return get(encoding).naturalStride;
         }
 
         boolean is7BitCompatible() {
@@ -1481,6 +1480,11 @@ public final class TruffleString extends AbstractTruffleString {
             }
         }
     }
+
+    public enum ErrorHandling {
+        BEST_EFFORT,
+        RETURN_NEGATIVE
+    };
 
     /**
      * Node to create a new {@link TruffleString} from a single codepoint.
@@ -2971,10 +2975,24 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract int execute(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding);
+        public final int execute(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding) {
+            return execute(a, byteIndex, expectedEncoding, ErrorHandling.BEST_EFFORT);
+        }
+
+        /**
+         * Get the number of bytes occupied by the codepoint starting at {@code byteIndex}.
+         *
+         * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, this node will return
+         *            the encoding's minimum number of bytes per codepoint if an error occurs while
+         *            reading the codepoint. If set to {@link ErrorHandling#RETURN_NEGATIVE}, a
+         *            negative value will be returned instead.
+         *
+         * @since 22.3
+         */
+        public abstract int execute(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding, ErrorHandling errorHandling);
 
         @Specialization
-        static int translate(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding,
+        static int translate(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding, ErrorHandling errorHandling,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached TStringInternalNodes.RawLengthOfCodePointNode rawLengthOfCodePointNode) {
@@ -2983,7 +3001,7 @@ public final class TruffleString extends AbstractTruffleString {
             a.boundsCheckRaw(rawIndex);
             Object arrayA = toIndexableNode.execute(a, a.data());
             int codeRangeA = getCodeRangeNode.execute(a);
-            return rawLengthOfCodePointNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, rawIndex) << expectedEncoding.naturalStride;
+            return rawLengthOfCodePointNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, rawIndex, errorHandling) << expectedEncoding.naturalStride;
         }
 
         /**
@@ -3141,10 +3159,19 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract int execute(AbstractTruffleString a, int i, Encoding expectedEncoding);
+        public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
+            return execute(a, i, expectedEncoding, ErrorHandling.BEST_EFFORT);
+        }
+
+        /**
+         * Decode and return the codepoint at codepoint index {@code i}.
+         *
+         * @since 22.1
+         */
+        public abstract int execute(AbstractTruffleString a, int i, Encoding expectedEncoding, ErrorHandling errorHandling);
 
         @Specialization
-        static int readCodePoint(AbstractTruffleString a, int i, Encoding expectedEncoding,
+        static int readCodePoint(AbstractTruffleString a, int i, Encoding expectedEncoding, ErrorHandling errorHandling,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
@@ -3152,7 +3179,7 @@ public final class TruffleString extends AbstractTruffleString {
             a.checkEncoding(expectedEncoding);
             a.boundsCheck(i, getCodePointLengthNode);
             Object arrayA = toIndexableNode.execute(a, a.data());
-            return readCodePointNode.execute(a, arrayA, getCodeRangeNode.execute(a), i, expectedEncoding.id);
+            return readCodePointNode.execute(a, arrayA, getCodeRangeNode.execute(a), expectedEncoding.id, i, errorHandling);
         }
 
         /**
@@ -3193,17 +3220,42 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract int execute(AbstractTruffleString a, int i, Encoding expectedEncoding);
+        public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
+            return execute(a, i, expectedEncoding, ErrorHandling.BEST_EFFORT);
+        }
+
+        /**
+         * Decode and return the codepoint at byte index {@code i}.
+         *
+         * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, the return value on
+         *            invalid codepoints depends on {@code expectedEncoding}:
+         *            <ul>
+         *            <li>{@link Encoding#UTF_8}: Unicode Replacement character {@code 0xFFFD}</li>
+         *            <li>{@link Encoding#UTF_16}: the (16-bit) {@code char} value read at index
+         *            {@code i}</li>
+         *            <li>{@link Encoding#UTF_32}: the (32-bit) {@code int} value read at index
+         *            {@code i}</li>
+         *            <li>{@link Encoding#US_ASCII}, {@link Encoding#ISO_8859_1},
+         *            {@link Encoding#BYTES}: the (8-bit) unsigned {@code byte} value read at index
+         *            {@code i}</li>
+         *            <li>All other Encodings: Unicode Replacement character {@code 0xFFFD}</li>
+         *            </ul>
+         *            If set to {@link ErrorHandling#RETURN_NEGATIVE}, a negative value will be
+         *            returned instead.
+         * 
+         * @since 22.3
+         */
+        public abstract int execute(AbstractTruffleString a, int i, Encoding expectedEncoding, ErrorHandling errorHandling);
 
         @Specialization
-        static int readCodePoint(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding,
+        static int readCodePoint(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding, ErrorHandling errorHandling,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached TStringInternalNodes.CodePointAtRawNode readCodePointNode) {
             final int i = rawIndex(byteIndex, expectedEncoding);
             a.checkEncoding(expectedEncoding);
             a.boundsCheckRaw(i);
-            return readCodePointNode.execute(a, toIndexableNode.execute(a, a.data()), getCodeRangeNode.execute(a), expectedEncoding.id, i);
+            return readCodePointNode.execute(a, toIndexableNode.execute(a, a.data()), getCodeRangeNode.execute(a), expectedEncoding.id, i, errorHandling);
         }
 
         /**

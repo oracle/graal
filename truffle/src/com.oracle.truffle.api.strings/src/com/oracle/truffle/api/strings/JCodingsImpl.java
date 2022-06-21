@@ -49,6 +49,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
+import static com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
 import java.util.Arrays;
 
@@ -201,12 +202,12 @@ final class JCodingsImpl implements JCodings {
     }
 
     @Override
-    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding) {
+    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding, ErrorHandling errorHandling) {
         int p = a.byteArrayOffset() + rawIndex;
         int end = a.byteArrayOffset() + a.length();
         int length = getCodePointLength(jCoding, arrayA, p, end);
         if (length < 1) {
-            return Encodings.invalidCodepoint();
+            return Encodings.invalidCodepointReturnValue(Encodings.invalidCodepoint(), errorHandling);
         }
         int codePoint = readCodePoint(jCoding, arrayA, p, end);
         assert codePoint >= 0;

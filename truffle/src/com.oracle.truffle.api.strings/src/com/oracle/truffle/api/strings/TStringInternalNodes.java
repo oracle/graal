@@ -85,6 +85,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.AbstractTruffleString.NativePointer;
+import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
 final class TStringInternalNodes {
 
@@ -388,50 +389,55 @@ final class TStringInternalNodes {
     @GenerateUncached
     abstract static class RawLengthOfCodePointNode extends Node {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index);
+        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling);
 
         @SuppressWarnings("unused")
         @Specialization(guards = "isFixedWidth(codeRangeA)")
-        int doFixed(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") int encoding, int index) {
+        int doFixed(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
             return 1;
         }
 
         @Specialization(guards = {"isUTF8(encoding)", "isValidMultiByte(codeRangeA)"})
-        int utf8Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index) {
+        int utf8Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index,
+                        @SuppressWarnings("unused") ErrorHandling errorHandling) {
             assert isStride0(a);
             int firstByte = readS0(a, arrayA, index);
             return firstByte <= 0x7f ? 1 : Encodings.utf8CodePointLength(firstByte);
         }
 
         @Specialization(guards = {"isUTF8(encoding)", "isBrokenMultiByte(codeRangeA)"})
-        int utf8Broken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index) {
+        int utf8Broken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
-            return Encodings.utf8GetCodePointLength(a, arrayA, index);
+            return Encodings.utf8GetCodePointLength(a, arrayA, index, errorHandling);
         }
 
         @Specialization(guards = {"isUTF16(encoding)", "isValidMultiByte(codeRangeA)"})
-        int utf16Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index) {
+        int utf16Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index,
+                        @SuppressWarnings("unused") ErrorHandling errorHandling) {
             assert isStride1(a);
             return Encodings.isUTF16HighSurrogate(TStringOps.readS1(a, arrayA, index)) ? 2 : 1;
         }
 
         @Specialization(guards = {"isUTF16(encoding)", "isBrokenMultiByte(codeRangeA)"})
-        int utf16Broken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index) {
+        int utf16Broken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index, ErrorHandling errorHandling) {
             assert isStride1(a);
-            return Encodings.isUTF16HighSurrogate(TStringOps.readS1(a, arrayA, index)) && index + 1 < a.length() && Encodings.isUTF16LowSurrogate(TStringOps.readS1(a, arrayA, index + 1)) ? 2 : 1;
+            return Encodings.utf16BrokenGetCodePointLength(a, arrayA, index, errorHandling);
         }
 
         @TruffleBoundary
         @Specialization(guards = "isUnsupportedEncoding(encoding)")
-        int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int encoding, int index) {
+        int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
             JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
             int cpLength = JCodings.getInstance().getCodePointLength(jCoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
             int regionLength = a.length() - index;
             if (cpLength > 0 && cpLength <= regionLength) {
                 return cpLength;
-            } else {
+            } else if (errorHandling == ErrorHandling.BEST_EFFORT) {
                 return Math.min(JCodings.getInstance().minLength(jCoding), regionLength);
+            } else {
+                assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+                return -1;
             }
         }
     }
@@ -511,7 +517,7 @@ final class TStringInternalNodes {
         int utf8Broken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int extraOffsetRaw, int index, boolean isLength) {
             assert isStride0(a);
             int cpi = 0;
-            for (int i = extraOffsetRaw; i < a.length(); i += Encodings.utf8GetCodePointLength(a, arrayA, i)) {
+            for (int i = extraOffsetRaw; i < a.length(); i += Encodings.utf8GetCodePointLength(a, arrayA, i, ErrorHandling.BEST_EFFORT)) {
                 if (cpi == index) {
                     return i - extraOffsetRaw;
                 }
@@ -636,10 +642,10 @@ final class TStringInternalNodes {
     @GenerateUncached
     abstract static class CodePointAtNode extends Node {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int i, int encoding);
+        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int i, ErrorHandling errorHandling);
 
         @Specialization(guards = "isUTF16(encoding)")
-        int utf16(AbstractTruffleString a, Object arrayA, int codeRangeA, int i, @SuppressWarnings("unused") int encoding,
+        int utf16(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling,
                         @Cached ConditionProfile fixedWidthProfile,
                         @Cached ConditionProfile stride0Profile,
                         @Cached ConditionProfile validProfile) {
@@ -656,26 +662,19 @@ final class TStringInternalNodes {
             } else {
                 assert isStride1(a);
                 assert TStringGuards.isBrokenMultiByte(codeRangeA);
-                return Encodings.utf16DecodeBroken(a, arrayA, Encodings.utf16BrokenCodePointToCharIndex(this, a, arrayA, i));
+                return Encodings.utf16DecodeBroken(a, arrayA, Encodings.utf16BrokenCodePointToCharIndex(this, a, arrayA, i), errorHandling);
             }
         }
 
         @Specialization(guards = "isUTF32(encoding)")
-        static int utf32(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int i, @SuppressWarnings("unused") int encoding,
+        static int utf32(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int i, ErrorHandling errorHandling,
                         @Cached ConditionProfile stride0Profile,
                         @Cached ConditionProfile stride1Profile) {
-            if (stride0Profile.profile(isStride0(a))) {
-                return TStringOps.readS0(a, arrayA, i);
-            } else if (stride1Profile.profile(isStride1(a))) {
-                return TStringOps.readS1(a, arrayA, i);
-            } else {
-                assert isStride2(a);
-                return TStringOps.readS2(a, arrayA, i);
-            }
+            return CodePointAtRawNode.utf32(a, arrayA, codeRangeA, encoding, i, errorHandling, stride0Profile, stride1Profile);
         }
 
         @Specialization(guards = "isUTF8(encoding)")
-        int utf8(AbstractTruffleString a, Object arrayA, int codeRangeA, int i, @SuppressWarnings("unused") int encoding,
+        int utf8(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling,
                         @Cached ConditionProfile fixedWidthProfile,
                         @Cached ConditionProfile validProfile) {
             if (fixedWidthProfile.profile(is7Bit(codeRangeA))) {
@@ -686,27 +685,28 @@ final class TStringInternalNodes {
                     return Encodings.utf8DecodeValid(a, arrayA, byteIndex);
                 } else {
                     assert TStringGuards.isBrokenMultiByte(codeRangeA);
-                    return Encodings.utf8DecodeBroken(a, arrayA, byteIndex);
+                    return Encodings.utf8DecodeBroken(a, arrayA, byteIndex, errorHandling);
                 }
             }
         }
 
-        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isSupportedOrBytes(encoding) || is7Bit(codeRangeA)"})
-        static int doFixed(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int i, @SuppressWarnings("unused") int encoding) {
-            assert isStride0(a);
-            return TStringOps.readS0(a, arrayA, i);
+        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isBytes(encoding) || is7Or8Bit(codeRangeA)"})
+        static int doFixed(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i,
+                        @SuppressWarnings("unused") ErrorHandling errorHandling) {
+            return CodePointAtRawNode.doFixed(a, arrayA, codeRangeA, encoding, i, errorHandling);
         }
 
-        @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Bit(codeRangeA)"})
-        int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int i, int encoding) {
+        @Specialization(guards = {"isAscii(encoding)", "!is7Or8Bit(codeRangeA)"})
+        static int doAsciiBroken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling) {
+            return CodePointAtRawNode.doAsciiBroken(a, arrayA, codeRangeA, encoding, i, errorHandling);
+        }
+
+        @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Or8Bit(codeRangeA)"})
+        int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int encoding, int i, ErrorHandling errorHandling) {
             assert isStride0(a);
             JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
             byte[] bytes = JCodings.asByteArray(arrayA);
-            return JCodings.getInstance().decode(a, bytes, JCodings.getInstance().codePointIndexToRaw(this, a, bytes, 0, i, false, jCoding), jCoding);
-        }
-
-        static boolean isSupportedOrBytes(int encoding) {
-            return isSupportedEncoding(encoding) || isBytes(encoding);
+            return JCodings.getInstance().decode(a, bytes, JCodings.getInstance().codePointIndexToRaw(this, a, bytes, 0, i, false, jCoding), jCoding, errorHandling);
         }
     }
 
@@ -714,10 +714,10 @@ final class TStringInternalNodes {
     @GenerateUncached
     abstract static class CodePointAtRawNode extends Node {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int i);
+        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int i, ErrorHandling errorHandling);
 
         @Specialization(guards = "isUTF16(encoding)")
-        static int utf16(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") int encoding, int i,
+        static int utf16(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling,
                         @Cached ConditionProfile fixedWidthProfile,
                         @Cached ConditionProfile validProfile,
                         @Cached ConditionProfile stride0Profile) {
@@ -732,26 +732,34 @@ final class TStringInternalNodes {
                 return Encodings.utf16DecodeValid(a, arrayA, i);
             } else {
                 assert TStringGuards.isBrokenMultiByte(codeRangeA);
-                return Encodings.utf16DecodeBroken(a, arrayA, i);
+                return Encodings.utf16DecodeBroken(a, arrayA, i, errorHandling);
             }
         }
 
         @Specialization(guards = "isUTF32(encoding)")
-        static int utf32(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i,
+        static int utf32(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling,
                         @Cached ConditionProfile stride0Profile,
                         @Cached ConditionProfile stride1Profile) {
             if (stride0Profile.profile(isStride0(a))) {
                 return TStringOps.readS0(a, arrayA, i);
             } else if (stride1Profile.profile(isStride1(a))) {
-                return TStringOps.readS1(a, arrayA, i);
+                char c = TStringOps.readS1(a, arrayA, i);
+                if (errorHandling == ErrorHandling.RETURN_NEGATIVE && Encodings.isUTF16Surrogate(c)) {
+                    return -1;
+                }
+                return c;
             } else {
                 assert isStride2(a);
-                return TStringOps.readS2(a, arrayA, i);
+                int c = TStringOps.readS2(a, arrayA, i);
+                if (errorHandling == ErrorHandling.RETURN_NEGATIVE && !Encodings.isValidUnicodeCodepoint(c)) {
+                    return -1;
+                }
+                return c;
             }
         }
 
         @Specialization(guards = "isUTF8(encoding)")
-        static int utf8(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") int encoding, int i,
+        static int utf8(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling,
                         @Cached ConditionProfile fixedWidthProfile,
                         @Cached ConditionProfile validProfile) {
             if (fixedWidthProfile.profile(is7Bit(codeRangeA))) {
@@ -760,19 +768,31 @@ final class TStringInternalNodes {
                 return Encodings.utf8DecodeValid(a, arrayA, i);
             } else {
                 assert TStringGuards.isBrokenMultiByte(codeRangeA);
-                return Encodings.utf8DecodeBroken(a, arrayA, i);
+                return Encodings.utf8DecodeBroken(a, arrayA, i, errorHandling);
             }
         }
 
-        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isSupportedEncoding(encoding) || is7Bit(codeRangeA)"})
-        static int doFixed(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i) {
+        @Specialization(guards = {"!isUTF16Or32(encoding)", "!isUTF8(encoding)", "isBytes(encoding) || is7Or8Bit(codeRangeA)"})
+        static int doFixed(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i,
+                        @SuppressWarnings("unused") ErrorHandling errorHandling) {
             assert isStride0(a);
             return TStringOps.readS0(a, arrayA, i);
         }
 
-        @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Bit(codeRangeA)"})
-        static int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i) {
-            return JCodings.getInstance().decode(a, JCodings.asByteArray(arrayA), i, JCodings.getInstance().get(encoding));
+        @Specialization(guards = {"isAscii(encoding)", "!is7Or8Bit(codeRangeA)"})
+        static int doAsciiBroken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling) {
+            assert isStride0(a);
+            int c = readS0(a, arrayA, i);
+            if (errorHandling == ErrorHandling.RETURN_NEGATIVE && c > 0x7f) {
+                return -1;
+            }
+            assert errorHandling == ErrorHandling.BEST_EFFORT;
+            return c;
+        }
+
+        @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Or8Bit(codeRangeA)"})
+        static int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int i, ErrorHandling errorHandling) {
+            return JCodings.getInstance().decode(a, JCodings.asByteArray(arrayA), i, JCodings.getInstance().get(encoding), errorHandling);
         }
     }
 
