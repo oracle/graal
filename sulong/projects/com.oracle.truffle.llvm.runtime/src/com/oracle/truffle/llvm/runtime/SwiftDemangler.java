@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 
 /**
@@ -450,6 +451,7 @@ public final class SwiftDemangler {
         return sb.toString();
     }
 
+    @TruffleBoundary
     public static String getSwiftTypeAccessorName(String[] namespaces) {
         StringBuilder sb = new StringBuilder(NAMESPACE_PREFIX_DEFAULT);
         for (String string : namespaces) {
