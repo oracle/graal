@@ -30,7 +30,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAl
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -58,8 +57,6 @@ import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.LogStream;
-import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.ImplicitLIRFrameState;
 import org.graalvm.compiler.lir.LIR;
@@ -570,6 +567,35 @@ public class CompilationResultBuilder {
         return nextBlock == edge.getTargetBlock();
     }
 
+    private class BasicBlockInfoLogger {
+        final boolean isEnable;
+        final Formatter formatter;
+
+        BasicBlockInfoLogger() {
+            this.isEnable = DebugOptions.PrintBBInfo.getValue(options);
+            this.formatter = this.isEnable ? new Formatter() : null;
+        }
+
+        void log(AbstractBlockBase<?> b, int startPC, int endPC) {
+            if (this.isEnable) {
+                // Dump basic block information using the following csv format
+                // BBid, BBStartingPC, BBEndingPC, BBfreq
+                this.formatter.format("%d, %d, %d, %f\n", b.getId(), startPC, endPC, b.getRelativeFrequency());
+            }
+        }
+
+        void close() {
+            if (this.isEnable) {
+                final String path = debug.getDumpPath(".blocks", false);
+                try {
+                    Files.writeString(Paths.get(path), this.formatter.toString());
+                } catch (IOException e) {
+                    throw debug.handle(e);
+                }
+            }
+        }
+    }
+
     /**
      * Emits code for {@code lir} in its {@linkplain LIR#codeEmittingOrder() code emitting order}.
      */
@@ -581,11 +607,8 @@ public class CompilationResultBuilder {
         this.currentBlockIndex = 0;
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
+        final BasicBlockInfoLogger logger = new BasicBlockInfoLogger();
         AbstractBlockBase<?> previousBlock = null;
-        Formatter formatterBBInfo = null;
-        if (DebugOptions.PrintBBInfoPath.getValue(options) != null && debug.getDescription() != null) {
-            formatterBBInfo = new Formatter();
-        }
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
             if (b != null) {
@@ -595,26 +618,15 @@ public class CompilationResultBuilder {
                     StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
                     label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
                 }
-                int pcBBStart = asm.position();
+                int basicBlockStartingPC = asm.position();
                 emitBlock(b);
-                int pcBBEnd = asm.position();
-                if (formatterBBInfo != null) {
-                    // Dump basic block information using the following csv format
-                    // BBid, pcBBStart, pcBBEnd, BBfreq
-                    formatterBBInfo.format("%d, %d, %d, %f\n", b.getId(), pcBBStart, pcBBEnd, b.getRelativeFrequency());
-                }
+                int basicBlockEndingPC = asm.position();
+                logger.log(b, basicBlockStartingPC, basicBlockEndingPC);
                 previousBlock = b;
             }
             currentBlockIndex++;
         }
-        if (formatterBBInfo != null) {
-            try {
-                final String path = PathUtilities.getPath(DebugOptions.PrintBBInfoPath.getValue(options), debug.getDescription().identifier + ".blocks");
-                Files.writeString(Paths.get(path), formatterBBInfo.toString());
-            } catch (IOException e) {
-                throw debug.handle(e);
-            }
-        }
+        logger.close();
         this.lir = null;
         this.currentBlockIndex = 0;
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
