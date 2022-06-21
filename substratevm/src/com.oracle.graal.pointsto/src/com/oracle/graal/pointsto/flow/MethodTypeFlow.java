@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -104,7 +105,19 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
                 initFlowsGraph(bb);
             } catch (Throwable t) {
-                /* Wrap all other errors as parsing errors. */
+                /*
+                 * Wrap all other errors as parsing errors, but first print any UnsupportedFeatures
+                 */
+                try {
+                    bb.getUnsupportedFeatures().report(bb);
+                } catch (UnsupportedFeatureException uee) {
+                    System.err.println(uee.getMessage());
+                    Throwable cause = uee.getCause();
+                    if (cause != null) {
+                        System.err.print("Original exception that caused the problem: ");
+                        cause.printStackTrace(System.err);
+                    }
+                }
                 throw AnalysisError.parsingError(method, t);
             }
         }
