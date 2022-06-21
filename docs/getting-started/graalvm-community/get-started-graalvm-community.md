@@ -37,17 +37,12 @@ Having downloaded and installed GraalVM, you can already run any Java applicatio
 Other languages support can be installed on request, using **gu** -- the GraalVM Updater tool to install additional language runtimes and utilities.
 Further below you will find information on how to add other optionally available GraalVM runtimes including JavaScript, Node.js, LLVM, Ruby, R, Python, and WebAssembly.
 
-For demonstration purposes here, we will use GraalVM Community Edition based on OpenJDK 17.
-
 ## Run Java
 
 The `java` launcher runs the JVM with the GraalVM default compiler - Graal.
 Check the Java version upon the installation:
 ```shell
-java -version
-openjdk version "17.0.4" 2022-07-19
-OpenJDK Runtime Environment GraalVM CE 22.2.0 (build 17.0.4-jvmci-22.2-b04)
-OpenJDK 64-Bit Server VM GraalVM CE 22.2.0 (build 17.0.4-jvmci-22.2-b04, mixed mode, sharing)
+$GRAALVM_HOME/bin/java -version
 ```
 
 Take a look at this typical `HelloWorld` class:
@@ -88,7 +83,7 @@ $GRAALVM_HOME/bin/js
 ```
 
 GraalVM also supports running Node.js applications.
-The Node.js support is not installed by default, but can be easily added with GraalVM Updater:
+The Node.js support is not installed by default, but can be easily added with this command:
 ```shell
 gu install nodejs
 ```
@@ -275,7 +270,7 @@ emcc -o floyd.wasm floyd.c
 
 Then you can run the compiled WebAssembly binary on GraalVM as follows:
 ```shell
-$JAVA_HOME/bin/wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
+$GRAALVM_HOME/bin/wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
 ```
 
 More details can be found in the [WebAssembly reference manual](../../reference-manual/wasm/README.md).
@@ -297,7 +292,7 @@ The [Native Image](../../reference-manual/native-image/README.md) functionality 
 gu install native-image
 ```
 
-The `HelloWorld` example from above is used here to demonstrate how to generate a native image:
+The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
 ```java
 // HelloWorld.java
 public class HelloWorld {
@@ -326,11 +321,10 @@ More detailed documentation on this innovative technology is available in the [N
 
 ## Polyglot Capabilities of Native Images
 
-GraalVM makes it possible to use polyglot capabilities when building native images.
+GraalVM makes it possible to use polyglot capabilities when building native executables.
 Take this example of a JSON pretty-printer Java program that embeds some JavaScript code:
 
 ```java
-// PrettyPrintJSON.java
 import java.io.*;
 import java.util.stream.*;
 import org.graalvm.polyglot.*;
@@ -349,18 +343,19 @@ public class PrettyPrintJSON {
   }
 }
 ```
-
-Compile it and build a native image for it.
-The `--language:js` argument ensures that JavaScript is available in the generated image:
+Compile it and build a native image for it. The `--language:js` argument ensures that JavaScript is available in the generated binary:
 
 ```shell
 javac PrettyPrintJSON.java
 native-image --language:js --initialize-at-build-time PrettyPrintJSON
 ```
-The native image generatation will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
-Additionally, the image building requires large amounts of physical memory, especially if you build an image with the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
 
-The resulting executable can now perform JSON pretty-printing:
+The generatation will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
+Additionally, the generatation requires large amounts of physical memory, especially if you build a native executable with
+the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
+
+The resulting binary can now perform JSON pretty-printing:
+
 ```shell
 ./prettyprintjson <<EOF
 {"GraalVM":{"description":"Language Abstraction Platform","supports":["combining languages","embedding languages","creating native images"],"languages": ["Java","JavaScript","Node.js", "Python", "Ruby","R","LLVM"]}}
@@ -390,7 +385,7 @@ Here is the JSON output from the native executable:
 }
 ```
 
-The native image runs much faster than running the same code on the JVM directly:
+The native executable runs much faster than running the same code on the JVM directly:
 ```shell
 time bin/java PrettyPrintJSON < test.json > /dev/null
 real	0m1.101s
