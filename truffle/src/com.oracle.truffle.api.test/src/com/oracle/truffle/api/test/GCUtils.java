@@ -114,13 +114,33 @@ public final class GCUtils {
     }
 
     /**
-     * Asserts that given reference is cleaned, the referent is freed by garbage collector.
+     * Asserts that given reference is cleaned, the referent is freed by garbage collector. From a
+     * performance point of view, it is always better to call {@link #assertGc(String, Collection)}
+     * with a collection of references rather than repeatedly calling this method with individual
+     * references.
      *
      * @param message the message for an {@link AssertionError} when referent is not freed by GC
      * @param ref the reference
+     * @see #assertGc(String, Collection)
      */
     public static void assertGc(final String message, final Reference<?> ref) {
         Result result = analyser.allCollected(Collections.singleton(ref), true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
+        if (!result.isCollected()) {
+            Assert.fail(formatShortestGCRootPath(message, result));
+        }
+    }
+
+    /**
+     * Asserts that all given references are cleaned, the referents are freed by garbage collector.
+     * From a performance point of view, it is always better to call this method with a collection
+     * of references rather than repeatedly calling {@link #assertGc(String, Reference)} with
+     * individual references.
+     *
+     * @param message the message for an {@link AssertionError} when referent is not freed by GC
+     * @param refs references their referent is to be released
+     */
+    public static void assertGc(final String message, final Collection<? extends Reference<?>> refs) {
+        Result result = analyser.allCollected(refs, true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
         if (!result.isCollected()) {
             Assert.fail(formatShortestGCRootPath(message, result));
         }
@@ -371,7 +391,8 @@ public final class GCUtils {
                     Heap heap = HeapFactory.createHeap(heapDumpFile.toFile());
                     JavaClass trackableReferenceClass = heap.getJavaClassByName(HeapDumpAnalyser.class.getName());
                     ObjectArrayInstance todoArray = (ObjectArrayInstance) trackableReferenceClass.getValueOfStaticField("todo");
-                    result = testCollected.apply(new Context(collectGCRootPath, preserveHeapDumpIfNonCollectable ? heapDumpFile : null, heap, todoArray.getValues(), todoIndexes));
+                    List<Instance> instances = todoArray.getValues();
+                    result = testCollected.apply(new Context(collectGCRootPath, preserveHeapDumpIfNonCollectable ? heapDumpFile : null, heap, instances, todoIndexes));
                 } finally {
                     if (result == null || result.isCollected() || !preserveHeapDumpIfNonCollectable) {
                         delete(tmpDirectory);
