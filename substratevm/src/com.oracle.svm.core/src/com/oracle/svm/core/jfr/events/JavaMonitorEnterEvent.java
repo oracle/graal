@@ -53,7 +53,7 @@ public class JavaMonitorEnterEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadStart.getId(), 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorEnter.getId(), 0));
             JfrNativeEventWriter.putClass(data, obj.getClass());
             JfrNativeEventWriter.putLong(data, previousOwner);
             JfrNativeEventWriter.putLong(data, org.graalvm.compiler.word.Word.objectToUntrackedPointer(obj).rawValue());
