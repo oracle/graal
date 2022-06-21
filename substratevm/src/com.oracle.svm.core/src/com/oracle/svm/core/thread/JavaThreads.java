@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -294,11 +295,13 @@ public final class JavaThreads {
     }
 
     static void sleep(long millis) throws InterruptedException {
+        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
             VirtualThreads.singleton().sleepMillis(millis);
         } else {
             PlatformThreads.sleep(millis);
         }
+        ThreadSleepEvent.emit(millis, startTicks);
     }
 
     static boolean isAlive(Thread thread) {
