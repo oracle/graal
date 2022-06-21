@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.heap.ParallelGC;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,7 +68,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
-    @AlwaysInline("GC performance")
+    @NeverInline("GC performance")
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
         assert !objRef.isNull();

@@ -54,7 +54,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     }
 
     @Override
-    @AlwaysInline("GC performance")
+    @NeverInline("GC performance")
     public boolean visitObjectInline(Object o) {
         ReferenceObjectProcessing.discoverIfReference(o, objRefVisitor);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);

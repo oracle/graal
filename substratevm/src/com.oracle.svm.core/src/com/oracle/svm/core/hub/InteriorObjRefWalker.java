@@ -60,7 +60,7 @@ public class InteriorObjRefWalker {
         return walkObjectInline(obj, visitor);
     }
 
-    @AlwaysInline("Performance critical version")
+    @NeverInline("Performance critical version")
     public static boolean walkObjectInline(final Object obj, final ObjectReferenceVisitor visitor) {
         final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
         final int layoutEncoding = objHub.getLayoutEncoding();

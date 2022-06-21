@@ -84,7 +84,7 @@ final class GreyObjectsWalker {
         }
     }
 
-    @AlwaysInline("GC performance")
+    @NeverInline("GC performance")
     private void walkAlignedGreyObjects() {
         AlignedHeapChunk.AlignedHeader aChunk;
         if (alignedHeapChunk.isNull() && alignedTop.isNull()) {
@@ -112,7 +112,7 @@ final class GreyObjectsWalker {
         }
     }
 
-    @AlwaysInline("GC performance")
+    @NeverInline("GC performance")
     private void walkUnalignedGreyObjects() {
         /* Visit the Objects in the UnalignedChunk after the snapshot UnalignedChunk. */
         UnalignedHeapChunk.UnalignedHeader uChunk;
