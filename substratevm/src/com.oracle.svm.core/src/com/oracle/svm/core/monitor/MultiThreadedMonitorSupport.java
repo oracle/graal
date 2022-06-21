@@ -42,7 +42,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.CurrentIsolate;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.WeakIdentityHashMap;
@@ -194,7 +193,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Secondary storage for monitor slots. Synchronized to prevent concurrent access and
      * modification.
      */
-    private final Map<Object, ReentrantLock> additionalMonitors = new WeakIdentityHashMap<>();
+    private final Map<Object, OwnedReentrantLock> additionalMonitors = new WeakIdentityHashMap<>();
     private final Map<Object, Long> monitorOwners = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
     private final ReentrantLock monitorOwnersLock = new ReentrantLock();
@@ -260,36 +259,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Override
     public void monitorEnter(Object obj) {
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
-        ReentrantLock lockObject = getOrCreateMonitor(obj, true);
+        OwnedReentrantLock lockObject = getOrCreateMonitor(obj, true);
 
-        if (lockObject.tryLock()) {
-            return;
+        if (!lockObject.tryLockOwnedLock()) {
+            JavaMonitorEnterEvent.emit(obj, lockObject.getPrevOwnerTid(), startTicks);
         }
-        lockObject.lock();
 
-        // Prevent deadlock from locking monitorOwnersLock in conjunction with the
-        // synchronized block on ReferenceQueue monitor in WeakIdentityHashMap
-        if (obj.getClass() == Target_java_lang_ref_ReferenceQueue_Lock.class) {
-            return;
-        }
-        // prevent recursive manipulation of the monitorOwners lock
-        if (monitorOwnersLock.isHeldByCurrentThread()) {
-            return;
-        }
-        Long prevOwner;
-        long currentOwnerId = com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
-
-        monitorOwnersLock.lock();
-        try {
-            prevOwner = monitorOwners.get(obj);
-            monitorOwners.put(obj, currentOwnerId);
-        } finally {
-            monitorOwnersLock.unlock();
-        }
-        if (prevOwner == null) {
-            prevOwner = 0L;
-        }
-        JavaMonitorEnterEvent.emit(obj, prevOwner, startTicks);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -454,7 +429,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return unreplacedObject;
     }
 
-    protected final ReentrantLock getOrCreateMonitor(Object unreplacedObject, boolean createIfNotExisting) {
+    protected final OwnedReentrantLock getOrCreateMonitor(Object unreplacedObject, boolean createIfNotExisting) {
         Object obj = replaceObject(unreplacedObject);
         assert obj != null;
         int monitorOffset = getMonitorOffset(obj);
@@ -467,22 +442,22 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    protected ReentrantLock getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset) {
-        ReentrantLock existingMonitor = (ReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
+    protected OwnedReentrantLock getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset) {
+        OwnedReentrantLock existingMonitor = (OwnedReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
         if (existingMonitor != null || !createIfNotExisting) {
             assert existingMonitor == null || isMonitorLock(existingMonitor);
             return existingMonitor;
         }
         /* Atomically put a new lock in place of the null at the monitorOffset. */
-        ReentrantLock newMonitor = newMonitorLock();
+        OwnedReentrantLock newMonitor = newMonitorLock();
         if (UNSAFE.compareAndSetObject(obj, monitorOffset, null, newMonitor)) {
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
-        return (ReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
+        return (OwnedReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
     }
 
-    protected ReentrantLock getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
+    protected OwnedReentrantLock getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
         assert obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
                     "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
@@ -493,13 +468,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          */
         additionalMonitorsLock.lock();
         try {
-            ReentrantLock existingMonitor = additionalMonitors.get(obj);
+            OwnedReentrantLock existingMonitor = additionalMonitors.get(obj);
             if (existingMonitor != null || !createIfNotExisting) {
                 assert existingMonitor == null || isMonitorLock(existingMonitor);
                 return existingMonitor;
             }
-            ReentrantLock newMonitor = newMonitorLock();
-            ReentrantLock previousEntry = additionalMonitors.put(obj, newMonitor);
+            OwnedReentrantLock newMonitor = newMonitorLock();
+            OwnedReentrantLock previousEntry = additionalMonitors.put(obj, newMonitor);
             VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
             return newMonitor;
         } finally {
@@ -507,8 +482,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    protected static ReentrantLock newMonitorLock() {
-        ReentrantLock newMonitor = new ReentrantLock();
+    protected static OwnedReentrantLock newMonitorLock() {
+        OwnedReentrantLock newMonitor = new OwnedReentrantLock();
         Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(newMonitor, Target_java_util_concurrent_locks_ReentrantLock.class);
         Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
         sync.objectMonitorCondition = SubstrateUtil.cast(MONITOR_WITHOUT_CONDITION, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class);
