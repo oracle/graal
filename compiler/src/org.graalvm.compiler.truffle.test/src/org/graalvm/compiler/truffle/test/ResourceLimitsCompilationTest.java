@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import java.util.concurrent.Semaphore;
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -48,6 +49,16 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 
 public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
+
+    private static void assertWrites(StructuredGraph graph) {
+        /*
+         * It is not trivial to forward Graal compiler options into truffle multi-tier setup and
+         * suite selection. Thus, we have to adjust the expected foldings here in case certain
+         * compiler optimizations are disabled.
+         */
+        boolean expectEarlyGVN = GraalOptions.EarlyGVN.getValue(graph.getOptions());
+        Assert.assertEquals(expectEarlyGVN ? 1 : 2, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+    }
 
     @Test
     @SuppressWarnings("try")
@@ -131,7 +142,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                 }
                 Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
                 Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
-                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                assertWrites(graph);
             }
         }
     }
@@ -150,7 +161,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
             Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
         }
         Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-        Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+        assertWrites(graph);
         Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
     }
 
@@ -176,7 +187,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                  * read/write for the statement counts.
                  */
                 Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                assertWrites(graph);
                 Assert.assertEquals(0, countNodes(graph, InvokeWithExceptionNode.TYPE));
             }
         }
