@@ -608,6 +608,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static boolean includeAnnotation(DuringAnalysisAccessImpl access, AnnotationValue annotationValue) {
+        if (annotationValue == null) {
+            return false;
+        }
         for (Class<?> type : annotationValue.getTypes()) {
             if (type == null || SubstitutionReflectivityFilter.shouldExclude(type, access.getMetaAccess(), access.getUniverse())) {
                 return false;
