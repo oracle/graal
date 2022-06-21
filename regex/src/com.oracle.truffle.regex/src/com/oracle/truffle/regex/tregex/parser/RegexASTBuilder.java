@@ -499,7 +499,7 @@ public final class RegexASTBuilder {
             if (parent.isRoot()) {
                 return false;
             }
-            if (parent.isLookAroundAssertion()) {
+            if (parent.isSubtreeRoot()) {
                 parent = parent.getParent();
             }
             parent = parent.getParent();
