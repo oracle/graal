@@ -775,7 +775,9 @@ public class NativeImage {
         /* Prevent JVM that runs the image builder to steal focus */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
-        addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
+        if (!NativeImage.IS_AOT) {
+            addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
+        }
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
 
