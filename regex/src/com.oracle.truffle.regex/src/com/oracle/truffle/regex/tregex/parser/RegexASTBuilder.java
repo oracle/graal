@@ -284,7 +284,7 @@ public final class RegexASTBuilder {
         optimizeGroup();
         curGroup.setEnclosedCaptureGroupsHigh(groupCount.getCount());
         ast.addSourceSection(curGroup, token);
-        if (curGroup.getParent().isLookAroundAssertion()) {
+        if (curGroup.getParent().isSubtreeRoot()) {
             ast.addSourceSection(curGroup.getParent(), token);
         }
         RegexASTNode parent = curGroup.getParent();
