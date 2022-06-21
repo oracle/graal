@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -47,20 +46,6 @@ public class DarwinVirtualMemory {
     public interface vm_region_basic_info_data_64_t extends PointerBase {
         @CField
         int protection();
-    }
-
-    @CPointerTo(nameOfCType = "mach_vm_address_t")
-    public interface mach_vm_address_tPointer extends PointerBase {
-        void write(UnsignedWord value);
-
-        UnsignedWord read();
-    }
-
-    @CPointerTo(nameOfCType = "mach_vm_size_t")
-    public interface mach_vm_size_tPointer extends PointerBase {
-        void write(UnsignedWord value);
-
-        UnsignedWord read();
     }
 
     @CConstant
@@ -82,6 +67,6 @@ public class DarwinVirtualMemory {
     public static native int vm_copy(WordPointer targetTask, WordBase sourceAddress, UnsignedWord count, WordBase destAddress);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int mach_vm_region(WordPointer task, mach_vm_address_tPointer address, mach_vm_size_tPointer size, int flavor, vm_region_basic_info_data_64_t info, CIntPointer infoCnt,
+    public static native int mach_vm_region(WordPointer task, WordPointer address, WordPointer size, int flavor, vm_region_basic_info_data_64_t info, CIntPointer infoCnt,
                     WordPointer object_name);
 }

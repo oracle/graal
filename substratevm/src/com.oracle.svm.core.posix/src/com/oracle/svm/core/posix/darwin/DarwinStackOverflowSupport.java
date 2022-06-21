@@ -44,9 +44,7 @@ import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_PR
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_REGION_BASIC_INFO_64;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_REGION_SUBMAP_INFO_COUNT_64;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_task_self;
-import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_address_tPointer;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_region;
-import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_size_tPointer;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.vm_region_basic_info_data_64_t;
 
 class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
@@ -72,9 +70,9 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     private static int vmComputeStackGuard(UnsignedWord stackend) {
         int guardsize = 0;
 
-        mach_vm_address_tPointer address = StackValue.get(mach_vm_address_tPointer.class);
+        WordPointer address = StackValue.get(WordPointer.class);
         address.write(stackend);
-        mach_vm_size_tPointer size = StackValue.get(mach_vm_size_tPointer.class);
+        WordPointer size = StackValue.get(WordPointer.class);
         size.write(WordFactory.zero());
 
         vm_region_basic_info_data_64_t info = StackValue.get(vm_region_basic_info_data_64_t.class);
