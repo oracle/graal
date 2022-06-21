@@ -137,12 +137,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
         if (headArg.startsWith(NativeImage.oH)) {
             args.poll();
-            nativeImage.addCustomImageBuilderArgs(NativeImage.injectHostedOptionOrigin(headArg, args.argumentOrigin));
+            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(headArg, args.argumentOrigin));
             return true;
         }
         if (headArg.startsWith(NativeImage.oR)) {
             args.poll();
-            nativeImage.addCustomImageBuilderArgs(headArg);
+            nativeImage.addPlainImageBuilderArg(headArg);
             return true;
         }
         String javaArgsPrefix = "-D";
