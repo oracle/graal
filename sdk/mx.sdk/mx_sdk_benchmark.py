@@ -662,6 +662,12 @@ class EmptyEnv():
     def __enter__(self):
         self._prev_environ = os.environ
         os.environ = {}
+        # urllib.request caches http_proxy, https_proxy etc. globally but doesn't cache no_proxy
+        # preserve no_proxy to avoid issues with proxies
+        if 'no_proxy' in self._prev_environ:
+            os.environ['no_proxy'] = self._prev_environ['no_proxy']
+        if 'NO_PROXY' in self._prev_environ:
+            os.environ['NO_PROXY'] = self._prev_environ['NO_PROXY']
     def __exit__(self, exc_type, exc_val, exc_tb):
         os.environ = self._prev_environ
 
