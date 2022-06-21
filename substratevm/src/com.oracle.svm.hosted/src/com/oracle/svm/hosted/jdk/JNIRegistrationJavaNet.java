@@ -60,23 +60,35 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         hasPlatformSocketOptions = a.findClassByName("jdk.net.ExtendedSocketOptions$PlatformSocketOptions") != null;
 
         rerunClassInit(a, "java.net.DatagramPacket", "java.net.InetAddress", "java.net.NetworkInterface",
-                        "java.net.SocketInputStream", "java.net.SocketOutputStream",
-                        /* Caches networking properties. */
-                        "java.net.DefaultDatagramSocketImplFactory",
                         /* Stores a default SSLContext in a static field. */
                         "javax.net.ssl.SSLContext");
+        if (JavaVersionUtil.JAVA_SPEC <= 17) {
+            /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
+            rerunClassInit(a, "java.net.SocketInputStream", "java.net.SocketOutputStream",
+                            /* Caches networking properties. */
+                            "java.net.DefaultDatagramSocketImplFactory");
+        }
         if (isWindows()) {
             rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
-            /* Caches networking properties. */
-            rerunClassInit(a, "java.net.PlainSocketImpl");
+            if (JavaVersionUtil.JAVA_SPEC <= 17) {
+                /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
+                /* Caches networking properties. */
+                rerunClassInit(a, "java.net.PlainSocketImpl");
+            }
         } else {
             assert isPosix();
-            rerunClassInit(a, "java.net.PlainDatagramSocketImpl", "java.net.PlainSocketImpl");
+            if (JavaVersionUtil.JAVA_SPEC <= 17) {
+                /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
+                rerunClassInit(a, "java.net.PlainDatagramSocketImpl", "java.net.PlainSocketImpl");
+            }
             if (hasExtendedOptionsImpl) {
                 rerunClassInit(a, "sun.net.ExtendedOptionsImpl");
             }
 
-            rerunClassInit(a, "java.net.AbstractPlainDatagramSocketImpl", "java.net.AbstractPlainSocketImpl");
+            if (JavaVersionUtil.JAVA_SPEC <= 17) {
+                /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
+                rerunClassInit(a, "java.net.AbstractPlainDatagramSocketImpl", "java.net.AbstractPlainSocketImpl");
+            }
 
             if (hasPlatformSocketOptions) {
                 /*
