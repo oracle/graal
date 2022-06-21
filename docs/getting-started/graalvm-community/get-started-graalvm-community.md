@@ -7,12 +7,13 @@ permalink: /docs/getting-started/
 
 # Get Started with GraalVM
 
-Get started with GraalVM -- a high-performance JDK distribution.
-It is designed to accelerate the execution of applications written in Java and other JVM languages while also providing runtimes for JavaScript, Ruby, Python, and a number of other popular languages.
-GraalVM's polyglot capabilities make it possible to mix multiple programming languages in a single application while eliminating any foreign language call costs.
+Get started with GraalVM -- is a high-performance JDK designed to accelerate Java application performance while consuming fewer resources.
+GraalVM offers two ways to run Java applications: on the HotSpot JVM with Graal just-in-time (JIT) compiler or as an ahead-of-time (AOT) compiled native exectuable.
+Besides Java, it provides runtimes for JavaScript, Ruby, Python, and a number of other popular languages.
+GraalVM's polyglot capabilities make it possible to mix programming languages in a single application while eliminating any foreign language call costs.
 
 Here you will find information about installing GraalVM Community Edition, running basic applications with it, and adding support for accompanying features.
-Further, you will learn about the polyglot capabilities of GraalVM and see how to build platform-specific native executables of JVM-based applications.
+Further, you will learn about the polyglot capabilities of GraalVM and see how to build platform-specific native executables of Java applications.
 
 If you are new to GraalVM, we recommend starting with [Introduction to GraalVM](../../introduction.md), where you will find information about GraalVM's architecture, distributions available, supported platforms, core and additional features, and much more.
 
@@ -30,34 +31,25 @@ Choose the operating system and proceed to the installation steps:
 
 ## Start Running Applications
 
+The core distribution of GraalVM includes the JVM and the GraalVM compiler.
+Having downloaded and installed GraalVM, you can already run any Java application unmodified.
+
+Other languages support can be installed on request, using **gu** -- the GraalVM Updater tool to install additional language runtimes and utilities.
+Further below you will find information on how to add other optionally available GraalVM runtimes including JavaScript, Node.js, LLVM, Ruby, R, Python, and WebAssembly.
+
 For demonstration purposes here, we will use GraalVM Community Edition based on OpenJDK 17.
-
-The core distribution of GraalVM includes the JVM, the GraalVM compiler, the LLVM runtime, and JavaScript runtime.
-Having downloaded and installed GraalVM, you can already run Java, JavaScript, and LLVM-based applications.
-
-GraalVM's `/bin` directory is similar to that of a standard JDK, but includes a set of additional launchers and utilities:
-- **js** a JavaScript launcher
-- **lli** a LLVM bitcode launcher
-- **gu** the GraalVM Updater tool to install additional language runtimes and utilities
-
-Check the versions of the runtimes provided by default:
-```shell
-java -version
-openjdk version "17.0.3" 2022-04-19
-OpenJDK Runtime Environment GraalVM CE 22.1.0 (build 17.0.3+5-jvmci-22.1-b04)
-OpenJDK 64-Bit Server VM GraalVM CE 22.1.0 (build 17.0.3+5-jvmci-22.1-b04, mixed mode, sharing)
-js -version
-GraalVM JavaScript (GraalVM CE Native 22.1.0)
-
-lli --version
-LLVM 12.0.1 (GraalVM CE Native 22.1.0)
-```
-
-Further below you will find information on how to add other optionally available GraalVM runtimes including Node.js, Ruby, R, Python, and WebAssembly.
 
 ## Run Java
 
-The `java` launcher runs the JVM with the GraalVM default compiler - the GraalVM compiler.
+The `java` launcher runs the JVM with the GraalVM default compiler - Graal.
+Check the Java version upon the installation:
+```shell
+java -version
+openjdk version "17.0.4" 2022-07-19
+OpenJDK Runtime Environment GraalVM CE 22.2.0 (build 17.0.4-jvmci-22.2-b04)
+OpenJDK 64-Bit Server VM GraalVM CE 22.2.0 (build 17.0.4-jvmci-22.2-b04, mixed mode, sharing)
+```
+
 Take a look at this typical `HelloWorld` class:
 ```java
 public class HelloWorld {
@@ -81,35 +73,41 @@ For more extensive documentation on running Java, proceed to [JVM Languages](../
 
 ## Run JavaScript and Node.js
 
-As mentioned above, upon the GraalVM installation completion, the `<graalvm>/bin` directory already includes the `js` launcher to run JavaScript programs.
-It can execute plain JavaScript code, both in REPL mode and by executing script files directly:
+GraalVM supports running JavaScript applications. 
+The JavaScript runtime is optionally available and can be installed with this command:
 ```shell
-$JAVA_HOME/bin/js
+gu install js
+```
+
+It installs the `js` launcher in the `$GRAALVM_HOME/bin` directory.
+With the JavaScript runtime installed, you can execute plain JavaScript code, both in REPL mode and by executing script files directly:
+```shell
+$GRAALVM_HOME/bin/js
 > 1 + 2
 3
 ```
 
 GraalVM also supports running Node.js applications.
-Node.js support is not installed by default, but can be easily added with GraalVM Updater:
+The Node.js support is not installed by default, but can be easily added with GraalVM Updater:
 ```shell
 gu install nodejs
 ```
 
-The `node` launcher becomes available in the `<graalvm>/bin` directory.
+Both `node` and  `npm` launchers then become available in the `$GRAALVM_HOME/bin` directory.
 
 ```shell
-$JAVA_HOME/bin/node -v
+$GRAALVM_HOME/bin/node -v
 v16.14.2
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
-To install a Node.js module, use the `npm` executable from the `<graalvm>/bin` folder, which is installed together with `node`.
+To install a Node.js module, use the `npm` executable from `$GRAALVM_HOME/bin`, which is installed together with `node`.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
 Install the modules `colors`, `ansispan`, and `express` using `npm install`.
 After the modules are installed, you can use them from your application.
 ```shell
-$JAVA_HOME/bin/npm install colors ansispan express
+$GRAALVM_HOME/bin/npm install colors ansispan express
 ```
 
 Use the following code snippet and save it as the `app.js` file in the same directory where you installed the Node.js modules:
@@ -128,35 +126,39 @@ setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
 
 Run _app.js_ on GraalVM Enterprise using the `node` command:
 ```shell
-$JAVA_HOME/bin/node app.js
+$GRAALVM_HOME/bin/node app.js
 ```
 
 For more detailed documentation and information on compatibility with Node.js, proceed to [JavaScript and Node.js](../../reference-manual/js/README.md).
 
 ## Run LLVM Languages
 
-The GraalVM LLVM runtime can execute C/C++, Rust, and other programming language that can be compiled to LLVM bitcode.
+The GraalVM LLVM runtime can execute C/C++, Rust, and other programming languages that can be compiled to LLVM bitcode.
 
-Since GraalVM 22.2, the LLVM runtime is packaged in a separate GraalVM component. It can be installed with GraalVM Updater:
-
+The LLVM runtime is optionally available and can be installed with this command:
 ```shell
 $GRAALVM_HOME/bin/gu install llvm
 ```
 
-This installs GraalVM's implementation of `lli` in the `$GRAALVM_HOME/bin` directory.
+It installs the GraalVM implementation of `lli` in the `$GRAALVM_HOME/bin` directory.
+Check the version upon the installation:
+
+```shell
+$GRAALVM_HOME/bin/lli --version
+```
+
 With the LLVM runtime installed, you can execute programs in LLVM bitcode format on GraalVM.
+To compile a native program to LLVM bitcode, you use some LLVM frontend, for example `clang`.
 
+Besides the LLVM runtime, GraalVM also provides the LLVM frontend (toolchain) that you can set up as follows:
 
-A native program has to be compiled to LLVM bitcode using an LLVM frontend such as `clang`.
-The C/C++ code can be compiled to LLVM bitcode using `clang` shipped with GraalVM via a prebuilt LLVM toolchain.
-
-To set up the LLVM toolchain support:
 ```shell
 gu install llvm-toolchain
 export LLVM_TOOLCHAIN=$(lli --print-toolchain-path)
 ```
 
-As an example, put this C code into a file named `hello.c`:
+Then the C/C++ code can be compiled to LLVM bitcode using `clang` shipped with GraalVM.
+For example, put this C code into a file named `hello.c`:
 ```c
 #include <stdio.h>
 
@@ -166,29 +168,29 @@ int main() {
 }
 ```
 
-Then compile `hello.c` to an executable `hello` with embedded LLVM bitcode and run it as follows:
+Compile `hello.c` to an executable `hello` with embedded LLVM bitcode and run it:
 ```shell
 $LLVM_TOOLCHAIN/clang hello.c -o hello
 lli hello
 ```
 
-For in-depth documentation and more examples of running LLVM bitcode on GraalVM, go to [LLVM Languages](../../reference-manual/llvm/README.md).
+For in-depth documentation about the GraalVM LLVM runtime, go to [LLVM Languages](../../reference-manual/llvm/README.md).
 
 ## Run Python
 
 With GraalVM you can run Python applications in the Python 3 runtime environment.
-The support is not available by default, but you can quickly add it to GraalVM using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
+The support is not available by default, but you can quickly add it to GraalVM with this command:
 ```shell
 gu install python
 ```
 
 It installs the `graalpython` launcher. Check the version, and you can already run Python programs:
 ```shell
-$JAVA_HOME/bin/graalpython --version
+$GRAALVM_HOME/bin/graalpython --version
 ```
 
 ```shell
-$JAVA_HOME/bin/graalpython
+$GRAALVM_HOME/bin/graalpython
 ...
 >>> 1 + 2
 3
@@ -200,21 +202,21 @@ More examples and additional information on Python support in GraalVM can be fou
 ## Run Ruby
 
 GraalVM provides a high-performance Ruby runtime environment including the `gem` command that allows you to interact with RubyGems, Ruby Bundler, and much more.
-The Ruby runtime is not available by default in GraalVM, but can be easily added using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
+The Ruby runtime is not available by default in GraalVM, but can be easily added with this command:
 ```shell
 gu install ruby
 ```
 
 Once it is installed, Ruby launchers like `ruby`, `gem`, `irb`, `rake`, `rdoc`, and `ri` become available to run Ruby programs:
 ```shell
-$JAVA_HOME/bin/ruby [options] program.rb
+$GRAALVM_HOME/bin/ruby [options] program.rb
 ```
 
 GraalVM runtime for Ruby uses the [same options as the standard implementation of Ruby](../../reference-manual/ruby/options.md), with some additions.
 For example:
 ```shell
 gem install chunky_png
-$JAVA_HOME/bin/ruby -r chunky_png -e "puts ChunkyPNG::Color.to_hex(ChunkyPNG::Color('mintcream @ 0.5'))"
+$GRAALVM_HOME/bin/ruby -r chunky_png -e "puts ChunkyPNG::Color.to_hex(ChunkyPNG::Color('mintcream @ 0.5'))"
 #f5fffa80
 ```
 
@@ -223,15 +225,14 @@ More examples and in-depth documentation can be found in the [Ruby reference man
 ## Run R
 
 GraalVM provides a GNU-compatible environment to run R programs directly or in the REPL mode.
-Although the R language support is not available by default, you can add it to GraalVM using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
+Although the R language support is not available by default, you can add it to GraalVM with this command:
 ```shell
 gu install R
 ```
 
 When the language is installed, you can execute R scripts and use the R REPL:
 ```shell
-R
-R version 4.0.3 (FastR)
+$GRAALVM_HOME/bin/R
 ...
 
 > 1 + 1
@@ -243,7 +244,7 @@ More examples and in-depth documentation can be found in the [R reference manual
 ## Run WebAssembly
 
 With GraalVM you can run programs compiled to WebAssembly.
-The support is not available by default, but you can add it to GraalVM using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
+The support is not available by default, but you can add it to GraalVM with this command:
 ```shell
 gu install wasm
 ```
@@ -290,7 +291,7 @@ For more information on running polyglot applications, see [Polyglot Programming
 
 ## Native Images
 
-With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and smaller footprint for your application.
+With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and smaller footprint for your application.
 The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image
@@ -306,9 +307,9 @@ public class HelloWorld {
 }
 ```
 
-> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](../../reference-manual/native-image/README.md#prerequisites).
+> Note: For compilation the `native-image` tool depends on the local toolchain. Make sure your system meets the [prerequisites](../../reference-manual/native-image/README.md#prerequisites).
 
-Compile _HelloWorld.java_ to bytecode and then build a native image:
+Compile _HelloWorld.java_ to bytecode and then build a native executable:
 ```shell
 javac HelloWorld.java
 native-image HelloWorld
