@@ -55,7 +55,6 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.DiscardInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationEnterInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationExitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationLeaveInstruction;
@@ -105,7 +104,7 @@ public class OperationsContext {
     }
 
     private void createCommonInstructions() {
-        commonPop = add(new DiscardInstruction("pop", instructionId++, InputType.STACK_VALUE_IGNORED));
+        commonPop = add(new DiscardInstruction("pop", instructionId++));
         commonBranch = add(new BranchInstruction(instructionId++));
         commonBranchFalse = add(new ConditionalBranchInstruction(this, instructionId++));
         commonThrow = add(new ThrowInstruction(instructionId++));
@@ -128,9 +127,6 @@ public class OperationsContext {
         createLoadArgument();
         createLoadStoreLocal();
         createReturn();
-
-        add(new Operation.LocalSetter(this, operationId++));
-        add(new Operation.LocalSetterArray(this, operationId++));
 
         add(new Operation.InstrumentTag(this, operationId++,
                         add(new InstrumentationEnterInstruction(instructionId++)),

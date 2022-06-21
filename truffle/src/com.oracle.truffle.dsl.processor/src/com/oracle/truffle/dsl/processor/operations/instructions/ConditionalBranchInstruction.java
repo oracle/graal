@@ -42,7 +42,6 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
@@ -59,22 +58,11 @@ public class ConditionalBranchInstruction extends Instruction {
     private OperationsContext ctx;
 
     public ConditionalBranchInstruction(OperationsContext ctx, int id) {
-        super("branch.false", id, ResultType.BRANCH, InputType.BRANCH_TARGET, InputType.STACK_VALUE, InputType.BRANCH_PROFILE);
+        super("branch.false", id, 0);
         this.ctx = ctx;
-    }
-
-    @Override
-    public TypeMirror[] expectedInputTypes(ProcessorContext c) {
-        return new TypeMirror[]{
-                        context.getType(short.class),
-                        context.getType(boolean.class),
-                        typeConditionProfile
-        };
-    }
-
-    @Override
-    public boolean standardPrologue() {
-        return false;
+        addPopSimple("condition");
+        addBranchTarget("target");
+        addBranchProfile("profile");
     }
 
     @Override
@@ -82,16 +70,13 @@ public class ConditionalBranchInstruction extends Instruction {
         return true;
     }
 
-    @SuppressWarnings("unused")
-    private CodeTree createBranchTarget(ExecutionVariables vars) {
-        return CodeTreeBuilder.singleString("bc[bci + " + getArgumentOffset(0) + "]");
-    }
-
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.declaration(typeConditionProfile, "profile", "conditionProfiles[bc[bci + " + getArgumentOffset(2) + "]]");
+        // b.declaration(typeConditionProfile, "profile",
+        // CodeTreeBuilder.createBuilder().string("conditionProfiles[").tree(createBranchProfileIndex(vars,
+        // 0)).string("]"));
 
         // TODO: we should do (un)boxing elim here (but only if booleans are boxing elim'd)
         TypeSystemData data = ctx.getData().getTypeSystem();
@@ -101,12 +86,13 @@ public class ConditionalBranchInstruction extends Instruction {
 
         b.statement("sp -= 1");
 
-        b.startIf().startCall("profile", "profile").string("cond").end(2);
+        // b.startIf().startCall("profile", "profile").string("cond").end(2);
+        b.startIf().string("cond").end();
         b.startBlock();
-        b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
+        b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
         b.statement("continue loop");
         b.end().startElseBlock();
-        b.startAssign(vars.bci).tree(createBranchTarget(vars)).end();
+        b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0)).end();
         b.statement("continue loop");
         b.end();
 
@@ -121,13 +107,5 @@ public class ConditionalBranchInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
-    }
-
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[]{
-                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_BRANCH_COND"),
-                        createBranchTarget(vars)
-        };
     }
 }

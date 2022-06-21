@@ -48,14 +48,16 @@ public class InstrumentationExitInstruction extends Instruction {
     private final boolean returnsValue;
 
     public InstrumentationExitInstruction(int id) {
-        super("instrument.exit.void", id, new ResultType[0], InputType.INSTRUMENT);
+        super("instrument.exit.void", id, 0);
         this.returnsValue = false;
+        addInstrument("instrument");
     }
 
     public InstrumentationExitInstruction(int id, boolean returnsValue) {
-        super("instrument.exit", id, ResultType.STACK_VALUE, InputType.INSTRUMENT, InputType.STACK_VALUE);
+        super("instrument.exit", id, 0);
         assert returnsValue;
         this.returnsValue = true;
+        addInstrument("instrument");
     }
 
     @Override

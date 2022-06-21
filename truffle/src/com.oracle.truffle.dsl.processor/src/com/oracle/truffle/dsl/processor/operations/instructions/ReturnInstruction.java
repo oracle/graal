@@ -47,12 +47,13 @@ import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 public class ReturnInstruction extends Instruction {
 
     public ReturnInstruction(int id) {
-        super("return", id, ResultType.RETURN, InputType.STACK_VALUE);
+        super("return", id, 0);
+        addPopSimple("value");
     }
 
     @Override
-    public boolean standardPrologue() {
-        return false;
+    public boolean isBranchInstruction() {
+        return true;
     }
 
     @Override
@@ -63,11 +64,13 @@ public class ReturnInstruction extends Instruction {
         b.startGroup().variable(vars.sp).string(" - 1").end();
         b.end(2);
 
+        b.statement("break loop");
+
         return b.build();
     }
 
     @Override
-    public CodeTree createCustomEmitCode(BuilderVariables vars, CodeTree[] arguments) {
+    public CodeTree createCustomEmitCode(BuilderVariables vars, EmitArguments arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startStatement().startCall("calculateLeaves");
@@ -86,12 +89,4 @@ public class ReturnInstruction extends Instruction {
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
     }
-
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[]{
-                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_OTHER"),
-        };
-    }
-
 }

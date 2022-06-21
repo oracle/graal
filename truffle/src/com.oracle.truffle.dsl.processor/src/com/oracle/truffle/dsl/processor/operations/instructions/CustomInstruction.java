@@ -1,44 +1,69 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
-import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
-import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs.LocalRefHandle;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
 public class CustomInstruction extends Instruction {
-    public enum DataKind {
-        BITS,
-        CONST,
-        CHILD,
-        CONTINUATION,
-    }
 
     private final SingleOperationData data;
     protected ExecutableElement executeMethod;
-    private DataKind[] dataKinds = null;
-    private int numChildNodes;
-    private int numConsts;
     private OperationsBytecodeNodeGeneratorPlugs plugs;
     private CodeExecutableElement prepareAOTMethod;
     private CodeExecutableElement getSpecializationBits;
     private final List<QuickenedInstruction> quickenedVariants = new ArrayList<>();
-    private int boxingEliminationBitOffset;
+    private CodeTree boxingEliminationBitOffset;
     private int boxingEliminationBitMask;
-    private ArrayList<Integer> localRefIndices;
 
     public SingleOperationData getData() {
         return data;
@@ -60,104 +85,38 @@ public class CustomInstruction extends Instruction {
         this.executeMethod = executeMethod;
     }
 
-    private static InputType[] createInputs(SingleOperationData data) {
+    public CustomInstruction(String name, int id, SingleOperationData data) {
+        super(name, id, data.getMainProperties().returnsValue ? 1 : 0);
+        this.data = data;
+        initializePops();
+    }
+
+    protected void initializePops() {
         MethodProperties props = data.getMainProperties();
-        InputType[] inputs = new InputType[props.numStackValues];
-        for (int i = 0; i < inputs.length; i++) {
-            inputs[i] = InputType.STACK_VALUE;
-        }
 
         if (props.isVariadic) {
-            inputs[inputs.length - 1] = InputType.VARARG_VALUE;
-        }
-
-        return inputs;
-    }
-
-    public CustomInstruction(String name, int id, SingleOperationData data) {
-        super(name, id, data.getMainProperties().returnsValue
-                        ? new ResultType[]{ResultType.STACK_VALUE}
-                        : new ResultType[]{}, createInputs(data));
-        this.data = data;
-    }
-
-    protected CustomInstruction(String name, int id, SingleOperationData data, ResultType[] results, InputType[] inputs) {
-        super(name, id, results, inputs);
-        this.data = data;
-    }
-
-    @Override
-    protected CodeTree createInitializeAdditionalStateBytes(BuilderVariables vars, CodeTree[] arguments) {
-        if (getAdditionalStateBytes() == 0) {
-            return null;
-        }
-
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        int lengthWithoutState = lengthWithoutState();
-
-        b.lineComment("additionalData  = " + dataKinds.length + " bytes: " + List.of(dataKinds));
-        b.lineComment("  numChildNodes = " + numChildNodes);
-        b.lineComment("  numConsts     = " + numConsts);
-
-        for (int i = 0; i < dataKinds.length; i++) {
-            CodeTree index = b.create().variable(vars.bci).string(" + " + lengthWithoutState + " + " + i).build();
-            switch (dataKinds[i]) {
-                case BITS:
-                    b.startStatement();
-                    b.variable(vars.bc).string("[").tree(index).string("] = 0");
-                    b.end();
-                    break;
-                case CHILD:
-                    b.startStatement();
-                    b.variable(vars.bc);
-                    b.string("[").tree(index).string("] = ");
-                    b.startCall("createChildNodes").string("" + numChildNodes).end();
-                    b.end();
-                    break;
-                case CONST:
-                    b.startAssign("int constantOffset").startCall(vars.consts, "reserve").string("" + numConsts).end(2);
-
-                    b.startStatement();
-                    b.variable(vars.bc);
-                    b.string("[").tree(index).string("] = ");
-                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).string("constantOffset").end();
-                    b.end();
-                    break;
-                case CONTINUATION:
-                    break;
-                default:
-                    throw new UnsupportedOperationException("unexpected value: " + dataKinds[i]);
+            setVariadic();
+            for (int i = 0; i < props.numStackValues - 1; i++) {
+                addPopSimple("arg" + i);
             }
-
-            b.end();
-        }
-
-        int iLocal = 0;
-        for (int localIndex : localRefIndices) {
-            b.startStatement().startCall(vars.consts, "setValue");
-            b.string("constantOffset + " + localIndex);
-
-            if (data.getMainProperties().numLocalReferences == -1) {
-                b.startStaticCall(OperationGeneratorUtils.getTypes().LocalSetter, "createArray");
-                b.startCall("getLocalIndices");
-                b.startGroup().variable(vars.operationData).string(".localReferences").end();
-                b.end(2);
-            } else {
-                b.startStaticCall(OperationGeneratorUtils.getTypes().LocalSetter, "create");
-                b.startCall("getLocalIndex");
-                b.startGroup().variable(vars.operationData).string(".localReferences[" + (iLocal++) + "]").end();
-                b.end(2);
+        } else {
+            for (int i = 0; i < props.numStackValues; i++) {
+                addPopIndexed("arg" + i);
             }
-            b.end(2);
         }
 
-        return b.build();
+        if (props.numLocalReferences == -1) {
+            addLocalRun("localRefs");
+        } else {
+            for (int i = 0; i < props.numLocalReferences; i++) {
+                addLocal("local" + i);
+            }
+        }
     }
 
-    @Override
-    public boolean standardPrologue() {
-        return false;
+    protected CustomInstruction(String name, int id, SingleOperationData data, int pushCount) {
+        super(name, id, pushCount);
+        this.data = data;
     }
 
     @Override
@@ -168,9 +127,9 @@ public class CustomInstruction extends Instruction {
 
         if (data.getMainProperties().isVariadic) {
 
-            b.declaration("int", "numVariadics", "bc[bci + " + getArgumentOffset(inputs.length - 1) + "]");
+            b.declaration("int", "numVariadics", createVariadicIndex(vars));
 
-            int additionalInputs = inputs.length - 1;
+            int additionalInputs = data.getMainProperties().numStackValues - 1;
 
             int inputIndex = 0;
             CodeTree[] inputTrees = new CodeTree[data.getMainProperties().parameters.size()];
@@ -196,7 +155,7 @@ public class CustomInstruction extends Instruction {
                 }
             }
 
-            if (results.length > 0) {
+            if (numPushedValues > 0) {
                 b.startAssign("Object result");
             } else {
                 b.startStatement();
@@ -209,9 +168,9 @@ public class CustomInstruction extends Instruction {
             b.trees(inputTrees);
             b.end(2);
 
-            b.startAssign(vars.sp).variable(vars.sp).string(" - " + additionalInputs + " - numVariadics + ", results.length > 0 ? "1" : "0").end();
+            b.startAssign(vars.sp).variable(vars.sp).string(" - " + additionalInputs + " - numVariadics + " + numPushedValues).end();
 
-            if (results.length > 0) {
+            if (numPushedValues > 0) {
                 b.startStatement().startCall(vars.frame, "setObject");
                 b.string("sp - 1");
                 b.string("result");
@@ -226,7 +185,7 @@ public class CustomInstruction extends Instruction {
             b.variable(vars.sp);
             b.end(2);
 
-            b.startAssign(vars.sp).variable(vars.sp).string(" - " + this.numPopStatic() + " + " + this.numPush()).end();
+            b.startAssign(vars.sp).variable(vars.sp).string(" - " + data.getMainProperties().numStackValues + " + " + numPushedValues).end();
         }
 
         return b.build();
@@ -247,60 +206,6 @@ public class CustomInstruction extends Instruction {
         }
     }
 
-    @Override
-    public int getAdditionalStateBytes() {
-        if (dataKinds == null) {
-            throw new UnsupportedOperationException("state bytes not yet initialized");
-        }
-
-        return dataKinds.length;
-    }
-
-    public void setDataKinds(DataKind[] dataKinds) {
-        this.dataKinds = dataKinds;
-    }
-
-    @Override
-    public String dumpInfo() {
-        StringBuilder sb = new StringBuilder(super.dumpInfo());
-
-        sb.append("  Additional Data:\n");
-        int ofs = -1;
-        for (DataKind kind : dataKinds) {
-            ofs += 1;
-            if (kind == DataKind.CONTINUATION) {
-                continue;
-            }
-            sb.append("    ").append(ofs).append(" ").append(kind).append("\n");
-        }
-
-        sb.append("  Specializations:\n");
-        for (SpecializationData sd : data.getNodeData().getSpecializations()) {
-            sb.append("    ").append(sd.getId()).append("\n");
-        }
-
-        sb.append("  Num children:  ").append(numChildNodes).append("\n");
-        sb.append("  Num constants: ").append(numConsts).append("\n");
-
-        return sb.toString();
-    }
-
-    public void setNumChildNodes(int numChildNodes) {
-        this.numChildNodes = numChildNodes;
-    }
-
-    public void setNumConsts(List<Object> consts) {
-        this.numConsts = consts.size();
-        this.localRefIndices = new ArrayList<>();
-        int i = 0;
-        for (Object c : consts) {
-            if (c instanceof LocalRefHandle) {
-                localRefIndices.add(i);
-            }
-            i++;
-        }
-    }
-
     public void setPrepareAOTMethod(CodeExecutableElement prepareAOTMethod) {
         this.prepareAOTMethod = prepareAOTMethod;
     }
@@ -309,19 +214,19 @@ public class CustomInstruction extends Instruction {
         this.getSpecializationBits = getSpecializationBits;
     }
 
-    public void setBoxingEliminationData(int boxingEliminationBitOffset, int boxingEliminationBitMask) {
+    public void setBoxingEliminationData(CodeTree boxingEliminationBitOffset, int boxingEliminationBitMask) {
         this.boxingEliminationBitOffset = boxingEliminationBitOffset;
         this.boxingEliminationBitMask = boxingEliminationBitMask;
     }
 
     @Override
     public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.SET_BIT;
+        return numPushedValues > 0 ? BoxingEliminationBehaviour.SET_BIT : BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override
-    public int boxingEliminationBitOffset() {
-        return boxingEliminationBitOffset;
+    public CodeTree boxingEliminationBitOffset() {
+        return boxingEliminationBitOffset == null ? CodeTreeBuilder.singleString("0") : boxingEliminationBitOffset;
     }
 
     @Override
@@ -343,22 +248,7 @@ public class CustomInstruction extends Instruction {
             return null;
         }
 
-        return CodeTreeBuilder.createBuilder().startStatement()//
-                        .startCall("this", prepareAOTMethod) //
-                        .string("null") // frame
-                        .variable(vars.bci) //
-                        .string("-1") // stack pointer
-                        .tree(language) //
-                        .tree(root) //
-                        .end(2).build();
-    }
-
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        CodeTree[] result = new CodeTree[2];
-        result[0] = CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_CUSTOM");
-        result[1] = CodeTreeBuilder.createBuilder().startStaticCall(getSpecializationBits).variable(vars.bc).variable(vars.bci).end().build();
-        return result;
+        return CodeTreeBuilder.createBuilder().startStatement().startCall("this", prepareAOTMethod).string("null").variable(vars.bci).string("-1").tree(language).tree(root).end(2).build();
     }
 
     public void addQuickenedVariant(QuickenedInstruction quick) {
@@ -367,10 +257,5 @@ public class CustomInstruction extends Instruction {
 
     public List<QuickenedInstruction> getQuickenedVariants() {
         return quickenedVariants;
-    }
-
-    @Override
-    public int numLocalReferences() {
-        return data.getMainProperties().numLocalReferences;
     }
 }

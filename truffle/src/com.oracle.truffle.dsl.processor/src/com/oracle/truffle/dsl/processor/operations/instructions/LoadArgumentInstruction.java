@@ -51,14 +51,10 @@ public class LoadArgumentInstruction extends Instruction {
     private OperationsContext ctx;
 
     public LoadArgumentInstruction(OperationsContext ctx, int id, FrameKind kind) {
-        super("load.argument." + kind.getTypeName().toLowerCase(), id, ResultType.STACK_VALUE, InputType.ARGUMENT);
+        super("load.argument." + kind.getTypeName().toLowerCase(), id, 1);
         this.ctx = ctx;
         this.kind = kind;
-    }
-
-    @Override
-    public boolean standardPrologue() {
-        return false;
+        addArgument("argument");
     }
 
     private CodeTree createGetValue(ExecutionVariables vars) {
@@ -66,8 +62,7 @@ public class LoadArgumentInstruction extends Instruction {
 
         b.startCall(vars.frame, "getArguments").end();
         b.string("[");
-        b.variable(vars.bc);
-        b.string("[").variable(vars.bci).string(" + " + getArgumentOffset(0)).string("]");
+        b.tree(createArgumentIndex(vars, 0));
         b.string("]");
 
         return b.build();
@@ -130,11 +125,4 @@ public class LoadArgumentInstruction extends Instruction {
         return null;
     }
 
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[]{
-                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_LOAD_ARGUMENT"),
-                        CodeTreeBuilder.singleString("bc[bci + " + getArgumentOffset(0) + "]")
-        };
-    }
 }

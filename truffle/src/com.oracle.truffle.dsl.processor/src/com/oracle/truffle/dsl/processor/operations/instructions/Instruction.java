@@ -41,17 +41,17 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
-import javax.lang.model.type.TypeKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
@@ -73,195 +73,14 @@ public abstract class Instruction {
         public CodeVariableElement tracer;
     }
 
-    public enum InputType {
-        STACK_VALUE(1),
-        STACK_VALUE_IGNORED(0),
-        VARARG_VALUE(1),
-        CONST_POOL(1),
-        LOCAL(1),
-        ARGUMENT(1),
-        INSTRUMENT(1),
-        BRANCH_PROFILE(1),
-        BRANCH_TARGET(1);
-
-        final int argumentLength;
-
-        InputType(int argumentLength) {
-            this.argumentLength = argumentLength;
-        }
-
-        public final TypeMirror getDefaultExecutionType(ProcessorContext context) {
-            switch (this) {
-                case STACK_VALUE_IGNORED:
-                    return null;
-                case STACK_VALUE:
-                case CONST_POOL:
-                case LOCAL:
-                case ARGUMENT:
-                    return context.getType(Object.class);
-                case VARARG_VALUE:
-                    return new ArrayCodeTypeMirror(context.getType(Object.class));
-                case BRANCH_PROFILE:
-                    return context.getDeclaredType("com.oracle.truffle.api.profiles.ConditionProfile");
-                case BRANCH_TARGET:
-                case INSTRUMENT:
-                    return context.getType(short.class);
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
-        boolean needsBuilderArgument() {
-            switch (this) {
-                case STACK_VALUE:
-                case STACK_VALUE_IGNORED:
-                case VARARG_VALUE:
-                case BRANCH_PROFILE:
-                    return false;
-                case CONST_POOL:
-                case LOCAL:
-                case ARGUMENT:
-                case BRANCH_TARGET:
-                case INSTRUMENT:
-                    return true;
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
-        public final TypeMirror getDefaultBuilderType(ProcessorContext context) {
-            switch (this) {
-                case STACK_VALUE:
-                case STACK_VALUE_IGNORED:
-                case VARARG_VALUE:
-                case INSTRUMENT:
-                case BRANCH_PROFILE:
-                    return null;
-                case CONST_POOL:
-                    return context.getType(Object.class);
-                case LOCAL:
-                    return context.getTypes().OperationLocal;
-                case ARGUMENT:
-                    return context.getType(int.class);
-                case BRANCH_TARGET:
-                    return context.getTypes().OperationLabel;
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
-        public final CodeTree getImplicitValue(BuilderVariables vars, Instruction instr) {
-            switch (this) {
-                case STACK_VALUE:
-                case STACK_VALUE_IGNORED:
-                case CONST_POOL:
-                case LOCAL:
-                case ARGUMENT:
-                case BRANCH_TARGET:
-                case INSTRUMENT:
-                    return null;
-                case BRANCH_PROFILE:
-                    return CodeTreeBuilder.singleString("ConditionProfile.createCountingProfile()");
-                case VARARG_VALUE:
-                    return CodeTreeBuilder.createBuilder().variable(vars.numChildren).string(" - " + instr.numStackValuesExclVarargs()).build();
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
-        public CodeTree createDumpCode(int n, Instruction op, ExecutionVariables vars) {
-            switch (this) {
-                case STACK_VALUE:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("pop[-%d]").startGroup().variable(vars.bc).string(
-                                    "[").variable(vars.bci).string(" + " + op.getArgumentOffset(n) + "]").end().end(3).build();
-                case STACK_VALUE_IGNORED:
-                    return CodeTreeBuilder.createBuilder().statement("sb.append(\"_\")").build();
-                case CONST_POOL:
-                    return CodeTreeBuilder.createBuilder().startBlock().declaration("Object", "o",
-                                    CodeTreeBuilder.createBuilder().variable(vars.consts).string("[").tree(op.createReadArgumentCode(n, vars)).string("]").build()).startStatement().startCall("sb",
-                                                    "append").startCall("String", "format").doubleQuote("%s %s").string("o.getClass().getSimpleName()").string("o").end(4).build();
-                case LOCAL:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("loc[%d]").tree(op.createReadArgumentCode(n, vars)).end(
-                                    3).build();
-                case ARGUMENT:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("arg[%d]").tree(op.createReadArgumentCode(n, vars)).end(
-                                    3).build();
-                case BRANCH_TARGET:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("%04x").tree(op.createReadArgumentCode(n, vars)).end(
-                                    3).build();
-                case INSTRUMENT:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("instrument[%d]").tree(
-                                    op.createReadArgumentCode(n, vars)).end(3).build();
-                case VARARG_VALUE:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("**%d").tree(op.createReadArgumentCode(n, vars)).end(
-                                    3).build();
-                case BRANCH_PROFILE:
-                    return null;
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
-        boolean isStackValue() {
-            return this == STACK_VALUE || this == STACK_VALUE_IGNORED;
-        }
-
-    }
-
-    public enum ResultType {
-        STACK_VALUE(0),
-        SET_LOCAL(1),
-        BRANCH(0),
-        RETURN(0);
-
-        final int argumentLength;
-
-        ResultType(int argumentLength) {
-            this.argumentLength = argumentLength;
-        }
-
-        boolean needsBuilderArgument() {
-            switch (this) {
-                case STACK_VALUE:
-                case BRANCH:
-                case RETURN:
-                    return false;
-                case SET_LOCAL:
-                    return true;
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
-        public final TypeMirror getDefaultBuilderType(ProcessorContext context) {
-            switch (this) {
-                case STACK_VALUE:
-                case BRANCH:
-                case RETURN:
-                    return null;
-                case SET_LOCAL:
-                    return context.getTypes().OperationLocal;
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
-        public CodeTree createDumpCode(int i, Instruction op, ExecutionVariables vars) {
-            switch (this) {
-                case STACK_VALUE:
-                    return CodeTreeBuilder.createBuilder().statement("sb.append(\"x\")").build();
-                case BRANCH:
-                    return CodeTreeBuilder.createBuilder().statement("sb.append(\"branch\")").build();
-                case RETURN:
-                    return CodeTreeBuilder.createBuilder().statement("sb.append(\"return\")").build();
-                case SET_LOCAL:
-                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format").doubleQuote("loc[%d]").tree(
-                                    op.createReadArgumentCode(i + op.inputs.length, vars)).end(3).build();
-                default:
-                    throw new IllegalArgumentException("Unexpected value: " + this);
-            }
-        }
-
+    public static class EmitArguments {
+        public CodeTree[] constants;
+        public CodeTree[] children;
+        public CodeTree[] locals;
+        public CodeTree[] localRuns;
+        public CodeTree[] branchTargets;
+        public CodeTree variadicCount;
+        public CodeTree[] arguments;
     }
 
     public enum BoxingEliminationBehaviour {
@@ -270,33 +89,256 @@ public abstract class Instruction {
         REPLACE
     }
 
+    private final ProcessorContext context = ProcessorContext.getInstance();
+    private final TruffleTypes types = context.getTypes();
+
     public final String name;
     public final int id;
-    public final InputType[] inputs;
-    public final ResultType[] results;
+    public final int numPushedValues;
 
-    @SuppressWarnings("unused")
-    public CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments) {
+    private final String internalName;
+
+    // --------------------- arguments ------------------------
+
+    private List<Object> constants = new ArrayList<>();
+    private List<TypeMirror> constantTypes = new ArrayList<>();
+    private List<Object> children = new ArrayList<>();
+    private List<Object> locals = new ArrayList<>();
+    private List<Object> localRuns = new ArrayList<>();
+    private List<Object> arguments = new ArrayList<>();
+    private List<Object> popIndexed = new ArrayList<>();
+    private List<Object> popSimple = new ArrayList<>();
+    private boolean isVariadic;
+    private List<Object> branchTargets = new ArrayList<>();
+    private List<Object> branchProfiles = new ArrayList<>();
+    private List<Object> stateBits = new ArrayList<>();
+    private List<Object> instruments = new ArrayList<>();
+
+    private static final String CONSTANT_OFFSET_SUFFIX = "_CONSTANT_OFFSET";
+    private static final String CHILDREN_OFFSET_SUFFIX = "_CHILDREN_OFFSET";
+    private static final String LOCALS_OFFSET_SUFFIX = "_LOCALS_OFFSET";
+    private static final String LOCAL_RUNS_OFFSET_SUFFIX = "_LOCAL_RUNS_OFFSET";
+    private static final String ARGUMENT_OFFSET_SUFFIX = "_ARGUMENT_OFFSET";
+    private static final String POP_INDEXED_OFFSET_SUFFIX = "_POP_INDEXED_OFFSET";
+    private static final String VARIADIC_OFFSET_SUFFIX = "_VARIADIC_OFFSET";
+    private static final String BRANCH_TARGET_OFFSET_SUFFIX = "_BRANCH_TARGET_OFFSET";
+    private static final String BRANCH_PROFILE_OFFSET_SUFFIX = "_BRANCH_PROFILE_OFFSET";
+    private static final String STATE_BITS_OFFSET_SUFFIX = "_STATE_BITS_OFFSET";
+    private static final String LENGTH_SUFFIX = "_LENGTH";
+
+    private static int addInstructionArgument(List<Object> holder, Object marker) {
+        int index = -1;
+
+        if (marker != null) {
+            index = holder.indexOf(marker);
+        }
+
+        if (index == -1) {
+            index = holder.size();
+            holder.add(marker);
+        }
+        return index;
+    }
+
+    public int addConstant(Object marker, TypeMirror type) {
+        int result = addInstructionArgument(constants, marker);
+        if (result == constantTypes.size()) {
+            constantTypes.add(type);
+        }
+
+        return result;
+    }
+
+    public int addChild(Object marker) {
+        return addInstructionArgument(children, marker);
+    }
+
+    public int addLocal(Object marker) {
+        return addInstructionArgument(locals, marker);
+    }
+
+    public int addLocalRun(Object marker) {
+        return addInstructionArgument(localRuns, marker);
+    }
+
+    public int addArgument(Object marker) {
+        return addInstructionArgument(arguments, marker);
+    }
+
+    public int addPopIndexed(Object marker) {
+        if (isVariadic) {
+            throw new AssertionError("variadic cannot have indexed pops in variadic");
+        }
+        if (!popSimple.isEmpty()) {
+            throw new AssertionError("cannot mix simple and indexed pops");
+        }
+        return addInstructionArgument(popIndexed, marker);
+    }
+
+    public int addPopSimple(Object marker) {
+        if (!popIndexed.isEmpty()) {
+            throw new AssertionError("cannot mix simple and indexed pops");
+        }
+        return addInstructionArgument(popSimple, marker);
+    }
+
+    public void setVariadic() {
+        if (!popIndexed.isEmpty()) {
+            throw new AssertionError("variadic cannot have indexed pops in variadic");
+        }
+
+        isVariadic = true;
+    }
+
+    public int addBranchTarget(Object marker) {
+        return addInstructionArgument(branchTargets, marker);
+    }
+
+    public int addBranchProfile(Object marker) {
+        return addInstructionArgument(branchProfiles, marker);
+    }
+
+    public int addStateBits(Object marker) {
+        return addInstructionArgument(stateBits, marker);
+    }
+
+    public int addInstrument(Object marker) {
+        return addInstructionArgument(instruments, marker);
+    }
+
+    private int getConstantsOffset() {
+        return opcodeLength();
+    }
+
+    private int getChildrenOffset() {
+        return getConstantsOffset() + (constants.isEmpty() ? 0 : 1);
+    }
+
+    private int getLocalsOffset() {
+        return getChildrenOffset() + (children.isEmpty() ? 0 : 1);
+    }
+
+    private int getLocalRunsOffset() {
+        return getLocalsOffset() + locals.size();
+    }
+
+    private int getArgumentsOffset() {
+        return getLocalRunsOffset() + localRuns.size() * 2;
+    }
+
+    private int getPopIndexedOffset() {
+        return getArgumentsOffset() + arguments.size();
+    }
+
+    private int getVariadicOffset() {
+        return getPopIndexedOffset(); // they are always same since we can never have both
+    }
+
+    private int getBranchTargetsOffset() {
+        if (isVariadic) {
+            return getVariadicOffset() + 1;
+        } else {
+            return getPopIndexedOffset() + ((popIndexed.size() + 1) / 2);
+        }
+    }
+
+    private int getBranchProfileOffset() {
+        return getBranchTargetsOffset() + branchTargets.size();
+    }
+
+    private int getStateBitsOffset() {
+        return getBranchProfileOffset() + (branchProfiles.isEmpty() ? 0 : 1);
+    }
+
+    public CodeTree createStateBitsOffset(int index) {
+        return CodeTreeBuilder.singleString(internalName + STATE_BITS_OFFSET_SUFFIX + " + " + index);
+    }
+
+    private int getInstrumentsOffset() {
+        return getStateBitsOffset() + stateBits.size();
+    }
+
+    private int length() {
+        return getInstrumentsOffset() + instruments.size();
+    }
+
+    private CodeTree createIndirectIndex(ExecutionVariables vars, String suffix, int index) {
+        return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + internalName + suffix + "] + " + index).build();
+    }
+
+    private CodeTree createDirectIndex(ExecutionVariables vars, String suffix, int index) {
+        return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + internalName + suffix + " + " + index + "]").build();
+    }
+
+    public CodeTree createConstantIndex(ExecutionVariables vars, int index) {
+        return createIndirectIndex(vars, CONSTANT_OFFSET_SUFFIX, index);
+    }
+
+    public CodeTree createChildIndex(ExecutionVariables vars, int index) {
+        return createIndirectIndex(vars, CHILDREN_OFFSET_SUFFIX, index);
+    }
+
+    public CodeTree createLocalIndex(ExecutionVariables vars, int index) {
+        return createDirectIndex(vars, LOCALS_OFFSET_SUFFIX, index);
+    }
+
+    public CodeTree createArgumentIndex(ExecutionVariables vars, int index) {
+        return createDirectIndex(vars, ARGUMENT_OFFSET_SUFFIX, index);
+    }
+
+    public CodeTree createPopIndexedIndex(ExecutionVariables vars, int index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        int result = 0;
-        int argIndex = 0;
 
-        for (InputType input : inputs) {
-            if (input == InputType.STACK_VALUE) {
-                result--;
-            } else if (input == InputType.VARARG_VALUE) {
-                b.string("-").startParantheses().tree(arguments[argIndex]).end().string(" + ");
-            }
-            argIndex++;
+        b.startParantheses();
+        if (index % 2 == 1) {
+            b.startParantheses();
         }
 
-        for (ResultType rt : results) {
-            if (rt == ResultType.STACK_VALUE) {
-                result++;
-            }
+        b.tree(createDirectIndex(vars, POP_INDEXED_OFFSET_SUFFIX, index / 2));
+
+        if (index % 2 == 1) {
+            b.string(" >> 8").end();
         }
 
-        return b.string("" + result).build();
+        b.string(" & 0xff").end();
+
+        return b.build();
+    }
+
+    public CodeTree createVariadicIndex(ExecutionVariables vars) {
+        return createDirectIndex(vars, VARIADIC_OFFSET_SUFFIX, 0);
+    }
+
+    public CodeTree createBranchTargetIndex(ExecutionVariables vars, int index) {
+        return createDirectIndex(vars, BRANCH_TARGET_OFFSET_SUFFIX, index);
+    }
+
+    public CodeTree createBranchProfileIndex(ExecutionVariables vars, int index) {
+        return createDirectIndex(vars, BRANCH_PROFILE_OFFSET_SUFFIX, index);
+    }
+
+    public CodeTree createStateBitsIndex(ExecutionVariables vars, int index) {
+        return createDirectIndex(vars, STATE_BITS_OFFSET_SUFFIX, index);
+    }
+
+    public CodeTree createLength() {
+        return CodeTreeBuilder.singleString(internalName + LENGTH_SUFFIX);
+    }
+
+    public int numLocals() {
+        return locals.size();
+    }
+
+    public int numLocalRuns() {
+        return localRuns.size();
+    }
+
+    public int numArguments() {
+        return arguments.size();
+    }
+
+    public int numBranchTargets() {
+        return branchTargets.size();
     }
 
     public CodeVariableElement opcodeIdField;
@@ -305,302 +347,176 @@ public abstract class Instruction {
         this.opcodeIdField = opcodeIdField;
     }
 
-    Instruction(String name, int id, ResultType result, InputType... inputs) {
+    Instruction(String name, int id, int numPushedValues) {
         this.name = name;
         this.id = id;
-        this.results = new ResultType[]{result};
-        this.inputs = inputs;
-    }
+        this.internalName = OperationGeneratorUtils.toScreamCase(name);
+        this.numPushedValues = numPushedValues;
 
-    Instruction(String name, int id, ResultType[] results, InputType... inputs) {
-        this.name = name;
-        this.id = id;
-        this.results = results;
-        this.inputs = inputs;
-    }
-
-    public int numStackValuesExclVarargs() {
-        int result = 0;
-        for (int i = 0; i < inputs.length; i++) {
-            if (inputs[i] == InputType.STACK_VALUE) {
-                result++;
-            }
-        }
-
-        return result;
-    }
-
-    public TypeMirror[] expectedInputTypes(ProcessorContext context) {
-        TypeMirror[] result = new TypeMirror[inputs.length];
-
-        for (int i = 0; i < inputs.length; i++) {
-            result[i] = inputs[i].getDefaultExecutionType(context);
-        }
-        return result;
-    }
-
-    public final CodeTree createReadArgumentCode(int n, ExecutionVariables vars) {
-        if (!isArgumentInBytecode(n)) {
-            return null;
-        }
-
-        return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("]").build();
-    }
-
-    public final CodeTree createWriteArgumentCode(int n, BuilderVariables vars, CodeTree val) {
-        if (!isArgumentInBytecode(n)) {
-            return null;
-        }
-
-        CodeTree value = val;
-
-        if (n < inputs.length && inputs[n] == InputType.BRANCH_TARGET) {
-            return CodeTreeBuilder.createBuilder().startStatement().startCall("createOffset").startGroup().variable(vars.bci).string(" + " + getArgumentOffset(n)).end().tree(value).end(2).build();
-        }
-
-        if (n < inputs.length && inputs[n] == InputType.STACK_VALUE) {
-            int svIndex = 0;
-            for (int i = 0; i < n; i++) {
-                if (inputs[i].isStackValue()) {
-                    svIndex++;
-                }
-            }
-
-            return CodeTreeBuilder.createBuilder().startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("] = ").string(
-                            "predecessorBcis[" + svIndex + "] < ").variable(vars.bci).string(" - 255").string(" ? 0").string(" : (byte)(").variable(vars.bci).string(
-                                            " - predecessorBcis[" + svIndex + "])").end().build();
-        }
-
-        if (n < inputs.length && inputs[n] == InputType.VARARG_VALUE) {
-            value = CodeTreeBuilder.createBuilder().startParantheses().variable(vars.numChildren).string(" - " + numStackValuesExclVarargs()).end().build();
-        }
-
-        if (n < inputs.length && inputs[n] == InputType.BRANCH_PROFILE) {
-            value = CodeTreeBuilder.singleString("createBranchProfile()");
-        }
-
-        if (n < inputs.length && inputs[n] == InputType.CONST_POOL) {
-            value = CodeTreeBuilder.createBuilder().startCall(vars.consts, "add").tree(value).end().build();
-        }
-
-        if ((n < inputs.length && inputs[n] == InputType.LOCAL) || (n >= inputs.length && results[n - inputs.length] == ResultType.SET_LOCAL)) {
-            value = CodeTreeBuilder.createBuilder().startCall("getLocalIndex").tree(value).end().build();
-        }
-
-        return CodeTreeBuilder.createBuilder().startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("] = ").cast(
-                        new CodeTypeMirror(TypeKind.SHORT)).cast(new CodeTypeMirror(TypeKind.INT)).tree(value).end().build();
+        this.opcodeIdField = new CodeVariableElement(Set.of(Modifier.STATIC, Modifier.FINAL), context.getType(int.class), "INSTR_" + internalName);
+        opcodeIdField.createInitBuilder().string("" + id);
     }
 
     public int opcodeLength() {
         return 1;
     }
 
-    public int getArgumentOffset(int index) {
-        int res = opcodeLength();
-        for (int i = 0; i < index; i++) {
-            if (i < inputs.length) {
-                res += inputs[i].argumentLength;
-            } else {
-                res += results[i - inputs.length].argumentLength;
-            }
-        }
-        return res;
-    }
-
-    public int getStackValueArgumentOffset(int index) {
-        int svIndex = 0;
-        for (int i = 0; i < inputs.length; i++) {
-            if (inputs[i].isStackValue()) {
-                if (svIndex == index) {
-                    return getArgumentOffset(i);
-                } else {
-                    svIndex++;
-                }
-            }
-        }
-
-        throw new AssertionError("should not reach here");
-    }
-
-    public boolean isArgumentInBytecode(int index) {
-        if (index < inputs.length) {
-            return inputs[index].argumentLength > 0;
-        } else {
-            return results[index - inputs.length].argumentLength > 0;
-        }
-    }
-
-    public boolean needsBuilderArgument(int index) {
-        if (index < inputs.length) {
-            return inputs[index].needsBuilderArgument();
-        } else {
-            return results[index - inputs.length].needsBuilderArgument();
-        }
-    }
-
-    public int lengthWithoutState() {
-        return getArgumentOffset(inputs.length + results.length);
-    }
-
-    public int length() {
-        return lengthWithoutState() + getAdditionalStateBytes();
-    }
-
-    public List<TypeMirror> getBuilderArgumentTypes() {
-        ProcessorContext context = ProcessorContext.getInstance();
-        List<TypeMirror> result = new ArrayList<>();
-
-        for (int i = 0; i < inputs.length; i++) {
-            TypeMirror m = inputs[i].getDefaultBuilderType(context);
-            if (m != null) {
-                result.add(m);
-            }
-        }
-        for (int i = 0; i < results.length; i++) {
-            TypeMirror m = results[i].getDefaultBuilderType(context);
-            if (m != null) {
-                result.add(m);
-            }
-        }
-
-        return result;
-    }
-
     @SuppressWarnings("unused")
-    protected CodeTree createCustomEmitCode(BuilderVariables vars, CodeTree[] arguments) {
+    protected CodeTree createCustomEmitCode(BuilderVariables vars, EmitArguments args) {
         return null;
     }
 
     @SuppressWarnings("unused")
-    protected CodeTree createCustomEmitCodeAfter(BuilderVariables vars, CodeTree[] arguments) {
+    protected CodeTree createCustomEmitCodeAfter(BuilderVariables vars, EmitArguments args) {
         return null;
     }
 
-    public final CodeTree createEmitCode(BuilderVariables vars, CodeTree[] arguments) {
+    public final CodeTree createEmitCode(BuilderVariables vars, EmitArguments args) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.tree(createCustomEmitCode(vars, arguments));
+        b.tree(createCustomEmitCode(vars, args));
 
-        // calculate stack offset
-        int numPush = numPush();
-        CodeTree numPop = numPop(vars);
+        CodeTree numPop;
 
-        assert numPush == 1 || numPush == 0;
+        if (isVariadic) {
+            numPop = CodeTreeBuilder.createBuilder().tree(args.variadicCount).string(" + " + popSimple.size()).build();
+        } else {
+            numPop = CodeTreeBuilder.singleString(popSimple.size() + popIndexed.size() + "");
+        }
 
-        b.startAssign("int[] predecessorBcis");
+        if (popIndexed.size() > 0) {
+            b.startAssign("int[] predecessorBcis");
+        } else {
+            b.startStatement();
+        }
+
         b.startCall("doBeforeEmitInstruction");
         b.tree(numPop);
-        b.string(numPush == 0 ? "false" : "true");
+        b.string(numPushedValues == 0 ? "false" : "true");
         b.end(2);
 
         // emit opcode
         b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, opcodeIdField));
 
-        // emit arguments
-        int argIndex = 0;
-        for (int i = 0; i < inputs.length + results.length; i++) {
-            CodeTree argument = needsBuilderArgument(i) ? arguments[argIndex++] : null;
-            b.tree(createWriteArgumentCode(i, vars, argument));
+        if (!constants.isEmpty()) {
+            b.startAssign("int constantsStart");
+            b.startCall(vars.consts, "reserve").string("" + constants.size()).end();
+            b.end();
+
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getConstantsOffset() + "] = (short) constantsStart").end();
+
+            if (args.constants != null) {
+                for (int i = 0; i < args.constants.length; i++) {
+                    if (args.constants[i] != null) {
+                        b.startStatement().startCall(vars.consts, "setValue");
+                        b.string("constantsStart + " + i);
+                        b.tree(args.constants[i]);
+                        b.end(2);
+                    }
+                }
+            }
         }
 
-        // emit state bytes
+        if (!children.isEmpty()) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getChildrenOffset() + "] = (short) ");
+            b.startCall("createChildNodes").string("" + children.size()).end();
+            b.end();
+        }
 
-        b.tree(createInitializeAdditionalStateBytes(vars, arguments));
+        for (int i = 0; i < locals.size(); i++) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalsOffset() + " + " + i + "] = (short) ");
+            b.startCall("getLocalIndex").tree(args.locals[i]).end();
+            b.end();
+        }
+
+        for (int i = 0; i < localRuns.size(); i++) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalRunsOffset() + " + " + (i * 2) + "] = (short) ");
+            b.startCall("getLocalRunStart").tree(args.localRuns[i]).end();
+            b.end();
+
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalRunsOffset() + " + " + (i * 2 + 1) + "] = (short) ");
+            b.startCall("getLocalRunLength").tree(args.localRuns[i]).end();
+            b.end();
+        }
+
+        if (isVariadic) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getVariadicOffset() + "] = (short) ");
+            b.startParantheses().tree(args.variadicCount).end();
+            b.end();
+        } else {
+            for (int i = 0; i < popIndexed.size(); i++) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getPopIndexedOffset() + " + " + (i / 2) + "] ");
+                if (i % 2 == 1) {
+                    b.string("|");
+                }
+                b.string("= (short) ((").variable(vars.bci).string(" - predecessorBcis[" + i + "] < 256 ? ").variable(vars.bci).string(" - predecessorBcis[" + i + "] : 0)");
+                if (i % 2 == 1) {
+                    b.string(" << 8");
+                }
+                b.string(")").end();
+            }
+        }
+
+        for (int i = 0; i < branchTargets.size(); i++) {
+            b.startStatement().startCall("putBranchTarget");
+            b.variable(vars.bc);
+            b.startGroup().variable(vars.bci).string(" + " + getBranchTargetsOffset() + " + " + i).end();
+            b.tree(args.branchTargets[i]);
+            b.end(2);
+        }
+
+        // todo: condition profiles
+
+        for (int i = 0; i < stateBits.size(); i++) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getStateBitsOffset() + " + " + i + "] = 0").end();
+        }
+
+        for (int i = 0; i < arguments.size(); i++) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentsOffset() + " + " + i + "] = (short) (int) ");
+            b.tree(args.arguments[i]);
+            b.end();
+        }
+
+        // todo: instruments
 
         b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
 
-        b.tree(createCustomEmitCodeAfter(vars, arguments));
+        b.tree(createCustomEmitCodeAfter(vars, args));
 
         return b.build();
     }
 
-    public int numPush() {
-        int stackPush = 0;
-        for (ResultType r : results) {
-            if (r == ResultType.STACK_VALUE) {
-                stackPush++;
-            }
-        }
-        return stackPush;
-    }
-
-    public boolean isVariadic() {
-        for (InputType i : inputs) {
-            if (i == InputType.VARARG_VALUE) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public int numPopStatic() {
-        int stackPop = 0;
-        for (InputType i : inputs) {
-            if (i == InputType.STACK_VALUE || i == InputType.STACK_VALUE_IGNORED) {
-                stackPop++;
-            } else if (i == InputType.VARARG_VALUE) {
-                throw new UnsupportedOperationException("number of pops not static");
-            }
-        }
-        return stackPop;
-    }
-
-    public CodeTree numPop(BuilderVariables vars) {
-        int stackPop = 0;
-        for (InputType i : inputs) {
-            if (i == InputType.STACK_VALUE || i == InputType.STACK_VALUE_IGNORED) {
-                stackPop++;
-            } else if (i == InputType.VARARG_VALUE) {
-                return CodeTreeBuilder.singleVariable(vars.numChildren);
-            }
-        }
-        return CodeTreeBuilder.singleString("" + stackPop);
-    }
-
     public abstract CodeTree createExecuteCode(ExecutionVariables vars);
 
-    public boolean isInstrumentationOnly() {
-        return false;
-    }
-
-    // state
-
-    public int getAdditionalStateBytes() {
-        return 0;
-    }
-
-    @SuppressWarnings("unused")
-    protected CodeTree createInitializeAdditionalStateBytes(BuilderVariables vars, CodeTree[] arguments) {
-        return null;
+    private static void printList(StringBuilder sb, List<Object> holder, String name) {
+        if (!holder.isEmpty()) {
+            sb.append("  ").append(name).append(":\n");
+            int index = 0;
+            for (Object marker : holder) {
+                sb.append(String.format("    [%2d] %s\n", index++, marker == null ? "<unnamed>" : marker));
+            }
+        }
     }
 
     public String dumpInfo() {
         StringBuilder sb = new StringBuilder();
         sb.append(name).append("\n");
 
-        sb.append("  Inputs:\n");
-        for (InputType type : inputs) {
-            sb.append("    ").append(type).append("\n");
+        printList(sb, constants, "Constants");
+        printList(sb, children, "Children");
+        printList(sb, locals, "Locals");
+        printList(sb, localRuns, "Local Runs");
+        printList(sb, popIndexed, "Indexed Pops");
+        printList(sb, popSimple, "Simple Pops");
+        if (isVariadic) {
+            sb.append("  Variadic\n");
         }
-        sb.append("  Results:\n");
-        for (ResultType type : results) {
-            sb.append("    ").append(type).append("\n");
-        }
+        sb.append("  Pushed Values: ").append(numPushedValues).append("\n");
+        printList(sb, branchTargets, "Branch Targets");
+        printList(sb, branchProfiles, "Branch Profiles");
+        printList(sb, stateBits, "State Bitsets");
 
         return sb.toString();
-    }
-
-    public boolean standardPrologue() {
-        return true;
-    }
-
-    public boolean isBranchInstruction() {
-        return Arrays.stream(results).anyMatch(x -> x == ResultType.BRANCH);
-    }
-
-    public boolean isReturnInstruction() {
-        return Arrays.stream(results).anyMatch(x -> x == ResultType.RETURN);
     }
 
     public abstract BoxingEliminationBehaviour boxingEliminationBehaviour();
@@ -610,7 +526,7 @@ public abstract class Instruction {
         throw new AssertionError();
     }
 
-    public int boxingEliminationBitOffset() {
+    public CodeTree boxingEliminationBitOffset() {
         throw new AssertionError();
     }
 
@@ -620,25 +536,154 @@ public abstract class Instruction {
 
     public abstract CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root);
 
-    public CodeTree getPredecessorOffset(ExecutionVariables vars, int index) {
-        int curIndex = index;
-        for (int i = 0; i < inputs.length; i++) {
-            if (inputs[i] == InputType.STACK_VALUE || inputs[i] == InputType.STACK_VALUE_IGNORED) {
-                if (curIndex-- == 0) {
-                    return CodeTreeBuilder.createBuilder().startParantheses().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(i)).string("] & 0xff").end().build();
-                }
+    public boolean isBranchInstruction() {
+        return false;
+    }
+
+    public boolean isInstrumentationOnly() {
+        return false;
+    }
+
+    public List<TypeMirror> getBuilderArgumentTypes() {
+        ArrayList<TypeMirror> result = new ArrayList<>();
+
+        for (TypeMirror mir : constantTypes) {
+            if (mir != null) {
+                result.add(mir);
             }
         }
 
-        throw new AssertionError("should not reach here");
-    }
+        for (int i = 0; i < locals.size(); i++) {
+            result.add(types.OperationLocal);
+        }
 
-    @SuppressWarnings("unused")
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[0];
+        for (int i = 0; i < localRuns.size(); i++) {
+            result.add(new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal));
+        }
+
+        for (int i = 0; i < arguments.size(); i++) {
+            result.add(context.getType(int.class));
+        }
+
+        for (int i = 0; i < branchTargets.size(); i++) {
+            result.add(types.OperationLabel);
+        }
+
+        return result;
     }
 
     public int numLocalReferences() {
         return 0;
+    }
+
+    public int numPopStatic() {
+        return popIndexed.size() + popSimple.size();
+    }
+
+    private static void sbAppend(CodeTreeBuilder b, String format, Runnable r) {
+        b.startStatement().startCall("sb", "append");
+        b.startCall("String", "format");
+        b.doubleQuote(format);
+        r.run();
+        b.end(3);
+    }
+
+    public CodeTree createDumpCode(ExecutionVariables vars) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        for (int i = 0; i < length(); i++) {
+            int ic = i;
+            sbAppend(b, " %04x", () -> b.startGroup().variable(vars.bc).string("[").variable(vars.bci).string(" + " + ic + "]").end());
+        }
+
+        for (int i = length(); i < 8; i++) {
+            b.startStatement().startCall("sb", "append").doubleQuote("     ").end(2);
+        }
+
+        b.startStatement().startCall("sb", "append").doubleQuote(name + " ".repeat(name.length() < 30 ? 30 - name.length() : 0)).end(2);
+
+        for (int i = 0; i < constants.size(); i++) {
+            int ci = i;
+            sbAppend(b, " const(%s)", () -> b.startGroup().variable(vars.consts).string("[").tree(createConstantIndex(vars, ci)).string("]").end());
+        }
+
+        for (int i = 0; i < locals.size(); i++) {
+            int ci = i;
+            sbAppend(b, " local(%s)", () -> b.startGroup().tree(createLocalIndex(vars, ci)).end());
+        }
+
+        for (int i = 0; i < arguments.size(); i++) {
+            int ci = i;
+            sbAppend(b, " arg(%s)", () -> b.startGroup().tree(createArgumentIndex(vars, ci)).end());
+        }
+
+        for (int i = 0; i < popIndexed.size(); i++) {
+            int ci = i;
+            sbAppend(b, " pop(-%s)", () -> b.startGroup().tree(createPopIndexedIndex(vars, ci)).end());
+        }
+
+        if (isVariadic) {
+            sbAppend(b, " var(%s)", () -> b.startGroup().tree(createVariadicIndex(vars)).end());
+        }
+
+        for (int i = 0; i < branchTargets.size(); i++) {
+            int ci = i;
+            sbAppend(b, " branch(%04x)", () -> b.startGroup().tree(createBranchTargetIndex(vars, ci)).end());
+        }
+
+        return b.build();
+
+    }
+
+    private CodeVariableElement createConstant(String constantName, int value) {
+        CodeVariableElement result = new CodeVariableElement(
+                        Set.of(Modifier.STATIC, Modifier.FINAL),
+                        context.getType(int.class),
+                        constantName);
+        result.createInitBuilder().string("" + value);
+
+        return result;
+    }
+
+    public List<CodeVariableElement> createInstructionFields() {
+        List<CodeVariableElement> result = new ArrayList<>();
+        result.add(opcodeIdField);
+        if (!constants.isEmpty()) {
+            result.add(createConstant(internalName + CONSTANT_OFFSET_SUFFIX, getConstantsOffset()));
+        }
+        if (!children.isEmpty()) {
+            result.add(createConstant(internalName + CHILDREN_OFFSET_SUFFIX, getChildrenOffset()));
+        }
+        if (!localRuns.isEmpty()) {
+            result.add(createConstant(internalName + LOCAL_RUNS_OFFSET_SUFFIX, getLocalRunsOffset()));
+        }
+        if (!arguments.isEmpty()) {
+            result.add(createConstant(internalName + ARGUMENT_OFFSET_SUFFIX, getArgumentsOffset()));
+        }
+        if (!locals.isEmpty()) {
+            result.add(createConstant(internalName + LOCALS_OFFSET_SUFFIX, getLocalsOffset()));
+        }
+        if (!popIndexed.isEmpty()) {
+            result.add(createConstant(internalName + POP_INDEXED_OFFSET_SUFFIX, getPopIndexedOffset()));
+        }
+        if (isVariadic) {
+            result.add(createConstant(internalName + VARIADIC_OFFSET_SUFFIX, getVariadicOffset()));
+        }
+        if (!branchTargets.isEmpty()) {
+            result.add(createConstant(internalName + BRANCH_TARGET_OFFSET_SUFFIX, getBranchTargetsOffset()));
+        }
+        if (!branchProfiles.isEmpty()) {
+            result.add(createConstant(internalName + BRANCH_PROFILE_OFFSET_SUFFIX, getBranchProfileOffset()));
+        }
+        if (!stateBits.isEmpty()) {
+            result.add(createConstant(internalName + STATE_BITS_OFFSET_SUFFIX, getStateBitsOffset()));
+        }
+        result.add(createConstant(internalName + LENGTH_SUFFIX, length()));
+
+        return result;
+    }
+
+    public boolean isVariadic() {
+        return isVariadic;
     }
 }

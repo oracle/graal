@@ -46,12 +46,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
 public class ThrowInstruction extends Instruction {
     public ThrowInstruction(int id) {
-        super("throw", id, new ResultType[0], InputType.LOCAL);
-    }
-
-    @Override
-    public boolean standardPrologue() {
-        return false;
+        super("throw", id, 0);
+        addLocal("exception");
     }
 
     @Override
@@ -62,10 +58,7 @@ public class ThrowInstruction extends Instruction {
         // we can convert this to a jump to a statically determined handler
         // or a throw out of a function
 
-        b.startAssign("int slot");
-        b.variable(vars.bc);
-        b.string("[").variable(vars.bci).string(" + " + getArgumentOffset(0)).string("]");
-        b.end();
+        b.startAssign("int slot").tree(createLocalIndex(vars, 0)).end();
 
         b.startThrow();
         b.cast(ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"));

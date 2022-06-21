@@ -59,6 +59,7 @@ import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.EmitArguments;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 
 public class OperationGeneratorUtils {
@@ -68,20 +69,27 @@ public class OperationGeneratorUtils {
     }
 
     public static String toScreamCase(String s) {
-        return s.replaceAll("([a-z])([A-Z])", "$1_$2").replace('.', '_').toUpperCase();
+        return s.replaceAll("([a-z]|[A-Z]+)([A-Z])", "$1_$2").replace('.', '_').toUpperCase();
     }
 
-    public static CodeTree createEmitInstruction(BuilderVariables vars, Instruction instr, CodeVariableElement... arguments) {
-        CodeTree[] trees = new CodeTree[arguments.length];
-        for (int i = 0; i < trees.length; i++) {
-            trees[i] = CodeTreeBuilder.singleVariable(arguments[i]);
-        }
-
-        return createEmitInstruction(vars, instr, trees);
-    }
-
-    public static CodeTree createEmitInstruction(BuilderVariables vars, Instruction instr, CodeTree... arguments) {
+    public static CodeTree createEmitInstruction(BuilderVariables vars, Instruction instr, EmitArguments arguments) {
         return instr.createEmitCode(vars, arguments);
+    }
+
+    public static CodeTree createEmitBranchInstruction(BuilderVariables vars, Instruction instr, CodeVariableElement arguments) {
+        return createEmitBranchInstruction(vars, instr, CodeTreeBuilder.singleVariable(arguments));
+    }
+
+    public static CodeTree createEmitBranchInstruction(BuilderVariables vars, Instruction instr, CodeTree arguments) {
+        EmitArguments args = new EmitArguments();
+        args.branchTargets = new CodeTree[]{arguments};
+        return createEmitInstruction(vars, instr, args);
+    }
+
+    public static CodeTree createEmitLocalInstruction(BuilderVariables vars, Instruction instr, CodeTree arguments) {
+        EmitArguments args = new EmitArguments();
+        args.locals = new CodeTree[]{arguments};
+        return createEmitInstruction(vars, instr, args);
     }
 
     public static CodeTree createCreateLabel() {
@@ -212,17 +220,17 @@ public class OperationGeneratorUtils {
         return b.build();
     }
 
-    public static CodeTree callSetResultBoxed(String bciOffset, FrameKind kind) {
+    public static CodeTree callSetResultBoxed(CodeTree bciOffset, FrameKind kind) {
         return callSetResultBoxed(bciOffset, toFrameTypeConstant(kind));
     }
 
-    public static CodeTree callSetResultBoxed(String bciOffset, CodeTree kind) {
+    public static CodeTree callSetResultBoxed(CodeTree bciOffset, CodeTree kind) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startStatement().startCall("doSetResultBoxed");
         b.string("bc");
         b.string("$bci");
-        b.string(bciOffset);
+        b.tree(bciOffset);
         b.tree(kind);
         b.end(2);
 

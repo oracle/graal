@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import javax.lang.model.type.DeclaredType;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -56,23 +55,15 @@ public class BranchInstruction extends Instruction {
     private static final DeclaredType BYTECODE_OSR_NODE = context.getDeclaredType("com.oracle.truffle.api.nodes.BytecodeOSRNode");
 
     public BranchInstruction(int id) {
-        super("branch", id, ResultType.BRANCH, InputType.BRANCH_TARGET);
-    }
-
-    @Override
-    public boolean standardPrologue() {
-        return false;
-    }
-
-    private CodeTree createGetBranchTarget(ExecutionVariables vars) {
-        return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentOffset(0)).string("]").build();
+        super("branch", id, 0);
+        addBranchTarget("target");
     }
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.declaration("int", "targetBci", createGetBranchTarget(vars));
+        b.declaration("int", "targetBci", createBranchTargetIndex(vars, 0));
 
         b.startIf().string("targetBci <= ").variable(vars.bci).end().startBlock();
         // {
@@ -114,13 +105,12 @@ public class BranchInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createCustomEmitCode(BuilderVariables vars, CodeTree[] arguments) {
+    public CodeTree createCustomEmitCode(BuilderVariables vars, EmitArguments arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
         b.startStatement().startCall("calculateLeaves");
         b.variable(vars.operationData);
-        b.startGroup().cast(types.BuilderOperationLabel).tree(arguments[0]).end();
+        b.tree(arguments.branchTargets[0]);
         b.end(2);
 
         return b.build();
@@ -139,13 +129,5 @@ public class BranchInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
-    }
-
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[]{
-                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_BRANCH"),
-                        createGetBranchTarget(vars)
-        };
     }
 }

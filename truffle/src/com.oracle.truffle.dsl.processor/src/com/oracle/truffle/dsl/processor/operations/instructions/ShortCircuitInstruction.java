@@ -47,7 +47,8 @@ import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 public class ShortCircuitInstruction extends CustomInstruction {
 
     public ShortCircuitInstruction(String name, int id, SingleOperationData data) {
-        super(name, id, data, new ResultType[]{ResultType.BRANCH}, new InputType[]{InputType.STACK_VALUE, InputType.BRANCH_TARGET});
+        super(name, id, data, 0);
+        addBranchTarget("end");
     }
 
     @Override
@@ -73,18 +74,23 @@ public class ShortCircuitInstruction extends CustomInstruction {
         b.end(2).startBlock();
         // {
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
-        b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
+        b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
         b.statement("continue loop");
         // }
         b.end().startElseBlock();
         // {
-        b.startAssign(vars.bci).tree(createReadArgumentCode(1, vars)).end();
+        b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0)).end();
 
         b.statement("continue loop");
         // }
         b.end();
 
         return b.build();
+    }
+
+    @Override
+    public boolean isBranchInstruction() {
+        return true;
     }
 
 }

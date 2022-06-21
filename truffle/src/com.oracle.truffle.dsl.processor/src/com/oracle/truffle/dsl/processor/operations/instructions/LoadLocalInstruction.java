@@ -58,14 +58,10 @@ public class LoadLocalInstruction extends Instruction {
     private static final boolean LOG_LOCAL_LOADS = false;
 
     public LoadLocalInstruction(OperationsContext ctx, int id, FrameKind kind) {
-        super("load.local." + (kind == null ? "uninit" : kind.getTypeName().toLowerCase()), id, ResultType.STACK_VALUE, InputType.LOCAL);
+        super("load.local." + (kind == null ? "uninit" : kind.getTypeName().toLowerCase()), id, 1);
         this.ctx = ctx;
         this.kind = kind;
-    }
-
-    @Override
-    public boolean standardPrologue() {
-        return false;
+        addLocal("local");
     }
 
     @Override
@@ -73,9 +69,7 @@ public class LoadLocalInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startAssign("int localIdx");
-        b.variable(vars.bc);
-        b.string("[").variable(vars.bci).string(" + " + getArgumentOffset(0)).string("]");
-        b.string(" + VALUES_OFFSET");
+        b.tree(createLocalIndex(vars, 0));
         b.end();
 
         if (kind == null) {
@@ -222,11 +216,4 @@ public class LoadLocalInstruction extends Instruction {
         return null;
     }
 
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[]{
-                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_LOAD_LOCAL"),
-                        CodeTreeBuilder.singleString("bc[bci + " + getArgumentOffset(0) + "]")
-        };
-    }
 }

@@ -51,7 +51,6 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -262,10 +261,10 @@ public abstract class OperationBuilder {
         return local;
     }
 
-    protected int getLocalIndex(Object value) {
+    protected short getLocalIndex(Object value) {
         BuilderOperationLocal local = (BuilderOperationLocal) value;
         assert verifyNesting(local.owner, operationData) : "local access not nested properly";
-        return local.id;
+        return (short) local.id;
     }
 
     protected int[] getLocalIndices(Object[] value) {
@@ -276,6 +275,17 @@ public abstract class OperationBuilder {
             result[i] = local.id;
         }
         return result;
+    }
+
+    protected short getLocalRunStart(Object arg) {
+        // todo: validate local run
+        OperationLocal[] arr = (OperationLocal[]) arg;
+        return (short) ((BuilderOperationLocal) arr[0]).id;
+    }
+
+    protected short getLocalRunLength(Object arg) {
+        OperationLocal[] arr = (OperationLocal[]) arg;
+        return (short) arr.length;
     }
 
     private static boolean verifyNesting(BuilderOperationData parent, BuilderOperationData child) {
@@ -324,7 +334,8 @@ public abstract class OperationBuilder {
     private ArrayList<BuilderLabelFill> labelFills = new ArrayList<>();
     private ArrayList<BuilderOperationLabel> labels = new ArrayList<>();
 
-    protected final void createOffset(int locationBci, Object label) {
+    @SuppressWarnings("unused")
+    protected final void putBranchTarget(short[] unusedBc, int locationBci, Object label) {
         BuilderLabelFill fill = new BuilderLabelFill(locationBci, (BuilderOperationLabel) label);
         labelFills.add(fill);
     }
@@ -360,8 +371,8 @@ public abstract class OperationBuilder {
         calculateLeaves(fromData, (BuilderOperationData) null);
     }
 
-    protected final void calculateLeaves(BuilderOperationData fromData, BuilderOperationLabel toLabel) {
-        calculateLeaves(fromData, toLabel.data);
+    protected final void calculateLeaves(BuilderOperationData fromData, Object toLabel) {
+        calculateLeaves(fromData, ((BuilderOperationLabel) toLabel).data);
     }
 
     protected final void calculateLeaves(BuilderOperationData fromData, BuilderOperationData toData) {
@@ -392,7 +403,7 @@ public abstract class OperationBuilder {
 
     @SuppressWarnings("unused")
     protected final int doBranchInstruction(int instr, OperationLabel label) {
-        createOffset(bci, label);
+        putBranchTarget(bc, bci, label);
         return 2;
     }
 

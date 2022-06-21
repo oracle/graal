@@ -44,13 +44,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
 public class DiscardInstruction extends Instruction {
-    public DiscardInstruction(String name, int id, InputType input) {
-        super(name, id, new ResultType[0], input);
-    }
-
-    @Override
-    public boolean standardPrologue() {
-        return false;
+    public DiscardInstruction(String name, int id) {
+        super(name, id, 0);
+        addPopSimple("value");
     }
 
     @Override
@@ -76,10 +72,4 @@ public class DiscardInstruction extends Instruction {
         return null;
     }
 
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[]{
-                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_OTHER")
-        };
-    }
 }

@@ -80,9 +80,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-@GenerateOperations(//
-                decisionsFile = "decisions.json", //
-                boxingEliminationTypes = {long.class, boolean.class})
+@GenerateOperations(decisionsFile = "decisions.json", boxingEliminationTypes = {long.class, boolean.class})
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
 @OperationProxy(SLDivNode.class)

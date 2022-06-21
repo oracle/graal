@@ -1,3 +1,43 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
@@ -35,23 +75,19 @@ import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final CodeVariableElement fldBc;
     private final CodeVariableElement fldChildren;
-    private final List<Object> constIndices;
     private final Set<String> innerTypeNames;
-    private final List<Object> additionalData;
     private final Set<String> methodNames;
     private final boolean isVariadic;
-    private final List<DataKind> additionalDataKinds;
     private final CodeVariableElement fldConsts;
     private final CustomInstruction cinstr;
-    private final List<Object> childIndices;
     private final StaticConstants staticConstants;
 
     private final ProcessorContext context;
@@ -65,30 +101,33 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private OperationsData m;
     private final SingleOperationData data;
 
-    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
-                    Set<String> innerTypeNames, List<Object> additionalData,
-                    Set<String> methodNames, boolean isVariadic, List<DataKind> additionalDataKinds, CodeVariableElement fldConsts, CustomInstruction cinstr,
-                    List<Object> childIndices, StaticConstants staticConstants) {
+    private final ExecutionVariables dummyVariables = new ExecutionVariables();
+
+    {
+        context = ProcessorContext.getInstance();
+        types = context.getTypes();
+        dummyVariables.bc = new CodeVariableElement(context.getType(short[].class), "bc");
+        dummyVariables.bci = new CodeVariableElement(context.getType(int.class), "$bci");
+        dummyVariables.frame = new CodeVariableElement(types.Frame, "$frame");
+    }
+
+    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, CodeVariableElement fldBc, CodeVariableElement fldChildren,
+                    Set<String> innerTypeNames,
+                    Set<String> methodNames, boolean isVariadic, CodeVariableElement fldConsts, CustomInstruction cinstr,
+                    StaticConstants staticConstants) {
         this.m = m;
         this.fldBc = fldBc;
         this.fldChildren = fldChildren;
-        this.constIndices = constIndices;
         this.innerTypeNames = innerTypeNames;
-        this.additionalData = additionalData;
         this.methodNames = methodNames;
         this.isVariadic = isVariadic;
-        this.additionalDataKinds = additionalDataKinds;
         this.fldConsts = fldConsts;
         this.cinstr = cinstr;
-        this.childIndices = childIndices;
         this.staticConstants = staticConstants;
-
-        this.context = ProcessorContext.getInstance();
-        this.types = context.getTypes();
 
         this.data = cinstr.getData();
 
-        if (cinstr.numPush() == 0 || data.isShortCircuit()) {
+        if (cinstr.numPushedValues == 0 || data.isShortCircuit()) {
             resultUnboxedState = null;
         } else {
             resultUnboxedState = new Object() {
@@ -112,9 +151,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void setStateObjects(List<Object> stateObjects) {
-        this.specializationStates = stateObjects.stream() //
-                        .filter(x -> x instanceof SpecializationData) //
-                        .collect(Collectors.toUnmodifiableList());
+        this.specializationStates = stateObjects.stream().filter(x -> x instanceof SpecializationData).collect(Collectors.toUnmodifiableList());
     }
 
     @Override
@@ -177,23 +214,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return new CodeTypeMirror(TypeKind.SHORT);
     }
 
-    private int bitSetOffset(BitSet bits) {
-        int index = additionalData.indexOf(bits);
-        if (index == -1) {
-            index = additionalData.size();
-            additionalData.add(bits);
-
-            additionalDataKinds.add(DataKind.BITS);
-        }
-
-        return index;
-    }
-
     @Override
     public CodeTree createBitSetReference(BitSet bits) {
-        int index = bitSetOffset(bits);
-
-        return CodeTreeBuilder.createBuilder().variable(fldBc).string("[$bci + " + cinstr.lengthWithoutState() + " + " + index + "]").build();
+        return cinstr.createStateBitsIndex(dummyVariables, cinstr.addStateBits(bits));
     }
 
     @Override
@@ -209,22 +232,13 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             throw new IllegalArgumentException("refObject is null");
         }
 
-        List<Object> refList = isChild ? childIndices : constIndices;
-        int index = refList.indexOf(refObject);
-        int baseIndex = additionalData.indexOf(isChild ? OperationsBytecodeCodeGenerator.MARKER_CHILD : OperationsBytecodeCodeGenerator.MARKER_CONST);
-
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (index == -1) {
-            if (baseIndex == -1) {
-                baseIndex = additionalData.size();
-                additionalData.add(isChild ? OperationsBytecodeCodeGenerator.MARKER_CHILD : OperationsBytecodeCodeGenerator.MARKER_CONST);
-
-                additionalDataKinds.add(isChild ? DataKind.CHILD : DataKind.CONST);
-            }
-
-            index = refList.size();
-            refList.add(refObject);
+        int index;
+        if (isChild) {
+            index = cinstr.addChild(refObject);
+        } else {
+            index = cinstr.addConstant(refObject, null);
         }
 
         String offsetName = isChild ? CHILD_OFFSET_NAME : CONST_OFFSET_NAME;
@@ -244,15 +258,21 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         b.variable(targetField).string("[");
 
         if (frame == null || !frame.getBoolean("definedOffsets", false)) {
-            b.variable(fldBc);
-            b.string("[$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex + "]");
+            if (isChild) {
+                b.tree(cinstr.createChildIndex(dummyVariables, 0));
+            } else {
+                b.tree(cinstr.createConstantIndex(dummyVariables, 0));
+            }
         } else if (frame.getBoolean("has_" + offsetName, false)) {
             b.string(offsetName);
         } else {
             frame.setBoolean("has_" + offsetName, true);
             b.string("(" + offsetName + " = ");
-            b.variable(fldBc);
-            b.string("[$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex + "]");
+            if (isChild) {
+                b.tree(cinstr.createChildIndex(dummyVariables, 0));
+            } else {
+                b.tree(cinstr.createConstantIndex(dummyVariables, 0));
+            }
             b.string(")");
 
         }
@@ -268,7 +288,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public ReportPolymorphismAction createReportPolymorhoismAction(ReportPolymorphismAction original) {
-        // TODO maybe this would be needed at some point?
+        // todo: maybe this would be needed at some point?
         return new ReportPolymorphismAction(false, false);
     }
 
@@ -344,7 +364,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     private void createPushResult(FrameState frameState, CodeTreeBuilder b, CodeTree specializationCall, TypeMirror retType) {
-        if (cinstr.numPush() == 0) {
+        if (cinstr.numPushedValues == 0) {
             b.statement(specializationCall);
             b.returnStatement();
             return;
@@ -357,7 +377,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             return;
         }
 
-        assert cinstr.numPush() == 1;
+        assert cinstr.numPushedValues == 1;
 
         int destOffset = cinstr.numPopStatic();
 
@@ -386,21 +406,21 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         } else {
             b.declaration(retType, "value", value);
             b.startIf().tree(isResultBoxed).end().startBlock();
-            {
-                b.startStatement();
-                b.startCall("$frame", "setObject");
-                b.string("$sp - " + destOffset);
-                b.string("value");
-                b.end(2);
-            }
+            // {
+            b.startStatement();
+            b.startCall("$frame", "setObject");
+            b.string("$sp - " + destOffset);
+            b.string("value");
+            b.end(2);
+            // }
             b.end().startElseBlock();
-            {
-                b.startStatement();
-                b.startCall("$frame", "set" + typeName);
-                b.string("$sp - " + destOffset);
-                b.string("value");
-                b.end(2);
-            }
+            // {
+            b.startStatement();
+            b.startCall("$frame", "set" + typeName);
+            b.string("$sp - " + destOffset);
+            b.string("value");
+            b.end(2);
+            // }
             b.end();
         }
 
@@ -410,8 +430,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary, CodeTree[] bindings) {
-        if (inBoundary || regularReturn())
+        if (inBoundary || regularReturn()) {
             return false;
+        }
 
         // if (m.isTracing()) {
         // b.startStatement().startCall("tracer", "traceSpecialization");
@@ -582,9 +603,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                         elseIf = b.startIf(elseIf);
                         b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
                         b.end().startBlock();
-                        {
-                            b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.opcodeIdField));
-                        }
+                        // {
+                        b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.opcodeIdField));
+                        // }
                         b.end();
                     }
                 }
@@ -652,7 +673,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             }
 
             for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getArgumentOffset(i) + "]", CodeTreeBuilder.singleString("type" + i)));
+                b.tree(OperationGeneratorUtils.callSetResultBoxed(cinstr.createPopIndexedIndex(dummyVariables, i), CodeTreeBuilder.singleString("type" + i)));
             }
         }
 
@@ -695,9 +716,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                     b.tree(multiState.createContainsOnly(frameState, originalSourceTypes.indexOf(sourceType), 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
 
                     b.end().startBlock();
-                    {
-                        b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
-                    }
+                    // {
+                    b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
+                    // }
                     b.end();
                 }
 
@@ -777,8 +798,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     public void finishUp() {
         if (data.isShortCircuit()) {
-            cinstr.setBoxingEliminationData(0, 0);
-        } else if (cinstr.numPush() > 0) {
+            cinstr.setBoxingEliminationData(CodeTreeBuilder.singleString("0"), 0);
+        } else if (cinstr.numPushedValues > 0) {
             int offset = -1;
             BitSet targetSet = null;
             for (StateBitSet set : multiState.getSets()) {
@@ -793,7 +814,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 throw new AssertionError();
             }
 
-            cinstr.setBoxingEliminationData(cinstr.lengthWithoutState() + bitSetOffset(targetSet), 1 << offset);
+            cinstr.setBoxingEliminationData(cinstr.createStateBitsOffset(cinstr.addStateBits(targetSet)), 1 << offset);
         }
     }
 

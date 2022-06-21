@@ -277,15 +277,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilderImpl.add(fldId);
         }
 
-        // instruction IDs
-        for (Instruction instr : m.getOperationsContext().instructions) {
-            CodeVariableElement fldId = new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(int.class), "INSTR_" + OperationGeneratorUtils.toScreamCase(instr.name));
-            CodeTreeBuilder b = fldId.createInitBuilder();
-            b.string("" + instr.id);
-            instr.setOpcodeIdField(fldId);
-            typBuilderImpl.add(fldId);
-        }
-
         CodeTypeElement typOperationNodeImpl = createOperationNodeImpl();
         typBuilderImpl.add(typOperationNodeImpl);
 
@@ -334,6 +325,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(createDoLeave(vars));
         typBuilderImpl.add(createBeforeChild(vars));
         typBuilderImpl.add(createAfterChild(vars));
+
+        // instruction IDs
+        for (Instruction instr : m.getOperationsContext().instructions) {
+            typBuilderImpl.addAll(instr.createInstructionFields());
+        }
+
         typBuilderImpl.add(createBoxingDescriptors());
 
         builderBytecodeNodeType.add(createSetResultUnboxed());
@@ -585,7 +582,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("" + op.numLocalReferences());
 
             for (VariableElement el : metBegin.getParameters()) {
-                b.variable(el);
+                b.startGroup().cast(context.getType(Object.class)).variable(el).end();
             }
 
             b.end(2);
@@ -639,25 +636,27 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.string("{").startCommaGroup();
                 b.string("-1");
                 for (Instruction instr : m.getInstructions()) {
-                    String value;
                     switch (instr.boxingEliminationBehaviour()) {
                         case DO_NOTHING:
-                            value = "0";
+                            b.string("0");
                             break;
                         case REPLACE:
-                            value = instr.boxingEliminationReplacement(kind).getName();
+                            b.variable(instr.boxingEliminationReplacement(kind));
                             break;
                         case SET_BIT: {
-                            int bitOffset = instr.boxingEliminationBitOffset();
-                            int bitMask = instr.boxingEliminationBitMask();
-                            short shortValue = (short) (0x8000 | (bitOffset << 8) | bitMask);
-                            value = shortValue + " /* " + bitOffset + "," + Integer.toHexString(bitMask) + " */";
+                            b.startGroup();
+                            b.cast(context.getType(short.class));
+                            b.startParantheses();
+                            b.string("0x8000 | ");
+                            b.startParantheses().startParantheses().tree(instr.boxingEliminationBitOffset()).end().string(" << 8").end();
+                            b.string(" | ");
+                            b.string("" + instr.boxingEliminationBitMask());
+                            b.end(2);
                             break;
                         }
                         default:
                             throw new UnsupportedOperationException("unknown boxing behaviour: " + instr.boxingEliminationBehaviour());
                     }
-                    b.string(value);
 
                 }
                 b.end().string("}").end();

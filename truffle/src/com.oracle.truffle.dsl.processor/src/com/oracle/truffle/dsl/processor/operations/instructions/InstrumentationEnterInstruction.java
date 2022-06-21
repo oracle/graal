@@ -46,7 +46,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 public class InstrumentationEnterInstruction extends Instruction {
 
     public InstrumentationEnterInstruction(int id) {
-        super("instrument.enter", id, new ResultType[0], InputType.INSTRUMENT);
+        super("instrument.enter", id, 0);
+        addInstrument("instrument");
     }
 
     @Override

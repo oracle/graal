@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
@@ -51,14 +52,10 @@ public class LoadConstantInstruction extends Instruction {
     private final OperationsContext ctx;
 
     public LoadConstantInstruction(OperationsContext ctx, int id, FrameKind kind) {
-        super("load.constant." + kind.toString().toLowerCase(), id, ResultType.STACK_VALUE, InputType.CONST_POOL);
+        super("load.constant." + kind.toString().toLowerCase(), id, 1);
         this.ctx = ctx;
         this.kind = kind;
-    }
-
-    @Override
-    public boolean standardPrologue() {
-        return false;
+        addConstant("constant", ProcessorContext.getInstance().getType(Object.class));
     }
 
     @Override
@@ -83,8 +80,7 @@ public class LoadConstantInstruction extends Instruction {
             b.string("(", kind.getTypeName(), ") ");
         }
         b.variable(vars.consts).string("[");
-        b.variable(vars.bc);
-        b.string("[").variable(vars.bci).string(" + " + getArgumentOffset(0)).string("]");
+        b.tree(createConstantIndex(vars, 0));
         b.end().string("]");
         return b.build();
     }
@@ -114,13 +110,5 @@ public class LoadConstantInstruction extends Instruction {
         }
 
         return OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadConstantInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField);
-    }
-
-    @Override
-    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
-        return new CodeTree[]{
-                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_LOAD_CONSTANT"),
-                        CodeTreeBuilder.singleString("bc[bci + " + getArgumentOffset(0) + "]")
-        };
     }
 }

@@ -45,7 +45,10 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
 public class InstrumentationLeaveInstruction extends Instruction {
     public InstrumentationLeaveInstruction(int id) {
-        super("instrument.leave", id, ResultType.BRANCH, InputType.INSTRUMENT, InputType.BRANCH_TARGET, InputType.BRANCH_TARGET);
+        super("instrument.leave", id, 0);
+        addInstrument("instrument");
+        addBranchTarget("startBranch");
+        addBranchTarget("endBranch");
     }
 
     @Override
@@ -81,12 +84,12 @@ public class InstrumentationLeaveInstruction extends Instruction {
 
         b.end().startElseBlock();
 
-        b.startAssign(vars.results[0]).variable(vars.bci).string(" + " + length()).end();
+        b.startAssign(vars.results[0]).variable(vars.bci).string(" + ").tree(createLength()).end();
 
         b.end();
         b.end().startElseBlock();
 
-        b.startAssign(vars.results[0]).variable(vars.bci).string(" + " + length()).end();
+        b.startAssign(vars.results[0]).variable(vars.bci).string(" + ").tree(createLength()).end();
 
         b.end();
 
