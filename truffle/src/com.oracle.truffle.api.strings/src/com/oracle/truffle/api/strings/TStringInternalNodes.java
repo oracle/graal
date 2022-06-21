@@ -424,9 +424,15 @@ final class TStringInternalNodes {
         @TruffleBoundary
         @Specialization(guards = "isUnsupportedEncoding(encoding)")
         int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int encoding, int index) {
+            assert isStride0(a);
             JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
-            int len = JCodings.getInstance().getCodePointLength(jCoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
-            return len < 0 ? JCodings.getInstance().minLength(jCoding) : len;
+            int cpLength = JCodings.getInstance().getCodePointLength(jCoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
+            int regionLength = a.length() - index;
+            if (cpLength > 0 && cpLength <= regionLength) {
+                return cpLength;
+            } else {
+                return Math.min(JCodings.getInstance().minLength(jCoding), regionLength);
+            }
         }
     }
 
