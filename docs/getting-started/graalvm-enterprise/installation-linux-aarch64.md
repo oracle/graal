@@ -35,6 +35,6 @@ Optionally, you can specify GraalVM Enterprise as the default JRE or JDK install
 
 ## Supported Functionalities
 
-The 64-bit GraalVM Enterprise distribution for Linux platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater, `gu`](../../reference-manual/graalvm-updater.md) tool, the JavaScript runtime, and some developer tools (e.g., Chrome inspector based debugger, Visual VM).
-Support for [Native Image](../../reference-manual/native-image/README.md), Node.js, LLVM and WebAssembly runtimes can be installed with `gu`.
+The 64-bit GraalVM Enterprise distribution for Linux platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater, `gu`](../../reference-manual/graalvm-updater.md) utility and some developer tools (e.g., Chrome inspector based debugger, Profiler).
+Support for [Native Image](../../reference-manual/native-image/README.md), JavaScript, Node.js, LLVM, and WebAssembly runtimes can be installed with `gu`.
 Runtimes for Python, FastR, and Ruby languages are not available in this distribution yet.
