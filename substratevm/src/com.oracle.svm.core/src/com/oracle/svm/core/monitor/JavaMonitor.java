@@ -34,25 +34,18 @@ import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 import com.oracle.svm.core.jfr.JfrTicks;
 
 public class JavaMonitor extends ReentrantLock {
-    private long ownerTid;
-
-    public long getOwnerTid() {
-        return ownerTid;
-    }
+    private long latestJfrTid;
 
     public JavaMonitor() {
-        super();
-        ownerTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
+        latestJfrTid = 0;
     }
 
     public void monitorEnter(Object obj) {
         if (!tryLock()) {
             long startTicks = JfrTicks.elapsedTicks();
             lock();
-            JavaMonitorEnterEvent.emit(obj, getOwnerTid(), startTicks);
+            JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
-        ownerTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
+        latestJfrTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
     }
-
-
 }
