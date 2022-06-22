@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
+import com.oracle.truffle.llvm.runtime.SwiftDemangler;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -240,14 +241,10 @@ public final class LLVMParser {
         runtime.getFileScope().register(expressionSymbol);
         runtime.getPublicFileScope().register(expressionSymbol);
         final Type baseType = elementPointerConstant.getBasePointer().getType();
-        if (expressionSymbol.getName().endsWith("Tq")) {
-            // if symbolname ends with "Tq", it is a Swift function descriptor
-            // https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst
 
-            // SwiftDemangler.MethodDescriptor md =
-            // SwiftDemangler.decodeFunctionDescriptor(expressionSymbol.getName());
-
-            String methodName = expressionSymbol.getName().substring(0, expressionSymbol.getName().length() - 2);
+        if (expressionSymbol.getName().endsWith(SwiftDemangler.FUNCTION_DESCRIPTOR_SUFFIX)) {
+            int subStringLength = expressionSymbol.getName().length() - SwiftDemangler.FUNCTION_DESCRIPTOR_SUFFIX.length();
+            String methodName = expressionSymbol.getName().substring(0, subStringLength);
             SymbolImpl[] indices = elementPointerConstant.getIndices();
             long[] indexVals = new long[indices.length];
             for (int i = 0; i < indexVals.length - 1; i++) {
