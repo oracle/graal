@@ -312,6 +312,8 @@ public class BciBlockMapping implements JavaMethodContext {
 
     protected static final int UNASSIGNED_ID = -1;
 
+    private static final BitSet SHARED_EMPTY_BITSET = new BitSet();
+
     public static class BciBlock implements Cloneable {
 
         int id = UNASSIGNED_ID;
@@ -852,7 +854,7 @@ public class BciBlockMapping implements JavaMethodContext {
         stream.setBCI(0);
         while (stream.currentBC() != Bytecodes.END) {
             int bci = stream.currentBCI();
-            bciExceptionHandlerIDs[bci] = new BitSet();
+            bciExceptionHandlerIDs[bci] = SHARED_EMPTY_BITSET;
             stream.next();
         }
 
@@ -864,6 +866,11 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (currentIDs == null) {
                     /* No instruction for this bci. */
                     continue;
+                }
+                if (currentIDs == SHARED_EMPTY_BITSET) {
+                    /* Initialize unique BitSet for instruction. */
+                    currentIDs = new BitSet();
+                    bciExceptionHandlerIDs[bci] = currentIDs;
                 }
                 if (h.isCatchAll()) {
                     /*
