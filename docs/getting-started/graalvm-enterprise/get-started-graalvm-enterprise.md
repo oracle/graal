@@ -22,15 +22,23 @@ You can get Oracle GraalVM Enterprise Edition by:
 
 ## Install GraalVM Enterprise
 
+<<<<<<< HEAD
 Choose your operating system and proceed to the installation steps for your specific platform:
+=======
+Getting GraalVM Enterprise installed and ready-to-go should take a few minutes.
+Choose your operating system and environment, and proceed to the installation steps:
+>>>>>>> 1eb4b527e2b (Add GraalVM Enterprise in OCI DevOps Build Pipeline)
 
+* Oracle Cloud 
+  * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-yum.md)
+  * [OCI DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
 * [Linux](installation-linux.md)
 * [Linux ARM64](installation-linux-aarch64.md)
-* [Oracle Linux](oci/compute-instances.md)
 * [macOS](installation-macos.md)
 * [Windows](installation-windows.md)
+* [Container Images](container-images/graalvm-ee-container-images.md)
 
-## Start Running Applications
+## Running Applications
 
 The core distribution of GraalVM includes the JVM and the GraalVM compiler.
 Having downloaded and installed GraalVM, you can already run any Java application unmodified.
@@ -94,7 +102,7 @@ Both `node` and  `npm` launchers then become available in the `$GRAALVM_HOME/bin
 
 ```shell
 $GRAALVM_HOME/bin/node -v
-v16.14.2
+$GRAALVM_HOME/bin/npm show <package name> version
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM Enterprise, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
