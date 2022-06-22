@@ -604,7 +604,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }
 
-    private static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
+    public static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
         return FixedPointMath.multiply(runtime().compilationThresholdScale(), callAndLoopThresholdInInterpreter);
     }
 
