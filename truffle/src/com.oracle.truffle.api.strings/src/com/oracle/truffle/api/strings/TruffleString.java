@@ -4865,12 +4865,104 @@ public final class TruffleString extends AbstractTruffleString {
 
         private static final long serialVersionUID = 0x016db657faff57a2L;
 
-        NumberFormatException(String message) {
-            super(message);
+        /**
+         * All {@link NumberFormatException}s contain one of the following exception reason values,
+         * which may be used to build custom error messages in language implementations.
+         *
+         * @since 22.3
+         */
+        public enum Reason {
+            EMPTY("no digits found"),
+            INVALID_CODEPOINT("invalid codepoint"),
+            LONE_SIGN("lone '+' or '-'"),
+            OVERFLOW("overflow"),
+            MALFORMED_HEX_ESCAPE("malformed hex escape sequence"),
+            MULTIPLE_DECIMAL_POINTS("multiple decimal points"),
+            UNSUPPORTED_RADIX("unsupported radix");
+
+            private final String message;
+
+            Reason(String message) {
+                this.message = message;
+            }
+
+            /**
+             * Returns a short error description.
+             *
+             * @since 22.3
+             */
+            public String getMessage() {
+                return message;
+            }
         }
 
-        NumberFormatException() {
+        private final AbstractTruffleString string;
+        private final int regionOffset;
+        private final int regionLength;
+        private final Reason reason;
+
+        NumberFormatException(AbstractTruffleString string, Reason reason) {
+            this(string, -1, -1, reason);
+        }
+
+        NumberFormatException(AbstractTruffleString string, int regionOffset, int regionLength, Reason reason) {
             super();
+            this.string = string;
+            this.regionOffset = regionOffset;
+            this.regionLength = regionLength;
+            this.reason = reason;
+        }
+
+        /**
+         * Returns the {@link Reason} for this exception. Use this to build custom error messages.
+         * 
+         * @since 22.3
+         */
+        public Reason getReason() {
+            return reason;
+        }
+
+        /**
+         * Returns the string that was attempted to parse.
+         *
+         * @since 22.3
+         */
+        public AbstractTruffleString getString() {
+            return string;
+        }
+
+        /**
+         * Returns the byte offset to error region, or -1 if not applicable.
+         * 
+         * @since 22.3
+         */
+        public int getRegionByteOffset() {
+            return regionOffset < 0 ? regionOffset : regionOffset << string.stride();
+        }
+
+        /**
+         * Returns the error region's length in bytes, or -1 if not applicable.
+         *
+         * @since 22.3
+         */
+        public int getRegionByteLength() {
+            return regionOffset < 0 ? regionOffset : regionOffset << string.stride();
+        }
+
+        @TruffleBoundary
+        @Override
+        public String getMessage() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("error parsing \"").append(string).append("\": ");
+            sb.append(reason.message);
+            if (regionOffset >= 0) {
+                if (regionLength == 1) {
+                    sb.append(" at byte index ").append(getRegionByteOffset());
+                } else {
+                    sb.append(" from byte index ").append(getRegionByteOffset()).append(" to ").append(getRegionByteOffset() + getRegionByteLength());
+                }
+            }
+            return sb.toString();
         }
 
         /**
@@ -4911,7 +5003,7 @@ public final class TruffleString extends AbstractTruffleString {
             long value = ((LazyLong) a.data()).value;
             if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
                 errorProfile.enter();
-                throw NumberConversion.numberFormatException();
+                throw NumberConversion.numberFormatException(a, NumberFormatException.Reason.OVERFLOW);
             }
             return (int) value;
         }
@@ -5392,9 +5484,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Return a {@link java.lang.String} representation of the given {@link TruffleString}. For
-         * the {@link Encoding#BYTES} encoding, the returned String uses "\xNN" for every byte >=
-         * 128 as the actual interpretation of those bytes is unknown.
+         * Return a {@link java.lang.String} representation of the given {@link TruffleString}.
          *
          * @since 22.1
          */

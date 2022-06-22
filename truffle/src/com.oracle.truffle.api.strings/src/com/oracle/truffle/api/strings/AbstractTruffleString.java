@@ -1106,7 +1106,7 @@ public abstract class AbstractTruffleString {
                 if (c <= 0x7f) {
                     sb.append((char) c);
                 } else {
-                    sb.append(String.format("\\x%02x", c));
+                    sb.append(String.format("\\x%02X", c));
                 }
             }
             return sb.toString();
