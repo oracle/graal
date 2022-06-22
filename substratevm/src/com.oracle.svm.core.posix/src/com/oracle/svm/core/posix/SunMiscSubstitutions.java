@@ -36,9 +36,9 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import org.graalvm.nativeimage.StackValue;
+import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -404,14 +404,14 @@ class IgnoreSIGPIPEFeature implements Feature {
 
 final class IgnoreSIGPIPEStartupHook implements Runnable {
 
-    @CEntryPoint(publishAs = Publish.NotPublished)
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
+    @CEntryPoint
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @Uninterruptible(reason = "empty signal handler, Isolate is not set up")
     static void noopSignalHandler(@SuppressWarnings("unused") int sig) {
     }
 
     private static final CEntryPointLiteral<Signal.SignalDispatcher> NOOP_SIGNAL_HANDLER = //
-            CEntryPointLiteral.create(IgnoreSIGPIPEStartupHook.class, "noopSignalHandler", int.class);
+                    CEntryPointLiteral.create(IgnoreSIGPIPEStartupHook.class, "noopSignalHandler", int.class);
 
     /**
      * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide signal whose
