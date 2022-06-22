@@ -33,6 +33,8 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
@@ -79,6 +81,8 @@ public final class JNIGeneratedMethodSupport {
         return JNIAccessibleField.getOffsetFromId(fieldId);
     }
 
+    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
+    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     static CodePointer getJavaCallAddressFromMethodId(JNIMethodId methodId) {
         return JNIReflectionDictionary.getMethodByID(methodId).getJavaCallAddress();
     }
