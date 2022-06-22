@@ -504,6 +504,7 @@ public class OptimizationLog implements CompilationListener {
         String json = JSONFormatter.formatJSON(asJsonMap());
         PrintStream stream = new PrintStream(Files.newOutputStream(path));
         stream.print(json);
+        stream.close();
     }
 
     /**
