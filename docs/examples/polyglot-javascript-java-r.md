@@ -35,8 +35,9 @@ This page describes an example of a polyglot application you can run with GraalV
   ```
   Note that your paths are likely to be different depending on the download location.
 
-3&#46; To run the demo, you need to enable Node.js support in GraalVM:
+3&#46; To run the demo, you need to enable JavaScript and Node.js support in GraalVM:
   ```bash
+  gu install js
   gu install nodejs
   ```
 
