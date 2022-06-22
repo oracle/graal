@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## Version 22.3.0
+* (GR-39390) Red Hat added support for the JFR event `JavaMonitorEnter`.
+
 ## Version 22.2.0
 * (GR-20653) Re-enable the usage of all CPU features for JIT compilation on AMD64.
 * (GR-38413) Add support for `-XX:+ExitOnOutOfMemoryError`.
