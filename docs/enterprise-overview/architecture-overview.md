@@ -127,17 +127,17 @@ For more information, check the [Oracle Technology Network License Agreement for
 
 The following table lists supported and experimental features in GraalVM Enterprise Edition 22.2 by platform.
 
-| Feature         | Linux AMD64   | Linux ARM64   | macOS         | Windows       | macOS ARM64   |
+| Feature         | Linux AMD64   | Linux ARM64   | macOS         | macOS ARM64   | Windows       |
 |-----------------|---------------|---------------|---------------|---------------|---------------|
-| Native Image    | early adopter | early adopter | early adopter | early adopter | experimental  |
-| LLVM runtime    | supported     | supported     | supported     | not available | experimental  |
-| LLVM toolchain  | supported     | supported     | supported     | not available | experimental  |
-| JavaScript      | supported     | supported     | supported     | supported     | experimental  |
-| Node.js         | supported     | supported     | supported     | supported     | not available  |
+| Native Image    | early adopter | early adopter | early adopter | experimental  | early adopter |
+| LLVM runtime    | supported     | supported     | supported     | experimental  | not available |
+| LLVM toolchain  | supported     | supported     | supported     | experimental  | not available |
+| JavaScript      | supported     | supported     | supported     | experimental  | supported     |
+| Node.js         | supported     | supported     | supported     | not available | supported     |
 | Java on Truffle | supported     | experimental  | experimental  | experimental  | experimental  |
 | Python          | experimental  | not available | experimental  | not available | not available |
-| Ruby            | experimental  | experimental  | experimental  | not available | experimental  |
-| R               | experimental  | not available | experimental  | not available | experimental  |
+| Ruby            | experimental  | experimental  | experimental  | experimental  | not available |
+| R               | experimental  | not available | experimental  | not available | not available |
 | WebAssembly     | experimental  | experimental  | experimental  | experimental  | experimental  |
 
 ## What to Read Next
