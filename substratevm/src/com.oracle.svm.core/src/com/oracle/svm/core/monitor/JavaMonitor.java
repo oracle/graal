@@ -30,30 +30,28 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
 
-public class OwnedReentrantLock extends ReentrantLock {
-    private long prevOwnerTid;
-    private long currOwnerTid;
+public class JavaMonitor extends ReentrantLock {
+    private long ownerTid;
 
-    public long getPrevOwnerTid() {
-        return prevOwnerTid;
+    public long getOwnerTid() {
+        return ownerTid;
     }
 
-    public OwnedReentrantLock() {
+    public JavaMonitor() {
         super();
-        currOwnerTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
+        ownerTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
     }
 
-    public boolean tryLockOwnedLock() {
-        boolean available = true;
+    public void monitorEnter(Object obj) {
         if (!tryLock()) {
-            available = false;
+            long startTicks = JfrTicks.elapsedTicks();
             lock();
+            JavaMonitorEnterEvent.emit(obj, getOwnerTid(), startTicks);
         }
-        prevOwnerTid = currOwnerTid;
-        currOwnerTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
-        return available;
-
+        ownerTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
     }
 
 
