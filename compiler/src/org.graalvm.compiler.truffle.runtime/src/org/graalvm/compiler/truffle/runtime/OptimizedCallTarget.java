@@ -648,7 +648,26 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
+        maybePropagateHotness();
         return compile(true);
+    }
+
+    private void maybePropagateHotness() {
+        if (!PolyglotCompilerOptions.PropagateHotnessToSingleCaller.getValue(getOptionValues())) {
+            return;
+        }
+        if (singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
+            return;
+        }
+        OptimizedDirectCallNode optimizedDirectCallNode = singleCallNode.get();
+        assert optimizedDirectCallNode != null;
+        RootNode callerRootNode = optimizedDirectCallNode.getRootNode();
+        if (callerRootNode == null || !GraalTruffleRuntime.getRuntime().getFrameMaterializeCalled(callerRootNode.getFrameDescriptor())) {
+            return;
+        }
+        OptimizedCallTarget onlyCaller = (OptimizedCallTarget) callerRootNode.getCallTarget();
+        System.out.println("@@ Adding " + this.callAndLoopCount + " callAndLoopCount from " + this + " to " + onlyCaller);
+        onlyCaller.callAndLoopCount += this.callAndLoopCount;
     }
 
     private Object executeRootNode(VirtualFrame frame, CompilationState tier) {
