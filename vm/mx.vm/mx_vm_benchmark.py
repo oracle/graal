@@ -1299,7 +1299,7 @@ def polybenchmark_rules(benchmark, metric_name, mode):
                 "engine.config": mode,
             }, startPattern=r"::: Running :::")
         ]
-    elif metric_name in ("compilation-time", "pe-time"):
+    elif metric_name in ("compile-time", "pe-time"):
         rules += [
             mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
                 "benchmark": benchmark, #("<name>", str),
