@@ -46,6 +46,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -204,7 +205,8 @@ public final class EspressoContext {
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
     public final EspressoOptions.JImageMode jimageMode;
-    public final PolyglotInterfaceMappings polyglotInterfaceMappings;
+    private final PolyglotInterfaceMappings polyglotInterfaceMappings;
+    private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -313,6 +315,8 @@ public final class EspressoContext {
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
         this.polyglotInterfaceMappings = new PolyglotInterfaceMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings));
+        this.proxyCache = polyglotInterfaceMappings.hasMappings() ? new HashMap<>() : null;
+
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
         if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
@@ -1139,5 +1143,15 @@ public final class EspressoContext {
 
     public PolyglotInterfaceMappings getPolyglotInterfaceMappings() {
         return polyglotInterfaceMappings;
+    }
+
+    public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String name) {
+        assert proxyCache != null;
+        return proxyCache.get(name);
+    }
+
+    public void registerProxyBytes(String name, EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes) {
+        assert proxyCache != null;
+        proxyCache.put(name, generatedProxyBytes);
     }
 }

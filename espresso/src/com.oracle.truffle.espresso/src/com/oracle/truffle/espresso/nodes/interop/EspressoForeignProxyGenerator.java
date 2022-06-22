@@ -55,7 +55,6 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -78,6 +77,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.PolyglotInterfaceMappings;
 
 /**
@@ -118,8 +118,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
     private static final String proxyNamePrefix = "com.oracle.truffle.espresso.polyglot.Foreign$Proxy$";
 
-    private static final HashMap<String, GeneratedProxyBytes> proxyCache = new HashMap<>();
-
     /**
      * Construct a ProxyGenerator to generate a proxy class with the specified name and for the
      * given interfaces.
@@ -146,7 +144,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     }
 
     @TruffleBoundary
-    public static synchronized GeneratedProxyBytes getProxyKlassBytes(PolyglotInterfaceMappings polyglotInterfaceMappings, Meta meta, Object metaObject, InteropLibrary interop) {
+    public static synchronized GeneratedProxyBytes getProxyKlassBytes(EspressoContext context, Object metaObject, InteropLibrary interop) {
         assert interop.isMetaObject(metaObject);
         String metaName;
         try {
@@ -154,22 +152,23 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere();
         }
-        if (proxyCache.containsKey(metaName)) {
+        GeneratedProxyBytes proxyBytes = context.getProxyBytesOrNull(metaName);
+        if (proxyBytes != null) {
             // Note: this assumes stability of meta object parents, so upon
             // hitting a use-case where meta parents do change we need to
             // place guards before returning from cache.
-            return proxyCache.get(metaName);
+            return proxyBytes;
         }
         Set<ObjectKlass> parents = new HashSet<>();
-        getParents(metaObject, interop, polyglotInterfaceMappings, parents);
+        getParents(metaObject, interop, context.getPolyglotInterfaceMappings(), parents);
         if (parents.isEmpty()) {
-            proxyCache.put(metaName, null);
+            context.registerProxyBytes(metaName, null);
             return null;
         }
 
-        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(meta, parents.toArray(new ObjectKlass[parents.size()]));
+        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context.getMeta(), parents.toArray(new ObjectKlass[parents.size()]));
         GeneratedProxyBytes generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
-        proxyCache.put(metaName, generatedProxyBytes);
+        context.registerProxyBytes(metaName, generatedProxyBytes);
         return generatedProxyBytes;
     }
 

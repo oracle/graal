@@ -77,7 +77,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     ObjectKlass doUncached(Object metaObject, Klass targetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
         ClassRegistry registry = getContext().getRegistries().getClassRegistry(getContext().getBindings().getBindingsLoader());
-        EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(getContext().getPolyglotInterfaceMappings(), getContext().getMeta(),
+        EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(getContext(),
                         metaObject, interop);
 
         Symbol<Symbol.Type> proxyName = getContext().getTypes().fromClassGetName(generatedProxyBytes.name);

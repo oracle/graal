@@ -38,7 +38,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Void
 import java.lang.reflect.Array;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
