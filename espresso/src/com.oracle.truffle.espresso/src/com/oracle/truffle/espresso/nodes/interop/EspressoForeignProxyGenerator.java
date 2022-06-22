@@ -160,21 +160,21 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             // place guards before returning from cache.
             return proxyCache.get(metaName);
         }
-        ObjectKlass[] guestInterfaces = getParents(metaObject, interop, polyglotInterfaceMappings);
-        if (guestInterfaces.length == 0) {
+        Set<ObjectKlass> parents = new HashSet<>();
+        getParents(metaObject, interop, polyglotInterfaceMappings, parents);
+        if (parents.isEmpty()) {
             proxyCache.put(metaName, null);
             return null;
         }
 
-        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(meta, guestInterfaces);
+        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(meta, parents.toArray(new ObjectKlass[parents.size()]));
         GeneratedProxyBytes generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
         proxyCache.put(metaName, generatedProxyBytes);
         return generatedProxyBytes;
     }
 
-    private static ObjectKlass[] getParents(Object metaObject, InteropLibrary interop, PolyglotInterfaceMappings mappings) throws ClassCastException {
+    private static void getParents(Object metaObject, InteropLibrary interop, PolyglotInterfaceMappings mappings, Set<ObjectKlass> parents) throws ClassCastException {
         try {
-            Set<ObjectKlass> parents = new HashSet<>();
             if (interop.hasMetaParents(metaObject)) {
                 Object metaParents = interop.getMetaParents(metaObject);
 
@@ -185,10 +185,9 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                     if (mappedKlass != null) {
                         parents.add(mappedKlass);
                     }
-                    parents.addAll(Arrays.asList(getParents(parent, interop, mappings)));
+                    getParents(parent, interop, mappings, parents);
                 }
             }
-            return parents.toArray(new ObjectKlass[parents.size()]);
         } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
             throw new ClassCastException();
         }
