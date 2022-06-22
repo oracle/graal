@@ -26,12 +26,14 @@ package com.oracle.svm.core.allocationprofile;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.svm.core.jdk.RuntimeFeature;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -212,6 +214,10 @@ public final class AllocationSite {
 
 @AutomaticFeature
 class AllocationProfilingFeature implements Feature {
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(RuntimeFeature.class);
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (AllocationSite.Options.AllocationProfiling.getValue()) {
