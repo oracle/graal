@@ -77,6 +77,7 @@ public final class JNIGeneratedMethodSupport {
         return JNIObjectHandles.getObject(handle);
     }
 
+    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
         return JNIAccessibleField.getOffsetFromId(fieldId);
     }
@@ -87,24 +88,29 @@ public final class JNIGeneratedMethodSupport {
         return JNIReflectionDictionary.getMethodByID(methodId).getJavaCallAddress();
     }
 
+    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     static Object getStaticPrimitiveFieldsArray() {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
 
+    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     static Object getStaticObjectFieldsArray() {
         return StaticFieldsSupport.getStaticObjectFields();
     }
 
+    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     static void setPendingException(Throwable t) {
         JNIThreadLocalPendingException.set(t);
     }
 
+    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     static Throwable getAndClearPendingException() {
         Throwable t = JNIThreadLocalPendingException.get();
         JNIThreadLocalPendingException.clear();
         return t;
     }
 
+    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     static void rethrowPendingException() throws Throwable {
         Throwable t = getAndClearPendingException();
         if (t != null) {
