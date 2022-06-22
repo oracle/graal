@@ -41,7 +41,7 @@ Here you will also find a more sophisticated example displaying GraalVM's abilit
   ```
   Note that your paths are likely to be different depending on the download location.
 
-3&#46; [Install Native Image](../reference-manual/native-image/README.md/#install-native-image) by running.
+3&#46; Install [Native Image](../reference-manual/native-image/README.md/#install-native-image) support by running:
   ```bash
   gu install native-image
   ```
@@ -95,21 +95,27 @@ The performance gain of the native version is largely due to the faster startup.
 
 You can also experiment with a more sophisticated `ExtListDir` example, which takes advantage of GraalVM's Java and JavaScript polyglot capabilities.
 
-```shell
-$JAVA_HOME/bin/javac ExtListDir.java
-```
+1&#46; Add the JavaScript support to GraalVM by running:
+  ```bash
+  gu install js
+  ```
+  
+2&#46; Compile:
 
-Building the native executable command is similar to the one above, but since the example uses JavaScript, you need to inform the `native-image` utility about that by passing the `--language:js` option.
-Note that it takes a bit more time because it needs to include the JavaScript support.
-```shell
-$JAVA_HOME/bin/native-image --language:js ExtListDir
-```
+  ```shell
+  $JAVA_HOME/bin/javac ExtListDir.java
+  ```
 
-The execution is the same as in the previous example:
-```shell
-time java ExtListDir $1
-time ./extlistdir $1
-```
+3&#46; Build a native executable. Building the native executable command is similar to the one above, but since the example uses JavaScript, you need to inform the `native-image` utility about that by passing the `--language:js` option. Note that it takes a bit more time because it needs to include the JavaScript support.
+  ```shell
+  $JAVA_HOME/bin/native-image --language:js ExtListDir
+  ```
+
+4&#46; Run the application from a native executable. The execution is the same as in the previous example:
+  ```shell
+  time java ExtListDir $1
+  time ./extlistdir $1
+  ```
 
 ## Profile-Guided Optimizations for High Throughput
 
