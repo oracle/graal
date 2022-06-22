@@ -1691,7 +1691,10 @@ public final class TruffleString extends AbstractTruffleString {
      */
     public static final class InvalidCodePointException extends Exception {
 
+        private static final long serialVersionUID = 0xb1f279c8d1417304L;
+
         InvalidCodePointException() {
+            super();
         }
 
         /**
@@ -2517,7 +2520,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNode) {
             a.checkEncoding(expectedEncoding);
             toIndexableNode.execute(a, a.data());
-            assert a.isMaterialized();
+            assert a.isMaterialized(expectedEncoding);
         }
 
         /**

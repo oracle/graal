@@ -308,8 +308,9 @@ public abstract class AbstractTruffleString {
     }
 
     // don't use this on fast path
-    final boolean isMaterialized() {
-        return data instanceof byte[] || isLazyLong() && ((AbstractTruffleString.LazyLong) data).bytes != null;
+    final boolean isMaterialized(Encoding expectedEncoding) {
+        return data instanceof byte[] || isLazyLong() && ((AbstractTruffleString.LazyLong) data).bytes != null ||
+                        isNative() && (isSupportedEncoding(expectedEncoding) || ((NativePointer) data).byteArrayIsValid);
     }
 
     final boolean isLazyConcat() {
