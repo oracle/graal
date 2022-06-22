@@ -23,20 +23,23 @@ You can get Oracle GraalVM Enterprise Edition by:
 ## Install GraalVM Enterprise
 
 Getting GraalVM Enterprise installed and ready-to-go should take a few minutes.
-Choose your operating system and proceed to the installation steps for your specific platform:
+Choose your operating system and environment, and proceed to the installation steps:
 
+* Oracle Cloud 
+  * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-yum.md)
+  * [OCI DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
 * [Linux](installation-linux.md)
 * [Linux ARM64](installation-linux-aarch64.md)
-* [Oracle Linux](oci/compute-instances.md)
 * [macOS](installation-macos.md)
 * [Windows](installation-windows.md)
+* [Container Images](container-images/graalvm-ee-container-images.md)
 
-## Start Running Applications
+## Running Applications
 
 For demonstration purposes here, we will use GraalVM Enterprise based on Java 17.
 
-The core distribution of GraalVM Enterprise includes the JVM, the GraalVM compiler, the LLVM runtime, and JavaScript runtime.
-Having downloaded and installed GraalVM Enterprise, you can already run Java, JavaScript, and LLVM-based applications.
+The core distribution of GraalVM Enterprise includes the JVM, the GraalVM compiler, the LLVM runtime, and the JavaScript runtime.
+Having downloaded and installed GraalVM Enterprise, you are ready to run Java, JavaScript, and LLVM-based applications.
 
 GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but includes a set of additional launchers and utilities:
 - **js** -- a JavaScript launcher
