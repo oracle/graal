@@ -41,7 +41,10 @@
 
 package org.graalvm.wasm.parser.validation;
 
-import org.graalvm.wasm.collection.IntArrayList;
+import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
+import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+
+import java.util.ArrayList;
 
 /**
  * Represents the scope of a block structure during module validation.
@@ -51,8 +54,7 @@ public abstract class ControlFrame {
     private final byte[] resultTypes;
     private final int initialStackSize;
     private boolean unreachable;
-    private final IntArrayList conditionalBranches;
-    private final IntArrayList unconditionalBranches;
+    private final ArrayList<BranchTargetWithStackChange> branchTargets;
 
     /**
      * @param paramTypes The parameter value types of the block structure.
@@ -66,14 +68,13 @@ public abstract class ControlFrame {
         this.initialStackSize = initialStackSize;
         this.unreachable = unreachable;
 
-        this.conditionalBranches = new IntArrayList();
-        this.unconditionalBranches = new IntArrayList();
+        this.branchTargets = new ArrayList<>(0);
     }
 
     /**
      * @return The types that must be on the value stack when branching to this frame.
      */
-    abstract byte[] getLabelTypes();
+    abstract byte[] labelTypes();
 
     /**
      * Performs checks and actions when entering an else branch.
@@ -92,56 +93,27 @@ public abstract class ControlFrame {
      */
     abstract void exit(ExtraDataList extraData, int offset);
 
-    /**
-     * Adds a conditional branch to this frame.
-     * 
-     * @param extraData The current extra data array.
-     */
-    void addConditionalBranch(ExtraDataList extraData) {
-        conditionalBranches.add(extraData.addConditionalBranchLocation());
+    void addBranchTarget(BranchTargetWithStackChange jumpTarget) {
+        branchTargets.add(jumpTarget);
     }
 
-    /**
-     * Adds an unconditional branch to this frame.
-     * 
-     * @param extraData The current extra data array.
-     */
-    void addUnconditionalBranch(ExtraDataList extraData) {
-        unconditionalBranches.add(extraData.addUnconditionalBranchLocation());
+    protected ArrayList<BranchTargetWithStackChange> branchTargets() {
+        return branchTargets;
     }
 
-    /**
-     * Adds a conditional branch from a branch table entry to this fraem.
-     * 
-     * @param extraData The current extra data array.
-     * @param location The location of the branch table in the extra data array.
-     * @param index The index of the entry in the branch table.
-     */
-    void addBranchTableEntry(ExtraDataList extraData, int location, int index) {
-        conditionalBranches.add(extraData.getBranchTableEntryLocation(location, index));
-    }
-
-    protected int[] conditionalBranches() {
-        return conditionalBranches.toArray();
-    }
-
-    protected int[] unconditionalBranches() {
-        return unconditionalBranches.toArray();
-    }
-
-    protected byte[] getParamTypes() {
+    protected byte[] paramTypes() {
         return paramTypes;
     }
 
-    public byte[] getResultTypes() {
+    public byte[] resultTypes() {
         return resultTypes;
     }
 
-    protected int getLabelTypeLength() {
-        return getLabelTypes().length;
+    protected int labelTypeLength() {
+        return labelTypes().length;
     }
 
-    int getInitialStackSize() {
+    int initialStackSize() {
         return initialStackSize;
     }
 

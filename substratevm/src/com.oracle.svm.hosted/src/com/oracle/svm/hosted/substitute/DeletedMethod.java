@@ -61,21 +61,8 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return AnnotatedField.appendAnnotationTo(original.getAnnotations(), deleteAnnotation);
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return AnnotatedField.appendAnnotationTo(original.getDeclaredAnnotations(), deleteAnnotation);
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass.isInstance(deleteAnnotation)) {
-            return annotationClass.cast(deleteAnnotation);
-        }
-        return original.getAnnotation(annotationClass);
+    public Annotation[] getInjectedAnnotations() {
+        return new Annotation[]{deleteAnnotation};
     }
 
     public static final Method reportErrorMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);

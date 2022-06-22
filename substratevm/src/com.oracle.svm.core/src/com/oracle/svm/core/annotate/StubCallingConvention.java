@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;

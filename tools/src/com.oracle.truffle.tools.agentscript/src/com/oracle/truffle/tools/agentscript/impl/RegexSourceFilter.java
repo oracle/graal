@@ -22,14 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug;
+package com.oracle.truffle.tools.agentscript.impl;
 
-/**
- * This interface marks bailout exceptions which will significantly affect performance. Those will
- * be intercepted even if {@link DebugOptions#InterceptBailout} is false.
- */
-public interface PerformanceIssueBailout {
-    default boolean isPerformanceIssue() {
-        return true;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
+import com.oracle.truffle.api.source.Source;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+
+final class RegexSourceFilter implements SourcePredicate {
+
+    private final Pattern regex;
+
+    RegexSourceFilter(String sourcePath) {
+        try {
+            this.regex = Pattern.compile(sourcePath);
+        } catch (PatternSyntaxException ex) {
+            throw InsightException.raise(ex);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    @Override
+    public boolean test(Source source) {
+        String sourcePath = source.getPath();
+        if (sourcePath == null) {
+            sourcePath = source.getName();
+        }
+        return sourcePath != null && regex.matcher(sourcePath).matches();
     }
 }

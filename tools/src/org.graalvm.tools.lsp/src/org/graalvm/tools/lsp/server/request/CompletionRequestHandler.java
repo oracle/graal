@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -351,7 +352,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 CompletionItem completion = CompletionItem.create(key);
                 // Inner scopes should be displayed first, so sort by priority and scopeCounter
                 // (the innermost scope has the lowest counter)
-                completion.setSortText(String.format("%s%d.%04d.%s", "+", displayPriority, scopeCounter, key));
+                completion.setSortText(format("%s%d.%04d.%s", "+", displayPriority, scopeCounter, key));
                 if (completionItemKindDefault != null) {
                     completion.setKind(completionItemKindDefault);
                 } else {
@@ -430,7 +431,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             CompletionItem completion = CompletionItem.create(key);
             ++counter;
             // Keep the order in which the keys were provided
-            completion.setSortText(String.format("%s%06d.%s", "+", counter, key));
+            completion.setSortText(format("%s%06d.%s", "+", counter, key));
             completion.setKind(CompletionItemKind.Property);
             completion.setDetail(createCompletionDetail(value, langInfo));
             try {
@@ -598,6 +599,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             }
         }
         return null;
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.ENGLISH, format, args);
     }
 
 }

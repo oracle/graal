@@ -32,6 +32,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -122,20 +123,25 @@ public class CoverageInstrument extends TruffleInstrument {
         CoverageInstrument.factory = factory;
     }
 
-    private static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
+    protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
         try {
             if (option.hasBeenSet(env.getOptions())) {
                 final String outputPath = option.getValue(env.getOptions());
                 final File file = new File(outputPath);
-                if (file.exists()) {
-                    throw new CoverageException("Cannot redirect output to an existing file!");
-                }
+                new PrintStream(env.out()).println("Printing output to " + file.getAbsolutePath());
                 return new PrintStream(new FileOutputStream(file));
             } else {
                 return new PrintStream(env.out());
             }
         } catch (FileNotFoundException e) {
-            throw new CoverageException("Cannot redirect output to a directory");
+            throw new AbstractTruffleException() {
+                static final long serialVersionUID = -1;
+
+                @Override
+                public String getMessage() {
+                    return "File IO Exception caught during output printing.";
+                }
+            };
         }
     }
 

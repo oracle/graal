@@ -30,7 +30,7 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;

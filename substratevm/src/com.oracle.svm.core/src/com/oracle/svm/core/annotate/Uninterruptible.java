@@ -33,8 +33,8 @@ import java.lang.reflect.AnnotatedElement;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.util.DirectAnnotationAccess;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.snippets.KnownIntrinsics;

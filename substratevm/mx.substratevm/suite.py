@@ -2,7 +2,7 @@
 suite = {
     "mxversion": "6.0.1",
     "name": "substratevm",
-    "version" : "22.2.0",
+    "version" : "22.3.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -439,7 +439,8 @@ suite = {
                     "sun.text.spi",
                     "jdk.internal.reflect",
                     "sun.util.cldr",
-                    "sun.util.locale"
+                    "sun.util.locale",
+                    "sun.invoke.util",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",

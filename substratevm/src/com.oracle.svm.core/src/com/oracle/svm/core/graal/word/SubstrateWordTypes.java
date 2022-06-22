@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.word;
 
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.util.UserError;
 

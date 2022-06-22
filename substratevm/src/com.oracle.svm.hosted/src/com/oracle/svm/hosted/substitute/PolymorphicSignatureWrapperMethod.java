@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
 import java.util.List;
 
@@ -47,6 +48,7 @@ import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -65,7 +67,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * assembles the arguments into an array, performing necessary boxing operations. The wrapper then
  * transfers execution to the underlying varargs method.
  */
-public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, GraphProvider {
+public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, GraphProvider, AnnotationWrapper {
 
     private final SubstitutionMethod substitutionBaseMethod;
     private final ResolvedJavaMethod originalMethod;
@@ -336,18 +338,8 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return substitutionBaseMethod.getAnnotation(annotationClass);
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return substitutionBaseMethod.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return substitutionBaseMethod.getDeclaredAnnotations();
+    public AnnotatedElement getAnnotationRoot() {
+        return substitutionBaseMethod;
     }
 
     @Override

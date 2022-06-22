@@ -364,9 +364,14 @@ public final class ObjectKlass extends Klass {
 
     private void checkErroneousInitialization() {
         if (isErroneous()) {
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, EspressoError.cat("Erroneous class: ", getName()));
+            throw throwNoClassDefFoundError();
         }
+    }
+
+    @TruffleBoundary
+    private EspressoException throwNoClassDefFoundError() {
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
     }
 
     @ExplodeLoop

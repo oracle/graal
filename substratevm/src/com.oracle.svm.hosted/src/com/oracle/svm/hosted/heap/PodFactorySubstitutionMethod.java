@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -71,7 +72,7 @@ final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (method.isSynthetic() && method.getDeclaringClass().isAnnotationPresent(PodFactory.class) && !method.isConstructor()) {
+        if (method.isSynthetic() && GuardedAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), PodFactory.class) && !method.isConstructor()) {
             assert !(method instanceof CustomSubstitutionMethod);
             return substitutions.computeIfAbsent(method, PodFactorySubstitutionMethod::new);
         }

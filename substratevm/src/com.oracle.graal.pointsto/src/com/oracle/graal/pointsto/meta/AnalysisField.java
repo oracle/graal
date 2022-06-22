@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Set;
@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -42,16 +41,18 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class AnalysisField extends AnalysisElement implements ResolvedJavaField, OriginalFieldProvider {
+public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider, AnnotationWrapper {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> OBSERVERS_UPDATER = //
@@ -165,6 +166,11 @@ public abstract class AnalysisField extends AnalysisElement implements ResolvedJ
         }
 
         return universe.lookup(resolvedType);
+    }
+
+    @Override
+    public ResolvedJavaField getWrapped() {
+        return wrapped;
     }
 
     public void copyAccessInfos(AnalysisField other) {
@@ -482,18 +488,8 @@ public abstract class AnalysisField extends AnalysisElement implements ResolvedJ
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return GuardedAnnotationAccess.getAnnotations(wrapped);
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return GuardedAnnotationAccess.getDeclaredAnnotations(wrapped);
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return GuardedAnnotationAccess.getAnnotation(wrapped, annotationClass);
+    public AnnotatedElement getAnnotationRoot() {
+        return wrapped;
     }
 
     @Override

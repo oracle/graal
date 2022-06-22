@@ -172,4 +172,17 @@ public class CommonConstants {
     public static final String SYSPROP_OS_NAME = "os.name"; // NOI18N
     public static final String SYSPROP_ARCH_NAME = "os.arch"; // NOI18N
     public static final String SYSPROP_USER_HOME = "user.home"; // NOI18N
+
+    public static final String JSON_KEY_COMPONENTS = "components"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_ID = "id"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_VERSION = "version"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_NAME = "name"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_FILENAME = "filename"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_GRAALVM = "graalvm"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_STABILITY = "stability"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_ORIGIN = "origin"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_FILES = "files"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_REQUIRES = "requires"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_ERRORS = "errors"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_PROBLEMS = "problems"; // NOI18N
 }

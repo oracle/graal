@@ -47,7 +47,7 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -1064,7 +1064,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     protected <T extends Annotation> T lookupAnnotation(AnnotatedElement element, Class<T> annotationClass) {
         assert element instanceof Class || element instanceof Executable || element instanceof Field : element.getClass();
-        return element.getAnnotation(annotationClass);
+        return GuardedAnnotationAccess.getAnnotation(element, annotationClass);
     }
 
     protected static String deleteErrorMessage(AnnotatedElement element, Delete deleteAnnotation, boolean hosted) {

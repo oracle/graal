@@ -43,51 +43,48 @@ package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
+import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
+import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
 
 /**
  * Representation of a wasm if and else block during module validation.
  */
 class IfFrame extends ControlFrame {
-    private int falseJumpLocation;
+    private BranchTarget falseJump;
     private boolean elseBranch;
 
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
+    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, BranchTarget falseJump) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.falseJumpLocation = falseJumpLocation;
+        this.falseJump = falseJump;
         this.elseBranch = false;
     }
 
     @Override
-    byte[] getLabelTypes() {
-        return getResultTypes();
+    byte[] labelTypes() {
+        return resultTypes();
     }
 
     @Override
     void enterElse(ParserState state, ExtraDataList extraData, int offset) {
-        int endJumpLocation = extraData.addElseLocation();
-        extraData.setIfTarget(falseJumpLocation, offset, extraData.getLocation());
-        falseJumpLocation = endJumpLocation;
+        BranchTarget endJump = extraData.addElse(offset);
+        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
+        falseJump = endJump;
         elseBranch = true;
-        state.checkStackAfterFrameExit(this, getResultTypes());
+        state.checkStackAfterFrameExit(this, resultTypes());
         // Since else is a separate block the unreachable state has to be reset.
         resetUnreachable();
     }
 
     @Override
     void exit(ExtraDataList extraData, int offset) {
-        if (!elseBranch && getLabelTypeLength() > 0) {
+        if (!elseBranch && labelTypeLength() > 0) {
             throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
         }
-        if (elseBranch) {
-            extraData.setElseTarget(falseJumpLocation, offset, extraData.getLocation());
-        } else {
-            extraData.setIfTarget(falseJumpLocation, offset, extraData.getLocation());
-        }
-        for (int location : conditionalBranches()) {
-            extraData.setConditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
-        }
-        for (int location : unconditionalBranches()) {
-            extraData.setUnconditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
+        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
+        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
+            branchTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
+            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
         }
     }
 

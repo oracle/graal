@@ -41,13 +41,16 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import static java.lang.Integer.compareUnsigned;
+
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-
-import static java.lang.Integer.compareUnsigned;
+import org.graalvm.wasm.parser.validation.collections.ControlStack;
+import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
+import org.graalvm.wasm.parser.validation.collections.entries.BranchTableEntry;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -222,7 +225,7 @@ public class ParserState {
      * @return The number of remaining values of the current control stack.
      */
     private int availableStackSize() {
-        return valueStack.size() - controlStack.peek().getInitialStackSize();
+        return valueStack.size() - controlStack.peek().initialStackSize();
     }
 
     /**
@@ -279,7 +282,7 @@ public class ParserState {
      * @param offset The offset of the loop that was entered in the wasm binary.
      */
     public void enterLoop(byte returnType, int offset) {
-        ControlFrame frame = new LoopFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, offset, extraData.getLocation());
+        ControlFrame frame = new LoopFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
         controlStack.push(frame);
     }
 
@@ -289,8 +292,8 @@ public class ParserState {
      *
      * @param returnType The return type of the if and else branch that was entered.
      */
-    public void enterIf(byte returnType) {
-        ControlFrame frame = new IfFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, extraData.addIfLocation());
+    public void enterIf(byte returnType, int offset) {
+        ControlFrame frame = new IfFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, extraData.addIf(offset));
         controlStack.push(frame);
     }
 
@@ -310,13 +313,13 @@ public class ParserState {
      *
      * @param branchLabel The target label.
      */
-    public void addConditionalBranch(int branchLabel) {
+    public void addConditionalBranch(int branchLabel, int offset) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
-        final byte[] labelTypes = frame.getLabelTypes();
+        final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addConditionalBranch(extraData);
+        frame.addBranchTarget(extraData.addConditionalBranch(offset));
     }
 
     /**
@@ -325,12 +328,12 @@ public class ParserState {
      * 
      * @param branchLabel The target label.
      */
-    public void addUnconditionalBranch(int branchLabel) {
+    public void addUnconditionalBranch(int branchLabel, int offset) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
-        final byte[] labelTypes = frame.getLabelTypes();
+        final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        frame.addUnconditionalBranch(extraData);
+        frame.addBranchTarget(extraData.addUnconditionalBranch(offset));
     }
 
     /**
@@ -339,20 +342,20 @@ public class ParserState {
      * 
      * @param branchLabels The target labels.
      */
-    public void addBranchTable(int[] branchLabels) {
+    public void addBranchTable(int[] branchLabels, int offset) {
         int branchLabel = branchLabels[branchLabels.length - 1];
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
-        byte[] branchLabelReturnTypes = frame.getLabelTypes();
-        int location = extraData.addBranchTableLocation(branchLabels.length);
+        byte[] branchLabelReturnTypes = frame.labelTypes();
+        BranchTableEntry branchTable = extraData.addBranchTable(branchLabels.length, offset);
         for (int i = 0; i < branchLabels.length; i++) {
             int otherBranchLabel = branchLabels[i];
             checkLabelExists(otherBranchLabel);
             frame = getFrame(otherBranchLabel);
-            byte[] otherBranchLabelReturnTypes = frame.getLabelTypes();
+            byte[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
             pushAll(popAll(otherBranchLabelReturnTypes));
-            frame.addBranchTableEntry(extraData, location, i);
+            frame.addBranchTarget(branchTable.item(i));
         }
         popAll(branchLabelReturnTypes);
     }
@@ -362,7 +365,7 @@ public class ParserState {
      */
     public void addReturn() {
         ControlFrame frame = getRootBlock();
-        Assert.assertIntLessOrEqual(frame.getLabelTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
+        Assert.assertIntLessOrEqual(frame.labelTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
         checkReturnTypes(frame);
     }
 
@@ -393,7 +396,7 @@ public class ParserState {
     public void exit(int offset) {
         Assert.assertTrue(!controlStack.isEmpty(), Failure.UNEXPECTED_END_OF_BLOCK);
         ControlFrame frame = controlStack.peek();
-        byte[] resultTypes = frame.getResultTypes();
+        byte[] resultTypes = frame.resultTypes();
 
         frame.exit(extraData, offset);
 
@@ -444,7 +447,7 @@ public class ParserState {
      *             stack.
      */
     public void checkReturnTypes(ControlFrame frame) {
-        byte[] resultTypes = frame.getResultTypes();
+        byte[] resultTypes = frame.resultTypes();
         if (isCurrentStackUnreachable()) {
             popAll(resultTypes);
         } else {
@@ -516,7 +519,7 @@ public class ParserState {
      */
     public void setUnreachable() {
         ControlFrame frame = controlStack.peek();
-        unwindStack(frame.getInitialStackSize());
+        unwindStack(frame.initialStackSize());
         frame.setUnreachable();
     }
 
@@ -533,6 +536,6 @@ public class ParserState {
     }
 
     public int[] extraData() {
-        return extraData.getExtraDataArray();
+        return extraData.extraDataArray();
     }
 }

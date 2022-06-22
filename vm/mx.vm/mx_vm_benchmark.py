@@ -136,6 +136,10 @@ class NativeImageVM(GraalVm):
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
+            self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(cmd_line_image_run_args))
+            for option in self.extra_agentlib_options:
+                if option.startswith('config-output-dir'):
+                    mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
             self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
@@ -723,7 +727,8 @@ class NativeImageVM(GraalVm):
 
     def run_stage_agent(self, config, stages):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
-        hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
+        agentlib_options = ['native-image-agent=config-output-dir=' + str(config.config_dir)] + config.extra_agentlib_options
+        hotspot_vm_args += ['-agentlib:' + ','.join(agentlib_options)]
 
         # Jargraal is very slow with the agent, and libgraal is usually not built for Native Image benchmarks. Therefore, don't use the GraalVM compiler.
         hotspot_vm_args += ['-XX:-UseJVMCICompiler']
@@ -735,7 +740,7 @@ class NativeImageVM(GraalVm):
         if config.vm_args is not None:
             hotspot_vm_args += config.vm_args
 
-        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + config.extra_agent_run_args
+        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
 

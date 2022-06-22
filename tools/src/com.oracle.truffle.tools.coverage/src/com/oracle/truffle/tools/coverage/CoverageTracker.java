@@ -229,14 +229,16 @@ public final class CoverageTracker implements AutoCloseable {
 
     private void processCovered(Map<Source, Map<SourceSection, RootData>> mapping, boolean reset) {
         for (AbstractCoverageNode coverageNode : coverageNodes) {
-            final SourceSection section = coverageNode.sourceSection;
-            final Source source = section.getSource();
-            final Node node = coverageNode.instrumentedNode;
-            final RootNode rootNode = node.getRootNode();
-            if (rootNode == null || !coverageNode.isCovered()) {
+            if (!coverageNode.isCovered()) {
                 continue;
             }
-            final RootData rootData = mapping.get(source).get(rootNode.getSourceSection());
+            final RootNode rootNode = coverageNode.instrumentedNode.getRootNode();
+            if (rootNode == null) {
+                continue;
+            }
+            final SourceSection section = coverageNode.sourceSection;
+            final RootData rootData = mapping.computeIfAbsent(section.getSource(), source -> new HashMap<>()).computeIfAbsent(rootNode.getSourceSection(),
+                            sourceSection -> new RootData(sourceSection, rootNode.getName()));
             final long count = getCount(coverageNode);
             if (coverageNode.isRoot && coverageNode.isCovered()) {
                 rootData.covered = true;

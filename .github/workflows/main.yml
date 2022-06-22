@@ -5,12 +5,12 @@ on:
     branches-ignore:
       - 'github/**'
     paths-ignore:
-      - '.travis.yml'
+      - '.devcontainer/**'
       - '.github/workflows/quarkus.yml'
       - '**.md'
   pull_request:
     paths-ignore:
-      - '.travis.yml'
+      - '.devcontainer/**'
       - '.github/workflows/quarkus.yml'
       - '**.md'
   # Enable manual dispatch of the workflow

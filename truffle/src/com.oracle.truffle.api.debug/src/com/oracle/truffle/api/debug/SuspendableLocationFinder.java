@@ -69,7 +69,10 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li>node after the location
  * </ul>
  * Using this context node, the language determines the nearest tagged node.
+ * <p>
+ * This class has a copy at com.oracle.truffle.tools.agentscript.impl.InstrumentableLocationFinder.
  */
+// GR-39189 to merge multiple implementations to an API.
 final class SuspendableLocationFinder {
 
     private SuspendableLocationFinder() {
