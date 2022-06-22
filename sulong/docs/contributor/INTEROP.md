@@ -4,7 +4,7 @@ The GraalVM LLVM runtime supports standard Polyglot interop messages. For a gene
 documentation of Polyglot interop, see
 [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
 This document explains what the various interop messages mean in the context of the
-GraalVM LLVM runtime. The [last section](#interoperability-for-cswift-compiled-llvm-bitcode) shows how interop access/calls can be used in a more convenient way if the source language is e.g. C++. 
+GraalVM LLVM runtime. The [last section](./INTEROP.md#interoperability-and-staticdynamic-binding-for-c-methods) shows how interop access/calls can be used in a more convenient way if the source language is e.g. C++. 
 
 Detailed reference documentation of Polyglot interop support in the GraalVM LLVM
 runtime can be found in [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h)
