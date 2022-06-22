@@ -114,7 +114,7 @@ The following table lists production-ready and experimental features in GraalVM 
 | Java on Truffle | experimental | experimental  | experimental | experimental  | experimental  |
 | Python          | experimental | not available | experimental | not available | not available |
 | Ruby            | experimental | experimental  | experimental | experimental  | not available |
-| R               | experimental | not available | experimental | experimental  | not available |
+| R               | experimental | not available | experimental | not available | not available |
 | WebAssembly     | experimental | experimental  | experimental | experimental  | experimental  |
 
 ## What to Read Next
