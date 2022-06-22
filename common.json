@@ -3,13 +3,14 @@
 
   "jdks": {
     "openjdk8":           {"name": "openjdk",   "version": "8u302+07-jvmci-20.3-b24", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u341+10-jvmci-20.3-b37-20220620103829-me_build_jdks-master-8b14413049", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u341+10-jvmci-20.3-b37-20220620103829-me_build_jdks-master-8b14413049-fastdebug", "platformspecific": true },
+    "oraclejdk8":         {"name": "oraclejdk", "version": "8u341+10-jvmci-20.3-b37", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u341+10-jvmci-20.3-b37-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+10-jvmci-20.3-b33", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.16+10-jvmci-20.3-b37-20220613090025-me_build_jdks-master-4ec2b3abd6+2dd52f9c57", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.16+10-jvmci-20.3-b37", "platformspecific": true },
+
     "oraclejdk15":        {"name": "oraclejdk", "version": "15.0.1+6", "platformspecific": true },
     "labsjdk-ce-15":      {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b09", "platformspecific": true },
     "labsjdk-ce-15Debug": {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b09-debug", "platformspecific": true },
