@@ -136,3 +136,7 @@ Reasons for transforming to native include complex arithmetic (anything that's
 more than simple addition, subtraction or bitmasks), or trying to store the pointer
 to native memory. Note that a simple conversion to i64 does not force a pointer
 to native.
+
+## Interoperability for C++/Swift-copmiled LLVM bitcode
+
+
