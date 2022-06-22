@@ -41,6 +41,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 import java.util.Collection;
 import java.util.EnumSet;
 
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -66,6 +67,7 @@ import org.graalvm.compiler.core.gen.DebugInfoBuilder;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -1049,6 +1051,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         if (buildtimeCPUFeatures.containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64) || !((AMD64) target.arch).getFeatures().containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64)) {
             return descriptor;
         } else {
+            GraalError.guarantee(DeoptimizationSupport.enabled(), "should be reached in JIT mode only");
             return new ForeignCallDescriptor(descriptor.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, descriptor.getResultType(), descriptor.getArgumentTypes(),
                             descriptor.isReexecutable(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
         }

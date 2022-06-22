@@ -27,6 +27,7 @@ package com.oracle.svm.graal.stubs;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -73,7 +74,7 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
             boolean generateBaseline = minimumRequiredFeature == null || buildtimeCPUFeatures.contains(minimumRequiredFeature);
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(Stubs.getRuntimeCheckedCPUFeatures());
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(Stubs.getRuntimeCheckedCPUFeatures()) && DeoptimizationSupport.enabled();
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {
