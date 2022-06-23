@@ -26,6 +26,7 @@
 
 package com.oracle.svm.core.monitor;
 
+import java.util.LinkedList;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -35,9 +36,32 @@ import com.oracle.svm.core.jfr.JfrTicks;
 
 public class JavaMonitor extends ReentrantLock {
     private long ownerTid;
+    private int waitingThreads = 0;
+    private LinkedList<Long> notifiers = new LinkedList<Long>();
 
     public long getOwnerTid() {
         return ownerTid;
+    }
+
+    public long getNotifierTid() {
+        waitingThreads--;
+        return notifiers.removeFirst();
+    }
+
+    public void addWaiter() {
+        waitingThreads++;
+    }
+
+    public void setNotifier(boolean notifyAll) {
+        long curr = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
+        assert isLocked() && getOwnerTid() == curr; //make sure we hold the lock
+        int notifications = 1;
+        if (notifyAll) {
+            notifications = waitingThreads - notifiers.size();
+        }
+        for (int i = 0; i < notifications; i++) {
+            notifiers.addLast(curr);
+        }
     }
 
     public JavaMonitor() {

@@ -25,7 +25,7 @@
 package com.oracle.svm.core.monitor;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-
+import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 /**
  * Without support for threads, there is no need for any monitor operations.
  */
@@ -74,7 +74,9 @@ public class SingleThreadedMonitorSupport extends MonitorSupport {
          * questionable whether this implementation is useful, especially waiting without a timeout.
          * But it is the best thing we can do.
          */
+        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         Thread.sleep(timeoutMillis == 0 ? Long.MAX_VALUE : timeoutMillis);
+        JavaMonitorWaitEvent.emit(startTicks, obj, 0, timeoutMillis, true);
     }
 
     @Override

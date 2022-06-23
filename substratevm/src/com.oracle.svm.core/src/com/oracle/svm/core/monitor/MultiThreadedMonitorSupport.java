@@ -59,7 +59,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
-
+import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 
 import jdk.internal.misc.Unsafe;
 
@@ -372,23 +372,32 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * Ensure that the current thread holds the lock. Required by the specification of
          * Object.wait, and also required for our implementation.
          */
-        ReentrantLock lock = ensureLocked(obj);
+        JavaMonitor lock = ensureLocked(obj);
         Condition condition = getOrCreateCondition(lock, true);
+        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
+        lock.addWaiter();
         if (timeoutMillis == 0L) {
             condition.await();
+            JavaMonitorWaitEvent.emit(startTicks, obj, lock.getNotifierTid(), timeoutMillis, false);
         } else {
-            condition.await(timeoutMillis, TimeUnit.MILLISECONDS);
+            if (condition.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                JavaMonitorWaitEvent.emit(startTicks, obj, lock.getNotifierTid(), timeoutMillis, false);
+            } else {
+                JavaMonitorWaitEvent.emit(startTicks, obj, 0, timeoutMillis, true);
+            }
         }
     }
 
     @Override
     public void notify(Object obj, boolean notifyAll) {
         /* Make sure the current thread holds the lock on the receiver. */
-        ReentrantLock lock = ensureLocked(obj);
+        JavaMonitor lock = ensureLocked(obj);
+        lock.unlock();
         /* Find the wait/notify condition of the receiver. */
         Condition condition = getOrCreateCondition(lock, false);
         /* If the receiver does not have a condition, then it has not been waited on. */
         if (condition != null) {
+            lock.setNotifier(notifyAll);
             if (notifyAll) {
                 condition.signalAll();
             } else {
@@ -398,8 +407,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     /** Returns the lock of the object. */
-    protected ReentrantLock ensureLocked(Object obj) {
-        ReentrantLock lockObject = getOrCreateMonitor(obj, true);
+    protected JavaMonitor ensureLocked(Object obj) {
+        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
         if (!lockObject.isHeldByCurrentThread()) {
             throw new IllegalMonitorStateException("Receiver is not locked by the current thread.");
         }
