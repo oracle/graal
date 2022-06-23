@@ -608,6 +608,17 @@ public abstract class AbstractTruffleString {
 
     /**
      * Shorthand for calling the uncached version of
+     * {@link TruffleString.CodePointIndexToByteIndexNode}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public final int byteLengthOfCodePointUncached(int byteIndex, TruffleString.Encoding expectedEncoding, TruffleString.ErrorHandling errorHandling) {
+        return TruffleString.ByteLengthOfCodePointNode.getUncached().execute(this, byteIndex, expectedEncoding, errorHandling);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of
      * {@link TruffleString.ByteIndexToCodePointIndexNode}.
      *
      * @since 22.2

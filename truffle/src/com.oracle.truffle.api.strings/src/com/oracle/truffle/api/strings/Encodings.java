@@ -272,7 +272,27 @@ final class Encodings {
         int continuationByte;
         int j = i + 1;
         if (i + nBytes > length) {
-            return invalidCodepointReturnValue(1, errorHandling);
+            if (errorHandling == ErrorHandling.BEST_EFFORT) {
+                return 1;
+            }
+            assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+            if (nBytes < 2 || nBytes > 4) {
+                return -1;
+            }
+            if (j == length && codepoint == 0) {
+                return nBytes == 2 ? -1 : -nBytes;
+            }
+            for (; j < i + nBytes; j++) {
+                codepoint = codepoint << 6;
+                if (j < length) {
+                    continuationByte = readS0(arrayA, offset, length, j);
+                    if (!isUTF8ContinuationByte(continuationByte)) {
+                        return -1;
+                    }
+                    codepoint |= continuationByte & 0x3f;
+                }
+            }
+            return utf8IsInvalidCodePoint(codepoint, nBytes) ? -1 : length - (i + nBytes) - 1;
         }
         // Checkstyle: stop
         switch (nBytes) {
@@ -332,10 +352,15 @@ final class Encodings {
         }
         assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
         if (isUTF16Surrogate(c)) {
-            if (isUTF16LowSurrogate(c) || i + 1 >= length || !isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1))) {
-                return -1;
+            if (isUTF16HighSurrogate(c)) {
+                if (i + 1 == length) {
+                    return -2;
+                }
+                if (isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1))) {
+                    return 2;
+                }
             }
-            return 2;
+            return -1;
         }
         return 1;
     }

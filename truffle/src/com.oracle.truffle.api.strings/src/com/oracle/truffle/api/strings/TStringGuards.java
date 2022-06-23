@@ -72,6 +72,10 @@ final class TStringGuards {
         return TSCodeRange.isValidFixedWidth(codeRange);
     }
 
+    static boolean isUpToValidFixedWidth(int codeRange) {
+        return TSCodeRange.isUpToValidFixedWidth(codeRange);
+    }
+
     static boolean isBrokenFixedWidth(int codeRange) {
         return TSCodeRange.isBrokenFixedWidth(codeRange);
     }

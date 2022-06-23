@@ -394,9 +394,29 @@ final class TStringInternalNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isFixedWidth(codeRangeA)")
+        @Specialization(guards = {"isFixedWidth(codeRangeA)", "isBestEffort(errorHandling)"})
         int doFixed(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
             return 1;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"isUpToValidFixedWidth(codeRangeA)", "isReturnNegative(errorHandling)"})
+        int doFixedValidReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
+            return 1;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"isAscii(encoding)", "isBrokenFixedWidth(codeRangeA)", "isReturnNegative(errorHandling)"})
+        int doASCIIBrokenReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
+            assert isStride0(a);
+            return readS0(a, arrayA, index) < 0x80 ? 1 : -1;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"isUTF32(encoding)", "isBrokenFixedWidth(codeRangeA)", "isReturnNegative(errorHandling)"})
+        int doUTF32BrokenReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling,
+                        @Cached CodePointAtRawNode codePointAtRawNode) {
+            return codePointAtRawNode.execute(a, arrayA, codeRangeA, encoding, index, ErrorHandling.RETURN_NEGATIVE) < 0 ? -1 : 1;
         }
 
         @Specialization(guards = {"isUTF8(encoding)", "isValidMultiByte(codeRangeA)"})
@@ -433,13 +453,19 @@ final class TStringInternalNodes {
             JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
             int cpLength = JCodings.getInstance().getCodePointLength(jCoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
             int regionLength = a.length() - index;
-            if (cpLength > 0 && cpLength <= regionLength) {
-                return cpLength;
-            } else if (errorHandling == ErrorHandling.BEST_EFFORT) {
-                return Math.min(JCodings.getInstance().minLength(jCoding), regionLength);
+            if (errorHandling == ErrorHandling.BEST_EFFORT) {
+                if (cpLength > 0 && cpLength <= regionLength) {
+                    return cpLength;
+                } else {
+                    return Math.min(JCodings.getInstance().minLength(jCoding), regionLength);
+                }
             } else {
                 assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
-                return -1;
+                if (cpLength <= regionLength) {
+                    return cpLength;
+                } else {
+                    return -1 - (cpLength - regionLength);
+                }
             }
         }
     }
