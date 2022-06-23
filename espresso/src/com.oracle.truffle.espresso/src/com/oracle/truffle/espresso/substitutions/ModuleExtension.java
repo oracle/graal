@@ -24,10 +24,10 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -38,6 +38,7 @@ public final class ModuleExtension {
                     new ModuleExtension("espresso.hotswap", "hotswap.jar", (context) -> context.JDWPOptions != null),
                     new ModuleExtension("espresso.polyglot", "polyglot.jar", (context) -> context.Polyglot),
     };
+    private static final ModuleExtension[] EMPTY_MODULE_EXTENSION_ARRAY = new ModuleExtension[0];
 
     private final String moduleName;
     private final String jarName;
@@ -49,14 +50,15 @@ public final class ModuleExtension {
         this.isEnabled = isEnabled;
     }
 
-    public static List<ModuleExtension> get(EspressoContext meta) {
+    @TruffleBoundary
+    public static ModuleExtension[] get(EspressoContext context) {
         List<ModuleExtension> modules = new ArrayList<>(ESPRESSO_EXTENSION_MODULES.length);
         for (ModuleExtension me : ESPRESSO_EXTENSION_MODULES) {
-            if (me.isEnabled.apply(meta)) {
+            if (me.isEnabled.apply(context)) {
                 modules.add(me);
             }
         }
-        return Collections.unmodifiableList(modules);
+        return modules.toArray(EMPTY_MODULE_EXTENSION_ARRAY);
     }
 
     public String moduleName() {

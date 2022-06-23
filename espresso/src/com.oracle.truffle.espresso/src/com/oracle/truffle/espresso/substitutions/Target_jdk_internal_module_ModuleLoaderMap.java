@@ -23,9 +23,9 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -57,11 +57,16 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
             // fetch original platform modules set
             @JavaType(Set.class)
             StaticObject originalResult = (StaticObject) original.call();
-            List<ModuleExtension> extensions = ModuleExtension.get(context);
-            if (extensions.isEmpty()) {
+            ModuleExtension[] extensions = ModuleExtension.get(context);
+            if (extensions.length == 0) {
                 return originalResult;
             }
             // inject our platform modules if options are enabled
+            return addModules(meta, originalResult, extensions);
+        }
+
+        @TruffleBoundary
+        private StaticObject addModules(Meta meta, StaticObject originalResult, ModuleExtension[] extensions) {
             Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
             for (ModuleExtension me : extensions) {
                 add.invokeDirect(originalResult, meta.toGuestString(me.moduleName()));

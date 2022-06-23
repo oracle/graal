@@ -23,9 +23,9 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,13 +55,18 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
             assert meta.getJavaVersion().java17OrLater();
             original.call();
 
-            List<ModuleExtension> toAdd = ModuleExtension.get(context);
-            if (toAdd.isEmpty()) {
+            ModuleExtension[] toAdd = ModuleExtension.get(context);
+            if (toAdd.length == 0) {
                 return;
             }
             /*
              * Spoof the statically stored boot module set.
              */
+            spoofBootModules(meta, toAdd);
+        }
+
+        @TruffleBoundary
+        private void spoofBootModules(Meta meta, ModuleExtension[] toAdd) {
             EspressoLanguage language = getLanguage();
 
             Field bootModulesField = meta.jdk_internal_module_ModuleLoaderMap_Modules.lookupDeclaredField(Symbol.Name.bootModules, Symbol.Type.java_util_Set);
@@ -76,13 +81,13 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
             assert array.isArray();
             StaticObject[] unwrapped = array.unwrap(language);
 
-            StaticObject resultArray = meta.java_lang_String.allocateReferenceArray(unwrapped.length + toAdd.size());
+            StaticObject resultArray = meta.java_lang_String.allocateReferenceArray(unwrapped.length + toAdd.length);
             StaticObject[] unwrappedResult = resultArray.unwrap(language);
 
-            System.arraycopy(unwrapped, 0, unwrappedResult, toAdd.size(), unwrapped.length);
+            System.arraycopy(unwrapped, 0, unwrappedResult, toAdd.length, unwrapped.length);
 
-            for (int i = 0; i < toAdd.size(); i++) {
-                unwrappedResult[i] = meta.toGuestString(toAdd.get(i).moduleName());
+            for (int i = 0; i < toAdd.length; i++) {
+                unwrappedResult[i] = meta.toGuestString(toAdd[i].moduleName());
             }
 
             bootModulesField.setObject(staticStorage, setOf.invokeDirect(null, resultArray));
