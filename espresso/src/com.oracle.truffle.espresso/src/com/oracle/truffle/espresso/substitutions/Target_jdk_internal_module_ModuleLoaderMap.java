@@ -66,7 +66,7 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
         }
 
         @TruffleBoundary
-        private StaticObject addModules(Meta meta, StaticObject originalResult, ModuleExtension[] extensions) {
+        private static StaticObject addModules(Meta meta, StaticObject originalResult, ModuleExtension[] extensions) {
             Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
             for (ModuleExtension me : extensions) {
                 add.invokeDirect(originalResult, meta.toGuestString(me.moduleName()));
