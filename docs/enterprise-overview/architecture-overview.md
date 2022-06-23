@@ -18,7 +18,7 @@ The conceptual overview and advantages of GraalVM Enterprise are described on th
 * [Certified Platforms](#certified-platforms)
 * [Distribution Components List](#distribution-components-list)
 * [Licensing and Support](#licensing-and-support)
-* [Experimental and Early Adopter Features](#experimental-and-early-adopter-features)
+* [Experimental Features](#experimental-features)
 * [What to Read Next](#what-to-read-next)
 
 ## GraalVM Enterprise Architecture
@@ -69,7 +69,7 @@ The following are the certified platforms for GraalVM Enterprise 22.2:
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
 | Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/compute-instances.md) 	|
 | Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/installation-linux.md) 	|
-| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 12.2 (Monterey)	| x86 64-bit, ARM 64-bit	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
+| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.2 (Monterey)	| x86 64-bit	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
 | Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/installation-windows.md) 	|
 
 Note: GraalVM Enterprise macOS distribution for ARM 64-bit architecture (Apple Silicon) is experimental.
@@ -95,14 +95,14 @@ Tools/Utilities:
 
 Runtimes:
 
-* [JavaScript runtime](../reference-manual/js/README.md) with JavaScript REPL with the JavaScript interpreter
+* [JavaScript](../reference-manual/js/README.md) -- REPL with the JavaScript interpreter
 * [Node.js](../../reference-manual/js/NodeJS.md) -- the Node.js 16.14.2 runtime for JavaScript
-* [LLVM runtime](../reference-manual/llvm/README.md) with `lli` tool to directly execute programs from LLVM bitcode
+* [LLVM](../reference-manual/llvm/README.md) -- LLVM runtime with `lli` tool to directly execute programs from LLVM bitcode
 * [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible
-* [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
-* [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
+* [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible runtime
+* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible runtime
+* [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible runtime
+* [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm) runtime
 
 ## Licensing and Support
 
@@ -115,9 +115,9 @@ See [Versions Roadmap of Oracle GraalVM Enterprise Edition](../../release-notes/
 
 Please note, that while Oracle JDK 17 is available under the new [Oracle No-Fee Terms and Conditions (NFTC) license](https://www.oracle.com/downloads/licenses/no-fee-license.html) which allows commercial and production use for 2 years, GraalVM Enterprise Edition license remains unchanged.
 
-## Experimental and Early Adopter Features
+## Experimental Features
 
-Oracle GraalVM Enterprise Edition features are distributed as fully supported, early adopter, and experimental.
+Oracle GraalVM Enterprise Edition features are distributed as fully supported and experimental.
 
 Experimental features are being considered for future versions of GraalVM Enterprise.
 They are not meant to be used in production and are not supported by Oracle.
@@ -127,18 +127,18 @@ For more information, check the [Oracle Technology Network License Agreement for
 
 The following table lists supported and experimental features in GraalVM Enterprise Edition 22.2 by platform.
 
-| Feature         | Linux AMD64   | Linux ARM64   | macOS         | macOS ARM64   | Windows       |
-|-----------------|---------------|---------------|---------------|---------------|---------------|
-| Native Image    | early adopter | early adopter | early adopter | experimental  | early adopter |
-| LLVM runtime    | supported     | supported     | supported     | experimental  | not available |
-| LLVM toolchain  | supported     | supported     | supported     | experimental  | not available |
-| JavaScript      | supported     | supported     | supported     | experimental  | supported     |
-| Node.js         | supported     | supported     | supported     | not available | supported     |
-| Java on Truffle | supported     | experimental  | experimental  | experimental  | experimental  |
-| Python          | experimental  | not available | experimental  | not available | not available |
-| Ruby            | experimental  | experimental  | experimental  | experimental  | not available |
-| R               | experimental  | not available | experimental  | not available | not available |
-| WebAssembly     | experimental  | experimental  | experimental  | experimental  | experimental  |
+| Feature         | Linux AMD64   | Linux ARM64   | macOS AMD64   | Windows AMD64 |
+|-----------------|---------------|---------------|---------------|---------------|
+| Native Image    | supported     | supported     | supported     | supported     |
+| LLVM runtime    | supported     | supported     | supported     | not available |
+| LLVM toolchain  | supported     | supported     | supported     | not available |
+| JavaScript      | supported     | supported     | supported     | supported     |
+| Node.js         | supported     | supported     | supported     | supported     |
+| Java on Truffle | supported     | experimental  | experimental  | experimental  |
+| Python          | experimental  | not available | experimental  | not available |
+| Ruby            | experimental  | experimental  | experimental  | not available |
+| R               | experimental  | not available | experimental  | not available |
+| WebAssembly     | experimental  | experimental  | experimental  | experimental  |
 
 ## What to Read Next
 
