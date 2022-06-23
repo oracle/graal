@@ -56,21 +56,16 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -78,7 +73,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.PolyglotInterfaceMappings;
 
 /**
  * EspressoForeignProxyGenerator contains the code to generate a dynamic Espresso proxy class for
@@ -144,51 +138,15 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     }
 
     @TruffleBoundary
-    public static synchronized GeneratedProxyBytes getProxyKlassBytes(EspressoContext context, Object metaObject, InteropLibrary interop) {
-        assert interop.isMetaObject(metaObject);
-        String metaName;
-        try {
-            metaName = interop.asString(interop.getMetaQualifiedName(metaObject));
-        } catch (UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere();
-        }
-        GeneratedProxyBytes proxyBytes = context.getProxyBytesOrNull(metaName);
-        if (proxyBytes != null) {
-            // Note: this assumes stability of meta object parents, so upon
-            // hitting a use-case where meta parents do change we need to
-            // place guards before returning from cache.
-            return proxyBytes;
-        }
-        Set<ObjectKlass> parents = new HashSet<>();
-        getParents(metaObject, interop, context.getPolyglotInterfaceMappings(), parents);
-        if (parents.isEmpty()) {
-            context.registerProxyBytes(metaName, null);
-            return null;
-        }
-
-        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context.getMeta(), parents.toArray(new ObjectKlass[parents.size()]));
-        GeneratedProxyBytes generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
-        context.registerProxyBytes(metaName, generatedProxyBytes);
-        return generatedProxyBytes;
-    }
-
-    private static void getParents(Object metaObject, InteropLibrary interop, PolyglotInterfaceMappings mappings, Set<ObjectKlass> parents) throws ClassCastException {
-        try {
-            if (interop.hasMetaParents(metaObject)) {
-                Object metaParents = interop.getMetaParents(metaObject);
-
-                long arraySize = interop.getArraySize(metaParents);
-                for (long i = 0; i < arraySize; i++) {
-                    Object parent = interop.readArrayElement(metaParents, i);
-                    ObjectKlass mappedKlass = mappings.mapName(interop.asString(interop.getMetaQualifiedName(parent)));
-                    if (mappedKlass != null) {
-                        parents.add(mappedKlass);
-                    }
-                    getParents(parent, interop, mappings, parents);
-                }
+    public static GeneratedProxyBytes getProxyKlassBytes(String metaName, ObjectKlass[] interfaces, EspressoContext context) {
+        synchronized (context) {
+            GeneratedProxyBytes generatedProxyBytes = context.getProxyBytesOrNull(metaName);
+            if (generatedProxyBytes == null) {
+                EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context.getMeta(), interfaces);
+                generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
+                context.registerProxyBytes(metaName, generatedProxyBytes);
             }
-        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
-            throw new ClassCastException();
+            return generatedProxyBytes;
         }
     }
 

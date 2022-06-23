@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -36,6 +37,11 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.PolyglotInterfaceMappings;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @GenerateUncached
 public abstract class LookupProxyKlassNode extends EspressoNode {
@@ -76,19 +82,62 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     @Specialization(replaces = "doCached")
     ObjectKlass doUncached(Object metaObject, Klass targetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
-        ClassRegistry registry = getContext().getRegistries().getClassRegistry(getContext().getBindings().getBindingsLoader());
-        EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(getContext(),
-                        metaObject, interop);
 
-        Symbol<Symbol.Type> proxyName = getContext().getTypes().fromClassGetName(generatedProxyBytes.name);
-        Klass proxyKlass = registry.findLoadedKlass(proxyName);
-        if (proxyKlass == null) {
-            proxyKlass = registry.defineKlass(proxyName, generatedProxyBytes.bytes);
+        assert interop.isMetaObject(metaObject);
+        String metaName;
+        try {
+            metaName = interop.asString(interop.getMetaQualifiedName(metaObject));
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere();
         }
+        EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes = getContext().getProxyBytesOrNull(metaName);
+        if (proxyBytes == null) {
+            // cache miss
+            Set<ObjectKlass> parentInterfaces = new HashSet<>();
+            fillParentInterfaces(metaObject, interop, getContext().getPolyglotInterfaceMappings(), parentInterfaces);
+            if (parentInterfaces.isEmpty()) {
+                getContext().registerProxyBytes(metaName, null);
+                return null;
+            }
+            proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaName, parentInterfaces.toArray(new ObjectKlass[parentInterfaces.size()]), getContext());
+        }
+
+        Klass proxyKlass = lookupOrDefineInBindingsLoader(proxyBytes, getContext());
 
         if (!targetType.isAssignableFrom(proxyKlass)) {
             throw new ClassCastException("proxy object is not instance of expected type: " + targetType.getName());
         }
         return (ObjectKlass) proxyKlass;
+    }
+
+    private static Klass lookupOrDefineInBindingsLoader(EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes, EspressoContext context) {
+        ClassRegistry registry = context.getRegistries().getClassRegistry(context.getBindings().getBindingsLoader());
+
+        Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
+        Klass proxyKlass = registry.findLoadedKlass(proxyName);
+        if (proxyKlass == null) {
+            proxyKlass = registry.defineKlass(proxyName, proxyBytes.bytes);
+        }
+        return proxyKlass;
+    }
+
+    private static void fillParentInterfaces(Object metaObject, InteropLibrary interop, PolyglotInterfaceMappings mappings, Set<ObjectKlass> parents) throws ClassCastException {
+        try {
+            if (interop.hasMetaParents(metaObject)) {
+                Object metaParents = interop.getMetaParents(metaObject);
+
+                long arraySize = interop.getArraySize(metaParents);
+                for (long i = 0; i < arraySize; i++) {
+                    Object parent = interop.readArrayElement(metaParents, i);
+                    ObjectKlass mappedKlass = mappings.mapName(interop.asString(interop.getMetaQualifiedName(parent)));
+                    if (mappedKlass != null) {
+                        parents.add(mappedKlass);
+                    }
+                    fillParentInterfaces(parent, interop, mappings, parents);
+                }
+            }
+        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+            throw new ClassCastException();
+        }
     }
 }
