@@ -392,7 +392,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void notify(Object obj, boolean notifyAll) {
         /* Make sure the current thread holds the lock on the receiver. */
         JavaMonitor lock = ensureLocked(obj);
-        lock.unlock();
         /* Find the wait/notify condition of the receiver. */
         Condition condition = getOrCreateCondition(lock, false);
         /* If the receiver does not have a condition, then it has not been waited on. */
