@@ -402,14 +402,14 @@ public class ProgressReporter {
         this.debugInfoTimer = timer;
     }
 
-    public void printCreationEnd(int imageSize, int numHeapObjects, long imageHeapSize, int codeCacheSize,
+    public void printCreationEnd(int imageSize, int numHeapObjects, long imageHeapSize, int codeAreaSize,
                     int numCompilations, int debugInfoSize) {
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
         stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime());
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
-        l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
         int numResources = Resources.singleton().resources().size();
         l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
@@ -422,7 +422,7 @@ public class ProgressReporter {
             }
             l.println();
         }
-        long otherBytes = imageSize - codeCacheSize - imageHeapSize - debugInfoSize;
+        long otherBytes = imageSize - codeAreaSize - imageHeapSize - debugInfoSize;
         l().a(format, Utils.bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", Utils.bytesToHuman(imageSize)).println();
