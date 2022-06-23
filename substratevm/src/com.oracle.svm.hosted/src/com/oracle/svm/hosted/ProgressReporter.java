@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -250,7 +251,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printInitializeEnd(Collection<String> libraries) {
+    public void printInitializeEnd() {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").println();
         String javaVersion = System.getProperty("java.runtime.version");
@@ -262,18 +263,6 @@ public class ProgressReporter {
         }
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(Heap.getHeap().getGC().getName()).println();
         l().a(" ").doclink("Analysis", "#glossary-analysis").a(": ").a(reachabilityAnalysis ? "Reachability" : "Points-To").println();
-        printNativeLibraries(libraries);
-    }
-
-    private void printNativeLibraries(Collection<String> libraries) {
-        int numLibraries = libraries.size();
-        if (numLibraries > 0) {
-            if (numLibraries == 1) {
-                l().a(" 1 native library: ").a(libraries.iterator().next()).println();
-            } else {
-                l().a(" ").a(numLibraries).a(" native libraries: ").a(String.join(", ", libraries)).println();
-            }
-        }
     }
 
     public void printFeatures(List<Feature> features) {
@@ -303,7 +292,7 @@ public class ProgressReporter {
         printer.println();
     }
 
-    public ReporterClosable printAnalysis(BigBang bb) {
+    public ReporterClosable printAnalysis(AnalysisUniverse universe, Collection<String> libraries) {
         Timer timer = getTimer(TimerCollection.Registry.ANALYSIS);
         timer.start();
         stagePrinter.start(BuildStage.ANALYSIS);
@@ -312,12 +301,12 @@ public class ProgressReporter {
             public void closeAction() {
                 timer.stop();
                 stagePrinter.end(timer);
-                printAnalysisStatistics(bb.getUniverse());
+                printAnalysisStatistics(universe, libraries);
             }
         };
     }
 
-    private void printAnalysisStatistics(AnalysisUniverse universe) {
+    private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
         long reachableClasses = universe.getTypes().stream().filter(t -> t.isReachable()).count();
         long totalClasses = universe.getTypes().size();
@@ -344,6 +333,11 @@ public class ProgressReporter {
         if (numJNIClasses > 0) {
             l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
+        }
+        int numLibraries = libraries.size();
+        if (numLibraries > 0) {
+            TreeSet<String> sortedLibraries = new TreeSet<>(libraries);
+            l().a("%,8d native %s: ", numLibraries, numLibraries == 1 ? "library" : "libraries").a(String.join(", ", sortedLibraries)).println();
         }
     }
 
