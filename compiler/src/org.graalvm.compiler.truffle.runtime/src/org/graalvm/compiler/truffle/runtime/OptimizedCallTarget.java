@@ -648,26 +648,46 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        maybePropagateHotness();
+        maybeSubmitCallerForCompilation();
         return compile(true);
     }
 
-    private void maybePropagateHotness() {
+    private void maybeSubmitCallerForCompilation() {
         if (!PolyglotCompilerOptions.PropagateHotnessToSingleCaller.getValue(getOptionValues())) {
             return;
         }
-        if (singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
+        FrameDescriptor parentFrameDescriptor = rootNode.getParentFrameDescriptor();
+        if (parentFrameDescriptor == null) {
             return;
         }
-        OptimizedDirectCallNode optimizedDirectCallNode = singleCallNode.get();
+        maybeSubmitCallerForCompilation(this, parentFrameDescriptor);
+    }
+    private static boolean maybeSubmitCallerForCompilation(OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor) {
+        if (current.singleCallNode == NO_CALL || current.singleCallNode == MULTIPLE_CALLS) {
+            return false;
+        }
+        OptimizedDirectCallNode optimizedDirectCallNode = current.singleCallNode.get();
         assert optimizedDirectCallNode != null;
         RootNode callerRootNode = optimizedDirectCallNode.getRootNode();
-        if (callerRootNode == null || !GraalTruffleRuntime.getRuntime().getFrameMaterializeCalled(callerRootNode.getFrameDescriptor())) {
-            return;
+        if (callerRootNode == null) {
+            return false;
         }
         OptimizedCallTarget onlyCaller = (OptimizedCallTarget) callerRootNode.getCallTarget();
-        System.out.println("@@ Adding " + this.callAndLoopCount + " callAndLoopCount from " + this + " to " + onlyCaller);
-        onlyCaller.callAndLoopCount += this.callAndLoopCount;
+        boolean submitted;
+        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor)) {
+            onlyCaller.forceCompileSomehow();
+            submitted = true;
+        } else {
+            submitted =  maybeSubmitCallerForCompilation(onlyCaller, parentFrameDescriptor);
+        }
+        if (submitted) {
+            optimizedDirectCallNode.forceInlining();
+        }
+        return submitted;
+    }
+
+    private void forceCompileSomehow() {
+        // TODO: Implement
     }
 
     private Object executeRootNode(VirtualFrame frame, CompilationState tier) {

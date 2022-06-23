@@ -63,6 +63,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+
 /**
  * Represents the root node in a Truffle AST. The root node is a {@link Node node} that allows to be
  * {@link #execute(VirtualFrame) executed} using a {@link VirtualFrame frame} instance created by
@@ -549,6 +550,14 @@ public abstract class RootNode extends ExecutableNode {
      */
     public static RootNode createConstantNode(Object constant) {
         return new Constant(constant);
+    }
+
+    /**
+     *  TODO
+     * @return
+     */
+    public FrameDescriptor getParentFrameDescriptor() {
+        return null;
     }
 
     final ReentrantLock getLazyLock() {
