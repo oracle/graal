@@ -205,7 +205,10 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         }
 
         /* Java_java_net_InetAddress_init */
-        JNIRuntimeAccess.register(fields(a, "java.net.InetAddress", "holder", "preferIPv6Address"));
+        JNIRuntimeAccess.register(fields(a, "java.net.InetAddress", "holder"));
+        if (JavaVersionUtil.JAVA_SPEC <= 17) {
+            JNIRuntimeAccess.register(fields(a, "java.net.InetAddress", "preferIPv6Address"));
+        }
         JNIRuntimeAccess.register(fields(a, "java.net.InetAddress$InetAddressHolder", "address", "family", "hostName", "originalHostName"));
 
         /* Java_java_net_Inet4Address_init */
