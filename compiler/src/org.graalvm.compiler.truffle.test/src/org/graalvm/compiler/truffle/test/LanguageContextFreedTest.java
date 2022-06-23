@@ -28,8 +28,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
@@ -119,11 +121,9 @@ public class LanguageContextFreedTest {
         contextLocal = null;
         threadLocal = null;
 
-        GCUtils.assertGc("Language context should be freed when polyglot Context is closed.", langContextRef);
-        GCUtils.assertGc("Context local should be freed when polyglot Context is closed.",
-                        contextLocalRef);
-        GCUtils.assertGc("Context thread local should be freed when polyglot Context is closed.",
-                        threadLocalRef);
+        GCUtils.assertGc(List.of(Pair.create("Language context should be freed when polyglot Context is closed.", langContextRef),
+                        Pair.create("Context local should be freed when polyglot Context is closed.", contextLocalRef),
+                        Pair.create("Context thread local should be freed when polyglot Context is closed.", threadLocalRef)));
     }
 
     static final class LanguageContext {

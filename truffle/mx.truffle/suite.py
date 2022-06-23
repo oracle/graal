@@ -237,7 +237,7 @@ suite = {
         "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
-        "truffle:VISUALVM-LIB-JFLUID-HEAP",
+        "VISUALVM-LIB-JFLUID-HEAP",
         "mx:JUNIT",
       ],
       "requires" : [
@@ -1324,7 +1324,7 @@ suite = {
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21", "truffle:VISUALVM-LIB-JFLUID-HEAP"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_SL",
@@ -1335,6 +1335,7 @@ suite = {
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
+         "VISUALVM-LIB-JFLUID-HEAP",
       ],
       "maven" : False,
      },
