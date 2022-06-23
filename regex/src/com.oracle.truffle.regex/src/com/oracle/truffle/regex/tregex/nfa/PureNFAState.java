@@ -274,7 +274,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         if (t.isMatchFound() || t.isPositionAssertion()) {
             return KIND_INITIAL_OR_FINAL_STATE;
         }
-        if (t.isLookAroundAssertion() || t.isAtomicGroup()) {
+        if (t.isSubtreeRoot()) {
             return KIND_SUB_MATCHER;
         }
         if (t.isBackReference()) {
