@@ -84,7 +84,7 @@ suite = {
             },
             {
                 "name": "polybenchmarks",
-                "version": "c59da8d025ddaa5e5f86d96f25be39d5f74fb262",
+                "version": "6295b52d9ad4c622a63870cbbe4e7856a1f38d3e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},
