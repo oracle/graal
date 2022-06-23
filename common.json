@@ -28,8 +28,10 @@
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
   "devkits": {
-      "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
-      "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }}
+    "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
+    "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }},
+    "linux-jdk11":      { "packages" : { "devkit:gcc7.3.0-OEL6.4+1"  : "==1" }},
+    "linux-jdk17":      { "packages" : { "devkit:gcc10.3.0-OL6.4+1"  : "==0" }}
   },
 
   "catch_files" : [
