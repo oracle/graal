@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -48,6 +49,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
@@ -270,9 +272,11 @@ public class PosixUtils {
      */
     public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler) {
         Signal.sigaction old = StackValue.get(Signal.sigaction.class);
-        Signal.sigaction act = StackValue.get(Signal.sigaction.class);
-        Signal.sigemptyset(act.sa_mask());
-        Signal.sigaddset(act.sa_mask(), signum);
+
+        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
+        Signal.sigaction act = StackValue.get(structSigActionSize);
+        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+
         act.sa_flags(Signal.SA_RESTART());
         act.sa_handler(handler);
         if (Signal.sigaction(signum, act, old) != 0) {
