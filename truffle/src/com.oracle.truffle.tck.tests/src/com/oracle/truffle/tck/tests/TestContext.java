@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,15 +57,16 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.junit.Assert;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.InlineSnippet;
+import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
-import org.graalvm.polyglot.tck.LanguageProvider;
+import org.junit.Assert;
+
+import com.oracle.truffle.tck.common.inline.InlineVerifier;
 
 final class TestContext implements Closeable {
     private static final Object contextCacheLock = new Object();
@@ -110,23 +110,27 @@ final class TestContext implements Closeable {
         if (providers == null) {
             state = State.INITIALIZING;
             try {
-                final Map<String, LanguageProvider> tmpProviders = new HashMap<>();
-                final Set<String> languages = getContext().getEngine().getLanguages().keySet();
-                for (LanguageProvider provider : ServiceLoader.load(LanguageProvider.class)) {
-                    final String id = provider.getId();
-                    if (languages.contains(id) || isHost(provider)) {
-                        tmpProviders.put(id, provider);
-                    } else {
-                        throw new IllegalStateException("Provider " + provider.getClass().getName() + " requires a non installed language " + id + "\n" +
-                                        "Installed languages: " + String.join(", ", languages));
-                    }
-                }
-                providers = Collections.unmodifiableMap(tmpProviders);
+                providers = getContextInstalledProviders(getContext());
             } finally {
                 state = State.INITIALIZED;
             }
         }
         return providers;
+    }
+
+    private static Map<String, LanguageProvider> getContextInstalledProviders(Context ctx) {
+        final Map<String, LanguageProvider> tmpProviders = new HashMap<>();
+        final Set<String> languages = ctx.getEngine().getLanguages().keySet();
+        for (LanguageProvider provider : ServiceLoader.load(LanguageProvider.class)) {
+            final String id = provider.getId();
+            if (languages.contains(id) || isHost(provider)) {
+                tmpProviders.put(id, provider);
+            } else {
+                throw new IllegalStateException("Provider " + provider.getClass().getName() + " requires a non installed language " + id + "\n" +
+                                "Installed languages: " + String.join(", ", languages));
+            }
+        }
+        return Collections.unmodifiableMap(tmpProviders);
     }
 
     @Override
@@ -159,7 +163,18 @@ final class TestContext implements Closeable {
                 } else {
                     ProxyOutputStream out = new ProxyOutputStream(printOutput ? System.out : NullOutputStream.INSTANCE);
                     ProxyOutputStream err = new ProxyOutputStream(printOutput ? System.err : NullOutputStream.INSTANCE);
-                    this.context = Context.newBuilder().allowAllAccess(true).out(out).err(err).build();
+
+                    Map<String, LanguageProvider> knownProviders;
+                    // Get known providers from a dummy context
+                    try (Context dummyCtx = Context.newBuilder().allowAllAccess(true).build()) {
+                        knownProviders = getContextInstalledProviders(dummyCtx);
+                    }
+                    Context.Builder builder = Context.newBuilder();
+                    knownProviders.forEach((id, provider) -> {
+                        provider.setupContext(builder);
+                    });
+                    this.context = builder.allowAllAccess(true).out(out).err(err).build();
+
                     assert contextCache == null;
                     contextCache = new RefCountedContextReference(context, out, err);
                 }

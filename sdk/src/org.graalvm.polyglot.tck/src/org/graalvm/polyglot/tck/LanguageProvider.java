@@ -70,6 +70,15 @@ public interface LanguageProvider {
     String getId();
 
     /**
+     * Allows language providers to interact with the creation of the context. In particular, this
+     * way, languages can properly set up language options when needed.
+     * 
+     * @param builder The context builder for the context that will be use in the tests.
+     */
+    default void setupContext(Context.Builder builder) {
+    }
+
+    /**
      * Creates an identity function. The identity function just returns its argument.
      *
      * <p>

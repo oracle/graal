@@ -58,8 +58,6 @@ public class LibEspresso {
         // Since Espresso has a verifier, the Static Object Model does not need to perform shape
         // checks and can use unsafe casts.
         builder.option("engine.RelaxStaticObjectSafetyChecks", "true");
-        // Disable the creation of specialized bindings loader.
-        builder.option("java.UseBindingsLoader", "false");
 
         int result = Arguments.setupContext(builder, args);
         if (result != JNIErrors.JNI_OK()) {

@@ -474,8 +474,8 @@ public final class EspressoOptions {
     @Option(help = "Use Custom ClassLoader for Bindings, allowing the addition of new locations for loading.", //
                     category = OptionCategory.INTERNAL, //
                     stability = OptionStability.STABLE, //
-                    usageSyntax = "true|false") //
-    public static final OptionKey<Boolean> UseBindingsLoader = new OptionKey<>(true);
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> UseBindingsLoader = new OptionKey<>(false);
 
     @Option(help = "Expose the <JavaVM> binding.", //
                     category = OptionCategory.EXPERT, //
