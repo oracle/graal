@@ -34,22 +34,22 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 
 @ExportLibrary(InteropLibrary.class)
-public final class InvocableMethod implements TruffleObject {
+public final class EspressoFunction implements TruffleObject {
     private final Method m;
     private final StaticObject receiver;
 
-    private InvocableMethod(Method m, StaticObject receiver) {
+    private EspressoFunction(Method m, StaticObject receiver) {
         this.m = m;
         this.receiver = receiver;
     }
 
-    public static InvocableMethod createStaticInvocable(Method m) {
-        return new InvocableMethod(m, null);
+    public static EspressoFunction createStaticInvocable(Method m) {
+        return new EspressoFunction(m, null);
     }
 
-    public static InvocableMethod createInstanceInvocable(Method m, StaticObject receiver) {
+    public static EspressoFunction createInstanceInvocable(Method m, StaticObject receiver) {
         assert receiver != null;
-        return new InvocableMethod(m, receiver);
+        return new EspressoFunction(m, receiver);
     }
 
     @ExportMessage

@@ -82,7 +82,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.InvocableMethod;
+import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -150,7 +150,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         try {
             Method.MethodVersion m = lookupMethod.execute(this, member, true, true, -1 /*- skip */);
             if (m != null) {
-                return InvocableMethod.createStaticInvocable(m.getMethod());
+                return EspressoFunction.createStaticInvocable(m.getMethod());
             }
         } catch (ArityException e) {
             /* ignore and continue */

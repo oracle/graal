@@ -75,7 +75,7 @@ import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.InvocableMethod;
+import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -818,7 +818,7 @@ public class EspressoInterop extends BaseInterop {
             try {
                 Method m = lookupMethod.execute(getInteropKlass(receiver), member, -1);
                 if (m != null) {
-                    return InvocableMethod.createInstanceInvocable(m, receiver);
+                    return EspressoFunction.createInstanceInvocable(m, receiver);
                 }
             } catch (ArityException e) {
                 /* Ignore */
