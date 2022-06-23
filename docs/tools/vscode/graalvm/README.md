@@ -260,7 +260,7 @@ However, this analysis cannot always completely predict all dynamic features suc
 Undetected usages of dynamic features calls must be pre-configured, otherwise they will be omitted in the native executable.
 
 Native Image provides several options to configure a build process.
-The most convenient is to use the [Tracing agent (the agent)](../../../reference-manual/native-image/Agent.md).
+The most convenient is to use the [tracing agent](../../../reference-manual/native-image/AutomaticMetadataCollection.md).
 The agent tracks dynamic feature calls whilst your application is running on a JVM, and records those calls into JSON configuration files.
 
 GraalVM Tools for Java extension provides the **NATIVE IMAGE** with **Agent** pane to automate the process of tracking and registering dynamic feature calls, making it even easier to build a native executable in VS Code.

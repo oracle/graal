@@ -92,7 +92,7 @@ Both `node` and  `npm` launchers then become available in the `$GRAALVM_HOME/bin
 
 ```shell
 $GRAALVM_HOME/bin/node -v
-v16.14.2
+$GRAALVM_HOME/bin/npm show <package name> version
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
@@ -284,10 +284,10 @@ For example, running `js --jvm --polyglot example.js` executes `example.js` in a
 If the program calls any code in other supported languages, GraalVM executes that code in the same runtime as the `example.js` application.
 For more information on running polyglot applications, see [Polyglot Programming](../../reference-manual/polyglot-programming.md).
 
-## Native Images
+## Native Image
 
 With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and smaller footprint for your application.
-The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
+[GraalVM Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image
 ```
@@ -319,7 +319,7 @@ Hello, World!
 
 More detailed documentation on this innovative technology is available in the [Native Image reference manual](../../reference-manual/native-image/README.md).
 
-## Polyglot Capabilities of Native Images
+## Polyglot Capabilities of Native Image
 
 GraalVM makes it possible to use polyglot capabilities when building native executables.
 Take this example of a JSON pretty-printer Java program that embeds some JavaScript code:
@@ -343,12 +343,16 @@ public class PrettyPrintJSON {
   }
 }
 ```
-Compile it and build a native image for it. The `--language:js` argument ensures that JavaScript is available in the generated binary:
+
+Compile it and build a native executable for it.
+The `--language:js` argument ensures that JavaScript is available in the generated executable:
 
 ```shell
 javac PrettyPrintJSON.java
 native-image --language:js --initialize-at-build-time PrettyPrintJSON
 ```
+The generatation of a native executable will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
+Additionally, the building requires large amounts of physical memory, especially if you build a native executable with the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
 
 The generatation will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
 Additionally, the generatation requires large amounts of physical memory, especially if you build a native executable with

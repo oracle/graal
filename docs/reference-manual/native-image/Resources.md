@@ -1,12 +1,14 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: Accessing Resources in Native Images
-permalink: /reference-manual/native-image/Resources/
+layout: ni-docs
+toc_group: dynamic-features
+link_title: Accessing Resources
+permalink: /reference-manual/native-image/dynamic-features/Resources/
+redirect_from: /$version/reference-manual/native-image/Resources/
 ---
-# Accessing Resources in Native Images
 
-By default, the `native-image` tool will not integrate any of the resources that are on the classpath into the native executable.
+# Accessing Resources in Native Image
+
+By default, the `native-image` builder will not integrate any of the resources that are on the classpath into the native executable.
 To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at runtime. 
 This can be achieved using a configuration file with the following content:
 
@@ -35,7 +37,7 @@ native-image -H:IncludeResources="<Java regexp that matches resources to be incl
 ```
 You can pass the `-H:IncludeResources` and `-H:ExcludeResources` options several times to define more than one regexp to include or exclude resources, respectively.
 
-To see which resources are included in the native executable, use the option `-H:Log=registerResource:<log level>`. The `<log level>` must be in the range from `1` to `5`, from least detailed to most detailed.
+To see which resources are included in the native executable, use the option `-H:Log=registerResource:<log level>`. The `<log level>` argument must be in the range `1` to `5` (from least detailed to most detailed). A `log level` of `3` provides brief details of the included resources.
 
 ### Example Usage
 
@@ -59,69 +61,7 @@ Then:
  (or alternatively with a single `.*/(Resource0|Resource1).txt$`).
 * Also, if we want to include everything except the _Resource2.txt_ file, we can simply exclude it using `-H:IncludeResources=".*/Resource.*txt$"` followed by `-H:ExcludeResources=".*/Resource2.txt$"`.
 
-The following demo illustrates how to include a resource into a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix))).
-
-1. Save the following Java code into a file named _Fortune.java_:
-
-    ```java
-    import java.io.BufferedReader;
-    import java.io.InputStreamReader;
-    import java.util.ArrayList;
-    import java.util.Random;
-    import java.util.Scanner;
-
-    public class Fortune {
-
-        private static final String SEPARATOR = "%";
-        private static final Random RANDOM = new Random();
-        private ArrayList<String> fortunes = new ArrayList<>();
-
-        public Fortune(String path) {
-            // Scan the file into the array of fortunes
-            Scanner s = new Scanner(new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream(path))));
-            s.useDelimiter(SEPARATOR);
-            while (s.hasNext()) {
-                fortunes.add(s.next());
-            }
-        }
-        
-        private void printRandomFortune() throws InterruptedException {
-            int r = RANDOM.nextInt(fortunes.size()); //Pick a random number
-            String f = fortunes.get(r);  //Use the random number to pick a random fortune
-            for (char c: f.toCharArray()) {  // Print out the fortune
-              System.out.print(c);
-                Thread.sleep(100); 
-            }
-        }
-      
-        public static void main(String[] args) throws InterruptedException {
-            Fortune fortune = new Fortune("/fortunes.u8");
-            fortune.printRandomFortune();
-        }
-    }
-    ```
-
-2. Download the [_fortunes.u8_](https://github.com/oracle/graal/blob/3ed4a7ebc5004c51ae310e48be3828cd7c7802c2/docs/reference-manual/native-image/assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
-
-3. Compile the Java source code:
-
-    ```shell
-    $JAVA_HOME/bin/javac Fortune.java
-    ```
-
-4. Build a native executable by specifying the resource path:
-
-    ```shell
-    $JAVA_HOME/bin/native-image Fortune -H:IncludeResources=".*u8$"
-    ```
-
-5. Run the executable image: 
-
-    ```shell
-    ./fortune
-    ```
-
-See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
+Check [this guide](guides/include-resources.md) which illustrates how to include a resource into a native executable.  
 
 ## Locales
 
@@ -134,7 +74,7 @@ The locales are specified using [language tags](https://docs.oracle.com/javase/t
 locales via ``-H:+IncludeAllLocales``, but note that it increases the size of the resulting
 executable.
 
-## Resource Bundles in Native Image
+## Resource Bundles
 
 Java localization support (`java.util.ResourceBundle`) enables Java code to load L10N resources and show the user messages suitable for runtime settings such as time, locale, and format.
 
@@ -159,7 +99,7 @@ native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.
 By default, requested bundles are included for all requested locales.
 To optimize this, it is possible to use `IncludeResourceBundles` with a locale-specific substring, for example `-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR` will only include the bundle in French.
 
-### Resources in Java modules
+### Resources in Java Modules
 
 Wherever resources are specified with `<Java regexp that matches resources to be included in the image>` or resource bundles are specified via bundle name, it is possible to specify the exact modules from which these resources or bundles should be taken. To do so, specify the module name before the resource-regex or bundle name with `:` as the separator. For example:
 
@@ -184,12 +124,14 @@ InputStream resource = ModuleLayer.boot().findModule(moduleName).getResourceAsSt
 ```
 will always work as expected for resources registered as described above (even if the module does not contain any code that is considered reachable by static analysis).
 
-### Java VM Mode of Localization
+## Java VM Mode of Localization
 
 Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of Java VM infrastructure.
 As a result, it causes the size of the executable to increase for smaller applications such as `HelloWorld`.
 Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact that all bundles are known ahead of build time.
 For the original Java VM lookup, use the `-H:-LocalizationOptimizedMode` option.
 
-## Related Documentation
-* [Logging in Native Image](Logging.md)
+### Further Reading
+
+* [Include Resources in a Native Executable](guides/include-resources.md)
+* [Native Image Build Configuration](BuildConfiguration.md)
