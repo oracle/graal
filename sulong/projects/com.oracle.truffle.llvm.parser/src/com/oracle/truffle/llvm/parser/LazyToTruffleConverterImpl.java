@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstr
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
+import com.oracle.truffle.llvm.parser.nodes.LLVMFunctionModifier;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph;
@@ -188,11 +189,12 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         boolean initDebugValues = true;
         LLVMRuntimeDebugInformation info = new LLVMRuntimeDebugInformation(method.getBlocks().size());
         LLVMBasicBlockNode[] blockNodes = new LLVMBasicBlockNode[method.getBlocks().size()];
+        List<LLVMFunctionModifier> functionModifiers = new ArrayList<>();
         for (InstructionBlock block : method.getBlocks()) {
             List<Phi> blockPhis = phis.get(block);
             ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
             LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(exceptionSlot, uniquesRegion, blockPhis, method.getParameters().size(), symbols, context,
-                            blockNullerInfos, neededForDebug, dataLayout, nodeFactory);
+                            blockNullerInfos, neededForDebug, dataLayout, nodeFactory, functionModifiers);
 
             if (initDebugValues) {
                 for (SourceVariable variable : method.getSourceFunction().getVariables()) {
@@ -210,6 +212,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             LLVMStatementNode[] nodes = visitor.finish();
             info.setBlockDebugInfo(block.getBlockIndex(), visitor.getDebugInfo());
             blockNodes[block.getBlockIndex()] = LLVMBasicBlockNode.createBasicBlockNode(options, nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName());
+        }
+
+        for (LLVMFunctionModifier modifier : functionModifiers) {
+            modifier.modify(blockNodes);
         }
 
         for (int j = 0; j < blockNodes.length; j++) {

@@ -102,6 +102,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoid
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMWritePhisNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
@@ -1177,6 +1178,16 @@ public class BasicNodeFactory implements NodeFactory {
             }
         }
         return LLVMLandingpadNodeGen.create(getStack, allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
+    }
+
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, getStack, phiWrites);
+    }
+
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, int unwindBlock, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, unwindBlock, getStack, phiWrites);
     }
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {
