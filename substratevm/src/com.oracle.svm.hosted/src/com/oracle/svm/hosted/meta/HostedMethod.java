@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, Comparable<HostedMethod>, OriginalMethodProvider {
+public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider {
 
     public static final String METHOD_NAME_DEOPT_SUFFIX = "**";
 
@@ -439,47 +439,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     @Override
     public int hashCode() {
         return wrapped.hashCode();
-    }
-
-    @Override
-    public int compareTo(HostedMethod other) {
-        if (this.equals(other)) {
-            return 0;
-        }
-
-        /*
-         * Sort deoptimization targets towards the end of the code cache. They are rarely executed,
-         * and we do not want a deoptimization target as the first method (because offset 0 means no
-         * deoptimization target available).
-         */
-        int result = Boolean.compare(this.compilationInfo.isDeoptTarget(), other.compilationInfo.isDeoptTarget());
-
-        if (result == 0) {
-            result = this.getDeclaringClass().compareTo(other.getDeclaringClass());
-        }
-        if (result == 0) {
-            result = this.getName().compareTo(other.getName());
-        }
-        if (result == 0) {
-            result = this.getSignature().getParameterCount(false) - other.getSignature().getParameterCount(false);
-        }
-        if (result == 0) {
-            for (int i = 0; i < this.getSignature().getParameterCount(false); i++) {
-                result = ((HostedType) this.getSignature().getParameterType(i, null)).compareTo((HostedType) other.getSignature().getParameterType(i, null));
-                if (result != 0) {
-                    break;
-                }
-            }
-        }
-        if (result == 0) {
-            result = ((HostedType) this.getSignature().getReturnType(null)).compareTo((HostedType) other.getSignature().getReturnType(null));
-        }
-        /*
-         * Note that the result can still be 0 at this point: with class substitutions or incomplete
-         * classpath, two separate methods can have the same signature. Not ordering such methods is
-         * fine. GR-32976 should remove the sorting altogether.
-         */
-        return result;
     }
 
     @Override

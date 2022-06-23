@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -114,6 +115,10 @@ public class UniverseBuilder {
     private final UnsupportedFeatures unsupportedFeatures;
     private TypeCheckBuilder typeCheckBuilder;
 
+    public static final Comparator<HostedMethod> getMethodComparator() {
+        return UniverseComparators.METHOD;
+    }
+
     public UniverseBuilder(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
                     AbstractAnalysisResultsBuilder staticAnalysisResultsBuilder, UnsupportedFeatures unsupportedFeatures) {
         this.aUniverse = aUniverse;
@@ -181,9 +186,9 @@ public class UniverseBuilder {
             processFieldLocations();
 
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
-            Collections.sort(hUniverse.orderedMethods);
+            Collections.sort(hUniverse.orderedMethods, UniverseComparators.METHOD);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
-            Collections.sort(hUniverse.orderedFields);
+            Collections.sort(hUniverse.orderedFields, UniverseComparators.FIELD);
             profilingInformationBuildTask.join();
         }
     }
@@ -442,7 +447,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(rawFields);
+        Collections.sort(rawFields, UniverseComparators.FIELD);
 
         int nextOffset = startSize;
         while (rawFields.size() > 0) {
@@ -521,7 +526,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(fields);
+        Collections.sort(fields, UniverseComparators.FIELD);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
@@ -586,7 +591,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.getTypes()) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
-                Collections.sort(list);
+                Collections.sort(list, UniverseComparators.METHOD);
                 type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
             } else {
                 type.allDeclaredMethods = noMethods;
@@ -599,7 +604,7 @@ public class UniverseBuilder {
 
             // Reuse the implementations from the analysis method.
             method.implementations = hUniverse.lookup(method.wrapped.getImplementations());
-            Arrays.sort(method.implementations);
+            Arrays.sort(method.implementations, UniverseComparators.METHOD);
         }
     }
 
@@ -1007,6 +1012,131 @@ public class UniverseBuilder {
             }
         }
     }
+}
+
+final class UniverseComparators {
+
+    private UniverseComparators() {
+    }
+
+    static final Comparator<HostedType> TYPE = new TypeComparator();
+
+    private static final class TypeComparator implements Comparator<HostedType> {
+
+        @Override
+        public int compare(HostedType o1, HostedType o2) {
+            if (o1.equals(o2)) {
+                return 0;
+            }
+
+            int result;
+            if (o1.getClass().equals(o2.getClass())) {
+                if (o1.isPrimitive() && o2.isPrimitive()) {
+                    assert o1 instanceof HostedPrimitiveType && o2 instanceof HostedPrimitiveType;
+                    result = o1.getJavaKind().compareTo(o2.getJavaKind());
+                    VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: " + o1 + ", " + o2);
+                    return result;
+                }
+
+                if (o1.isArray() && o2.isArray()) {
+                    assert o1 instanceof HostedArrayClass && o2 instanceof HostedArrayClass;
+                    result = compare(o1.getComponentType(), o2.getComponentType());
+                    VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: " + o1 + ", " + o2);
+                    return result;
+                }
+
+                result = o1.getName().compareTo(o2.getName());
+                VMError.guarantee(result != 0, "HostedType objects not distinguishable by name: " + o1 + ", " + o2);
+                return result;
+            }
+
+            result = Integer.compare(ordinal(o1), ordinal(o2));
+            VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: " + o1 + ", " + o2);
+            return result;
+        }
+
+        private static int ordinal(HostedType type) {
+            if (type.isInterface()) {
+                return 4;
+            } else if (type.isArray()) {
+                return 3;
+            } else if (type.isInstanceClass()) {
+                return 2;
+            } else if (type.getJavaKind() != JavaKind.Object) {
+                return 1;
+            } else {
+                throw VMError.shouldNotReachHere();
+            }
+        }
+    }
+
+    static final Comparator<HostedMethod> METHOD = new MethodComparator();
+
+    private static final class MethodComparator implements Comparator<HostedMethod> {
+        @Override
+        public int compare(HostedMethod o1, HostedMethod o2) {
+            if (o1.equals(o2)) {
+                return 0;
+            }
+
+            /*
+             * Sort deoptimization targets towards the end of the code cache. They are rarely
+             * executed, and we do not want a deoptimization target as the first method (because
+             * offset 0 means no deoptimization target available).
+             */
+            int result = Boolean.compare(o1.compilationInfo.isDeoptTarget(), o2.compilationInfo.isDeoptTarget());
+            if (result != 0) {
+                return result;
+            }
+
+            result = TYPE.compare(o1.getDeclaringClass(), o2.getDeclaringClass());
+            if (result != 0) {
+                return result;
+            }
+
+            result = o1.getName().compareTo(o2.getName());
+            if (result != 0) {
+                return result;
+            }
+
+            Signature signature1 = o1.getSignature();
+            Signature signature2 = o2.getSignature();
+            int parameterCount1 = signature1.getParameterCount(false);
+            result = Integer.compare(parameterCount1, signature2.getParameterCount(false));
+            if (result != 0) {
+                return result;
+            }
+
+            for (int i = 0; i < parameterCount1; i++) {
+                result = TYPE.compare((HostedType) signature1.getParameterType(i, null), (HostedType) signature2.getParameterType(i, null));
+                if (result != 0) {
+                    return result;
+                }
+            }
+
+            result = TYPE.compare((HostedType) signature1.getReturnType(null), (HostedType) signature2.getReturnType(null));
+            if (result != 0) {
+                return result;
+            }
+
+            /*
+             * Note that result can still be 0 at this point. Class substitutions or incomplete
+             * classpath can cause two separate methods to have the same signature. Fall back to
+             * identityResult to distinguish such cases.
+             */
+            int identityResult = Integer.compare(System.identityHashCode(o1), System.identityHashCode(o2));
+            assert identityResult != 0 : "identityResult != 0";
+            return identityResult;
+        }
+    }
+
+    /*
+     * Order by JavaKind. This is required, since we want instance fields of the same size and kind
+     * consecutive. If the kind is the same, i.e., result == 0, we return 0 so that the sorting
+     * keeps the order unchanged and therefore keeps the field order we get from the hosting VM.
+     */
+    static final Comparator<HostedField> FIELD = Comparator.comparing(HostedField::getJavaKind);
+
 }
 
 @AutomaticFeature

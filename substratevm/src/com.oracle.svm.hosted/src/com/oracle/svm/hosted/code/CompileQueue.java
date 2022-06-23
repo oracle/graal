@@ -178,6 +178,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.UniverseBuilder;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
@@ -1675,7 +1676,7 @@ public class CompileQueue {
     }
 
     public Map<HostedMethod, CompilationResult> getCompilationResults() {
-        Map<HostedMethod, CompilationResult> result = new TreeMap<>();
+        Map<HostedMethod, CompilationResult> result = new TreeMap<>(UniverseBuilder.getMethodComparator());
         for (Entry<HostedMethod, CompileTask> entry : compilations.entrySet()) {
             result.put(entry.getKey(), entry.getValue().result);
         }

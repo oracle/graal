@@ -242,7 +242,7 @@ public class TypeCheckBuilder {
 
         /* Convert values into a sorted list. */
         Map<HostedType, List<HostedType>> result = new HashMap<>();
-        subtypes.forEach((k, v) -> result.put(k, v.stream().sorted().collect(Collectors.toList())));
+        subtypes.forEach((k, v) -> result.put(k, v.stream().sorted(UniverseComparators.TYPE).collect(Collectors.toList())));
 
         return result;
     }
