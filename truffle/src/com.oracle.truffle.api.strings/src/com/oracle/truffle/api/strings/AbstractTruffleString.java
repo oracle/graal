@@ -610,7 +610,7 @@ public abstract class AbstractTruffleString {
      * Shorthand for calling the uncached version of
      * {@link TruffleString.CodePointIndexToByteIndexNode}.
      *
-     * @since 22.1
+     * @since 22.3
      */
     @TruffleBoundary
     public final int byteLengthOfCodePointUncached(int byteIndex, TruffleString.Encoding expectedEncoding, TruffleString.ErrorHandling errorHandling) {
@@ -650,6 +650,16 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CodePointAtIndexNode}.
+     *
+     * @since 22.3
+     */
+    @TruffleBoundary
+    public final int codePointAtIndexUncached(int i, TruffleString.Encoding expectedEncoding, TruffleString.ErrorHandling errorHandling) {
+        return TruffleString.CodePointAtIndexNode.getUncached().execute(this, i, expectedEncoding, errorHandling);
+    }
+
+    /**
      * Shorthand for calling the uncached version of {@link TruffleString.CodePointAtByteIndexNode}.
      *
      * @since 22.1
@@ -657,6 +667,16 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final int codePointAtByteIndexUncached(int i, TruffleString.Encoding expectedEncoding) {
         return TruffleString.CodePointAtByteIndexNode.getUncached().execute(this, i, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CodePointAtByteIndexNode}.
+     *
+     * @since 22.3
+     */
+    @TruffleBoundary
+    public final int codePointAtByteIndexUncached(int i, TruffleString.Encoding expectedEncoding, TruffleString.ErrorHandling errorHandling) {
+        return TruffleString.CodePointAtByteIndexNode.getUncached().execute(this, i, expectedEncoding, errorHandling);
     }
 
     /**

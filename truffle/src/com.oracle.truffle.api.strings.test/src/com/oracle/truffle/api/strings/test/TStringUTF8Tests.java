@@ -138,9 +138,9 @@ public class TStringUTF8Tests extends TStringTestBase {
             int length = i <= 0xff ? 1 : i <= 0xff_ff ? 2 : i <= 0xff_ff_ff ? 3 : 4;
             checkByteLengthOfCodePoint(arr, arr.length);
             checkByteLengthOfCodePoint(arr, length);
-            if ((i & 0xffffff) == 0) {
-                System.out.println("progress: " + Long.toHexString(i));
-            }
+            // if ((i & 0xffffff) == 0) {
+            // TTY.println("progress: " + Long.toHexString(i));
+            // }
         }
     }
 
