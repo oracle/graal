@@ -187,7 +187,7 @@ final class ProcessHandlers {
         @Override
         public Process destroyForcibly() {
             Process result = delegate.destroyForcibly();
-            assert result == delegate;
+            assert result.pid() == delegate.pid();
             return this;
         }
 
