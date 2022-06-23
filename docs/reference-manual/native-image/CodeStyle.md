@@ -1,18 +1,19 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: Native Image Code Style
+layout: ni-docs
+toc_group: contributing
+link_title: Code Style
 permalink: /reference-manual/native-image/contributing/CodeStyle/
 redirect_from: /$version/reference-manual/native-image/CodeStyle/
 ---
+
 # Native Image Code Style
+
+To ensure the quality of code and that all contributors follow the same standards, we established a ruleset that grew over time and proved to be useful. Note that the rules are open for discussion!
 
 ## Source Code Formatting
 
 The IDE projects generated with `mx ideinit` are configured with strict formatting rules.
 In Eclipse, when a file is saved, it is automatically formatted according to these rules.
-
-The rule set has grown over time and proved to be useful, but the rules are open for discussion.
 The configuration includes special comments which can be used to relax checks in particular regions of code.
 
 Source code formatting can be disabled with special comments:
@@ -43,7 +44,7 @@ and similar commands for other checks that can be disabled (including general `s
 Of course, ensuring a reasonable use of these comments is a matter for code review.
 
 If a project requires a different set of Checkstyle rules, this can be specified in `mx.substratevm/suite.py` by changing the value of the project's `checkstyle` attribute (which, by default, references `com.oracle.svm.core`).
-Specific code files can be excluded from Checkstyle on a directory granularity with a file `src/<project name>/.checkstyle.exclude`.
+Specific code files can be excluded from checkstyle on a directory granularity with a file `src/<project name>/.checkstyle.exclude`.
 Such an exclusion file must contain one directory per line, with paths relative to the project root.
 The file must be explicitly added with `git add` because git will ignore it by default.
 
@@ -64,3 +65,7 @@ This plugin is automatically configured by `mx ideinit`.
   https://github.com/dubreuia/intellij-plugin-save-actions
 
 See the [documentation on IDE integration](https://github.com/graalvm/mx/blob/master/docs/IDE.md) for further suggestions.
+
+### Further Reading
+
+* [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md)

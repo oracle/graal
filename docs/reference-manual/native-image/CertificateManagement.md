@@ -1,9 +1,11 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: Certificate Management in Native Image
-permalink: /reference-manual/native-image/CertificateManagement/
+layout: ni-docs
+toc_group: dynamic-features
+link_title: Certificate Management
+permalink: /reference-manual/native-image/dynamic-features/CertificateManagement/
+redirect_from: /$version/reference-manual/native-image/CertificateManagement/
 ---
+
 # Certificate Management in Native Image
 
 Native Image provides multiple ways to specify the certificate file used to define the default TrustStore.
@@ -13,11 +15,11 @@ Note: The default behavior for `native-image` is to capture and use the default 
 ## Build-time Options
 
 During the image building process, the `native-image` builder captures the host environment's default TrustStore and embeds it into the native executable.
-This TrustStore is by default created from the root certificate file provided within the JDK, but can be changed to use a different certificate file by setting the build-time system property `javax.net.ssl.trustStore` (see [Properties](Properties.md) for how to do it).
+This TrustStore is by default created from the root certificate file provided within the JDK, but can be changed to use a different certificate file by setting the build-time system property `javax.net.ssl.trustStore` (see [Properties](guides/use-system-properties.md) for how to do it).
 
 Since the contents of the build-time certificate file is embedded into the native executable, the file itself does not need to be present in the target environment.
 
-## Run-time Options
+## Runtime Options
 
 The certificate file can also be changed dynamically at run time via setting the `javax.net.ssl.trustStore\*` system properties.
 
@@ -43,3 +45,7 @@ During the image building process, a list of untrusted certificates is loaded fr
 This file is used when validating certificates at both build time and run time.
 In other words, when a new certificate file is specified at run time via setting the `javax.net.ssl.trustStore\*` system properties, the new certificates will still be checked against the `<java.home>/lib/security/blacklisted.certs` loaded at
 image build time.
+
+### Further Reading
+
+- [Native Image Build Configuration](BuildConfiguration.md)

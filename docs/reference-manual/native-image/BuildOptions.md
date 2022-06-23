@@ -1,11 +1,12 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: Native Image Options
-permalink: /reference-manual/native-image/overview/NativeImageOptions/
+layout: ni-docs
+toc_group: build-overview
+link_title: Build Options
+permalink: /reference-manual/native-image/overview/BuildOptions/
 redirect_from: /$version/reference-manual/native-image/Options/
 ---
-# Image Generation Options
+
+#  Native Image Build Options
 
 Depending on the GraalVM edition, the options to the `native-image` builder may differ.
 The following options are supported across both GraalVM Community and Enterprise editions:
@@ -65,9 +66,9 @@ The following options are supported across both GraalVM Community and Enterprise
 * `--language:js`: make JavaScript available as a language for the executable
 * `--language:nodejs`: make Node.js available for the executable
 * `--language:ruby`: make Ruby available as a language for the executable
-* `--tool:coverage`: add source code coverage support to a GraalVM supported language
-* `--tool:insight`: add support for detailed access to a program's runtime behavior, allowing users to inspect values and types at invocation or allocation sites
-* `--tool:dap`: add support to allow image to open a debugger port serving the Debug Adapter Protocol in IDEs like VS Code
+* `--tool:coverage`: add source code coverage support to the GraalVM supported language
+* `--tool:insight`: add support for detailed access to program's runtime behavior, allowing users to inspect values and types at invocation or allocation sites
+* `--tool:dap`: allow image to open a debugger port serving the Debug Adapter Protocol in IDEs like VS Code
 * `--tool:chromeinspector`: add debugging support to a GraalVM supported language
 * `--tool:insightheap`: snapshot a region of image heap during the execution
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like VS Code
@@ -81,15 +82,20 @@ The `--language:nodejs`, `--language:python`, `--language:ruby`, `--language:R`,
 Run `native-image --help-extra` for non-standard options help.
 
 * `--expert-options`: list image build options for experts
-* `--expert-options-all `: list all image build options for experts (use at your own risk). Options marked with _[Extra help available]_ contain help that can be shown with `--expert-options-detail`
+* `--expert-options-all `: list all image build options for experts (use at your own risk). Options marked with _Extra help available_ contain help that can be shown with `--expert-options-detail`
 * `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it
 * `--configurations-path <search path of option-configuration directories>`: a separated list of directories to be treated as option-configuration directories
 * `--debug-attach[=< port >]`: attach to debugger during image building (default port is 8000)
 * `--diagnostics-mode`: enable logging of the build information to a diagnostics folder
 * `--dry-run`: output the command line that would be used for building a native executable
-* `-V<key>=<value>`:  provide values for placeholders in _native-image.properties_ files
+* `-V<key>=<value>`:  provide values for placeholders in `native-image.properties` files
 * `--add-exports`: value `<module>/<package>=<target-module>(,<target-module>)*` updates `<module>` to export `<package>` to `<target-module>`, regardless of module declaration. `<target-module>` can be `ALL-UNNAMED` to export to all unnamed modules
 * `--add-opens`: value `<module>/<package>=<target-module>(,<target-module>)*` updates `<module>` to open `<package>` to `<target-module>`, regardless of module declaration
 * `--add-reads`: value `<module>=<target-module>(,<target-module>)*` updates `<module>` to read `<target-module>`, regardless of module declaration. `<target-module>` can be `ALL-UNNAMED` to read all unnamed modules
 
-Native Image options are also distinguished as hosted and runtime options. Continue reading to the [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.
+Native Image options are also distinguished as hosted and runtime options.
+
+### Further Reading
+
+* [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.
+* [Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation)
