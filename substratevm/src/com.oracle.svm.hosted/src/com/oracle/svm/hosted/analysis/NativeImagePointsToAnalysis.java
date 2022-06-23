@@ -107,6 +107,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         postTask(debug -> initializeMetaData(type));
     }
 
+    @Override
     public void initializeMetaData(AnalysisType type) {
         dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
     }

@@ -22,31 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.graal.reachability;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
- * Extension of StaticAnalysisEngine providing access to more svm specific methods.
+ * This abstraction encapsulates the process of getting a summary for a given method/graph.
+ * Currently, the summaries are extracted from the graph, but in near future, we should load them
+ * from a persistent storage as well.
+ *
+ * @see SimpleInMemoryMethodSummaryProvider
  */
-public interface Inflation extends BigBang {
+public interface MethodSummaryProvider {
+    MethodSummary getSummary(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method);
 
-    @Override
-    SVMHost getHostVM();
-
-    @Override
-    HostedProviders getProviders();
-
-    AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor();
-
-    @Override
-    SubstrateReplacements getReplacements();
-
-    @Override
-    ConstantReflectionProvider getConstantReflectionProvider();
+    MethodSummary getSummary(ReachabilityAnalysisEngine bb, StructuredGraph graph);
 }

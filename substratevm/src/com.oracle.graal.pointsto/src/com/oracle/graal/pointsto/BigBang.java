@@ -28,6 +28,7 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -44,6 +45,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import org.graalvm.compiler.nodes.spi.Replacements;
 
 /**
  * Central static analysis interface that groups together the functionality of reachability analysis
@@ -93,6 +95,10 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
+    boolean strengthenGraalGraphs();
+
+    Replacements getReplacements();
+
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
     default boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, BytecodePosition srcPosition) {
@@ -113,5 +119,17 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     @SuppressWarnings("unused")
     default void onTypeInitialized(AnalysisType type) {
+    }
+
+    void postTask(CompletionExecutor.DebugContextRunnable task);
+
+    void initializeMetaData(AnalysisType type);
+
+    /**
+     * Callback executed after the analysis finished. The cleanupAfterAnalysis is executed after the
+     * universe builder, which can be too late for some tasks.
+     */
+    default void afterAnalysis() {
+
     }
 }

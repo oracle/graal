@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsDir;
 import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
+import static com.oracle.graal.pointsto.api.PointstoOptions.UseExperimentalReachabilityAnalysis;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
@@ -55,6 +56,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.ObjectScanningObserver;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.meta.AnalysisFactory;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.reachability.MethodSummaryProvider;
+import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
+import com.oracle.graal.reachability.ReachabilityObjectScanner;
+import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.AnnotationExtracter;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
@@ -131,7 +143,7 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -148,15 +160,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
-import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
-import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -758,6 +766,8 @@ public class NativeImageGenerator {
                 /* report the unsupported features by throwing UnsupportedFeatureException */
                 bb.getUnsupportedFeatures().report(bb);
                 bb.checkUserLimitations();
+
+                bb.afterAnalysis();
             } catch (UnsupportedFeatureException ufe) {
                 throw FallbackFeature.reportAsFallback(ufe);
             }
@@ -870,7 +880,12 @@ public class NativeImageGenerator {
 
                 /* Create the HeapScanner and install it into the universe. */
                 ImageHeap imageHeap = new ImageHeap();
-                AnalysisObjectScanningObserver aScanningObserver = new AnalysisObjectScanningObserver(bb);
+                ObjectScanningObserver aScanningObserver;
+                if (!UseExperimentalReachabilityAnalysis.getValue(options)) {
+                    aScanningObserver = new AnalysisObjectScanningObserver(bb);
+                } else {
+                    aScanningObserver = new ReachabilityObjectScanner(bb, aMetaAccess);
+                }
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(imageHeap, loader, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver);
                 aUniverse.setHeapScanner(heapScanner);
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
@@ -931,8 +946,14 @@ public class NativeImageGenerator {
         automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
+        AnalysisFactory analysisFactory;
+        if (UseExperimentalReachabilityAnalysis.getValue(options)) {
+            analysisFactory = new ReachabilityAnalysisFactory();
+        } else {
+            analysisFactory = new PointsToAnalysisFactory();
+        }
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
-                        new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind())), new PointsToAnalysisFactory());
+                        new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind())), analysisFactory);
     }
 
     public static AnnotationSubstitutionProcessor createAnnotationSubstitutionProcessor(MetaAccessProvider originalMetaAccess, ImageClassLoader loader,
@@ -988,17 +1009,17 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.addRootClass(Object.class, false, false).registerAsInHeap();
+            bb.markTypeInHeap(bb.addRootClass(Object.class, false, false));
             bb.addRootField(DynamicHub.class, "vtable");
-            bb.addRootClass(String.class, false, false).registerAsInHeap();
-            bb.addRootClass(String[].class, false, false).registerAsInHeap();
-            bb.addRootField(String.class, "value").registerAsInHeap();
-            bb.addRootClass(long[].class, false, false).registerAsInHeap();
-            bb.addRootClass(byte[].class, false, false).registerAsInHeap();
-            bb.addRootClass(byte[][].class, false, false).registerAsInHeap();
-            bb.addRootClass(Object[].class, false, false).registerAsInHeap();
-            bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInHeap();
-            bb.addRootClass(PointerBase[].class, false, false).registerAsInHeap();
+            bb.markTypeInHeap(bb.addRootClass(String.class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(String[].class, false, false));
+            bb.markTypeInHeap(bb.addRootField(String.class, "value"));
+            bb.markTypeInHeap(bb.addRootClass(long[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(byte[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(byte[][].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(Object[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(CFunctionPointer[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(PointerBase[].class, false, false));
 
             bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
             bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
@@ -1029,8 +1050,19 @@ public class NativeImageGenerator {
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bb.getHostVM().getClassInitializationSupport(), ConfigurationValues.getTarget());
             registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
-            for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options)) {
-                HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph).registerUsedElements(false);
+            Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
+            if (bb instanceof NativeImagePointsToAnalysis) {
+                for (StructuredGraph graph : snippetGraphs) {
+                    MethodTypeFlowBuilder methodTypeFlowBuilder = HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph);
+                    methodTypeFlowBuilder.registerUsedElements(false);
+                }
+            } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {
+                NativeImageReachabilityAnalysisEngine reachabilityAnalysis = (NativeImageReachabilityAnalysisEngine) bb;
+                for (StructuredGraph graph : snippetGraphs) {
+                    reachabilityAnalysis.processGraph(graph);
+                }
+            } else {
+                throw VMError.shouldNotReachHere("Unknown analysis type - please specify how to handle snippets");
             }
         }
     }
@@ -1059,6 +1091,12 @@ public class NativeImageGenerator {
         aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, aReplacments, aStampProvider,
                         aSnippetReflection, aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
+        if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
+            MethodSummaryProvider methodSummaryProvider = HostedConfiguration.instance().createMethodSummaryProvider(aUniverse, aMetaAccess);
+            ImageSingletons.add(MethodSummaryProvider.class, methodSummaryProvider);
+            return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
+                            methodSummaryProvider, ImageSingletons.lookup(TimerCollection.class));
+        }
         return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
                         ImageSingletons.lookup(TimerCollection.class));
     }
@@ -1470,8 +1508,8 @@ public class NativeImageGenerator {
                             if (!parameterState.isEmpty()) {
                                 String methodKey = method.format("%H.%n(%p)");
                                 bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
-                                                "Parameter " + ((FormalParamTypeFlow) parameter).position() + " of " + methodKey + " has declared type " +
-                                                                declaredType.toJavaName(true) + ", with assignable types: " + format(bb, declaredTypeState) +
+                                                "Parameter " + ((FormalParamTypeFlow) parameter).position() + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
+                                                                ", with assignable types: " + format(bb, declaredTypeState) +
                                                                 ", which is incompatible with analysis inferred types: " + format(bb, parameterState) + ".");
                             }
                         }
@@ -1672,8 +1710,9 @@ public class NativeImageGenerator {
             } else if (LayoutEncoding.isArrayLike(le)) {
                 String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
                 String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
-                System.out.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(),
-                                LayoutEncoding.getArrayIndexShift(le), LayoutEncoding.getArrayIndexScale(le));
+                System.out.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
+                                LayoutEncoding.getArrayIndexScale(le));
+
             } else {
                 throw VMError.shouldNotReachHere();
             }

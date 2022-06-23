@@ -42,6 +42,7 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -200,6 +201,7 @@ public abstract class PointsToAnalysis implements BigBang {
         StatisticsPrinter.printLast(out, "total_memory_bytes", analysisTimer.getTotalMemory());
     }
 
+    @Override
     public boolean strengthenGraalGraphs() {
         return strengthenGraalGraphs;
     }
@@ -346,6 +348,7 @@ public abstract class PointsToAnalysis implements BigBang {
         return metaAccess;
     }
 
+    @Override
     public Replacements getReplacements() {
         return replacements;
     }
@@ -387,8 +390,9 @@ public abstract class PointsToAnalysis implements BigBang {
         return objectType.getTypeFlow(this, true);
     }
 
-    public TypeState getAllInstantiatedTypes() {
-        return getAllInstantiatedTypeFlow().getState();
+    @Override
+    public Iterable<AnalysisType> getAllInstantiatedTypes() {
+        return getAllInstantiatedTypeFlow().getState().types(this);
     }
 
     public TypeFlow<?> getAllSynchronizedTypeFlow() {
@@ -396,7 +400,7 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @Override
-    public TypeState getAllSynchronizedTypeState() {
+    public Iterable<AnalysisType> getAllSynchronizedTypes() {
         /*
          * If all-synchrnonized type flow, i.e., the type flow that keeps track of the types of all
          * monitor objects, is saturated then we need to assume that any type can be used for
@@ -405,7 +409,7 @@ public abstract class PointsToAnalysis implements BigBang {
         if (allSynchronizedTypeFlow.isSaturated()) {
             return getAllInstantiatedTypes();
         }
-        return allSynchronizedTypeFlow.getState();
+        return allSynchronizedTypeFlow.getState().types(this);
     }
 
     public boolean executorIsStarted() {
@@ -417,23 +421,6 @@ public abstract class PointsToAnalysis implements BigBang {
         return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial);
     }
 
-    /**
-     * Registers the method as root.
-     * 
-     * Static methods are immediately analyzed and marked as implementation-invoked which will also
-     * trigger their compilation.
-     * 
-     * Special and virtual invoked methods are conditionally linked. Only when the receiver type (or
-     * one of its subtypes) is marked as instantiated the resolved concrete method is analyzed and
-     * marked as implementation-invoked and later compiled. This also means that abstract methods
-     * can be marked as virtual invoked roots; only the implementation methods whose declaring class
-     * is instantiated will actually be linked. Trying to register an abstract method as a special
-     * invoked root will result in an error.
-     * 
-     * @param aMethod the method to register as root
-     * @param invokeSpecial if true only the target method is analyzed, even if it has overrides, or
-     *            it is itself an override. If the method is static this flag is ignored.
-     */
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial) {
@@ -535,7 +522,8 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @SuppressWarnings({"try"})
-    private AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
+    @Override
+    public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
             for (AnalysisField field : type.getInstanceFields(false)) {
                 if (addFields) {
@@ -647,6 +635,7 @@ public abstract class PointsToAnalysis implements BigBang {
         });
     }
 
+    @Override
     public void postTask(final DebugContextRunnable task) {
         executor.execute(task);
     }
@@ -979,7 +968,7 @@ public abstract class PointsToAnalysis implements BigBang {
 
         @Override
         public void print() {
-            System.out.format("%5d %5d %5d  |", numParsedGraphs.get(), getAllInstantiatedTypes().typesCount(), universe.getNextTypeId());
+            System.out.format("%5d %5d %5d  |", numParsedGraphs.get(), StreamSupport.stream(getAllInstantiatedTypes().spliterator(), false).count(), universe.getNextTypeId());
             super.print();
             System.out.println();
         }

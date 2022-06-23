@@ -345,7 +345,7 @@ public class FeatureImpl {
         }
 
         public void registerAsUsed(AnalysisType aType) {
-            aType.registerAsReachable();
+            bb.markTypeReachable(aType);
         }
 
         @Override
@@ -354,17 +354,17 @@ public class FeatureImpl {
         }
 
         public void registerAsInHeap(AnalysisType aType) {
-            aType.registerAsInHeap();
+            bb.markTypeInHeap(aType);
         }
 
         @Override
         public void registerAsAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
+            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
             registerAsAccessed(getMetaAccess().lookupJavaField(field));
         }
 
         public void registerAsAccessed(AnalysisField aField) {
-            aField.registerAsAccessed();
+            bb.markFieldAccessed(aField);
         }
 
         public void registerAsRead(Field field) {
@@ -373,12 +373,12 @@ public class FeatureImpl {
         }
 
         public void registerAsRead(AnalysisField aField) {
-            aField.registerAsRead(null);
+            bb.markFieldRead(aField);
         }
 
         @Override
         public void registerAsUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
+            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
@@ -391,25 +391,17 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
-            if (!aField.isUnsafeAccessed()) {
-                assert !GuardedAnnotationAccess.isAnnotationPresent(aField, Delete.class);
-                /* Register the field as unsafe accessed. */
-                aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(partitionKind);
-                /* Force the update of registered unsafe loads and stores. */
-                bb.forceUnsafeUpdate(aField);
-                return true;
-            }
-            return false;
+            assert !GuardedAnnotationAccess.isAnnotationPresent(aField, Delete.class);
+            return bb.registerAsUnsafeAccessed(aField, partitionKind);
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
+            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
             registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
         public void registerAsFrozenUnsafeAccessed(AnalysisField aField) {
-            aField.setUnsafeFrozenTypeState(true);
+            bb.registerAsFrozenUnsafeAccessed(aField);
             registerAsUnsafeAccessed(aField);
         }
 
