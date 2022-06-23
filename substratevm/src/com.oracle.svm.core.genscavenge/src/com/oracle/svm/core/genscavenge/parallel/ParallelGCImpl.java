@@ -19,8 +19,8 @@ public class ParallelGCImpl extends ParallelGC {
     public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
     public static final TaskQueue.Consumer PROMOTE_TASK =
-            (Pointer originalPtr, Pointer copyPtr, Pointer objRef, boolean compressed, Object holderObject) -> {
-                GCImpl.getGCImpl().doPromoteParallel(originalPtr, copyPtr, objRef, 0, compressed, holderObject);
+            (Pointer originalPtr, Pointer objRef, boolean compressed, Object holderObject) -> {
+                GCImpl.getGCImpl().doPromoteParallel(originalPtr, objRef, 0, compressed, holderObject);
             };
 
     private static boolean enabled;
@@ -33,16 +33,7 @@ public class ParallelGCImpl extends ParallelGC {
     public void startWorkerThread(int n) {
         final Log trace = Log.log();
         trace.string("PP start worker-").unsigned(n).newline();
-//        final TaskQueue.Consumer promoteTask = (Object original, Pointer objRef, boolean compressed, Object holderObject) -> {
-//            trace.string(">> promote on worker-").unsigned(n).newline();///
-//            if (original == null || holderObject == null) {
-//                trace.string("PP orig=").object(original).string(", holder=").object(holderObject).newline();
-//            }
-//            GCImpl.getGCImpl().doPromoteParallel(original, objRef, 0, compressed, holderObject);
-//        };
-        Thread t = new Thread() {
-            @Override
-            public void run() {
+        Thread t = new Thread(() -> {
 //                VMThreads.ParallelGCSupport.setParallelGCThread();
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
                 try {
@@ -52,8 +43,7 @@ public class ParallelGCImpl extends ParallelGC {
                 } catch (Throwable e) {
                     VMError.shouldNotReachHere(e.getClass().getName());
                 }
-            }
-        };
+        });
         t.setName("ParallelGCWorker-" + n);
         t.setDaemon(true);
         t.start();

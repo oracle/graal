@@ -8,7 +8,7 @@ public class TaskQueue {
     private final VMMutex mutex;
     private final VMCondition cond;
     private Object holderObject;
-    private Pointer original, copy, objRef;
+    private Pointer original, objRef;
     private boolean compressed;
     private boolean empty;
     private volatile int idleCount;
@@ -33,14 +33,13 @@ public class TaskQueue {
 //        }
 //    }
 
-    public void put(Pointer original, Pointer copy, Pointer objRef, boolean compressed, Object holderObject) {
+    public void put(Pointer original, Pointer objRef, boolean compressed, Object holderObject) {
         try {
             mutex.lock();
             while (!empty) {
                 cond.block();
             }
             this.original = original;
-            this.copy = copy;
             this.objRef = objRef;
             this.compressed = compressed;
             this.holderObject = holderObject;
@@ -53,7 +52,7 @@ public class TaskQueue {
 
     public void consume(Consumer consumer) {
         Object owner;
-        Pointer orig, cp, ref;
+        Pointer orig, ref;
         boolean comp;
         try {
             mutex.lock();
@@ -62,7 +61,6 @@ public class TaskQueue {
                 cond.block();
             }
             orig = this.original;
-            cp = this.copy;
             ref = this.objRef;
             comp = this.compressed;
             owner = this.holderObject;
@@ -72,7 +70,7 @@ public class TaskQueue {
             mutex.unlock();
             cond.broadcast();
         }
-        consumer.accept(orig, cp, ref, comp, owner);
+        consumer.accept(orig, ref, comp, owner);
     }
 
     public void waitUntilIdle(int expectedIdleCount) {
@@ -88,6 +86,6 @@ public class TaskQueue {
     }
 
     public interface Consumer {
-        void accept(Pointer originalPtr, Pointer copy, Pointer objRef, boolean compressed, Object holderObject);
+        void accept(Pointer originalPtr, Pointer objRef, boolean compressed, Object holderObject);
     }
 }

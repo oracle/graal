@@ -27,9 +27,12 @@ package com.oracle.svm.core.genscavenge;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.thread.VMThreads;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -58,6 +61,7 @@ public final class Space {
     private final boolean isFromSpace;
     private final int age;
     private final ChunksAccounting accounting;
+    private final VMMutex mutex;
 
     /* Heads and tails of the HeapChunk lists. */
     private AlignedHeapChunk.AlignedHeader firstAlignedHeapChunk;
@@ -82,6 +86,7 @@ public final class Space {
         this.isFromSpace = isFromSpace;
         this.age = age;
         this.accounting = new ChunksAccounting(accounting);
+        this.mutex = new VMMutex(name + "-mutex");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -162,19 +167,27 @@ public final class Space {
     /**
      * Allocate memory from an AlignedHeapChunk in this Space.
      */
-    @AlwaysInline("GC performance")
+    @NeverInline("GC performance")
     Pointer allocateMemory(UnsignedWord objectSize) {
-        Pointer result = WordFactory.nullPointer();
-        /* Fast-path: try allocating in the last chunk. */
-        AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
-        if (oldChunk.isNonNull()) {
-            result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
-        }
-        if (result.isNonNull()) {
+        mutex.lock();
+        try {
+            Pointer result = WordFactory.nullPointer();
+            /* Fast-path: try allocating in the last chunk. */
+            AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
+            if (oldChunk.isNonNull()) {
+                result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
+            }
+            if (result.isNonNull()) {
+                Log.log().string("    alloc fast ").zhex(result).newline();
+                return result;
+            }
+            /* Slow-path: try allocating a new chunk for the requested memory. */
+            result = allocateInNewChunk(objectSize);
+            Log.log().string("    alloc slow ").zhex(result).newline();
             return result;
+        } finally {
+            mutex.unlock();
         }
-        /* Slow-path: try allocating a new chunk for the requested memory. */
-        return allocateInNewChunk(objectSize);
     }
 
     private Pointer allocateInNewChunk(UnsignedWord objectSize) {
@@ -183,31 +196,6 @@ public final class Space {
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }
         return WordFactory.nullPointer();
-    }
-
-    private int ind;///rm
-
-    private final VMMutex mutex = new VMMutex("Space.ind.mutex");
-
-    private void setInd(int ind) {
-        try {
-            mutex.lock();
-            if (ind < 10) {
-                Log.log().string("## ind ").unsigned(this.ind).string(" -> ").unsigned(ind).newline();
-            }
-            this.ind = ind;
-        } finally {
-            mutex.unlock();
-        }
-    }
-
-    private int getInd() {
-        try {
-            mutex.lock();
-            return ind;
-        } finally {
-            mutex.unlock();
-        }
     }
 
     public void releaseChunks(ChunkReleaser chunkReleaser) {

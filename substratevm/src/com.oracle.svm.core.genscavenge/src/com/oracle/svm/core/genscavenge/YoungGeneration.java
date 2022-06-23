@@ -180,7 +180,7 @@ public final class YoungGeneration extends Generation {
     }
 
     boolean scanGreyObjects() {
-        Log trace = Log.log().string("[YoungGeneration.scanGreyObjects:");
+        Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
         boolean needScan = false;
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (getSurvivorGreyObjectsWalker(i).haveGreyObjects()) {

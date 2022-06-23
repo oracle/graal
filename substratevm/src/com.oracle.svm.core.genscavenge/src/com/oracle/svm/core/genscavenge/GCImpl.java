@@ -1057,7 +1057,6 @@ public final class GCImpl implements GC {
             scanGreyObjectsTimer.close();
         }
         ParallelGCImpl.setEnabled(false);
-        ParallelGCImpl.waitForIdle();
     }
 
     private static void scanGreyObjectsLoop() {
@@ -1113,6 +1112,10 @@ public final class GCImpl implements GC {
         boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
         Header<?> originalChunk = getChunk(original, isAligned);
         Space originalSpace = HeapChunk.getSpace(originalChunk);
+        if (originalSpace == null) {
+            Log.log().string("PP warn space is null for object ").zhex(Word.objectToUntrackedPointer(original))
+                    .string(" in chunk ").zhex(originalChunk).newline();
+        }
         if (!originalSpace.isFromSpace() || !isAligned || innerOffset != 0 || !ParallelGCImpl.isEnabled()) {
             return false;
         }
@@ -1135,21 +1138,11 @@ public final class GCImpl implements GC {
             assert VMOperation.isGCInProgress();
             assert ObjectHeaderImpl.isAlignedObject(original);
 
-            UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
-            Pointer copyMemory = toSpace.allocateMemory(size);
-            if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
-                result = null;
-            }
-
             Pointer originalMemory = Word.objectToUntrackedPointer(original);
-            /*
-             * This does a direct memory copy, without regard to whether the copied data contains object
-             * references. That's okay, because all references in the copy are visited and overwritten
-             * later on anyways (the card table is also updated at that point if necessary).
-             */
-            UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, size);
-            ParallelGCImpl.QUEUE.put(originalMemory, copyMemory, objRef, compressed, holderObject);
-//            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+            ParallelGCImpl.QUEUE.put(originalMemory, objRef, compressed, holderObject);
+            if (ParallelGCImpl.WORKERS_COUNT <= 0) {
+                ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+            }
             return true;
         }
 
@@ -1169,34 +1162,46 @@ public final class GCImpl implements GC {
         return true;
     }
 
-    public void doPromoteParallel(Pointer originalPtr, Pointer copyPtr, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+    public void doPromoteParallel(Pointer originalPtr, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         Log trace = Log.log();
         Object original = originalPtr.toObject();
         Object copy;
         if (ObjectHeaderImpl.isPointerToForwardedObject(originalPtr)) {
             copy = ObjectHeaderImpl.getForwardedObject(originalPtr);
         } else {
-            UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
-            if (size.belowOrEqual(0)) {
-                trace.string("PP warn obj ").hex(originalPtr)
-                        .string(" size ").signed(size)
-//                .string(", ref ").hex(objRef)
-                        .newline();
-            }
-            copy = copyPtr.toObject();
-            assert copy != null : "promotion failure in old generation must have been handled";
-
             HeapImpl heap = HeapImpl.getHeapImpl();
             Space toSpace = heap.getOldGeneration().getToSpace();
-            if (toSpace.isOldSpace()) {
-                // If the object was promoted to the old gen, we need to take care of the remembered
-                // set bit and the first object table (even when promoting from old to old).
-                AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
-                RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+            UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
+            if (size.belowOrEqual(0)) {
+                trace.string("PP warn obj ").zhex(originalPtr)
+                        .string(" size ").signed(size)
+//                .string(", ref ").zhex(objRef)
+                        .newline();
+            }
+
+            Pointer copyPtr = toSpace.allocateMemory(size);
+            if (probability(VERY_SLOW_PATH_PROBABILITY, copyPtr.isNull())) {
+                copy = null;
+            } else {
+                /*
+                 * This does a direct memory copy, without regard to whether the copied data contains object
+                 * references. That's okay, because all references in the copy are visited and overwritten
+                 * later on anyways (the card table is also updated at that point if necessary).
+                 */
+                UnmanagedMemoryUtil.copyLongsForward(originalPtr, copyPtr, size);
+                copy = copyPtr.toObject();
+                assert copy != null : "promotion failure in old generation must have been handled";
+
+                if (toSpace.isOldSpace()) {
+                    // If the object was promoted to the old gen, we need to take care of the remembered
+                    // set bit and the first object table (even when promoting from old to old).
+                    AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
+                    RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+                }
             }
         }
         if (copy != null) {
-            copy = ObjectHeaderImpl.installForwardingPointer(original, copy); ///can lose duplicate copy
+            copy = ObjectHeaderImpl.installForwardingPointer(original, copy);
         }
         /// from visitor code
         if (copy != original) {

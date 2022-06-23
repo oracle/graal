@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -99,7 +100,6 @@ public final class OldGeneration extends Generation {
     }
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {
-//        getFromSpace().setInd(1000);
         getFromSpace().releaseChunks(chunkReleaser);
     }
 
@@ -108,10 +108,14 @@ public final class OldGeneration extends Generation {
     }
 
     boolean scanGreyObjects() {
+        Log trace = Log.log().string("<OldGeneration.scanGreyObjects:").newline();
         if (!toGreyObjectsWalker.haveGreyObjects()) {
+            trace.string(">").newline();
             return false;
         }
         toGreyObjectsWalker.walkGreyObjects();
+        ParallelGCImpl.waitForIdle();
+        trace.string(">").newline();
         return true;
     }
 
