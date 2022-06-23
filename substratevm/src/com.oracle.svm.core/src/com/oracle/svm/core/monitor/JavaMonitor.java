@@ -29,15 +29,43 @@ package com.oracle.svm.core.monitor;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
-import com.oracle.svm.core.jfr.JfrTicks;
 
 public class JavaMonitor extends ReentrantLock {
+    private static final long serialVersionUID = 3921577070627519721L;
+
     private long latestJfrTid;
 
     public JavaMonitor() {
+        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(this, Target_java_util_concurrent_locks_ReentrantLock.class);
+        Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
+        sync.objectMonitorCondition = SubstrateUtil.cast(MultiThreadedMonitorSupport.MONITOR_WITHOUT_CONDITION, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class);
         latestJfrTid = 0;
+    }
+
+    /**
+     * Creates a new {@link ReentrantLock} that is locked by the provided thread. This requires
+     * patching of internal state, since there is no public API in {@link ReentrantLock} to do that
+     * (for a good reason, because it is a highly unusual operation).
+     */
+    public static JavaMonitor newLockedMonitorForThread(Thread thread, int recursionDepth) {
+        JavaMonitor result = new JavaMonitor();
+        for (int i = 0; i < recursionDepth; i++) {
+            result.lock();
+        }
+
+        result.latestJfrTid = SubstrateJVM.getThreadId(thread);
+        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(result, Target_java_util_concurrent_locks_ReentrantLock.class);
+        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
+
+        assert sync.exclusiveOwnerThread == Thread.currentThread() : "Must be locked by current thread";
+        sync.exclusiveOwnerThread = thread;
+
+        return result;
     }
 
     public void monitorEnter(Object obj) {
@@ -46,6 +74,7 @@ public class JavaMonitor extends ReentrantLock {
             lock();
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
-        latestJfrTid = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
+
+        latestJfrTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
     }
 }

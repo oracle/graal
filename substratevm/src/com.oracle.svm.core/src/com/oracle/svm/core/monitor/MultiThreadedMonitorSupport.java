@@ -180,7 +180,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Condition yet. This marker value is needed to identify monitor conditions for
      * {@link #maybeAdjustNewParkStatus}.
      */
-    static final ConditionObject MONITOR_WITHOUT_CONDITION = (ConditionObject) new JavaMonitor().newCondition();
+    static final ConditionObject MONITOR_WITHOUT_CONDITION = (ConditionObject) new ReentrantLock().newCondition();
 
     // Checkstyle: stop
     /** Substituted in {@link Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport} */
@@ -476,35 +476,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     protected static JavaMonitor newMonitorLock() {
         JavaMonitor newMonitor = new JavaMonitor();
-        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(newMonitor, Target_java_util_concurrent_locks_ReentrantLock.class);
-        Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
-        sync.objectMonitorCondition = SubstrateUtil.cast(MONITOR_WITHOUT_CONDITION, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class);
         assert isMonitorLock(newMonitor);
         return newMonitor;
     }
 
     protected static boolean isMonitorLock(JavaMonitor lock) {
         return lock != null && isMonitorLockSynchronizer(SubstrateUtil.cast(lock, Target_java_util_concurrent_locks_ReentrantLock.class).sync);
-    }
-
-    /**
-     * Creates a new {@link ReentrantLock} that is locked by the provided thread. This requires
-     * patching of internal state, since there is no public API in {@link ReentrantLock} to do that
-     * (for a good reason, because it is a highly unusual operation).
-     */
-    protected static JavaMonitor newLockedMonitorForThread(Thread thread, int recursionDepth) {
-        JavaMonitor result = newMonitorLock();
-        for (int i = 0; i < recursionDepth; i++) {
-            result.lock();
-        }
-
-        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(result, Target_java_util_concurrent_locks_ReentrantLock.class);
-        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
-
-        assert sync.exclusiveOwnerThread == Thread.currentThread() : "Must be locked by current thread";
-        sync.exclusiveOwnerThread = thread;
-
-        return result;
     }
 
     protected static boolean isMonitorLockSynchronizer(Object obj) {

@@ -56,7 +56,6 @@ public enum JfrEvent {
     ExecuteVMOperation("jdk.ExecuteVMOperation"),
     JavaMonitorEnter("jdk.JavaMonitorEnter");
 
-
     private final long id;
 
     @Platforms(Platform.HOSTED_ONLY.class)

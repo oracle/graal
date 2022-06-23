@@ -167,7 +167,7 @@ public class JfrThreadLocal implements ThreadListener {
         long startPos = buffer.getPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
         long addressOfPos = JfrBufferAccess.getAddressOfPos(buffer).rawValue();
-        long jfrThreadId = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
+        long jfrThreadId = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
         Target_jdk_jfr_internal_EventWriter result = new Target_jdk_jfr_internal_EventWriter(startPos, maxPos, addressOfPos, jfrThreadId, true);
         javaEventWriter.set(result);
 

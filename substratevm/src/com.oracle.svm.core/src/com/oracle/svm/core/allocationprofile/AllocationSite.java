@@ -214,6 +214,7 @@ public final class AllocationSite {
 
 @AutomaticFeature
 class AllocationProfilingFeature implements Feature {
+    @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(RuntimeFeature.class);
     }
