@@ -124,6 +124,10 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "org.graalvm.polyglot.io.ProcessHandler$ProcessCommand",
+    "allPublicMethods": true
+  },
+  {
     "name": "java.lang.Runnable",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
