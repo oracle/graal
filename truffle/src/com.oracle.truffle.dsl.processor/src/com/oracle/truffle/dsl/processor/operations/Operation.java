@@ -184,10 +184,19 @@ public abstract class Operation {
 
             EmitArguments args = new EmitArguments();
 
+            args.constants = new CodeTree[instruction.numConstants()];
             args.locals = new CodeTree[instruction.numLocals()];
             args.localRuns = new CodeTree[instruction.numLocalRuns()];
             args.arguments = new CodeTree[instruction.numArguments()];
             args.branchTargets = new CodeTree[instruction.numBranchTargets()];
+
+            boolean[] typedConstants = instruction.typedConstants();
+            for (int i = 0; i < typedConstants.length; i++) {
+                if (typedConstants[i]) {
+                    args.constants[i] = CodeTreeBuilder.createBuilder().variable(vars.operationData).string(".arguments[" + index + "]").build();
+                    index++;
+                }
+            }
 
             index = moveArguments(vars, index, args.locals);
             index = moveArguments(vars, index, args.localRuns);

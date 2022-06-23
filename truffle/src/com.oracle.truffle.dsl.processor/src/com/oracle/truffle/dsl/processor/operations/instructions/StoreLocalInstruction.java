@@ -55,6 +55,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.BoxingEliminationBehaviour;
 
 public class StoreLocalInstruction extends Instruction {
     private final FrameKind kind;
@@ -62,7 +63,9 @@ public class StoreLocalInstruction extends Instruction {
 
     static final DeclaredType FrameSlotKind = ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.frame.FrameSlotKind");
 
+    static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = LoadLocalInstruction.INTERPRETER_ONLY_BOXING_ELIMINATION;
     private static final boolean LOG_LOCAL_STORES = false;
+    private static final boolean LOG_LOCAL_STORES_SPEC = false;
 
     public StoreLocalInstruction(OperationsContext context, int id, FrameKind kind) {
         super("store.local." + (kind == null ? "uninit" : kind.getTypeName().toLowerCase()), id, 0);
@@ -130,6 +133,10 @@ public class StoreLocalInstruction extends Instruction {
 
         b.startAssign("int sourceSlot").variable(vars.sp).string(" - 1").end();
 
+        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
+            b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock(); // {
+        }
+
         if (kind == null) {
             b.startAssign("FrameSlotKind localTag").startCall(vars.frame, "getFrameDescriptor().getSlotKind").string("localIdx").end(2);
 
@@ -152,7 +159,7 @@ public class StoreLocalInstruction extends Instruction {
             b.string("sourceSlot");
             b.end(2);
 
-            if (LOG_LOCAL_STORES) {
+            if (LOG_LOCAL_STORES || LOG_LOCAL_STORES_SPEC) {
                 b.statement("System.out.printf(\" local store %2d : %s [init -> %s]%n\", localIdx, frame.getValue(sourceSlot), FrameSlotKind.fromTag((byte) resultTag))");
             }
 
@@ -205,8 +212,8 @@ public class StoreLocalInstruction extends Instruction {
 
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
-            if (LOG_LOCAL_STORES) {
-                b.statement("System.out.printf(\" local store %2d : %s [" + kind + " -> generic]%n\", localIdx, frame.getValue(sourceSlot))");
+            if (LOG_LOCAL_STORES || LOG_LOCAL_STORES_SPEC) {
+                b.statement("System.out.printf(\" local store %2d : %s [" + kind + " -> generic] (%s) %n\", localIdx, frame.getValue(sourceSlot), localTag)");
             }
 
             createSetSlotKind(vars, b, "FrameSlotKind.Object");
@@ -215,10 +222,15 @@ public class StoreLocalInstruction extends Instruction {
             createCopyAsObject(vars, b);
             // }
             b.end().startDoWhile().string("false").end(2);
-
+            b.lineComment("here:");
         }
 
-        b.lineComment("here:");
+        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
+            b.end().startElseBlock(); // } else {
+            createCopy(vars, b);
+            b.end(); // }
+        }
+
         b.startStatement().variable(vars.sp).string("--").end();
 
         return b.build();
@@ -260,15 +272,26 @@ public class StoreLocalInstruction extends Instruction {
 
     @Override
     public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.REPLACE;
+        if (kind == FrameKind.OBJECT) {
+            return BoxingEliminationBehaviour.DO_NOTHING;
+        } else {
+            return BoxingEliminationBehaviour.REPLACE;
+        }
     }
 
     @Override
     public CodeVariableElement boxingEliminationReplacement(FrameKind newKind) {
         if (kind == null) {
+            // unitialized -> anything
             return context.storeLocalInstructions[newKind.ordinal()].opcodeIdField;
         } else {
-            return context.storeLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField;
+            if (newKind == kind || kind == FrameKind.OBJECT) {
+                // do nothing
+                return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "0");
+            } else {
+                // prim -> anything different = object
+                return context.storeLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField;
+            }
         }
     }
 

@@ -267,25 +267,33 @@ public abstract class OperationBuilder {
         return (short) local.id;
     }
 
-    protected int[] getLocalIndices(Object[] value) {
-        int[] result = new int[value.length];
-        for (int i = 0; i < value.length; i++) {
-            BuilderOperationLocal local = (BuilderOperationLocal) value[i];
-            assert verifyNesting(local.owner, operationData) : "local access not nested properly";
-            result[i] = local.id;
+    protected LocalSetter createLocalSetter(Object o) {
+        BuilderOperationLocal local = (BuilderOperationLocal) o;
+        return LocalSetter.create(local.id);
+    }
+
+    protected LocalSetterRun createLocalSetterRun(Object o) {
+        OperationLocal[] locals = (OperationLocal[]) o;
+        assert checkLocalSetterRun(locals);
+        if (locals.length == 0) {
+            return LocalSetterRun.EMPTY;
         }
-        return result;
+
+        return LocalSetterRun.create(getLocalIndex(locals[0]), locals.length);
     }
 
-    protected short getLocalRunStart(Object arg) {
-        // todo: validate local run
-        OperationLocal[] arr = (OperationLocal[]) arg;
-        return (short) ((BuilderOperationLocal) arr[0]).id;
-    }
+    private static boolean checkLocalSetterRun(OperationLocal[] locals) {
+        if (locals.length == 0) {
+            return true;
+        }
+        int start = ((BuilderOperationLocal) locals[0]).id;
+        for (int i = 0; i < locals.length; i++) {
+            if (((BuilderOperationLocal) locals[i]).id != start + i) {
+                return false;
+            }
+        }
 
-    protected short getLocalRunLength(Object arg) {
-        OperationLocal[] arr = (OperationLocal[]) arg;
-        return (short) arr.length;
+        return true;
     }
 
     private static boolean verifyNesting(BuilderOperationData parent, BuilderOperationData child) {

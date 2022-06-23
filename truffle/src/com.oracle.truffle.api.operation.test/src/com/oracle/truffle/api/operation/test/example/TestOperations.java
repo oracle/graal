@@ -25,7 +25,7 @@ public final class TestOperations {
 
         private static final long serialVersionUID = -9143719084054578413L;
 
-        public TestException(String string, Node node, int bci) {
+        TestException(String string, Node node, int bci) {
             super(string, node, bci);
         }
     }

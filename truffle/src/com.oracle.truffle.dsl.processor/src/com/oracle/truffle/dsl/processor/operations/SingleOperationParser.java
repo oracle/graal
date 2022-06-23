@@ -65,7 +65,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
@@ -349,7 +348,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetter)) {
                 parameters.add(ParameterKind.LOCAL_SETTER);
                 numLocalSetters++;
-            } else if (ElementUtils.typeEquals(param.asType(), new ArrayCodeTypeMirror(types.LocalSetter))) {
+            } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetterRun)) {
                 parameters.add(ParameterKind.LOCAL_SETTER_ARRAY);
                 if (numLocalSetters != 0) {
                     data.addError(param, "Mixing regular and array local setters not allowed");
@@ -422,7 +421,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
         result.setSuperClass(types.Node);
 
-        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, new ArrayCodeTypeMirror(types.LocalSetter)));
+        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, types.LocalSetterRun));
 
         return result;
     }

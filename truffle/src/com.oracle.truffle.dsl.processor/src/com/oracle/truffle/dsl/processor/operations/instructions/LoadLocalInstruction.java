@@ -48,6 +48,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadLocalInstruction extends Instruction {
@@ -55,7 +56,9 @@ public class LoadLocalInstruction extends Instruction {
     private final OperationsContext ctx;
     private final FrameKind kind;
 
+    static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = false;
     private static final boolean LOG_LOCAL_LOADS = false;
+    private static final boolean LOG_LOCAL_LOADS_SPEC = false;
 
     public LoadLocalInstruction(OperationsContext ctx, int id, FrameKind kind) {
         super("load.local." + (kind == null ? "uninit" : kind.getTypeName().toLowerCase()), id, 1);
@@ -71,6 +74,10 @@ public class LoadLocalInstruction extends Instruction {
         b.startAssign("int localIdx");
         b.tree(createLocalIndex(vars, 0));
         b.end();
+
+        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
+            b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock(); // {
+        }
 
         if (kind == null) {
             if (LOG_LOCAL_LOADS) {
@@ -88,7 +95,7 @@ public class LoadLocalInstruction extends Instruction {
             // {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
-            if (LOG_LOCAL_LOADS) {
+            if (LOG_LOCAL_LOADS || LOG_LOCAL_LOADS_SPEC) {
                 b.statement("System.out.printf(\" local load  %2d : %s [init object]%n\", localIdx, frame.getValue(localIdx))");
             }
 
@@ -123,7 +130,8 @@ public class LoadLocalInstruction extends Instruction {
             // }
             b.end().startBlock();
             // {
-            if (LOG_LOCAL_LOADS) {
+
+            if (LOG_LOCAL_LOADS || LOG_LOCAL_LOADS_SPEC) {
                 b.statement("System.out.printf(\" local load  %2d : %s [init " + kind + "]%n\", localIdx, frame.getValue(localIdx))");
             }
 
@@ -136,21 +144,30 @@ public class LoadLocalInstruction extends Instruction {
             // }
             b.end().startElseBlock();
             // {
-            if (LOG_LOCAL_LOADS) {
+
+            if (LOG_LOCAL_LOADS || LOG_LOCAL_LOADS_SPEC) {
                 b.statement("System.out.printf(\" local load  %2d : %s [" + kind + " -> generic]%n\", localIdx, frame.getValue(localIdx))");
             }
+
             createSetSlotKind(vars, b, "FrameSlotKind.Object");
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
             // }
             b.end();
-        }
-        b.end();
+            // }
+            b.end();
 
-        if (LOG_LOCAL_LOADS) {
-            b.statement("System.out.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, frame.getValue(localIdx))");
+            if (LOG_LOCAL_LOADS) {
+                b.statement("System.out.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, frame.getValue(localIdx))");
+            }
+
+            createCopy(vars, b);
         }
 
-        createCopy(vars, b);
-        // }
+        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
+            b.end().startElseBlock(); // } else {
+            createCopy(vars, b);
+            b.end(); // }
+        }
 
         b.startStatement().variable(vars.sp).string("++").end();
 

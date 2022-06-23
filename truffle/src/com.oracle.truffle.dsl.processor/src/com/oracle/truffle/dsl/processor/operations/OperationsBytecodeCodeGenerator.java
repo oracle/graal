@@ -261,6 +261,7 @@ public class OperationsBytecodeCodeGenerator {
 
         b.declaration("int", varSp.getName(), CodeTreeBuilder.singleVariable(argStartSp));
         b.declaration("int", varBci.getName(), CodeTreeBuilder.singleVariable(argStartBci));
+        b.declaration("int", "loopCount", "0");
 
         CodeVariableElement varTracer;
 

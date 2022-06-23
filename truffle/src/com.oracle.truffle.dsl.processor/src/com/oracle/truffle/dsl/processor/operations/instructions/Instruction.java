@@ -89,8 +89,8 @@ public abstract class Instruction {
         REPLACE
     }
 
-    private final ProcessorContext context = ProcessorContext.getInstance();
-    private final TruffleTypes types = context.getTypes();
+    protected final ProcessorContext context = ProcessorContext.getInstance();
+    protected final TruffleTypes types = context.getTypes();
 
     public final String name;
     public final int id;
@@ -325,6 +325,19 @@ public abstract class Instruction {
         return CodeTreeBuilder.singleString(internalName + LENGTH_SUFFIX);
     }
 
+    public boolean[] typedConstants() {
+        boolean[] result = new boolean[constantTypes.size()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = constantTypes.get(i) != null;
+        }
+
+        return result;
+    }
+
+    public int numConstants() {
+        return constants.size();
+    }
+
     public int numLocals() {
         return locals.size();
     }
@@ -405,14 +418,21 @@ public abstract class Instruction {
 
             b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getConstantsOffset() + "] = (short) constantsStart").end();
 
-            if (args.constants != null) {
-                for (int i = 0; i < args.constants.length; i++) {
-                    if (args.constants[i] != null) {
-                        b.startStatement().startCall(vars.consts, "setValue");
-                        b.string("constantsStart + " + i);
-                        b.tree(args.constants[i]);
-                        b.end(2);
-                    }
+            for (int i = 0; i < constants.size(); i++) {
+                CodeTree initCode = null;
+                if (constants.get(i) != null) {
+                    initCode = createConstantInitCode(vars, args, constants.get(i), i);
+                }
+
+                if (initCode == null && args.constants != null) {
+                    initCode = args.constants[i];
+                }
+
+                if (initCode != null) {
+                    b.startStatement().startCall(vars.consts, "setValue");
+                    b.string("constantsStart + " + i);
+                    b.tree(initCode);
+                    b.end(2);
                 }
             }
         }
@@ -488,6 +508,11 @@ public abstract class Instruction {
 
     public abstract CodeTree createExecuteCode(ExecutionVariables vars);
 
+    @SuppressWarnings("unused")
+    protected CodeTree createConstantInitCode(BuilderVariables vars, EmitArguments args, Object marker, int index) {
+        return null;
+    }
+
     private static void printList(StringBuilder sb, List<Object> holder, String name) {
         if (!holder.isEmpty()) {
             sb.append("  ").append(name).append(":\n");
@@ -515,6 +540,28 @@ public abstract class Instruction {
         printList(sb, branchTargets, "Branch Targets");
         printList(sb, branchProfiles, "Branch Profiles");
         printList(sb, stateBits, "State Bitsets");
+
+        sb.append("  Boxing Elimination: ");
+        switch (boxingEliminationBehaviour()) {
+            case DO_NOTHING:
+                sb.append("Do Nothing\n");
+                break;
+            case REPLACE:
+                sb.append("Replace\n");
+                for (FrameKind kind : FrameKind.values()) {
+                    try {
+                        String el = boxingEliminationReplacement(kind).getName();
+                        sb.append("    ").append(kind).append(" -> ").append(el).append("\n");
+                    } catch (Exception ex) {
+                    }
+                }
+                break;
+            case SET_BIT:
+                sb.append("Bit Mask\n");
+                break;
+            default:
+                throw new AssertionError();
+        }
 
         return sb.toString();
     }
@@ -553,20 +600,20 @@ public abstract class Instruction {
             }
         }
 
-        for (int i = 0; i < locals.size(); i++) {
-            result.add(types.OperationLocal);
-        }
-
-        for (int i = 0; i < localRuns.size(); i++) {
-            result.add(new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal));
-        }
-
         for (int i = 0; i < arguments.size(); i++) {
             result.add(context.getType(int.class));
         }
 
         for (int i = 0; i < branchTargets.size(); i++) {
             result.add(types.OperationLabel);
+        }
+
+        for (int i = 0; i < locals.size(); i++) {
+            result.add(types.OperationLocal);
+        }
+
+        for (int i = 0; i < localRuns.size(); i++) {
+            result.add(new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal));
         }
 
         return result;

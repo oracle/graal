@@ -48,9 +48,11 @@ import javax.lang.model.element.ExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
+import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
@@ -91,6 +93,9 @@ public class CustomInstruction extends Instruction {
         initializePops();
     }
 
+    public static final String MARKER_LOCAL_REFS = "LocalSetterRun";
+    public static final String MARKER_LOCAL_REF_PREFIX = "LocalSetter_";
+
     protected void initializePops() {
         MethodProperties props = data.getMainProperties();
 
@@ -106,10 +111,10 @@ public class CustomInstruction extends Instruction {
         }
 
         if (props.numLocalReferences == -1) {
-            addLocalRun("localRefs");
+            addConstant(MARKER_LOCAL_REFS, new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal));
         } else {
             for (int i = 0; i < props.numLocalReferences; i++) {
-                addLocal("local" + i);
+                addConstant(MARKER_LOCAL_REF_PREFIX + i, types.OperationLocal);
             }
         }
     }
@@ -189,6 +194,19 @@ public class CustomInstruction extends Instruction {
         }
 
         return b.build();
+    }
+
+    @Override
+    protected CodeTree createConstantInitCode(BuilderVariables vars, EmitArguments args, Object marker, int index) {
+        if (marker.equals(MARKER_LOCAL_REFS)) {
+            return CodeTreeBuilder.createBuilder().startCall("createLocalSetterRun").tree(args.constants[index]).end().build();
+        }
+
+        if (marker instanceof String && ((String) marker).startsWith(MARKER_LOCAL_REF_PREFIX)) {
+            return CodeTreeBuilder.createBuilder().startCall("createLocalSetter").tree(args.constants[index]).end().build();
+        }
+
+        return super.createConstantInitCode(vars, args, marker, index);
     }
 
     protected void createTracerCode(ExecutionVariables vars, CodeTreeBuilder b) {

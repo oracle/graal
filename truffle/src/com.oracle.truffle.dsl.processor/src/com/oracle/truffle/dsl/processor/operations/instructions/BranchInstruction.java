@@ -50,9 +50,16 @@ import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 
 public class BranchInstruction extends Instruction {
 
-    private static final ProcessorContext context = ProcessorContext.getInstance();
-    private static final DeclaredType TRUFFLE_SAFEPOINT = context.getDeclaredType("com.oracle.truffle.api.TruffleSafepoint");
-    private static final DeclaredType BYTECODE_OSR_NODE = context.getDeclaredType("com.oracle.truffle.api.nodes.BytecodeOSRNode");
+    private final ProcessorContext context = ProcessorContext.getInstance();
+    private final DeclaredType typeTruffleSafepoint = context.getDeclaredType("com.oracle.truffle.api.TruffleSafepoint");
+    private final DeclaredType typeBytecodeOsrNode = context.getDeclaredType("com.oracle.truffle.api.nodes.BytecodeOSRNode");
+    private final DeclaredType typeLoopNode = context.getDeclaredType("com.oracle.truffle.api.nodes.LoopNode");
+
+    private static final boolean SAFEPOINT_POLL = true;
+    private static final boolean LOOP_COUNTING = true;
+    private static final boolean TRY_OSR = false;
+
+    private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
     public BranchInstruction(int id) {
         super("branch", id, 0);
@@ -65,37 +72,56 @@ public class BranchInstruction extends Instruction {
 
         b.declaration("int", "targetBci", createBranchTargetIndex(vars, 0));
 
-        b.startIf().string("targetBci <= ").variable(vars.bci).end().startBlock();
-        // {
-        b.startStatement().startStaticCall(TRUFFLE_SAFEPOINT, "poll");
-        b.string("this");
-        b.end(2);
+        if (SAFEPOINT_POLL || LOOP_COUNTING || TRY_OSR) {
+            b.startIf().string("targetBci <= ").variable(vars.bci).end().startBlock(); // {
 
-        // todo: reporting loop count
+            if (SAFEPOINT_POLL) {
+                b.startStatement().startStaticCall(typeTruffleSafepoint, "poll");
+                b.string("this");
+                b.end(2);
+            }
 
-        b.startIf();
-        b.tree(GeneratorUtils.createInInterpreter());
-        b.string(" && ");
-        b.startStaticCall(BYTECODE_OSR_NODE, "pollOSRBackEdge").string("this").end();
-        b.end().startBlock();
-        // {
-        b.startAssign("Object osrResult").startStaticCall(BYTECODE_OSR_NODE, "tryOSR");
-        b.string("this");
-        b.string("targetBci");
-        b.variable(vars.sp);
-        b.string("null");
-        b.variable(vars.frame);
-        b.end(2);
+            // todo: reporting loop count
 
-        b.startIf().string("osrResult != null").end().startBlock();
-        // {
-        b.startReturn().string("osrResult").end();
-        // }
-        b.end();
-        // }
-        b.end();
-        // }
-        b.end();
+            if (LOOP_COUNTING) {
+                b.startIf();
+                b.tree(GeneratorUtils.createHasNextTier());
+                b.string(" && ");
+                b.string("++loopCount >= " + REPORT_LOOP_STRIDE);
+                b.end().startBlock(); // {
+
+                b.startStatement().startStaticCall(typeLoopNode, "reportLoopCount");
+                b.string("this");
+                b.string("" + REPORT_LOOP_STRIDE);
+                b.end(2);
+
+                b.statement("loopCount = 0");
+
+                b.end(); // }
+            }
+
+            if (TRY_OSR) {
+                b.startIf();
+                b.tree(GeneratorUtils.createInInterpreter());
+                b.string(" && ");
+                b.startStaticCall(typeBytecodeOsrNode, "pollOSRBackEdge").string("this").end();
+                b.end().startBlock(); // {
+                b.startAssign("Object osrResult").startStaticCall(typeBytecodeOsrNode, "tryOSR");
+                b.string("this");
+                b.string("targetBci");
+                b.variable(vars.sp);
+                b.string("null");
+                b.variable(vars.frame);
+                b.end(2);
+
+                b.startIf().string("osrResult != null").end().startBlock(); // {
+                b.startReturn().string("osrResult").end();
+                b.end(); // }
+
+                b.end(); // }
+            }
+            b.end(); // }
+        }
 
         b.startAssign(vars.bci).string("targetBci").end();
 

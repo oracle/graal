@@ -19,7 +19,7 @@ public class TestOperationsParserTest {
 
     private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
         OperationNode operationsNode = parseNode(builder);
-        System.out.println(operationsNode);
+        System.out.println(operationsNode.dump());
         return new TestRootNode(operationsNode).getCallTarget();
     }
 
@@ -913,9 +913,8 @@ public class TestOperationsParserTest {
 
             OperationLocal local = b.createLocal();
 
-            b.beginTeeLocal();
+            b.beginTeeLocal(local);
             b.emitConstObject(1L);
-            b.emitLocalSetter(local);
             b.endTeeLocal();
 
             b.beginReturn();

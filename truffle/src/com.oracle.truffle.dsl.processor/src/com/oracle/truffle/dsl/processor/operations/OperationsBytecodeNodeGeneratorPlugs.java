@@ -67,7 +67,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
@@ -544,33 +543,14 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return OperationsData.convertToFrameType(type);
     }
 
-    public static final class LocalRefHandle {
-        private final String name;
-
-        private LocalRefHandle(String name) {
-            this.name = name;
-
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof LocalRefHandle && ((LocalRefHandle) obj).name.equals(this.name);
-        }
-
-        @Override
-        public int hashCode() {
-            return name.hashCode();
-        }
-    }
-
     @Override
     public CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
         if (execution.getName().startsWith("$localRefArray")) {
-            return createArrayReference(frameState, new LocalRefHandle(execution.getName()), true, new ArrayCodeTypeMirror(types.LocalSetter), false);
+            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REFS, true, types.LocalSetterRun, false);
         }
 
         if (execution.getName().startsWith("$localRef")) {
-            return createArrayReference(frameState, new LocalRefHandle(execution.getName()), true, types.LocalSetter, false);
+            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REF_PREFIX + execution.getName().substring(9), true, types.LocalSetter, false);
         }
 
         int childIndex = execution.getIndex();

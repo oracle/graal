@@ -40,66 +40,120 @@
  */
 package com.oracle.truffle.api.operation;
 
-import java.util.HashMap;
+import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class LocalSetter {
 
-    private final int index;
+    @CompilationFinal(dimensions = 1) //
+    private static LocalSetter[] localSetters = new LocalSetter[8];
 
-    private static final HashMap<Integer, LocalSetter> LOCAL_SETTERS = new HashMap<>();
-
-    public static LocalSetter create(int index) {
-        return LOCAL_SETTERS.computeIfAbsent(index, LocalSetter::new);
+    private static synchronized void resizeLocals(int index) {
+        if (localSetters.length <= index) {
+            int size = localSetters.length;
+            while (size <= index) {
+                size = size << 1;
+            }
+            localSetters = Arrays.copyOf(localSetters, size);
+        }
     }
 
-    public static LocalSetter[] createArray(int[] index) {
-        LocalSetter[] result = new LocalSetter[index.length];
-        for (int i = 0; i < index.length; i++) {
-            result[i] = create(index[i]);
+    public static LocalSetter create(int index) {
+        CompilerAsserts.neverPartOfCompilation("use #get in compiled code");
+        if (index < 0 || index >= Short.MAX_VALUE) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
+
+        if (localSetters.length <= index) {
+            resizeLocals(index);
+        }
+
+        LocalSetter result = localSetters[index];
+        if (result == null) {
+            result = new LocalSetter(index);
+            localSetters[index] = result;
         }
         return result;
     }
+
+    public static LocalSetter get(int index) {
+        return localSetters[index];
+    }
+
+    static void setObject(VirtualFrame frame, int index, Object value) {
+        frame.setObject(index, value);
+    }
+
+    private static boolean checkFrameSlot(VirtualFrame frame, int index, FrameSlotKind target) {
+        FrameDescriptor descriptor = frame.getFrameDescriptor();
+        FrameSlotKind slotKind = descriptor.getSlotKind(index);
+        if (slotKind == FrameSlotKind.Illegal) {
+            descriptor.setSlotKind(index, target);
+            return true;
+        } else if (slotKind == target) {
+            return true;
+        } else if (slotKind == FrameSlotKind.Object) {
+            return false;
+        } else {
+            descriptor.setSlotKind(index, FrameSlotKind.Object);
+            return false;
+        }
+    }
+
+    static void setLong(VirtualFrame frame, int index, long value) {
+        if (checkFrameSlot(frame, index, FrameSlotKind.Long)) {
+            frame.setLong(index, value);
+        } else {
+            frame.setObject(index, value);
+        }
+    }
+
+    static void setInt(VirtualFrame frame, int index, int value) {
+        if (checkFrameSlot(frame, index, FrameSlotKind.Int)) {
+            frame.setInt(index, value);
+        } else {
+            frame.setObject(index, value);
+        }
+    }
+
+    static void setDouble(VirtualFrame frame, int index, double value) {
+        if (checkFrameSlot(frame, index, FrameSlotKind.Double)) {
+            frame.setDouble(index, value);
+        } else {
+            frame.setObject(index, value);
+        }
+    }
+
+    private final int index;
 
     private LocalSetter(int index) {
         this.index = index;
     }
 
-    public void setObject(VirtualFrame frame, Object value) {
-        frame.setObject(index, value);
+    @Override
+    public String toString() {
+        return String.format("LocalSetter[%d]", index);
     }
 
-    public void setLong(VirtualFrame frame, long value) {
-        FrameSlotKind slotKind = frame.getFrameDescriptor().getSlotKind(index);
-        if (slotKind == FrameSlotKind.Long) {
-            frame.setLong(index, value);
-        } else {
-            // todo: this should be compatible with local boxing elimination
-            frame.setObject(index, value);
-        }
+    public void setObject(VirtualFrame frame, Object value) {
+        setObject(frame, index, value);
     }
 
     public void setInt(VirtualFrame frame, int value) {
-        FrameSlotKind slotKind = frame.getFrameDescriptor().getSlotKind(index);
-        if (slotKind == FrameSlotKind.Int) {
-            frame.setInt(index, value);
-        } else {
-            // todo: this should be compatible with local boxing elimination
-            frame.setObject(index, value);
-        }
+        setInt(frame, index, value);
+    }
+
+    public void setLong(VirtualFrame frame, long value) {
+        setLong(frame, index, value);
     }
 
     public void setDouble(VirtualFrame frame, double value) {
-        FrameSlotKind slotKind = frame.getFrameDescriptor().getSlotKind(index);
-        if (slotKind == FrameSlotKind.Double) {
-            frame.setDouble(index, value);
-        } else {
-            // todo: this should be compatible with local boxing elimination
-            frame.setObject(index, value);
-        }
+        setDouble(frame, index, value);
     }
-
     // todo: other primitives
 }

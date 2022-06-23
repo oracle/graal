@@ -94,6 +94,11 @@ public final class CacheExpression extends MessageContainer {
         return copy;
     }
 
+    @Override
+    public String toString() {
+        return String.format("CacheExpression[%s]", sourceParameter.getLocalName());
+    }
+
     public void setIsUsedInGuard(boolean b) {
         this.usedInGuard = b;
     }
