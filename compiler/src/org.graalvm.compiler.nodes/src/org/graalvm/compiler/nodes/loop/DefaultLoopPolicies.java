@@ -54,7 +54,6 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -75,9 +74,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Expert)
         public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(2000);
         @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Expert)
-        public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(10);
+        public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(50);
         @Option(help = "Number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for the unswitching is proportional to the relative frequency of the loop by this constant.", type = OptionType.Expert)
-        public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(10.0);
+        public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(25.0);
         @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
         @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Expert)
@@ -402,18 +401,6 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int bestCodeSizeChange = 0;
         double bestFactor = 0.0;
         for (List<ControlSplitNode> split : controlSplits.getValues()) {
-            boolean isTrusted = true;
-            for (ControlSplitNode node : split) {
-                isTrusted = isTrusted && ProfileSource.isTrusted(node.getProfileData().getProfileSource());
-            }
-            if (!isTrusted) {
-                /**
-                 * If any of the nodes has an untrusted profile source, we don't unswitch it as its
-                 * probabilities are unknown.
-                 */
-                debug.log("control split %s discarded because unknown profile data", split);
-            }
-
             int approxCodeSizeChange = approxCodeSizeChange(loop, split);
             if (approxCodeSizeChange > loopMaxCodeSizeChange) {
                 /*
