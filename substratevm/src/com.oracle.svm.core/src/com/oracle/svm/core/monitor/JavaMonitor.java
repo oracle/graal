@@ -37,6 +37,14 @@ import com.oracle.svm.core.jfr.JfrTicks;
 public class JavaMonitor extends ReentrantLock {
     private long ownerTid;
     private int waitingThreads = 0;
+    /*
+     * This queue is used to record the TIDs of notifiers so that waiters have access to them when they eventually
+     * acquire the monitor lock and resume.
+     * Adding and removing TIDs from this queue in a FIFO fashion is correct because Condition.signal(), notifies waiters in a FIFO fashion.
+     * Once waiters are notified, they acquire the monitor lock in a FIFO fashion as well. This is because they are transferred
+     * from the front of the condition queue to the back of the sync queue.
+     * Ultimately, this means that waiters will wake up and resume in the same order that they are notified in.
+     * */
     private LinkedList<Long> notifiers = new LinkedList<Long>();
 
     public long getOwnerTid() {
@@ -44,7 +52,7 @@ public class JavaMonitor extends ReentrantLock {
     }
 
     public long getNotifierTid() {
-        waitingThreads--;
+        assert isHeldByCurrentThread(); //make sure we hold the lock
         return notifiers.removeFirst();
     }
 
@@ -54,13 +62,14 @@ public class JavaMonitor extends ReentrantLock {
 
     public void setNotifier(boolean notifyAll) {
         long curr = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
-        assert isLocked() && getOwnerTid() == curr; //make sure we hold the lock
+        assert isHeldByCurrentThread(); //make sure we hold the lock
         int notifications = 1;
         if (notifyAll) {
             notifications = waitingThreads - notifiers.size();
         }
         for (int i = 0; i < notifications; i++) {
             notifiers.addLast(curr);
+            waitingThreads--;
         }
     }
 
