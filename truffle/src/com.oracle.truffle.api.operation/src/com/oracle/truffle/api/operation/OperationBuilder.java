@@ -792,6 +792,14 @@ public abstract class OperationBuilder {
         }
 
         protected abstract String dump();
+
+        protected static String formatConstant(Object obj) {
+            if (obj == null) {
+                return "null";
+            } else {
+                return String.format("%s %s", obj.getClass().getSimpleName(), obj);
+            }
+        }
     }
 
     protected abstract static class InstrumentedBytecodeNode extends BytecodeNode {

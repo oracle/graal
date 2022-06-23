@@ -48,6 +48,7 @@ public class ShortCircuitInstruction extends CustomInstruction {
 
     public ShortCircuitInstruction(String name, int id, SingleOperationData data) {
         super(name, id, data, 0);
+        addPopIndexed("value");
         addBranchTarget("end");
     }
 

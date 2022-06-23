@@ -651,7 +651,9 @@ public abstract class Instruction {
 
         for (int i = 0; i < constants.size(); i++) {
             int ci = i;
-            sbAppend(b, " const(%s)", () -> b.startGroup().variable(vars.consts).string("[").tree(createConstantIndex(vars, ci)).string("]").end());
+            sbAppend(b, " const(%s)", () -> {
+                b.startCall("formatConstant").startGroup().variable(vars.consts).string("[").tree(createConstantIndex(vars, ci)).string("]").end(2);
+            });
         }
 
         for (int i = 0; i < locals.size(); i++) {

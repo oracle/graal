@@ -72,7 +72,6 @@ import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
-import com.oracle.truffle.dsl.processor.model.NodeFieldData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
@@ -751,8 +750,16 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         b.declaration("boolean[]", "result", "new boolean[" + specializationStates.size() + "]");
 
         for (int i = 0; i < specializationStates.size(); i++) {
+            SpecializationData data = (SpecializationData) specializationStates.get(i);
             b.startAssign("result[" + i + "]");
-            b.tree(multiState.createContains(frame, new Object[]{specializationStates.get(i)}));
+            b.tree(multiState.createContains(frame, new Object[]{data}));
+            Set<SpecializationData> excludedBy = data.getExcludedBy();
+
+            if (!excludedBy.isEmpty()) {
+                b.string(" && ");
+                b.tree(multiState.createNotContains(frame, excludedBy.toArray()));
+            }
+
             b.end();
         }
 
