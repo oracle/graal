@@ -326,7 +326,6 @@ public final class EspressoContext {
                 case "wasm":    // fallthrough
                 case "js":      // fallthrough
                 case "R":       // fallthrough
-                case "sl":      // fallthrough
                 case "python":  // it's configurable for python, be shy
                     singleThreaded.add(languageInfo.getId());
             }
