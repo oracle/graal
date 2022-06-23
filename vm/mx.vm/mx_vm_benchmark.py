@@ -1285,7 +1285,7 @@ def polybenchmark_rules(benchmark, metric_name, mode):
                 "engine.config": mode,
             }),
         ]
-    elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory"):
+    elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory", "instructions"):
         rules += [
             ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                 "benchmark": benchmark, #("<name>", str),
