@@ -183,46 +183,14 @@ public class StoreLocalInstruction extends Instruction {
             b.startCall("expectObject").variable(vars.frame).string("sourceSlot").end();
             b.end(2);
         } else {
-            // primitive
-            b.startAssign("FrameSlotKind localTag").startCall(vars.frame, "getFrameDescriptor().getSlotKind").string("localIdx").end(2);
-
-            b.startDoBlock();
-            // {
-            b.startIf().string("localTag == ").staticReference(FrameSlotKind, kind.getFrameName()).end().startBlock();
-            // {
-            b.startTryBlock();
-            // {
-            if (LOG_LOCAL_STORES) {
-                b.statement("System.out.printf(\" local store %2d : %s [" + kind + "]%n\", localIdx, frame.getValue(sourceSlot))");
-            }
-            b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
+            b.startIf().string("!").startCall("storeLocal" + kind.getFrameName() + "Check");
+            b.variable(vars.frame);
             b.string("localIdx");
-            b.startCall("expect" + kind.getFrameName()).variable(vars.frame).string("sourceSlot").end();
-            b.end(2);
-
-            b.statement("break /* goto here */");
-            // }
-            b.end().startCatchBlock(OperationGeneratorUtils.getTypes().UnexpectedResultException, "ex");
-            // {
-
-            // }
-            b.end();
-            // }
-            b.end();
-
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-
-            if (LOG_LOCAL_STORES || LOG_LOCAL_STORES_SPEC) {
-                b.statement("System.out.printf(\" local store %2d : %s [" + kind + " -> generic] (%s) %n\", localIdx, frame.getValue(sourceSlot), localTag)");
-            }
-
-            createSetSlotKind(vars, b, "FrameSlotKind.Object");
-            createGenerifySelf(vars, b);
+            b.string("sourceSlot");
+            b.end(2).startBlock(); // {
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, context.storeLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
             createSetChildBoxing(vars, b, "FRAME_TYPE_OBJECT");
-            createCopyAsObject(vars, b);
-            // }
-            b.end().startDoWhile().string("false").end(2);
-            b.lineComment("here:");
+            b.end(); // }
         }
 
         if (INTERPRETER_ONLY_BOXING_ELIMINATION) {

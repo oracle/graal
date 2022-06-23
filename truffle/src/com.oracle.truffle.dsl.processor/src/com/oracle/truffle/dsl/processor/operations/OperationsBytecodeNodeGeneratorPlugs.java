@@ -70,7 +70,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+import com.oracle.truffle.dsl.processor.model.NodeFieldData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
@@ -101,6 +103,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private final SingleOperationData data;
 
     private final ExecutionVariables dummyVariables = new ExecutionVariables();
+    private NodeData nodeData;
 
     {
         context = ProcessorContext.getInstance();
@@ -135,6 +138,15 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                     return "RESULT-UNBOXED";
                 }
             };
+        }
+    }
+
+    public void setNodeData(NodeData node) {
+        this.nodeData = node;
+        for (SpecializationData spec : node.getSpecializations()) {
+            for (CacheExpression cache : spec.getCaches()) {
+                createCacheReference(null, spec, cache, cache.getSharedGroup(), false);
+            }
         }
     }
 

@@ -727,6 +727,70 @@ public abstract class OperationBuilder {
             throw new UnexpectedResultException(frame.getValue(slot));
         }
 
+        protected static boolean storeLocalBooleanCheck(VirtualFrame frame, int localSlot, int stackSlot) {
+            FrameDescriptor descriptor = frame.getFrameDescriptor();
+            if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Boolean) {
+                try {
+                    frame.setBoolean(localSlot, expectBoolean(frame, stackSlot));
+                    return true;
+                } catch (UnexpectedResultException ex) {
+                }
+            }
+
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
+            frame.setObject(localSlot, frame.getValue(stackSlot));
+            return false;
+        }
+
+        protected static boolean storeLocalLongCheck(VirtualFrame frame, int localSlot, int stackSlot) {
+            FrameDescriptor descriptor = frame.getFrameDescriptor();
+            if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Long) {
+                try {
+                    frame.setLong(localSlot, expectLong(frame, stackSlot));
+                    return true;
+                } catch (UnexpectedResultException ex) {
+                }
+            }
+
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
+            frame.setObject(localSlot, frame.getValue(stackSlot));
+            return false;
+        }
+
+        protected static boolean storeLocalIntCheck(VirtualFrame frame, int localSlot, int stackSlot) {
+            FrameDescriptor descriptor = frame.getFrameDescriptor();
+            if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Int) {
+                try {
+                    frame.setInt(localSlot, expectInt(frame, stackSlot));
+                    return true;
+                } catch (UnexpectedResultException ex) {
+                }
+            }
+
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
+            frame.setObject(localSlot, frame.getValue(stackSlot));
+            return false;
+        }
+
+        protected static boolean storeLocalDoubleCheck(VirtualFrame frame, int localSlot, int stackSlot) {
+            FrameDescriptor descriptor = frame.getFrameDescriptor();
+            if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Double) {
+                try {
+                    frame.setDouble(localSlot, expectDouble(frame, stackSlot));
+                    return true;
+                } catch (UnexpectedResultException ex) {
+                }
+            }
+
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
+            frame.setObject(localSlot, frame.getValue(stackSlot));
+            return false;
+        }
+
         protected abstract String dump();
     }
 

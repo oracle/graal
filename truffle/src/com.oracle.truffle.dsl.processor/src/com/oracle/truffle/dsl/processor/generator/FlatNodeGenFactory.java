@@ -235,6 +235,7 @@ public class FlatNodeGenFactory {
         List<Object> stateObjects = new ArrayList<>();
         if (plugs != null) {
             plugs.addAdditionalStateBits(stateObjects);
+            plugs.setNodeData(node);
         }
         List<SpecializationData> excludeObjects = new ArrayList<>();
         int activeStateStartIndex = -1;

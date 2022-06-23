@@ -54,11 +54,14 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 public interface NodeGeneratorPlugs {
+    void setNodeData(NodeData node);
+
     String transformNodeMethodName(String name);
 
     String transformNodeInnerTypeName(String name);
@@ -120,5 +123,4 @@ public interface NodeGeneratorPlugs {
     StaticConstants createConstants();
 
     ReportPolymorphismAction createReportPolymorhoismAction(ReportPolymorphismAction original);
-
 }
