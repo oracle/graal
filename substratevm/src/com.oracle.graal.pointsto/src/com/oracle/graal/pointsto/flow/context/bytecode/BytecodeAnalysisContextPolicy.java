@@ -29,10 +29,10 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.CallSiteSensitiveMethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.AllocationContextSensitiveObject;
+import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 
 public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<BytecodeAnalysisContext> {
@@ -56,7 +56,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
 
         assert context.labels().length > maxDepth;
 
-        BytecodeLocation[] resultingLabelList = peel(context.labels(), maxDepth);
+        BytecodePosition[] resultingLabelList = peel(context.labels(), maxDepth);
 
         return lookupContext(resultingLabelList);
     }
@@ -96,20 +96,20 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
          * otherwise create a context containing the receiver object allocation site.
          */
 
-        BytecodeLocation[] labelList;
+        BytecodePosition[] labelList;
         if (receiverHeapObject.allocationContext() != null) {
             labelList = extend(((BytecodeAnalysisContext) receiverHeapObject.allocationContext()).labels(), receiverHeapObject.allocationLabel(), maxCalleeContextDepth);
         } else {
             // TODO remove branch if never taken
             JVMCIError.shouldNotReachHere("CoreAnalysisContextPolicy.merge: receiverHeapObject.heapContext() is null");
-            labelList = new BytecodeLocation[]{receiverHeapObject.allocationLabel()};
+            labelList = new BytecodePosition[]{receiverHeapObject.allocationLabel()};
         }
 
         return lookupContext(labelList);
     }
 
     @Override
-    public BytecodeAnalysisContext staticCalleeContext(PointsToAnalysis bb, BytecodeLocation invokeLocation, BytecodeAnalysisContext callerContext, MethodTypeFlow callee) {
+    public BytecodeAnalysisContext staticCalleeContext(PointsToAnalysis bb, BytecodePosition invokeLocation, BytecodeAnalysisContext callerContext, MethodTypeFlow callee) {
         assert callerContext != null;
 
         /*
@@ -131,7 +131,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
             return emptyContext();
         }
 
-        BytecodeLocation[] labelList = extend(callerContext.labels(), invokeLocation, maxCallingContextDepth);
+        BytecodePosition[] labelList = extend(callerContext.labels(), invokeLocation, maxCallingContextDepth);
         return lookupContext(labelList);
     }
 
@@ -147,16 +147,16 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
         return peel(context, maxHeapContextDepth);
     }
 
-    public BytecodeAnalysisContext getContext(BytecodeLocation bcl) {
-        return getContext(new BytecodeLocation[]{bcl});
+    public BytecodeAnalysisContext getContext(BytecodePosition bcl) {
+        return getContext(new BytecodePosition[]{bcl});
     }
 
-    public BytecodeAnalysisContext getContext(BytecodeLocation[] bytecodeLocations) {
-        return lookupContext(bytecodeLocations);
+    public BytecodeAnalysisContext getContext(BytecodePosition[] positions) {
+        return lookupContext(positions);
     }
 
-    private BytecodeAnalysisContext lookupContext(BytecodeLocation[] bytecodeLocations) {
-        return (BytecodeAnalysisContext) lookupContext(new BytecodeAnalysisContext(bytecodeLocations));
+    private BytecodeAnalysisContext lookupContext(BytecodePosition[] positions) {
+        return (BytecodeAnalysisContext) lookupContext(new BytecodeAnalysisContext(positions));
     }
 
 }

@@ -297,7 +297,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -314,7 +314,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -331,7 +331,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -1337,6 +1337,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected ResolvedJavaMethod getResolvedJavaMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
         return asResolvedJavaMethod(getMethod(clazz, methodName, parameterTypes));
+    }
+
+    protected ResolvedJavaMethod getResolvedJavaMethod(Class<?> clazz, Class<?> returnType, String methodName, Class<?>... parameterTypes) {
+        return asResolvedJavaMethod(getMethod(clazz, returnType, methodName, parameterTypes));
     }
 
     /**

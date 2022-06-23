@@ -63,4 +63,9 @@ public class ContinuationSupport {
         }
         return storedIP;
     }
+
+    @Uninterruptible(reason = "Copies stack frames containing references.")
+    public CodePointer copyFrames(StoredContinuation fromCont, StoredContinuation toCont) {
+        return copyFrames(fromCont, StoredContinuationAccess.getFramesStart(toCont));
+    }
 }

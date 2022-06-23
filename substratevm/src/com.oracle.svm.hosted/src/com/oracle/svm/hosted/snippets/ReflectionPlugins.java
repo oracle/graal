@@ -319,7 +319,7 @@ public final class ReflectionPlugins {
      */
     private void registerFoldInvocationPlugins(InvocationPlugins plugins, Class<?> declaringClass, String... methodNames) {
         Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
-        ModuleSupport.openModuleByClass(declaringClass, ReflectionPlugins.class);
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionPlugins.class, declaringClass);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
                 registerFoldInvocationPlugin(plugins, method);

@@ -26,7 +26,6 @@ package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -40,22 +39,18 @@ import jdk.vm.ci.code.BytecodePosition;
  */
 public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
-    private final BytecodeLocation cloneSite;
     private TypeFlow<?> input;
-
     /** The allocation context for the generated clone object. Null if this is not a clone. */
     protected final AnalysisContext allocationContext;
 
-    public CloneTypeFlow(BytecodePosition cloneLocation, AnalysisType inputType, BytecodeLocation cloneLabel, TypeFlow<?> input) {
+    public CloneTypeFlow(BytecodePosition cloneLocation, AnalysisType inputType, TypeFlow<?> input) {
         super(cloneLocation, inputType);
-        this.cloneSite = cloneLabel;
         this.allocationContext = null;
         this.input = input;
     }
 
     public CloneTypeFlow(PointsToAnalysis bb, CloneTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {
         super(original, methodFlows);
-        this.cloneSite = original.cloneSite;
         this.allocationContext = allocationContext;
         this.input = methodFlows.lookupCloneOf(bb, original.input);
     }
@@ -78,7 +73,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
          * encapsulate the location of the cloning. From the point of view of the analysis a clone
          * flow is a source.
          */
-        TypeState resultState = bb.analysisPolicy().cloneState(bb, state, inputState, cloneSite, allocationContext);
+        TypeState resultState = bb.analysisPolicy().cloneState(bb, state, inputState, source, allocationContext);
 
         /* Update the clone flow state. */
         addState(bb, resultState);
@@ -113,10 +108,6 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
     @Override
     public void setObserved(TypeFlow<?> newInputFlow) {
         this.input = newInputFlow;
-    }
-
-    public BytecodeLocation getCloneSite() {
-        return cloneSite;
     }
 
     @Override

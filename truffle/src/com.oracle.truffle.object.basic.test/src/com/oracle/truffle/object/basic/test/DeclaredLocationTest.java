@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,10 +52,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.FinalLocationException;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
@@ -69,15 +66,22 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         return Arrays.asList(TestRun.values());
     }
 
-    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
-    final Shape rootShape = layout.createShape(new ObjectType());
+    final Shape rootShape = Shape.newBuilder().build();
     final Object value = new Object();
     final Location declaredLocation = rootShape.allocator().declaredLocation(value);
     final Shape shapeWithDeclared = rootShape.addProperty(Property.create("declared", declaredLocation, 0));
 
+    private DynamicObject newInstance() {
+        return new TestDynamicObjectDefault(rootShape);
+    }
+
+    private DynamicObject newInstanceWithDeclared() {
+        return new TestDynamicObjectDefault(shapeWithDeclared);
+    }
+
     @Test
     public void testDeclaredLocation() {
-        DynamicObject object = shapeWithDeclared.newInstance();
+        DynamicObject object = newInstanceWithDeclared();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -91,7 +95,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(true, property.getLocation().canSet(value));
         try {
             property.set(object, value, shapeWithDeclared);
-        } catch (IncompatibleLocationException | FinalLocationException e) {
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.fail(e.getMessage());
         }
 
@@ -101,8 +105,8 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         try {
             property.set(object, newValue, shapeWithDeclared);
             Assert.fail();
-        } catch (IncompatibleLocationException | FinalLocationException e) {
-            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
+            Assert.assertThat(e, CoreMatchers.instanceOf(com.oracle.truffle.api.object.IncompatibleLocationException.class));
         }
 
         Assert.assertSame(value, library.getOrDefault(object, "declared", null));
@@ -110,7 +114,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testMigrateDeclaredLocation() {
-        DynamicObject object = shapeWithDeclared.newInstance();
+        DynamicObject object = newInstanceWithDeclared();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -128,7 +132,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
     public void testAddDeclaredLocation() {
         Property property = shapeWithDeclared.getProperty("declared");
 
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -136,15 +140,15 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         Assert.assertSame(shapeWithDeclared, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "declared", null));
 
-        DynamicObject object2 = rootShape.newInstance();
+        DynamicObject object2 = newInstance();
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
-            property.set(object2, newValue, rootShape, shapeWithDeclared);
+            property.getLocation().set(object2, newValue, rootShape, shapeWithDeclared);
             Assert.fail();
-        } catch (IncompatibleLocationException e) {
-            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
+            // expected
         }
         Assert.assertSame(rootShape, object2.getShape());
         Assert.assertEquals(false, library.containsKey(object2, "declared"));

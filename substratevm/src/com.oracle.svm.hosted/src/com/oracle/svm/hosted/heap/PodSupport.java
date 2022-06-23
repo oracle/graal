@@ -167,12 +167,12 @@ final class PodFeature implements PodSupport, Feature {
         }
         for (Method method : factoryInterface.getMethods()) {
             if (!method.getReturnType().isAssignableFrom(superClass)) {
-                throw new IllegalArgumentException("The return type of " + method + " is not assignable from " + superClass);
+                throw new IllegalArgumentException("The return type of '" + method + "' is not assignable from '" + superClass.getName() + "'");
             }
             try {
                 superClass.getDeclaredConstructor(method.getParameterTypes());
             } catch (NoSuchMethodException e) {
-                throw new IllegalArgumentException("Method " + method + " does not match any constructor in '" + superClass, e);
+                throw new IllegalArgumentException("Method '" + method + "' does not match any constructor in '" + superClass.getName() + "'", e);
             }
         }
         Class<?> podClass = generatePodClass(superClass);

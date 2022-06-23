@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.util.WeakHashMap;
 
-public final class RedefineAddedField extends Field {
+public class RedefineAddedField extends Field {
 
     private Field compatibleField;
     private StaticShape<ExtensionFieldObjectFactory> extensionShape;

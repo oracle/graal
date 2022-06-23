@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -488,17 +489,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected final InvokeKind invokeKind;
         protected final JavaType invokeReturnType;
         protected final boolean parsingInvocationPlugin;
+        protected final boolean unwindExceptions;
 
-        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
-            this(inlineScope, lastInstr, null, null, false);
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, boolean unwindExceptions) {
+            this(inlineScope, lastInstr, null, null, false, unwindExceptions);
         }
 
-        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, InvokeKind invokeKind, JavaType invokeReturnType, boolean parsingInvocationPlugin) {
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
+            this(inlineScope, lastInstr, null, null, false, false);
+        }
+
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, InvokeKind invokeKind, JavaType invokeReturnType, boolean parsingInvocationPlugin,
+                        boolean unwindExceptions) {
             super(inlineScope, inlineScope.invokeData != null ? inlineScope.invokeData.invoke : null);
             this.lastInstr = lastInstr;
             this.invokeKind = invokeKind;
             this.invokeReturnType = invokeReturnType;
             this.parsingInvocationPlugin = parsingInvocationPlugin;
+            this.unwindExceptions = unwindExceptions;
         }
 
         @Override
@@ -621,20 +629,33 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... exceptionArguments) {
-            if (exceptionEdgeConsumed) {
-                throw GraalError.unimplemented("Only one node can consume the exception edge");
-            }
-            exceptionEdgeConsumed = true;
 
             BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, exceptionArguments));
 
             ensureExceptionStateDecoded(methodScope);
-            methodScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionNode);
-            registerNode(methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId, exceptionNode, true, false);
-            exceptionNode.setStateAfter(methodScope.exceptionState);
             exceptionNode.setNodeSourcePosition(methodScope.callerBytecodePosition);
+            if (unwindExceptions) {
+                FrameState exceptionState = methodScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionNode, null);
+                exceptionNode.setStateAfter(exceptionState);
 
-            exceptionNode.setNext(makeStubNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionNextOrderId));
+                UnwindNode unwind = graph.add(new UnwindNode(exceptionNode));
+                exceptionNode.setNext(unwind);
+                methodScope.returnAndUnwindNodes.add(unwind);
+
+            } else {
+                exceptionNode.setStateAfter(methodScope.exceptionState);
+
+                if (exceptionEdgeConsumed) {
+                    throw GraalError.unimplemented("Only one node can consume the exception edge");
+                }
+                exceptionEdgeConsumed = true;
+
+                methodScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionNode);
+
+                registerNode(methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId, exceptionNode, true, false);
+                exceptionNode.setNext(makeStubNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionNextOrderId));
+            }
+
             return BeginNode.begin(exceptionNode);
         }
 
@@ -1043,10 +1064,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return false;
             }
 
-            if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
-                return false;
-            }
-
             ValueNode[] arguments = callTarget.arguments().toArray(ValueNode.EMPTY_ARRAY);
             FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
 
@@ -1059,7 +1076,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             PEMethodScope inlineScope = createMethodScope(graph, methodScope, loopScope, null, targetMethod, invokeData, methodScope.inliningDepth + 1, arguments);
 
             JavaType returnType = targetMethod.getSignature().getReturnType(methodScope.method.getDeclaringClass());
-            PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType, true);
+            PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType, true, false);
             InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
 
             if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
@@ -1178,7 +1195,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             } else if (!StampTool.isPointerNonNull(arguments[0])) {
                 /* The receiver might be null, so we need to insert a null check. */
-                PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, predecessor);
+                PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, predecessor, true);
                 arguments[0] = graphBuilderContext.nullCheckedValue(arguments[0]);
                 predecessor = graphBuilderContext.lastInstr;
             }
@@ -1203,6 +1220,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * Do the actual inlining by returning the initial loop scope for the inlined method scope.
          */
         return inlineLoopScope;
+    }
+
+    @Override
+    protected void afterMethodScope(MethodScope methodScope) {
+        /*
+         * The graph should be in a valid state after a method scope was completed. Revisit this
+         * assumption if there are any crashes during dumping.
+         */
+        if (debug.isDumpEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
+            debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After PE %s", ((PEMethodScope) methodScope).method.format("%H.%n"));
+        }
     }
 
     @Override
@@ -1283,6 +1311,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         ValueNode returnValue;
         if (returnNodeCount == 0) {
             returnValue = null;
+            invokeNode.replaceAtUsages(null);
         } else if (returnNodeCount == 1) {
             ReturnNode returnNode = getSingleMatchingNode(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class);
             returnValue = returnNode.result();
@@ -1291,22 +1320,26 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 // Try to reuse the previous begin node instead of creating another one.
                 prevBegin = (BeginNode) returnNode.predecessor();
             }
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin);
-            if (n == prevBegin) {
+            Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin));
+            returnValue = returnAnchorPair.getLeft();
+            FixedNode next = returnAnchorPair.getRight();
+            if (next == prevBegin) {
                 // Reusing the previous BeginNode; just remove the ReturnNode.
                 returnNode.replaceAtPredecessor(null);
                 returnNode.safeDelete();
             } else {
-                returnNode.replaceAndDelete(n);
+                returnNode.replaceAndDelete(next);
             }
         } else {
             AbstractMergeNode merge = graph.add(new MergeNode());
             merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
             returnValue = InliningUtil.mergeReturns(merge, getMatchingNodes(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class, returnNodeCount));
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
-            merge.setNext(n);
+            FixedNode next = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
+            Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, merge);
+            returnValue = returnAnchorPair.getLeft();
+            assert returnAnchorPair.getRight() == merge;
+            merge.setNext(next);
         }
-        invokeNode.replaceAtUsages(returnValue);
 
         /*
          * Usage the handles that we have on the return value and the exception to update the

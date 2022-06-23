@@ -39,6 +39,9 @@ import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
 public abstract class EspressoInstrumentableNode extends EspressoNode implements BciProvider, InstrumentableNode {
@@ -70,29 +73,70 @@ public abstract class EspressoInstrumentableNode extends EspressoNode implements
         // construct the current scope with valid local variables information
         Method method = getMethod();
         Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(getBci(frame));
-        if (liveLocals.length == 0) {
-            // class was compiled without a local variable table
+        boolean allParamsIncluded = checkLocals(liveLocals, method);
+        if (!allParamsIncluded) {
+            ArrayList<Local> constructedLiveLocals = new ArrayList<>();
+            HashMap<Integer, Local> slotToLocal = new HashMap<>(liveLocals.length);
+            for (Local liveLocal : liveLocals) {
+                slotToLocal.put(liveLocal.getSlot(), liveLocal);
+            }
+            // class was compiled without a full local variable table
             // include "this" in method arguments throughout the method
             boolean hasReceiver = !method.isStatic();
             int localCount = hasReceiver ? 1 : 0;
             localCount += method.getParameterCount();
-            liveLocals = new Local[localCount];
+
             Klass[] parameters = (Klass[]) method.getParameters();
             Utf8ConstantTable utf8Constants = getContext().getLanguage().getUtf8ConstantTable();
             int startslot = 0;
 
             if (hasReceiver) {
-                // include 'this' and method arguments
-                liveLocals[0] = new Local(utf8Constants.getOrCreate(Symbol.Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 65536, 0);
+                // include 'this' and method arguments if not already included
+                if (!slotToLocal.containsKey(startslot)) {
+                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(Symbol.Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 65536, 0));
+                } else {
+                    constructedLiveLocals.add(slotToLocal.get(startslot));
+                }
+                slotToLocal.remove(startslot);
                 startslot++;
             }
 
-            // include method parameters
+            // include method parameters if not already included
             for (int i = startslot; i < localCount; i++) {
                 Klass param = hasReceiver ? parameters[i - 1] : parameters[i];
-                liveLocals[i] = new Local(utf8Constants.getOrCreate(ByteSequence.create("param_" + (i))), utf8Constants.getOrCreate(param.getType()), 0, 65536, i);
+                if (!slotToLocal.containsKey(i)) {
+                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(ByteSequence.create("param_" + (i))), utf8Constants.getOrCreate(param.getType()), 0, 65536, i));
+                    slotToLocal.remove(i);
+                }
             }
+            for (Local local : slotToLocal.values()) {
+                // add non-parameters last
+                constructedLiveLocals.add(local);
+            }
+            liveLocals = constructedLiveLocals.toArray(new Local[constructedLiveLocals.size()]);
         }
         return EspressoScope.createVariables(liveLocals, frame, method.getName());
+    }
+
+    private static boolean checkLocals(Local[] liveLocals, Method method) {
+        if (liveLocals.length == 0) {
+            return false;
+        }
+        int expectedParameterSlots = !method.isStatic() ? 1 + method.getParameterCount() : method.getParameterCount();
+        boolean[] localPresent = new boolean[expectedParameterSlots];
+        if (liveLocals.length < expectedParameterSlots) {
+            return false;
+        }
+        for (Local liveLocal : liveLocals) {
+            if (liveLocal.getSlot() < expectedParameterSlots) {
+                localPresent[liveLocal.getSlot()] = true;
+            }
+        }
+        for (boolean present : localPresent) {
+            if (!present) {
+                return false;
+            }
+        }
+        return true;
     }
 }

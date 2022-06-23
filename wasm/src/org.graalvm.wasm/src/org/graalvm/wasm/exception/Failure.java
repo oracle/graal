@@ -127,7 +127,9 @@ public enum Failure {
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),
 
     // TODO(mbovel): replace UNSPECIFIED_INTERNAL usages with assertInternal/shouldNotReachHere.
-    UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified");
+    UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
+
+    NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data");
 
     public enum Type {
         TRAP("trap"),

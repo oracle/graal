@@ -333,6 +333,7 @@ import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -351,7 +352,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements BytecodeOSRNode {
+public final class BytecodeNode extends EspressoMethodNode implements BytecodeOSRNode, GuestAllocator.AllocationProfiler {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -688,13 +689,28 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private static final class EspressoOSRReturnException extends ControlFlowException {
         private static final long serialVersionUID = 117347248600170993L;
         private final Object result;
+        private final Throwable throwable;
 
         EspressoOSRReturnException(Object result) {
             this.result = result;
+            this.throwable = null;
         }
 
-        Object getResult() {
+        EspressoOSRReturnException(Throwable throwable) {
+            this.result = null;
+            this.throwable = throwable;
+        }
+
+        Object getResultOrRethrow() {
+            if (throwable != null) {
+                throw sneakyThrow(throwable);
+            }
             return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
+            throw (T) ex;
         }
     }
 
@@ -1279,9 +1295,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case INVOKEINTERFACE:
                         top += quickenInvoke(frame, top, curBCI, curOpcode, statementIndex); break;
 
-                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(NEW, bs.readCPI2(curBCI)), true)); break;
-                    case NEWARRAY    : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta(), this)); break;
-                    case ANEWARRAY   : putObject(frame, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, bs.readCPI2(curBCI)), popInt(frame, top - 1), this)); break;
+                    case NEW         :
+                        Klass klass = resolveType(NEW, bs.readCPI2(curBCI));
+                        putObject(frame, top, newReferenceObject(klass)); break;
+                    case NEWARRAY    :
+                        byte jvmPrimitiveType = bs.readByte(curBCI);
+                        int length = popInt(frame, top - 1);
+                        putObject(frame, top - 1, newPrimitiveArray(jvmPrimitiveType, length)); break;
+                    case ANEWARRAY   : putObject(frame, top - 1, newReferenceArray(resolveType(ANEWARRAY, bs.readCPI2(curBCI)), popInt(frame, top - 1))); break;
 
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
@@ -1467,7 +1488,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         assert getContext().Polyglot;
                         getMeta().polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        StaticObject.createForeignException(getMeta(), e, InteropLibrary.getUncached(e)), getMeta());
+                                        getAllocator().createForeignException(e, InteropLibrary.getUncached(e)), getMeta());
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1517,7 +1538,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                     LoopNode.reportLoopCount(this, loopCount.value);
                 }
-                return e.getResult();
+                return e.getResultOrRethrow();
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
@@ -1529,6 +1550,37 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
         }
+    }
+
+    @Override
+    public void enterNewReference() {
+        enterImplicitExceptionProfile();
+    }
+
+    @Override
+    public void enterNewArray() {
+        enterImplicitExceptionProfile();
+    }
+
+    @Override
+    public void enterNewMultiArray() {
+        enterImplicitExceptionProfile();
+    }
+
+    private StaticObject newReferenceObject(Klass klass) {
+        assert !klass.isPrimitive() : "Verifier guarantee";
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), klass, true, this);
+        return getAllocator().createNew((ObjectKlass) klass);
+    }
+
+    private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
+        return getAllocator().createNewPrimitiveArray(jvmPrimitiveType, length);
+    }
+
+    private StaticObject newReferenceArray(Klass componentType, int length) {
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
+        return getAllocator().createNewReferenceArray(componentType, length);
     }
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
@@ -1794,7 +1846,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     beforeTransfer = null;
                 }
                 livenessAnalysis.catchUpOSR(frame, targetBCI, skipLivenessActions);
-                Object osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), beforeTransfer, frame);
+                Object osrResult;
+                try {
+                    osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), beforeTransfer, frame);
+                } catch (Throwable any) {
+                    // Has already been guest-handled in OSR. Shortcut out of the method.
+                    throw new EspressoOSRReturnException(any);
+                }
                 if (osrResult != null) {
                     throw new EspressoOSRReturnException(osrResult);
                 }
@@ -2292,7 +2350,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         for (int i = 0; i < allocatedDimensions; ++i) {
             dimensions[i] = popInt(frame, top - allocatedDimensions + i);
         }
-        putObject(frame, top - allocatedDimensions, getInterpreterToVM().newMultiArray(((ArrayKlass) klass).getComponentType(), dimensions));
+        Klass component = ((ArrayKlass) klass).getComponentType();
+        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMeta(), component, dimensions, this);
+        StaticObject value = getAllocator().createNewMultiArray(component, dimensions);
+        putObject(frame, top - allocatedDimensions, value);
         return -allocatedDimensions; // Does not include the created (pushed) array.
     }
 

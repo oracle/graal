@@ -83,7 +83,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         isFirst = false;
         final Source source = request.getSource();
         final byte[] data = source.getBytes().toByteArray();
-        final WasmModule module = context.readModule(moduleName, data, null, source);
+        final WasmModule module = context.readModule(moduleName, data, null);
         final WasmInstance instance = context.readInstance(module);
         return new RootNode(this) {
             @Override

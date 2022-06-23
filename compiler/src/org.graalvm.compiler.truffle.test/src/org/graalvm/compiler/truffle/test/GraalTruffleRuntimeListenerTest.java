@@ -57,6 +57,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptions {
 
+    @Override
+    protected Context.Builder newContextBuilder() {
+        return super.newContextBuilder().option("engine.EncodedGraphCache", "false");
+    }
+
     @Test
     public void testCompilationSuccess() {
         setupContext("engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false");

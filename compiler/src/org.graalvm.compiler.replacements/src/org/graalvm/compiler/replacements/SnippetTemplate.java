@@ -163,7 +163,6 @@ import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase.MemoryMapImpl;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
@@ -456,6 +455,16 @@ import jdk.vm.ci.meta.Signature;
  */
 public class SnippetTemplate {
 
+    /**
+     * Times instantiations of all templates derived from this snippet.
+     */
+    private static final TimerKey totalInstantiationTimer = DebugContext.timer("SnippetInstantiationTime");
+
+    /**
+     * Counts instantiations of all templates derived from this snippet.
+     */
+    private static final CounterKey totalInstantiationCounter = DebugContext.counter("SnippetInstantiationCount");
+
     private boolean mayRemoveLocation = false;
 
     /**
@@ -493,6 +502,10 @@ public class SnippetTemplate {
          */
         private final CounterKey instantiationCounter;
 
+        private final CounterKey creationCounter;
+
+        private final TimerKey creationTimer;
+
         protected abstract SnippetParameterInfo info();
 
         protected SnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
@@ -501,6 +514,8 @@ public class SnippetTemplate {
             this.privateLocations = privateLocations;
             instantiationCounter = DebugContext.counter("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = DebugContext.timer("SnippetInstantiationTime[%s]", method.getName());
+            creationCounter = DebugContext.counter("SnippetCreationCount[%s]", method.getName());
+            creationTimer = DebugContext.timer("SnippetCreationTime[%s]", method.getName());
             this.receiver = receiver;
         }
 
@@ -926,12 +941,18 @@ public class SnippetTemplate {
             SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null || (graph.trackNodeSourcePosition() && !template.snippet.trackNodeSourcePosition())) {
                 try (DebugContext debug = openSnippetDebugContext(outer, args)) {
-                    try (DebugCloseable a = SnippetTemplateCreationTime.start(debug); DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
-                        SnippetTemplates.increment(debug);
+                    try (DebugCloseable a = SnippetTemplateCreationTime.start(outer);
+                                    DebugCloseable a2 = args.info.creationTimer.start(outer);
+                                    DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
+                        SnippetTemplates.increment(outer);
+                        args.info.creationCounter.increment(outer);
                         OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options));
                         template = new SnippetTemplate(snippetOptions, debug, providers, args, graph.trackNodeSourcePosition(), replacee, createMidTierPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
                             templates.put(args.cacheKey, template);
+                        }
+                        if (outer.areMetricsEnabled()) {
+                            DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(outer, template.nodes.size());
                         }
                     } catch (Throwable e) {
                         throw debug.handle(e);
@@ -1176,9 +1197,9 @@ public class SnippetTemplate {
                 // (3)
                 assert !guardsStage.allowsFloatingGuards() : guardsStage;
                 // only create memory map nodes if we need the memory graph
-                new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase(true, true)).apply(snippetCopy, providers);
+                new FloatingReadPhase(true, true, canonicalizer).apply(snippetCopy, providers);
                 new GuardLoweringPhase().apply(snippetCopy, providers);
-                new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()).apply(snippetCopy, providers);
+                new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
                     new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
@@ -1380,9 +1401,6 @@ public class SnippetTemplate {
                 }
             }
 
-            if (debug.areMetricsEnabled()) {
-                DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(debug, nodes.size());
-            }
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate final state");
             assert snippet.verify();
             this.snippet.freeze();
@@ -1421,6 +1439,7 @@ public class SnippetTemplate {
     public static void explodeLoops(final StructuredGraph snippetCopy, CoreProviders providers) {
         // Do any required loop explosion
         boolean exploded = false;
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         do {
             exploded = false;
             ExplodeLoopNode explodeLoop = snippetCopy.getNodes().filter(ExplodeLoopNode.class).first();
@@ -1430,14 +1449,13 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = providers.getLoopsDataProvider().getLoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                     try {
                         LoopTransformations.fullUnroll(loop, providers, canonicalizer);
                     } catch (RetryableBailoutException e) {
                         // This is a hard error in this context
                         throw new GraalError(e, snippetCopy.toString());
                     }
-                    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
+                    canonicalizer.applyIncremental(snippetCopy, providers, mark);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
@@ -1973,8 +1991,10 @@ public class SnippetTemplate {
 
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
             // Inline the snippet nodes, replacing parameters with the given args in the process
             final FixedNode replaceeGraphPredecessor = (FixedNode) replacee.predecessor();
             StartNode entryPointNode = snippet.start();
@@ -2248,8 +2268,10 @@ public class SnippetTemplate {
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
             StartNode entryPointNode = snippet.start();
@@ -2305,8 +2327,10 @@ public class SnippetTemplate {
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
             StartNode entryPointNode = snippet.start();

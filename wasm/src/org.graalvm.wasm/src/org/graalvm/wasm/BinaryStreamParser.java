@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -336,5 +337,17 @@ public abstract class BinaryStreamParser {
             length++;
         }
         return length;
+    }
+
+    @TruffleBoundary
+    protected void removeSection(int startOffset, int size) {
+        final int endOffset = startOffset + size;
+        final byte[] updatedData = new byte[data.length - size];
+        System.arraycopy(data, 0, updatedData, 0, startOffset);
+        final int remainingLength = data.length - endOffset;
+        if (remainingLength != 0) {
+            System.arraycopy(data, endOffset, updatedData, startOffset, remainingLength);
+        }
+        data = updatedData;
     }
 }

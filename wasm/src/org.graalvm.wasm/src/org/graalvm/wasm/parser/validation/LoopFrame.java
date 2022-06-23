@@ -43,23 +43,28 @@ package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
+import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
 
 /**
  * Representation of a wasm loop during module validation.
  */
 class LoopFrame extends ControlFrame {
-    private final int target;
-    private final int extraTarget;
+    private final int byteCodeTarget;
+    private final int extraDataTarget;
 
-    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int target, int extraTarget) {
+    private final int extraDataTargetIndex;
+
+    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int byteCodeTarget, int extraDataTarget, int extraDataTargetIndex) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.target = target;
-        this.extraTarget = extraTarget;
+        this.byteCodeTarget = byteCodeTarget;
+        this.extraDataTarget = extraDataTarget;
+        this.extraDataTargetIndex = extraDataTargetIndex;
     }
 
     @Override
-    byte[] getLabelTypes() {
-        return getParamTypes();
+    byte[] labelTypes() {
+        return paramTypes();
     }
 
     @Override
@@ -69,11 +74,9 @@ class LoopFrame extends ControlFrame {
 
     @Override
     void exit(ExtraDataList extraData, int offset) {
-        for (int location : conditionalBranches()) {
-            extraData.setConditionalBranchTarget(location, target, extraTarget, getInitialStackSize(), getLabelTypeLength());
-        }
-        for (int location : unconditionalBranches()) {
-            extraData.setUnconditionalBranchTarget(location, target, extraTarget, getInitialStackSize(), getLabelTypeLength());
+        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
+            branchTarget.setTargetInfo(byteCodeTarget, extraDataTarget, extraDataTargetIndex);
+            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
         }
     }
 }

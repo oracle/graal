@@ -50,6 +50,8 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -115,7 +117,6 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -399,7 +400,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         ConditionProfile.class,
                         Objects.class,
                         TruffleSafepoint.class,
-                        BaseOSRRootNode.class
+                        BaseOSRRootNode.class,
+                        TruffleString.class,
+                        AbstractTruffleString.class
         }) {
             m.put(c.getName(), c);
         }
@@ -668,12 +671,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     protected abstract StackIntrospection getStackIntrospection();
 
+    @SuppressWarnings("deprecation")
     @Override
     public <T> T getCapability(Class<T> capability) {
         if (capability == TVMCI.class) {
             return capability.cast(tvmci);
-        } else if (capability == LayoutFactory.class) {
-            LayoutFactory layoutFactory = loadObjectLayoutFactory();
+        } else if (capability == com.oracle.truffle.api.object.LayoutFactory.class) {
+            com.oracle.truffle.api.object.LayoutFactory layoutFactory = loadObjectLayoutFactory();
             ModuleUtil.exportTo(layoutFactory.getClass());
             return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
@@ -910,8 +914,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return GraalTVMCI.getEngineData(rootNode);
     }
 
-    private static LayoutFactory loadObjectLayoutFactory() {
-        return selectObjectLayoutFactory(loadService(LayoutFactory.class));
+    @SuppressWarnings("deprecation")
+    private static com.oracle.truffle.api.object.LayoutFactory loadObjectLayoutFactory() {
+        return selectObjectLayoutFactory(loadService(com.oracle.truffle.api.object.LayoutFactory.class));
     }
 
     private static <T> List<ServiceLoader<T>> loadService(Class<T> service) {
@@ -926,11 +931,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return Arrays.asList(graalLoader, appLoader);
     }
 
-    private static LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<LayoutFactory>> availableLayoutFactories) {
+    @SuppressWarnings("deprecation")
+    private static com.oracle.truffle.api.object.LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<com.oracle.truffle.api.object.LayoutFactory>> availableLayoutFactories) {
         String layoutFactoryImplName = Services.getSavedProperties().get("truffle.object.LayoutFactory");
-        LayoutFactory bestLayoutFactory = null;
-        for (Iterable<LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
-            for (LayoutFactory currentLayoutFactory : currentLayoutFactories) {
+        com.oracle.truffle.api.object.LayoutFactory bestLayoutFactory = null;
+        for (Iterable<com.oracle.truffle.api.object.LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
+            for (com.oracle.truffle.api.object.LayoutFactory currentLayoutFactory : currentLayoutFactories) {
                 if (layoutFactoryImplName != null) {
                     if (currentLayoutFactory.getClass().getName().equals(layoutFactoryImplName)) {
                         return currentLayoutFactory;

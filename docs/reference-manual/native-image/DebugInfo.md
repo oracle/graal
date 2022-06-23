@@ -17,11 +17,28 @@ The resulting image will contain debug records in a format the GNU Debugger (GDB
 Additionally, you can pass `-O0` to the builder which specifies that no compiler optimizations should be performed.
 Disabling all optimizations is not required, but in general it makes the debugging experience better.
 
+By default, debug info will only include details of some of the values of parameters and local variables.
+This means that the debugger will report many parameters and local variables as being undefined. If you pass `-O0` to the builder then full debug information will be included.
+If you
+want more parameter and local variable information to be included when employing higher
+levels of optimization (`-O1` or, the default, `-O2`) you need to pass an extra command
+line flag to the `native-image` command
+
+```shell
+native-image -g -H:+SourceLevelDebug Hello
+```
+
+Enabling debuginfo with flag `-g` does not make any difference to how a generated
+native image is compiled and does not affect how fast it executes nor how much memory it uses at runtime.
+However, it can significantly increase the size of the generated image on disk. Enabling full parameter
+and local variable information by passing flag `-H:+SourceLevelDebug` can cause a program to be compiled
+slightly differently and for some applications this can slow down execution.
+
 > Note: Native Image debugging currently works on Linux with initial support for macOS. The feature is experimental.
 
 ## Source File Caching
 
-The `GenerateDebugInfo` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located during native image generation.
+The `-g` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located during native image generation.
 By default, the cache is created alongside the generated native image in a subdirectory named `sources`.
 If a target directory for the image is specified using option `-H:Path=...` then the cache is also relocated under that same target.
 A command line option can be used to provide an alternative path to `sources`.
@@ -96,15 +113,10 @@ The currently implemented features include:
   - casting/printing objects at different levels of generality
   - access through object networks via path expressions
   - reference by name to methods and static field data
+  - reference by name to values bound to parameter and local vars
 
 Note that single stepping within a compiled method includes file and line number info for inlined code, including inlined GraalVM methods.
 So, GDB may switch files even though you are still in the same compiled method.
-
-### Currently Missing Features
-
-  - reference by name to values bound to parameter and local vars
-
-This feature is scheduled for inclusion in a later release.
 
 ### Special considerations for debugging Java from GDB
 
@@ -117,7 +129,10 @@ So, for example in the DWARF debug info model `java.lang.String` identifies a C+
 This class layout type declares the expected fields like `hash` of type `int` and `value` of type `byte[]` and methods like `String(byte[])`, `charAt(int)`, etc. However, the copy constructor which appears in Java as `String(String)` appears in `gdb` with the signature `String(java.lang.String *)`.
 
 The C++ layout class inherits fields and methods from class (layout) type `java.lang.Object` using C++ public inheritance.
-The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes a single field called `hub` whose type is `java.lang.Class *`, i.e., it is a pointer to the object's class.
+The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes two fields. The first field is called
+`hub` and its type is `java.lang.Class *` i.e. it is a pointer to the object's
+class. The second field is called `idHash` and has type `int`. It stores an
+identity hashcode for the object.
 
 The `ptype` command can be used to print details of a specific type.
 Note that the Java type name must be specified in quotes because to escape the embedded `.` characters.
@@ -142,25 +157,116 @@ type = class java.lang.String : public java.lang.Object {
 }
 ```
 
-The `print` command can be used to print the contents of a referenced object field by field.
-Note how a cast is used to convert a raw memory address to a reference for a specific Java type.
+The ptype command can also be used to identify the static type of a Java
+data value. The current example session is for a simple hello world
+program. Main method `Hello.main` is passed a single parameter
+`args` whose Java type is `String[]`. If the debugger is stopped at
+entry to `main` we can use `ptype` to print the type of `args`.
+ 
+ ```
+(gdb) ptype args
+type = class java.lang.String[] : public java.lang.Object {
+  public:
+    int len;
+    java.lang.String *data[0];
+} *
+```
+
+There are a few details worth highlighting here. Firstly, the debugger
+sees a Java array reference as a pointer type, as it does every Java object
+reference.
+
+Secondly, the pointer points to a structure, actually a C++ class,
+that models the layout of the Java array using an integer length field
+and a data field whose type is a C++ array embedded into the block of
+memory that models the array object.
+
+Elements of the array data field are references to the base type, in
+this case pointers to `java.lang.String`. The data array has a nominal
+length of 0. However, the block of memory allocated for the `String[]`
+object actually includes enough space to hold the number of pointers
+determined by the value of field `len`.
+
+Finally, notice that the C++ class `java.lang.String[]` inherits from
+the C++ class `java.lang.Object`. So, an array is still also an object.
+In particular, as we will see when we print the object contents, this
+means that every array also includes the object header fields that all
+Java objects share.
+
+The print command can be used to display the object reference as a memory
+address. 
 
 ```
-(gdb) print *('java.lang.String' *) 0x7ffff7c01060
-$1 = {
+(gdb) print args
+$1 = (java.lang.String[] *) 0x7ffff7c01130
+```
+
+It can also be used to print the contents of the object field by field. This
+is achieved by dereferencing the pointer using the `*` operator.
+
+```
+(gdb) print *args
+$2 = {
   <java.lang.Object> = {
     <_objhdr> = {
-      hub = 0x90cb58
-    }, <No data fields>},
-  members of java.lang.String:
-  value = 0x7ffff7c011a0,
-  hash = 0,
-  coder = 0 '\000'
+      hub = 0xaa90f0,
+      idHash = 0
+    }, <No data fields>}, 
+  members of java.lang.String[]:
+  len = 1,
+  data = 0x7ffff7c01140
 }
 ```
 
-The `hub` field in the object header is actually a reference of Java type `java.lang.Class`.
-Note that the field is typed by `gdb` using a pointer to the underlying C++ class (layout) type.
+The array object contains embedded fields inherited from class
+`_objhdr` via parent class `Object`. `_objhdr` is a synthetic type
+added to the deubg info to model fields that are present at the start
+of all objects. They include `hub` which is a reference to the object's
+class and `hashId` a unique numeric hash code.
+
+Clearly, the debugger knows the type (`java.lang.String[]`) and location
+in memory (`0x7ffff7c010b8`) of local variable `args`. It also knows about
+the layout of the fields embedded in the referenced object. This means
+it is possible to use the C++ `.` and `->` operators in debugger commands
+to traverse the underlying object data structures.
+
+```
+(gdb) print args->data[0]
+$3 = (java.lang.String *) 0x7ffff7c01160
+(gdb) print *args->data[0]
+$4 = {
+   <java.lang.Object> = {
+     <_objhdr> = {
+      hub = 0xaa3350
+     }, <No data fields>},
+   members of java.lang.String:
+   value = 0x7ffff7c01180,
+   hash = 0,
+   coder = 0 '\000'
+ }
+(gdb) print *args->data[0]->value
+$5 = {
+  <java.lang.Object> = {
+    <_objhdr> = {
+      hub = 0xaa3068,
+      idHash = 0
+    }, <No data fields>}, 
+  members of byte []:
+  len = 6,
+  data = 0x7ffff7c01190 "Andrew"
+}
+ ```
+
+Returning to the `hub` field in the object header it was
+mentioned before that this is actually a reference to the object's
+class. This is actually an instance of Java type `java.lang.Class`.
+Note that the field is typed by gdb using a pointer
+to the underlying C++ class (layout) type.
+
+```
+(gdb) print args->hub
+$6 = (java.lang.Class *) 0xaa90f0
+```
 
 All classes, from Object downwards inherit from a common, automatically generated header type `_objhdr`.
 It is this header type which includes the `hub` field:
@@ -179,47 +285,48 @@ type = class java.lang.Object : public _objhdr {
     . . .
 ```
 
-Given an address that might be an object reference it is possible to verify that case and identify the object's type by printing the contents of the String referenced from the hub's name field.
+The fact that all objects have a common header pointing to a class
+makes it possible to perform a simple test to decide if an address
+is an object reference and, if so,  what the object's class is.
+Given a valid object reference it is always possible to print the
+contents of the `String` referenced from the hub's name field.
+
+Note that as a consequence, this allows every object observed by the debugger
+to be downcast to its dynamic type. i.e. even if the debugger only sees the static
+type of e.g. java.nio.file.Path we can easily downcast to the dynamic type, which
+might be a subtype such as `jdk.nio.zipfs.ZipPath`, thus making it possible to inspect
+fields that we would not be able to observe from the static type alone.
+
 First the value is cast to an object reference.
 Then a path expression is used to dereference through the the `hub` field and the `hub`'s name field to the `byte[]` value array located in the name `String`.
 
 ```
 (gdb) print/x ((_objhdr *)$rdi)
-$2 = 0x7ffff7c01028
-(gdb) print *$2->hub->name->value
-$3 = {
+$7 = (_objhdr *) 0x7ffff7c01130
+(gdb) print *$7->hub->name->value
+$8 = {
   <java.lang.Object> = {
     <_objhdr> = {
-      hub = 0x942d40,
-      idHash = 1806863149
-    }, <No data fields>},
-  members of byte []:
-  len = 19,
-  data = 0x923a90 "[Ljava.lang.String;"
-}
+      hub = 0xaa3068,
+      idHash = 178613527
+    }, <No data fields>}, 
+   members of byte []:
+   len = 19,
+  data = 0x8779c8 "[Ljava.lang.String;"
+ }
 ```
 
-The value in register `rdx` is obviously a reference to a String array.
-Casting it to this type shows it has length 1.
-
-```
-(gdb) print *('java.lang.String[]' *)$rdi
-$4 = {
-  <java.lang.Object> = {
-    <_objhdr> = {
-      hub = 0x925be8,
-      idHash = 0
-    }, <No data fields>},
-  members of java.lang.String[]:
-  len = 1,
-  data = 0x7ffff7c01038
-}
-```
+The value in register `rdi` is obviously a reference to a String array.
+Indeed, this is no coincidence. The example session has stopped at a break
+point placed at the entry to `Hello.main` and at that point the value for
+the `String[]` parameter `args` will be located in register `rdi`. Looking
+back we can see that the value in `rdi` is the same value as was printed by
+command `print args`. 
 
 A simpler command which allows just the name of the `hub` object to be printed is as follows:
 
 ```
-(gdb) x/s $2->hub->name->value->data
+(gdb) x/s $7->hub->name->value->data
 798:	"[Ljava.lang.String;"
 ```
 
@@ -231,7 +338,7 @@ define hubname_raw
 end
 
 (gdb) hubname_raw $rdi
-0x904798:	"[Ljava.lang.String;"
+0x8779c8:	"[Ljava.lang.String;"
 ```
 
 Attempting to print the hub name for an invalid reference will fail
@@ -244,40 +351,22 @@ $5 = 0x2
 Cannot access memory at address 0x2
 ```
 
-Array type layouts are modelled as a C++ class type.
-It inherits from class Object so it includes the hub and idHash header fields defined by `_objhdr`.
-It adds a length field and an embedded (C++) data array whose elements are typed from the Java array's element type, either primitive values or object references.
-
-```
-(gdb) ptype 'java.lang.String[]'
-type = class java.lang.String[] : public java.lang.Object {
-    int len;
-    java.lang.String *data[0];
-}
-```
-
-The embedded array is nominally sized with length 0.
-However, when a Java array instance is allocated it includes enough space to ensure the data array can store the number of items defined in the length field.
-
-Notice that in this case the type of the values stored in the data array is `java.lang.String *`.
-The the C++ array stores Java object references, i.e., addresses as far as the C++ model is concerned.
-
 If `gdb` already knows the Java type for a reference it can be printed without casting using a simpler version of the hubname command.
-For example, the String array retrieved above as `$4` has a known type.
+For example, the String array retrieved above as `$1` has a known type.
 
 ```
-(gdb) ptype $4
+(gdb) ptype $1
 type = class java.lang.String[] : public java.lang.Object {
     int len;
     java.lang.String *data[0];
-}
+} *
 
 define hubname
   x/s (($arg0))->hub->name->value->data
 end
 
-(gdb) hubname $4
-0x923b68:	"[Ljava.lang.String;"
+(gdb) hubname $1
+0x8779c8:	"[Ljava.lang.String;"
 ```
 
 Interface layouts are modelled as C++ union types.
@@ -299,16 +388,16 @@ Given a reference typed to an interface it can be resolved to the relevant class
 If we take the first String in the args array we can ask `gdb` to cast it to interface `CharSequence`.
 
 ```
-(gdb) print (('java.lang.String[]' *)$rdi)->data[0]
-$5 = (java.lang.String *) 0x7ffff7c01060
-(gdb) print ('java.lang.CharSequence' *)$5
-$6 = (java.lang.CharSequence *) 0x7ffff7c01060
+(gdb) print args->data[0]
+$10 = (java.lang.String *) 0x7ffff7c01160
+(gdb) print ('java.lang.CharSequence' *)$10
+$11 = (java.lang.CharSequence *) 0x7ffff7c01160
 ```
 
 The `hubname` command will not work with this union type because it is only objects of the elements of the union that include the `hub` field:
 
 ```
-(gdb) hubname $6
+(gdb) hubname $11
 There is no member named hub.
 ```
 
@@ -316,17 +405,18 @@ However, since all elements include the same header any one of them can be passe
 This allows the correct union element to be selected:
 
 ```
-(gdb) hubname $6->'_java.nio.CharBuffer'
-0x7d96d8:	"java.lang.String\270", <incomplete sequence \344\220>
-(gdb) print $6->'_java.lang.String'
-$18 = {
+(gdb) hubname $11->'_java.nio.CharBuffer'
+0x95cc58:	"java.lang.String`\302\236"
+(gdb) print $11->'_java.lang.String'
+$12 = {
   <java.lang.Object> = {
     <_objhdr> = {
-      hub = 0x90cb58
+      hub = 0xaa3350,
+      idHash = 0
     }, <No data fields>},
   members of java.lang.String:
-  value = 0x7ffff7c011a0,
   hash = 0,
+  value = 0x7ffff7c01180,
   coder = 0 '\000'
 }
 ```
@@ -334,8 +424,9 @@ $18 = {
 Notice that the printed class name for `hub` includes some trailing characters.
 That's because a data array storing Java String text is not guaranteed to be zero-terminated.
 
-The current debug info model does not include the location info needed to allow symbolic names for local vars and parameter vars to be resolved to primitive values or object references.
-However, the debugger does understand method names and static field names.
+The debugger does not just understand the name and type of local and
+parameter variables. It also knows about method names and static field
+names.
 
 The following command places a breakpoint on the main entry point for class `Hello`.
 Note that since GDB thinks this is a C++ method it uses the `::` separator to separate the method name from the class name.
@@ -386,47 +477,47 @@ Note also that the address operator can be used identify the location (address) 
 
 ```
 (gdb) p 'java.math.BigInteger'::powerCache
-$8 = (java.math.BigInteger[][] *) 0xa6fd98
+$13 = (java.math.BigInteger[][] *) 0xced5f8
 (gdb) p &'java.math.BigInteger'::powerCache
-$9 = (java.math.BigInteger[][] **) 0xa6fbd8
+$14 = (java.math.BigInteger[][] **) 0xced3f0
 ```
 
 The debugger dereferences through symbolic names for static fields to access the primitive value or object stored in the field.
 
 ```
 (gdb) p *'java.math.BigInteger'::powerCache
-$10 = {
+$15 = {
   <java.lang.Object> = {
     <_objhdr> = {
-    hub = 0x9ab3d0,
-    idHash = 489620191
+    hub = 0xb8dc70,
+    idHash = 1669655018
     }, <No data fields>},
   members of _java.math.BigInteger[][]:
   len = 37,
-  data = 0xa6fda8
+  data = 0xced608
 }
 (gdb) p 'java.math.BigInteger'::powerCache->data[0]@4
-$11 = {0x0, 0x0, 0xc09378, 0xc09360}
+$16 = {0x0, 0x0, 0xed5780, 0xed5768}
 (gdb) p *'java.math.BigInteger'::powerCache->data[2]
-$12 = {
+$17 = {
   <java.lang.Object> = {
     <_objhdr> = {
-    hub = 0x919898,
-    idHash = 1796421813
+    hub = 0xabea50,
+    idHash = 289329064
     }, <No data fields>},
   members of java.math.BigInteger[]:
   len = 1,
-  data = 0xc09388
+  data = 0xed5790
 }
 (gdb) p *'java.math.BigInteger'::powerCache->data[2]->data[0]
-$14 = {
+$18 = {
   <java.lang.Number> = {
     <java.lang.Object> = {
       <_objhdr> = {
-        hub = 0x919bc8
+        hub = 0xabed80
       }, <No data fields>}, <No data fields>},
   members of java.math.BigInteger:
-  mag = 0xa5b030,
+  mag = 0xcbc648,
   signum = 1,
   bitLengthPlusOne = 0,
   lowestSetBitPlusTwo = 0,
@@ -509,6 +600,7 @@ objdump --dwarf=ranges hello > ranges
 objdump --dwarf=decodedline hello > decodedline
 objdump --dwarf=rawline hello > rawline
 objdump --dwarf=str hello > str
+objdump --dwarf=loc hello > loc
 objdump --dwarf=frames hello > frames
 ```
 
@@ -522,6 +614,12 @@ The *decodedline* section maps subsegments of method code range segments to file
 This mapping includes entries for files and line numbers for inlined methods.
 
 The *rawline* segment provides details of how the line table is generated using DWARF state machine instructions that encode file, line, and address transitions.
+
+The *loc* section provides details of address ranges within
+which parameter and local variables declared in the info section
+are known to have a determinate value. The details identify where
+the value is located, either in a machine register, on the stack or
+at a specific address in memory.
 
 The *str* section provides a lookup table for strings referenced from records in the info section.
 

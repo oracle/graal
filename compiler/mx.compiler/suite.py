@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "22.2.0",
+  "version" : "22.3.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -568,6 +568,9 @@ suite = {
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
         "java.management"
+      ],
+      "uses" : [
+        "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1597,7 +1600,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements.amd64",
-        "org.graalvm.compiler.truffle.compiler",
+        "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1676,6 +1679,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.truffle.compiler",
         "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime",
@@ -1849,6 +1853,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.hotspot.amd64",
       ],
@@ -2038,7 +2043,7 @@ suite = {
           "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver",
+          "org.graalvm.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
           "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "org.graalvm.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
@@ -2057,6 +2062,7 @@ suite = {
           "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
           "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
           "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
+          "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
           "org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory",
           "org.graalvm.compiler.options.OptionDescriptors",
           "org.graalvm.compiler.serviceprovider.JMXService",

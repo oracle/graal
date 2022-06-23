@@ -45,4 +45,9 @@ public final class ExitCodeNode extends RootNode {
         }
         return context.getExitStatus();
     }
+
+    @Override
+    public String getName() {
+        return EVAL_NAME;
+    }
 }

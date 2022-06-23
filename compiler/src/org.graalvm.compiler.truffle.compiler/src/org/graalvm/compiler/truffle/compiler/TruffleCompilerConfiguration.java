@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,7 @@ public final class TruffleCompilerConfiguration {
 
     public Architecture architecture() {
         Architecture arch = lastTier().backend().getTarget().arch;
-        assert arch.equals(firstTier().backend().getTarget().arch) : "target architecture must be the same for first and list tier.";
+        assert arch.equals(firstTier().backend().getTarget().arch) : "target architecture must be the same for first and last tier.";
         return arch;
     }
 }

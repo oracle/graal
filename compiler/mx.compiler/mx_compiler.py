@@ -37,6 +37,7 @@ import tarfile
 import subprocess
 import tempfile
 import sys
+import csv
 
 import mx_truffle
 import mx_sdk_vm
@@ -199,7 +200,6 @@ def _is_jvmci_enabled(vmargs):
 
 def _nodeCostDump(args, extraVMarguments=None):
     """list the costs associated with each Node type"""
-    import csv
     parser = ArgumentParser(prog='mx nodecostdump')
     parser.add_argument('--regex', action='store', help="Node Name Regex", default=False, metavar='<regex>')
     parser.add_argument('--markdown', action='store_true', help="Format to Markdown table")
@@ -614,7 +614,7 @@ graal_unit_test_runs = [
 ]
 
 _registers = {
-    'amd64': 'rbx,r11,r10,r14,xmm3,xmm11,xmm14',
+    'amd64': 'rbx,r11,r10,r14,xmm3,xmm2,xmm11,xmm14,k1?',
     'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
 }
 if mx.get_arch() not in _registers:
@@ -951,13 +951,11 @@ def collate_metrics(args):
             if m:
                 isolate_metrics = join(directory, entry)
                 with open(isolate_metrics) as fp:
+                    reader = csv.reader(fp, delimiter=';')
                     line_no = 1
-                    for line in fp.readlines():
-                        values = line.strip().split(';')
+                    for line_no, values in enumerate(reader, start=1):
                         if len(values) != 3:
-                            mx.abort('{}:{}: invalid line: {}'.format(isolate_metrics, line_no, line))
-                        if len(values) != 3:
-                            mx.abort('{}:{}: expected 3 semicolon separated values: {}'.format(isolate_metrics, line_no, line))
+                            mx.abort('{}:{}: invalid line: {}'.format(isolate_metrics, line_no, values))
                         name, metric, unit = values
 
                         series = results.get(name, None)
@@ -974,17 +972,20 @@ def collate_metrics(args):
                         units[name] = unit
         filename_index += 1
 
-    if args.filenames:
+    if not results:
+        mx.log('No results to collate for ' + args.filenames[0])
+    elif args.filenames:
         collated_filename = args.filenames[0][:-len('.csv')] + '.collated.csv'
         with open(collated_filename, 'w') as fp:
+            writer = csv.writer(fp, delimiter=';')
             for n, series in sorted(results.items()):
                 while len(series) < len(args.filenames):
                     series.append(0)
-                print(n +';' + ';'.join((str(v) for v in series)) + ';' + units[n], file=fp)
+                writer.writerow([n] + [str(v) for v in series] + [units[n]])
         mx.log('Collated metrics into ' + collated_filename)
 
-def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True, command_mapper_hooks=None):
-    graaljdk = get_graaljdk()
+def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None):
+    graaljdk = jdk or get_graaljdk()
     vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
     _check_bootstrap_config(args)

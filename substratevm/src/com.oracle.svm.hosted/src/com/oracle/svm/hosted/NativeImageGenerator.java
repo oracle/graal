@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.util.AnnotationExtracter;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -130,11 +131,12 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
-import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -149,6 +151,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -508,6 +511,7 @@ public class NativeImageGenerator {
             ImageSingletons.add(ProgressReporter.class, reporter);
             ImageSingletons.add(TimerCollection.class, timerCollection);
             ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
+            ImageSingletons.add(AnnotationExtracter.class, loader.classLoaderSupport.annotationExtracter);
             ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
             ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
             ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
@@ -682,7 +686,7 @@ public class NativeImageGenerator {
             ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             compileQueue.purge();
 
-            int numCompilations = codeCache.getCompilations().size();
+            int numCompilations = codeCache.getOrderedCompilations().size();
 
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
                 bb.getHeartbeatCallback().run();
@@ -1456,18 +1460,18 @@ public class NativeImageGenerator {
              */
             for (AnalysisMethod m : aUniverse.getMethods()) {
                 PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
-                for (int i = 0; i < method.getTypeFlow().getMethodFlowsGraph().getParameters().length; i++) {
-                    TypeState parameterState = method.getTypeFlow().getParameterTypeState(bigbang, i);
+                for (TypeFlow<?> parameter : method.getTypeFlow().getParameters()) {
+                    TypeState parameterState = method.getTypeFlow().foldTypeFlow(bigbang, parameter);
                     if (parameterState != null) {
-                        AnalysisType declaredType = method.getTypeFlow().getMethodFlowsGraph().getParameter(i).getDeclaredType();
+                        AnalysisType declaredType = parameter.getDeclaredType();
                         if (declaredType.isInterface()) {
                             TypeState declaredTypeState = declaredType.getAssignableTypes(true);
                             parameterState = TypeState.forSubtraction(bigbang, parameterState, declaredTypeState);
                             if (!parameterState.isEmpty()) {
                                 String methodKey = method.format("%H.%n(%p)");
                                 bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
-                                                "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
-                                                                ", with assignable types: " + format(bb, declaredTypeState) +
+                                                "Parameter " + ((FormalParamTypeFlow) parameter).position() + " of " + methodKey + " has declared type " +
+                                                                declaredType.toJavaName(true) + ", with assignable types: " + format(bb, declaredTypeState) +
                                                                 ", which is incompatible with analysis inferred types: " + format(bb, parameterState) + ".");
                             }
                         }

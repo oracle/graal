@@ -106,7 +106,7 @@ class SignatureUtilFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (!access.getApplicationClassPath().isEmpty()) {
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.meta", false, SignatureUtil.class);
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SignatureUtil.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
         }
     }
 }

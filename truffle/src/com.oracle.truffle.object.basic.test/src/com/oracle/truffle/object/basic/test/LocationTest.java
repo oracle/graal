@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -52,11 +54,8 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectLocation;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
 @SuppressWarnings("deprecation")
@@ -68,30 +67,28 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         return Arrays.asList(TestRun.values());
     }
 
-    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
-    final Shape rootShape = layout.createShape(new ObjectType());
+    final Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
 
-    @SuppressWarnings("deprecation")
-    static Class<?> getLocationType(Location location) {
-        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
+    private DynamicObject newInstance() {
+        return new TestDynamicObjectDefault(rootShape);
     }
 
     @Test
     public void testOnlyObjectLocationForObject() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
         library.put(object, "obj", new Object());
         Location location = object.getShape().getProperty("obj").getLocation();
-        Assert.assertTrue(location instanceof ObjectLocation);
+        DOTestAsserts.assertObjectLocation(location);
         DOTestAsserts.assertLocationFields(location, 0, 1);
         DOTestAsserts.assertShapeFields(object, 0, 1);
     }
 
     @Test
     public void testOnlyPrimLocationForPrimitive() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -104,7 +101,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testPrim2Object() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -123,7 +120,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testUnrelatedPrimitivesGoToObject() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -142,7 +139,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testChangeFlagsReuseLocation() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -159,7 +156,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testChangeFlagsChangeLocation() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -176,7 +173,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testDelete() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -193,7 +190,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testLocationDecoratorEquals() {
-        Allocator allocator = rootShape.allocator();
+        Shape.Allocator allocator = rootShape.allocator();
         Location intLocation1 = allocator.locationForType(int.class);
         Location intLocation2 = allocator.locationForType(int.class);
         Assert.assertEquals(intLocation1.getClass(), intLocation2.getClass());
@@ -202,7 +199,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testDeleteDeclaredProperty() {
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -212,5 +209,23 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(1, object.getShape().getPropertyCount());
         library.removeKey(object, "a");
         Assert.assertFalse(library.containsKey(object, "a"));
+    }
+
+    @Test
+    public void testLocationIsPrimitive() {
+        Shape.Allocator allocator = rootShape.allocator();
+
+        Location objectLocation = allocator.locationForType(Object.class);
+        Assert.assertFalse(objectLocation.isPrimitive());
+
+        Location intLocation = allocator.locationForType(int.class);
+        Assert.assertTrue(intLocation.isPrimitive());
+        Location doubleLocation = allocator.locationForType(double.class);
+        Assert.assertTrue(doubleLocation.isPrimitive());
+        Location longLocation = allocator.locationForType(long.class);
+        Assert.assertTrue(longLocation.isPrimitive());
+
+        Location constantLocation = allocator.constantLocation("constantValue");
+        Assert.assertFalse(constantLocation.isPrimitive());
     }
 }

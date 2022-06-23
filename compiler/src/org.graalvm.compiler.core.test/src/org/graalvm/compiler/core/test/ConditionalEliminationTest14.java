@@ -75,7 +75,7 @@ public class ConditionalEliminationTest14 extends ConditionalEliminationTestBase
         /* Convert the LoadIndexNode to ReadNode with floating guards. */
         new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         /* Convert the ReadNode to FloatingReadNode. */
-        new FloatingReadPhase().apply(graph);
+        new FloatingReadPhase(canonicalizer).apply(graph, context);
         /* Apply the phase that we want to test. */
         new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
 

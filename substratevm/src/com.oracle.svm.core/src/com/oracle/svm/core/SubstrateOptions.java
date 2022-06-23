@@ -93,6 +93,7 @@ public class SubstrateOptions {
     @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
     public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
 
+    @APIOption(name = "-o", valueSeparator = APIOption.WHITESPACE_SEPARATOR)//
     @Option(help = "Name of the output file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
 
@@ -722,6 +723,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Create a heap dump and exit.")//
+    public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new ImmutableRuntimeOptionKey<>(false);
+
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new ImmutableRuntimeOptionKey<>(false);
 
@@ -787,4 +791,8 @@ public class SubstrateOptions {
 
     @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert)//
     public static final HostedOptionKey<Boolean> RunReachabilityHandlersConcurrently = new HostedOptionKey<>(true);
+
+    @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = Debug)//
+    public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
+
 }

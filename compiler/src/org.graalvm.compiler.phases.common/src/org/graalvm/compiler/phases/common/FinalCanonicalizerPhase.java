@@ -26,12 +26,8 @@ package org.graalvm.compiler.phases.common;
 
 import java.util.EnumSet;
 
-import org.graalvm.compiler.graph.Graph.Mark;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 /**
  * Final application of {@link CanonicalizerPhase}. After the application of this phase, no further
@@ -39,12 +35,13 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
  * {@link CanonicalizerTool#finalCanonicalization()} for more details.
  */
 public class FinalCanonicalizerPhase extends CanonicalizerPhase {
-    protected FinalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features) {
-        this(null, features);
-    }
-
     protected FinalCanonicalizerPhase(CustomSimplification customSimplification, EnumSet<CanonicalizerFeature> features) {
         super(customSimplification, features);
+    }
+
+    @Override
+    protected boolean isFinalCanonicalizationPhase() {
+        return true;
     }
 
     @Override
@@ -69,50 +66,4 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
     public static FinalCanonicalizerPhase createFromCanonicalizer(CanonicalizerPhase canonicalizer) {
         return new FinalCanonicalizerPhase(canonicalizer.customSimplification, canonicalizer.features);
     }
-
-    @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
-        new Instance(graph, context).run(graph);
-    }
-
-    @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(graph, context, newNodesMark).apply(graph, dumpGraph);
-    }
-
-    @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
-        new Instance(graph, context, workingSet).apply(graph, dumpGraph);
-    }
-
-    @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(graph, context, workingSet, newNodesMark).apply(graph, dumpGraph);
-    }
-
-    private final class Instance extends CanonicalizerPhase.Instance {
-        private Instance(StructuredGraph graph, CoreProviders context) {
-            this(graph, context, null, null);
-        }
-
-        private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-            this(graph, context, workingSet, null);
-        }
-
-        private Instance(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-            this(graph, context, null, newNodesMark);
-        }
-
-        private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
-            super(graph, context, workingSet, newNodesMark, true);
-        }
-
-        @Override
-        protected void run(StructuredGraph graph) {
-            super.run(graph);
-            graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
-        }
-
-    }
-
 }

@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
@@ -70,8 +71,9 @@ public class ImplicitNullCheckTest extends GraphScheduleTest {
         try (DebugContext.Scope s = debug.scope("FloatingReadTest", new DebugDumpScope(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, debug);
             CoreProviders context = getProviders();
-            new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
-            new FloatingReadPhase().apply(graph);
+            CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+            new HighTierLoweringPhase(canonicalizer).apply(graph, context);
+            new FloatingReadPhase(canonicalizer).apply(graph, context);
             MidTierContext midTierContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
             new GuardLoweringPhase().apply(graph, midTierContext);
 

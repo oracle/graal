@@ -55,6 +55,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -96,12 +97,12 @@ public final class Target_sun_misc_Unsafe {
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
             throw meta.throwNullPointerException();
         }
-        if (hostClass.getMirrorKlass().isArray() || hostClass.getMirrorKlass().isPrimitive()) {
+        if (hostClass.getMirrorKlass(meta).isArray() || hostClass.getMirrorKlass(meta).isPrimitive()) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         byte[] bytes = data.unwrap(language);
-        ObjectKlass hostKlass = (ObjectKlass) hostClass.getMirrorKlass();
+        ObjectKlass hostKlass = (ObjectKlass) hostClass.getMirrorKlass(meta);
         StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(hostClass);
         StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap(language);
         // Inherit host class's protection domain.
@@ -127,7 +128,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayBaseOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Klass klass = clazz.getMirrorKlass();
+        Klass klass = clazz.getMirrorKlass(meta);
         assert klass.isArray();
         if (((ArrayKlass) klass).getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = ((ArrayKlass) klass).getComponentType().getJavaKind().toJavaClass();
@@ -150,7 +151,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayIndexScale(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Klass klass = clazz.getMirrorKlass();
+        Klass klass = clazz.getMirrorKlass(meta);
         assert klass.isArray();
         if (((ArrayKlass) klass).getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = ((ArrayKlass) klass).getComponentType().getJavaKind().toJavaClass();
@@ -961,7 +962,7 @@ public final class Target_sun_misc_Unsafe {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
-        Klass klass = clazz.getMirrorKlass();
+        Klass klass = clazz.getMirrorKlass(meta);
         return !klass.isInitialized();
     }
 
@@ -970,8 +971,9 @@ public final class Target_sun_misc_Unsafe {
      * obtaining the static field base of a class.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static void ensureClassInitialized(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz) {
-        clazz.getMirrorKlass().safeInitialize();
+    public static void ensureClassInitialized(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz,
+                    @Inject Meta meta) {
+        clazz.getMirrorKlass(meta).safeInitialize();
     }
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -1269,7 +1271,9 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz,
                     @Inject Meta meta) {
-        return InterpreterToVM.newObject(clazz.getMirrorKlass(meta), false);
+        Klass mirrorKlass = clazz.getMirrorKlass(meta);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(meta, mirrorKlass, false);
+        return meta.getAllocator().createNew((ObjectKlass) mirrorKlass);
     }
 
     /**
@@ -1597,7 +1601,7 @@ public final class Target_sun_misc_Unsafe {
     @SuppressWarnings("unused")
     public static long objectFieldOffset1(@JavaType(Unsafe.class) StaticObject self, @JavaType(value = Class.class) StaticObject cl, @JavaType(value = String.class) StaticObject guestName,
                     @Inject Meta meta) {
-        Klass k = cl.getMirrorKlass();
+        Klass k = cl.getMirrorKlass(meta);
         String hostName = meta.toHostString(guestName);
         if (k instanceof ObjectKlass) {
             ObjectKlass kl = (ObjectKlass) k;

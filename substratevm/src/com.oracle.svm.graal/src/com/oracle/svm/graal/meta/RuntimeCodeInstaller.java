@@ -252,10 +252,10 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders());
-        codeInfoEncoder.addMethod(method, compilation, 0);
+        codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 
-        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, runtimeMethodInfo);
+        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo);
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();

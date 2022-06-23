@@ -46,7 +46,6 @@ Top 10 packages in code area:           Top 10 object types in image heap:
   97.42KB java.util.logging              139.54KB byte[] for embedded resources
   95.18KB c.oracle.svm.core.genscavenge  139.04KB char[]
    1.83MB for 118 more packages            1.29MB for 753 more object types
-                       (use GraalVM Dashboard to see all)
 --------------------------------------------------------------------------------
     0.9s (5.6% of total time) in 17 GCs | Peak RSS: 3.22GB | CPU load: 10.87
 --------------------------------------------------------------------------------

@@ -26,6 +26,7 @@ package com.oracle.svm.configure.trace;
 
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter;
@@ -169,7 +170,13 @@ public final class AccessAdvisor {
         if (accessFilter != null && queriedClass.get() != null && !accessFilter.includes(queriedClass.get())) {
             return true;
         }
-        return heuristicsEnabled && queriedClass.get() != null && PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
+        if (heuristicsEnabled && queriedClass.get() != null) {
+            if (queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ||
+                            PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {

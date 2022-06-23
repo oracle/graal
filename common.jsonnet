@@ -43,7 +43,7 @@
 
   // Heap settings
   // *************
-  local small_heap = "2G",
+  local small_heap = "1G",
   local default_heap = "8G",
   local large_heap = "31G", // strictly smaller than 32G to keep compressed oops enabled
   local large_young_gen_heap = "27G", // tuned to reduce latency of large apps like SpecJBB2015
@@ -116,6 +116,14 @@
       "*.bgv",
       "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*"
     ]
+  },
+
+  ol7:: self.build_base + {
+    local ol7_image = self.ci_resources.infra.docker_image_ol7,
+    docker+: {
+      image: ol7_image,
+      mount_modules: true,
+    },
   },
 
   linux::   deps.linux   + self.common + {os::"linux",   capabilities+: [self.os]},

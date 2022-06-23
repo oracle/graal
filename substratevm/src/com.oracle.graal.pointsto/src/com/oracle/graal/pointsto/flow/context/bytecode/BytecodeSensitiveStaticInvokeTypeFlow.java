@@ -38,7 +38,6 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphClone;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 
@@ -53,8 +52,8 @@ final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTy
     private AnalysisContext callerContext;
 
     BytecodeSensitiveStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
         calleeContext = null;
     }
 
@@ -87,7 +86,7 @@ final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTy
         // set the callee in the original invoke too
         ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
 
-        calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).staticCalleeContext(bb, location, (BytecodeAnalysisContext) callerContext, callee);
+        calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).staticCalleeContext(bb, source, (BytecodeAnalysisContext) callerContext, callee);
         MethodFlowsGraph calleeFlows = ((CallSiteSensitiveMethodTypeFlow) callee).addContext(bb, calleeContext, this);
         linkCallee(bb, true, calleeFlows);
     }

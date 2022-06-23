@@ -68,17 +68,12 @@ import com.oracle.truffle.api.source.SourceSection;
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode {
 
-    private final SourceSection sourceSection;
+    private SourceSection sourceSection;
     @Child private WasmFunctionNode function;
 
     public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
         super(language, frameDescriptor);
         this.function = function;
-        if (function == null) {
-            this.sourceSection = null;
-        } else {
-            this.sourceSection = function.getInstance().module().source().createUnavailableSection();
-        }
     }
 
     protected final WasmContext getContext() {
@@ -220,6 +215,13 @@ public class WasmRootNode extends RootNode {
 
     @Override
     public final SourceSection getSourceSection() {
-        return sourceSection;
+        if (function == null) {
+            return null;
+        } else {
+            if (sourceSection == null) {
+                sourceSection = function.getInstance().module().source().createUnavailableSection();
+            }
+            return sourceSection;
+        }
     }
 }

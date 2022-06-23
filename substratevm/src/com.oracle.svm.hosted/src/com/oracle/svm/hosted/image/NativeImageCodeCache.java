@@ -41,12 +41,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NavigableMap;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -58,6 +57,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
@@ -116,9 +116,9 @@ public abstract class NativeImageCodeCache {
 
     protected final NativeImageHeap imageHeap;
 
-    protected final Map<HostedMethod, CompilationResult> compilations;
+    private final Map<HostedMethod, CompilationResult> compilations;
 
-    protected final NavigableMap<Integer, CompilationResult> compilationsByStart = new TreeMap<>();
+    private final List<Pair<HostedMethod, CompilationResult>> orderedCompilations;
 
     protected final Platform targetPlatform;
 
@@ -126,13 +126,13 @@ public abstract class NativeImageCodeCache {
 
     private final Map<Constant, String> constantReasons = new HashMap<>();
 
-    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
-        this(compilations, imageHeap, ImageSingletons.lookup(Platform.class));
+    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap) {
+        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class));
     }
 
     public void purge() {
         compilations.clear();
-        compilationsByStart.clear();
+        orderedCompilations.clear();
     }
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
@@ -140,32 +140,38 @@ public abstract class NativeImageCodeCache {
         this.imageHeap = imageHeap;
         this.dataSection = new DataSection();
         this.targetPlatform = targetPlatform;
+        this.orderedCompilations = computeCompilationOrder(compilations);
     }
 
     public abstract int getCodeCacheSize();
 
-    public CompilationResult getCompilationAtOffset(int offset) {
-        Entry<Integer, CompilationResult> floor = compilationsByStart.floorEntry(offset);
-        if (floor != null) {
-            return floor.getValue();
-        } else {
-            return null;
-        }
+    public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
+        return orderedCompilations.get(0);
     }
 
-    public CompilationResult getFirstCompilation() {
-        Entry<Integer, CompilationResult> floor = compilationsByStart.ceilingEntry(0);
-        if (floor != null) {
-            return floor.getValue();
-        } else {
-            return null;
-        }
+    public Pair<HostedMethod, CompilationResult> getLastCompilation() {
+        return orderedCompilations.get(orderedCompilations.size() - 1);
+    }
+
+    protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
+        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).collect(Collectors.toList());
+    }
+
+    public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
+        return orderedCompilations;
+    }
+
+    public abstract int codeSizeFor(HostedMethod method);
+
+    protected CompilationResult compilationResultFor(HostedMethod method) {
+        return compilations.get(method);
     }
 
     public abstract void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool);
 
     public void layoutConstants() {
-        for (CompilationResult compilation : compilations.values()) {
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
                 if (data instanceof SubstrateDataBuilder.ObjectData) {
                     JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
@@ -192,7 +198,8 @@ public abstract class NativeImageCodeCache {
                 addConstantToHeap(constant, "data section");
             }
         }
-        for (CompilationResult compilationResult : compilations.values()) {
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            CompilationResult compilationResult = pair.getRight();
             for (DataPatch patch : compilationResult.getDataPatches()) {
                 if (patch.reference instanceof ConstantReference) {
                     addConstantToHeap(((ConstantReference) patch.reference).getConstant(), compilationResult.getName());
@@ -238,10 +245,10 @@ public abstract class NativeImageCodeCache {
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
-        for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            final HostedMethod method = entry.getKey();
-            final CompilationResult compilation = entry.getValue();
-            codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            final HostedMethod method = pair.getLeft();
+            final CompilationResult compilation = pair.getRight();
+            codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset(), codeSizeFor(method));
         }
 
         ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
@@ -267,13 +274,13 @@ public abstract class NativeImageCodeCache {
             if (object instanceof Field) {
                 HostedField hostedField = hMetaAccess.lookupJavaField((Field) object);
                 if (!includedFields.contains(hostedField)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, object, configurationFields.contains(object));
+                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, object, configurationFields.contains(object));
                     includedFields.add(hostedField);
                 }
             } else if (object instanceof Executable) {
                 HostedMethod hostedMethod = hMetaAccess.lookupJavaMethod((Executable) object);
                 if (!includedMethods.contains(hostedMethod)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, object, configurationExecutables.contains(object));
+                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, object, configurationExecutables.contains(object));
                     includedMethods.add(hostedMethod);
                 }
             }
@@ -483,8 +490,9 @@ public abstract class NativeImageCodeCache {
     }
 
     private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
-        for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            CodeInfoEncoder.verifyMethod(entry.getKey(), entry.getValue(), entry.getKey().getCodeAddressOffset(), codeInfo);
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            HostedMethod method = pair.getLeft();
+            CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo);
         }
         codeInfoEncoder.verifyFrameInfo(codeInfo);
         return true;
@@ -515,15 +523,11 @@ public abstract class NativeImageCodeCache {
 
     public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile);
 
-    public Map<HostedMethod, CompilationResult> getCompilations() {
-        return compilations;
-    }
-
     public void printCompilationResults() {
         System.out.println("--- compiled methods");
-        for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            HostedMethod method = entry.getKey();
-            CompilationResult result = entry.getValue();
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            HostedMethod method = pair.getLeft();
+            CompilationResult result = pair.getRight();
             System.out.format("%8d %5d %s: frame %d\n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
         }
         System.out.println("--- vtables:");
@@ -531,7 +535,7 @@ public abstract class NativeImageCodeCache {
             for (int i = 0; i < type.getVTable().length; i++) {
                 HostedMethod method = type.getVTable()[i];
                 if (method != null) {
-                    CompilationResult comp = compilations.get(type.getVTable()[i]);
+                    CompilationResult comp = compilationResultFor(type.getVTable()[i]);
                     if (comp != null) {
                         System.out.format("%d %s @ %d: %s = 0x%x\n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
                     }
@@ -651,7 +655,7 @@ public abstract class NativeImageCodeCache {
 
         void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod, Object accessor);
 
-        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, AccessibleObject object, boolean registered);
+        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, WrappedElement hostedElement, AccessibleObject object, boolean registered);
 
         void addHidingFieldMetadata(AnalysisField analysisField, HostedType declType, String name, HostedType type, int modifiers);
 

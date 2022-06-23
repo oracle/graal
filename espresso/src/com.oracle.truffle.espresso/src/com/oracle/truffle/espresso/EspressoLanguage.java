@@ -31,6 +31,7 @@ import java.util.logging.Level;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -116,6 +117,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     private boolean optionsInitialized;
     // endregion Options
+
+    // region allocation tracking
+    @CompilationFinal private final Assumption noAllocationTracking = Assumption.create("Espresso no allocation tracking assumption");
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -345,6 +349,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public int livenessAnalysisMinimumLocals() {
         return livenessAnalysisMinimumLocals;
+    }
+
+    public boolean isAllocationTrackingDisabled() {
+        return noAllocationTracking.isValid();
+    }
+
+    public void invalidateAllocationTrackingDisabled() {
+        noAllocationTracking.invalidate();
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {

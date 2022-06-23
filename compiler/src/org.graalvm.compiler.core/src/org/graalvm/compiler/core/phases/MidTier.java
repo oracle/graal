@@ -50,7 +50,6 @@ import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LockEliminationPhase;
@@ -71,7 +70,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         appendPhase(new LockEliminationPhase());
 
         if (OptFloatingReads.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase()));
+            appendPhase(new FloatingReadPhase(canonicalizer));
         }
 
         if (ConditionalElimination.getValue(options)) {
@@ -79,13 +78,13 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         if (LoopPredication.getValue(options) && !SpeculativeGuardMovement.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPredicationPhase()));
+            appendPhase(new LoopPredicationPhase(canonicalizer));
         }
 
         appendPhase(new LoopSafepointEliminationPhase());
 
         if (SpeculativeGuardMovement.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new SpeculativeGuardMovementPhase()));
+            appendPhase(new SpeculativeGuardMovementPhase(canonicalizer));
         }
 
         appendPhase(new GuardLoweringPhase());
@@ -99,7 +98,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(new LoopFullUnrollPhase(canonicalizer, createLoopPolicies(options)));
-        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()));
+        appendPhase(new RemoveValueProxyPhase(canonicalizer));
 
         appendPhase(new LoopSafepointInsertionPhase());
 

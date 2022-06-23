@@ -46,11 +46,14 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
 public final class ImageClassLoader {
 
@@ -101,7 +104,7 @@ public final class ImageClassLoader {
         }
         if (declaredMethods != null) {
             for (Method systemMethod : declaredMethods) {
-                if (annotationsAvailable(systemMethod) && NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
+                if (isInPlatform(systemMethod)) {
                     synchronized (systemMethods) {
                         systemMethods.add(systemMethod);
                     }
@@ -117,7 +120,7 @@ public final class ImageClassLoader {
         }
         if (declaredFields != null) {
             for (Field systemField : declaredFields) {
-                if (annotationsAvailable(systemField) && NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
+                if (isInPlatform(systemField)) {
                     synchronized (systemFields) {
                         systemFields.add(systemField);
                     }
@@ -126,30 +129,10 @@ public final class ImageClassLoader {
         }
     }
 
-    /**
-     * @param element The element to check
-     * @return Returns true if the annotations on the {@code element} can be loaded without any
-     *         errors.
-     */
-    private static boolean canLoadAnnotations(AnnotatedElement element) {
+    private boolean isInPlatform(AnnotatedElement element) {
         try {
-            element.getAnnotations();
-            return true;
-        } catch (Throwable t) {
-            handleClassLoadingError(t);
-            return false;
-        }
-    }
-
-    /**
-     * @param element The element to check
-     * @return Returns true if and only if the the {@code element} has any annotations present and
-     *         the {@link AnnotatedElement#getAnnotations()} did not throw any error.
-     */
-    private static boolean annotationsAvailable(AnnotatedElement element) {
-        try {
-            final Annotation[] annotations = element.getAnnotations();
-            return annotations.length != 0;
+            Platforms platformAnnotation = GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, element, Platforms.class);
+            return NativeImageGenerator.includedIn(platform, platformAnnotation);
         } catch (Throwable t) {
             handleClassLoadingError(t);
             return false;
@@ -161,7 +144,16 @@ public final class ImageClassLoader {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
+    private static final Field classAnnotationData = ReflectionUtil.lookupField(Class.class, "annotationData");
+
     void handleClass(Class<?> clazz) {
+        Object initialAnnotationData;
+        try {
+            initialAnnotationData = classAnnotationData.get(clazz);
+        } catch (IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
+
         boolean inPlatform = true;
         boolean isHostedOnly = false;
 
@@ -170,10 +162,13 @@ public final class ImageClassLoader {
             cur = clazz;
         }
         do {
-            if (!canLoadAnnotations(cur)) {
+            Platforms platformsAnnotation;
+            try {
+                platformsAnnotation = GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, cur, Platforms.class);
+            } catch (Throwable t) {
+                handleClassLoadingError(t);
                 return;
             }
-            Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
             if (containsHostedOnly(platformsAnnotation)) {
                 isHostedOnly = true;
             } else if (!NativeImageGenerator.includedIn(platform, platformsAnnotation)) {
@@ -204,6 +199,16 @@ public final class ImageClassLoader {
                 }
                 findSystemElements(clazz);
             }
+        }
+
+        try {
+            /*
+             * Annotations should not be computed during the scanning of classes, to avoid issues
+             * with the Native Image module access setup.
+             */
+            assert classAnnotationData.get(clazz) == initialAnnotationData;
+        } catch (IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
@@ -350,9 +355,9 @@ public final class ImageClassLoader {
         return result;
     }
 
-    private static void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
+    private void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
         for (Class<?> systemClass : classes) {
-            if (systemClass.getAnnotation(annotationClass) != null) {
+            if (GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, systemClass, annotationClass)) {
                 result.add(systemClass);
             }
         }
@@ -361,7 +366,7 @@ public final class ImageClassLoader {
     public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
         ArrayList<Method> result = new ArrayList<>();
         for (Method method : systemMethods) {
-            if (method.getAnnotation(annotationClass) != null) {
+            if (GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, method, annotationClass)) {
                 result.add(method);
             }
         }
@@ -373,7 +378,7 @@ public final class ImageClassLoader {
         for (Method method : systemMethods) {
             boolean match = true;
             for (Class<? extends Annotation> annotationClass : annotationClasses) {
-                if (method.getAnnotation(annotationClass) == null) {
+                if (!GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, method, annotationClass)) {
                     match = false;
                     break;
                 }
@@ -388,7 +393,7 @@ public final class ImageClassLoader {
     public List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
         ArrayList<Field> result = new ArrayList<>();
         for (Field field : systemFields) {
-            if (field.getAnnotation(annotationClass) != null) {
+            if (GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, field, annotationClass)) {
                 result.add(field);
             }
         }
@@ -410,13 +415,13 @@ public final class ImageClassLoader {
     public <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
         List<T> result = new ArrayList<>();
         for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
-            result.add(clazz.getAnnotation(annotationClass));
+            result.add(GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, clazz, annotationClass));
         }
         for (Method method : findAnnotatedMethods(annotationClass)) {
-            result.add(method.getAnnotation(annotationClass));
+            result.add(GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, method, annotationClass));
         }
         for (Field field : findAnnotatedFields(annotationClass)) {
-            result.add(field.getAnnotation(annotationClass));
+            result.add(GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, field, annotationClass));
         }
         return result;
     }

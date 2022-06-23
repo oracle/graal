@@ -81,7 +81,7 @@ public final class Target_sun_misc_Signal {
     }
 
     private static StaticObject asGuestSignal(Signal signal, Meta meta) {
-        StaticObject guestSignal = meta.sun_misc_Signal.allocateInstance();
+        StaticObject guestSignal = meta.sun_misc_Signal.allocateInstance(meta.getContext());
         meta.sun_misc_Signal_init_String.invokeDirect(guestSignal, meta.toGuestString(signal.getName()));
         return guestSignal;
     }

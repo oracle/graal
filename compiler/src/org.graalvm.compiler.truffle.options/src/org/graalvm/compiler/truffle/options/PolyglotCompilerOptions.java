@@ -498,12 +498,10 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Instrument branches by considering different inlining sites as different branches.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> InstrumentBranchesPerInlineSite = new OptionKey<>(false);
 
-    @Option(help = "Maximum number of entries in the encoded graph cache (< 0 unbounded, 0 disabled) (default: 0).", usageSyntax = "[-1, inf)", category = OptionCategory.EXPERT) //
-    public static final OptionKey<Integer> EncodedGraphCacheCapacity = new OptionKey<>(0);
+    @Option(help = "Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Boolean> EncodedGraphCache = new OptionKey<>(true);
 
-    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle." +
-                    "The option is only supported on the HotSpot (non-libgraal) Truffle runtime." +
-                    "On runtimes which doesn't support it the option has no effect (default: 10000).", //
+    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).", //
                     usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
 

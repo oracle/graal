@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import java.io.File;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
@@ -45,6 +46,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.HeapDumpSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -134,6 +136,18 @@ public class JavaMainWrapper {
      */
     private static int runCore0() {
         try {
+            if (SubstrateOptions.DumpHeapAndExit.getValue()) {
+                if (VMInspectionOptions.AllowVMInspection.getValue() && ImageSingletons.contains(HeapDumpSupport.class)) {
+                    String absoluteHeapDumpPath = new File(SubstrateOptions.Name.getValue() + ".hprof").getAbsolutePath();
+                    VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
+                    System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
+                    return 0;
+                } else {
+                    System.err.println("Unable to dump heap. Heap dumping is only supported for native images built with `-H:+AllowVMInspection` and GraalVM Enterprise Edition.");
+                    return 1;
+                }
+            }
+
             if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
                 /*
                  * When options are not parsed yet, it is also too early to run the startup hooks

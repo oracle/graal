@@ -57,6 +57,7 @@ meth public boolean hasMemberReadSideEffects(java.lang.Object,java.lang.String)
 meth public boolean hasMemberWriteSideEffects(java.lang.Object,java.lang.String)
 meth public boolean hasMembers(java.lang.Object)
 meth public boolean hasMetaObject(java.lang.Object)
+meth public boolean hasMetaParents(java.lang.Object)
 meth public boolean hasScopeParent(java.lang.Object)
 meth public boolean hasSourceLocation(java.lang.Object)
 meth public boolean isArrayElementInsertable(java.lang.Object,long)
@@ -128,6 +129,7 @@ meth public java.lang.Object getIterator(java.lang.Object) throws com.oracle.tru
 meth public java.lang.Object getIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.StopIterationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMetaObject(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getMetaParents(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMetaQualifiedName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMetaSimpleName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getScopeParent(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException

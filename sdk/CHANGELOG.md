@@ -3,6 +3,7 @@
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
 ## Version 22.2.0
+* (GR-38925) Added `Value.hasMetaParents() and Value.getMetaParents()` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
 * (GR-38351) Added [FileSystem#allowLanguageHomeAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#allowLanguageHomeAccess-org.graalvm.polyglot.io.FileSystem-) returning a `FileSystem` that forwards access to files in the language home to the default file system.
 * (GR-38351) Added [FileSystem#newReadOnlyFileSystem](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newReadOnlyFileSystem-org.graalvm.polyglot.io.FileSystem-) returning a read-only decorator for the given file system.
 * Changed the behavior of [`Context.close()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#close--) (as well as `Context.close(false)` which is equivalent). In case the context was cancelled during the close operation or the context was exited during the close operation at request of the guest application, or it was already cancelled or exited before the close operation begins,

@@ -28,7 +28,6 @@ import java.util.Collection;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -39,8 +38,6 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implements InvokeInfo {
-
-    protected final BytecodeLocation location;
 
     /**
      * Actual parameters passed to the callee.
@@ -59,10 +56,9 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     protected boolean isContextInsensitive;
 
     protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
         super(invokeLocation, null);
         this.originalInvoke = null;
-        this.location = location;
         this.receiverType = receiverType;
         this.targetMethod = targetMethod;
         this.actualParameters = actualParameters;
@@ -75,7 +71,6 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         super(original, methodFlows);
 
         this.originalInvoke = original;
-        this.location = original.location;
         this.receiverType = original.receiverType;
         this.targetMethod = original.targetMethod;
 
@@ -244,7 +239,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     public static boolean isContextInsensitiveVirtualInvoke(InvokeTypeFlow invoke) {
-        return invoke instanceof AbstractVirtualInvokeTypeFlow && ((AbstractVirtualInvokeTypeFlow) invoke).isContextInsensitive();
+        return invoke instanceof AbstractVirtualInvokeTypeFlow && invoke.isContextInsensitive();
     }
 
     /**

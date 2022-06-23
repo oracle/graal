@@ -64,6 +64,11 @@ public class ReferenceProcessNode extends RootNode {
     private final DirectCallNode runFinalizer;
     private final StaticObject jla;
 
+    @Override
+    public String getName() {
+        return EVAL_NAME;
+    }
+
     private Klass findSharedSecrets() {
         for (Symbol<Type> type : SHARED_SECRETS_TYPES) {
             Klass k = context.getMeta().loadKlassOrNull(type, StaticObject.NULL, StaticObject.NULL);

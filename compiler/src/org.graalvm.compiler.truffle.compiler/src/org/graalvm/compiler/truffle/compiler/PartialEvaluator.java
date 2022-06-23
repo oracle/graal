@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EncodedGraphCache;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalGraphSize;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
@@ -33,6 +34,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 
 import java.net.URI;
 import java.nio.Buffer;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -145,7 +147,10 @@ public abstract class PartialEvaluator {
         this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(), config.firstTier().providers());
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
-        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(this.config.lastTier().providers().getConstantFieldProvider(), this.config.lastTier().providers().getMetaAccess());
+        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(
+                        this.config.lastTier().providers().getConstantFieldProvider(),
+                        this.config.lastTier().providers().getMetaAccess(),
+                        knownFields);
     }
 
     protected void initialize(OptionValues options) {
@@ -159,7 +164,7 @@ public abstract class PartialEvaluator {
                         options.get(ExcludeAssertions));
     }
 
-    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache(@SuppressWarnings("unused") boolean persistentEncodedGraphCache) {
         return EconomicMap.create();
     }
 
@@ -392,7 +397,8 @@ public abstract class PartialEvaluator {
 
     @SuppressWarnings("unused")
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+                    NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
+                    Supplier<AutoCloseable> createCachedGraphScope) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
@@ -413,7 +419,7 @@ public abstract class PartialEvaluator {
         return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
                         AllowAssumptions.ifNonNull(context.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, false);
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope, false);
     }
 
     @SuppressWarnings("try")
@@ -421,18 +427,30 @@ public abstract class PartialEvaluator {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         inlineInvokePlugin
         };
+        boolean persistentEncodedGraphCache = context.options.get(EncodedGraphCache);
         PEGraphDecoder decoder = createGraphDecoder(context,
                         context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
                         inlineInvokePlugins,
                         new InterceptReceiverPlugin(context.compilable),
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(context.task.inliningData()),
-                        graphCache);
+                        graphCache, getCreateCachedGraphScope(persistentEncodedGraphCache));
         GraphSizeListener listener = new GraphSizeListener(context.options, context.graph);
         try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(listener)) {
             decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
         }
         assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
+    }
+
+    /**
+     * Gets a closeable producer that will be used in a try-with-resources statement surrounding the
+     * creation of encoded graphs. This can be used to ensure that the encoded graphs and its
+     * dependencies can be persisted across compilations.
+     *
+     * The default supplier produces null, a no-op try-with-resources/scope.
+     */
+    protected Supplier<AutoCloseable> getCreateCachedGraphScope(@SuppressWarnings("unused") boolean persistentEncodedGraphCache) {
+        return () -> null;
     }
 
     /**

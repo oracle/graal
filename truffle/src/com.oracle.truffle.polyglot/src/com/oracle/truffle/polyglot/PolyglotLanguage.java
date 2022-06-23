@@ -81,7 +81,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         this.cache = cache;
         this.initError = initError;
         this.engineIndex = engineIndex;
-        this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
+        this.info = NODES.createLanguage(cache, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
     }
 
     PolyglotLanguageContext getCurrentLanguageContext() {

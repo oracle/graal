@@ -24,32 +24,19 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.java.MonitorEnterNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public class MonitorEnterTypeFlow extends TypeFlow<BytecodePosition> {
 
-    private final BytecodeLocation location;
-    private final AnalysisMethod method;
-
-    public MonitorEnterTypeFlow(PointsToAnalysis bb, MonitorEnterNode source, BytecodeLocation monitorLocation, AnalysisMethod method) {
-        super(source.getNodeSourcePosition(), null);
-        this.location = monitorLocation;
-        this.method = method;
+    public MonitorEnterTypeFlow(BytecodePosition position, PointsToAnalysis bb) {
+        super(position, null);
         this.addUse(bb, bb.getAllSynchronizedTypeFlow());
     }
 
-    public BytecodeLocation getLocation() {
-        return location;
-    }
-
-    public AnalysisMethod getMethod() {
-        return method;
+    public BytecodePosition getLocation() {
+        return source;
     }
 
     @Override
@@ -59,9 +46,7 @@ public class MonitorEnterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("MonitorEnterFlow<").append(getState()).append(">");
-        return str.toString();
+        return "MonitorEnterFlow<" + getState() + ">";
     }
 
 }

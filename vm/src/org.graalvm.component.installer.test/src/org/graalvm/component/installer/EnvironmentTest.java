@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -189,7 +190,6 @@ public class EnvironmentTest {
         env.setErr(new PrintStream(errBuffer));
         env.error("ERROR_UserInput", new ClassCastException(), "Foobar");
         // Windows compat: CRLF -> LF conversion
-        // Windows compat: CRLF -> LF conversion
         String all = readLines(errBuffer.toByteArray());
         String[] lines = all.split("\n");
         assertEquals(B1.getString("ERROR_UserInput").replace("{0}", "Foobar"), lines[0]);
@@ -206,5 +206,36 @@ public class EnvironmentTest {
         assertEquals(t.getLocalizedMessage(), s);
         assertNotSame(t, t.getCause());
         assertEquals("Foo", t.getCause().getLocalizedMessage());
+    }
+
+    @Test
+    public void testOutput() throws Exception {
+        setupEmptyEnv();
+
+        env.setOut(new PrintStream(outBuffer));
+        env.output("ERROR_MissingCommand");
+        // Windows compat: CRLF -> LF conversion
+        String s = readLines(outBuffer.toByteArray());
+        assertEquals(B1.getString("ERROR_MissingCommand") + "\n", s);
+    }
+
+    @Test
+    public void testSilentOutput() throws Exception {
+        setupEmptyEnv();
+        assertFalse(env.setSilent(true));
+
+        // output error even when silent
+        env.setErr(new PrintStream(errBuffer));
+        env.error("ERROR_UserInput", new ClassCastException(), "Foobar");
+        // Windows compat: CRLF -> LF conversion
+        String s = readLines(errBuffer.toByteArray());
+        assertEquals(B1.getString("ERROR_UserInput").replace("{0}", "Foobar") + "\n", s);
+
+        // don't output normal output when silent
+        env.setOut(new PrintStream(outBuffer));
+        env.output("ERROR_MissingCommand");
+        // Windows compat: CRLF -> LF conversion
+        s = readLines(outBuffer.toByteArray());
+        assertEquals("", s);
     }
 }

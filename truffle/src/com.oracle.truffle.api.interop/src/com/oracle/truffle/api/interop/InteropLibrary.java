@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
@@ -86,6 +85,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 
 /**
@@ -143,6 +143,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasBufferElements(Object) buffer elements}
  * <li>{@link #hasLanguage(Object) language}
  * <li>{@link #hasMetaObject(Object) associated metaobject}
+ * <li>{@link #hasMetaParents(Object) metaobject parents as array elements}
  * <li>{@link #hasDeclaringMetaObject(Object) declaring meta object}
  * <li>{@link #hasSourceLocation(Object) source location}
  * <li>{@link #hasIdentity(Object) identity}
@@ -1802,7 +1803,7 @@ public abstract class InteropLibrary extends Library {
      * @see #isDate(Object)
      * @since 20.0.0 beta 2
      */
-    @Abstract(ifExported = {"isTime", "asInstant"})
+    @Abstract(ifExported = {"isDate", "asInstant"})
     public LocalDate asDate(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
@@ -2507,6 +2508,40 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isMetaObject"})
     public boolean isMetaInstance(Object receiver, Object instance) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver value {@link #isMetaObject(Object) is a metaobject}
+     * which has parents (super types).
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #getMetaParents(Object)} must be implemented.
+     *
+     * @param receiver a metaobject
+     * @see #getMetaParents(Object)
+     * @since 22.2
+     */
+    @Abstract(ifExported = {"getMetaParents"})
+    public boolean hasMetaParents(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns an array like {@link #hasArrayElements(Object)} of metaobjects that are direct
+     * parents (super types) of this metaobject.
+     * <p>
+     * The returned object is an {@link #hasArrayElements(Object) array} of objects that return
+     * <code>true</code> from {@link #isMetaObject(Object)}.
+     *
+     * @param receiver a metaobject
+     * @throws UnsupportedMessageException if and only if {@link #hasMetaParents(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #hasMetaParents(Object)
+     * @since 22.2
+     */
+    @Abstract(ifExported = {"hasMetaParents"})
+    public Object getMetaParents(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -4952,6 +4987,11 @@ public abstract class InteropLibrary extends Library {
                 assert false : violationInvariant(receiver);
             } catch (UnsupportedMessageException e) {
             }
+            try {
+                delegate.getMetaParents(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+            }
             return true;
         }
 
@@ -5030,6 +5070,40 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
                 assert !wasMetaObject : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean hasMetaParents(Object receiver) {
+            assert preCondition(receiver);
+            boolean wasMetaObject = delegate.isMetaObject(receiver);
+            boolean result = delegate.hasMetaParents(receiver);
+            if (result) {
+                assert wasMetaObject : violationInvariant(receiver);
+            } else if (!wasMetaObject) {
+                assert assertNoMetaObject(receiver);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public Object getMetaParents(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getMetaParents(receiver);
+            }
+            boolean wasMetaObject = delegate.isMetaObject(receiver);
+            boolean hadMetaParents = delegate.hasMetaParents(receiver);
+            try {
+                Object result = delegate.getMetaParents(receiver);
+                assert wasMetaObject : violationInvariant(receiver);
+                assert hadMetaParents : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hadMetaParents : violationInvariant(receiver);
                 throw e;
             }
         }

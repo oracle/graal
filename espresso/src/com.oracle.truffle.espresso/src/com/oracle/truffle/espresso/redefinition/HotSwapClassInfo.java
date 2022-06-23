@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,8 @@ public final class HotSwapClassInfo extends ClassInfo {
 
     HotSwapClassInfo(ObjectKlass klass, Symbol<Symbol.Name> originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint,
                     String enclosingMethodFingerprint,
-                    ArrayList<HotSwapClassInfo> inners, byte[] bytes) {
+                    ArrayList<HotSwapClassInfo> inners, byte[] bytes, boolean isEnumSwitchmapHelper, boolean isNewInnerTestKlass) {
+        super(isEnumSwitchmapHelper, isNewInnerTestKlass);
         this.thisKlass = new WeakReference<>(klass);
         this.originalName = originalName;
         this.classLoader = classLoader;
@@ -75,7 +76,7 @@ public final class HotSwapClassInfo extends ClassInfo {
     }
 
     public static HotSwapClassInfo createForSuperClassChanged(ObjectKlass klass) {
-        return new HotSwapClassInfo(klass, null, null, null, null, null, null, null, null);
+        return new HotSwapClassInfo(klass, null, null, null, null, null, null, null, null, false, false);
     }
 
     @Override

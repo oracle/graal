@@ -37,8 +37,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetInlinedCallCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callAddInlinedTarget;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callAddTargetToDequeue;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callCountInlinedCalls;
@@ -52,8 +51,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleIn
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetOffsetStart;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetPosition;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetURI;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetCallCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetInlinedCallCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetCallCounts;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
 import java.net.URI;
@@ -63,12 +61,12 @@ import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.libgraal.LibGraal;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -116,22 +114,16 @@ class HSTruffleInliningData extends HSObject implements TruffleInliningData {
         callAddTargetToDequeue(env, getHandle(), hsCompilable);
     }
 
-    @TruffleFromLibGraal(SetInlinedCallCount)
-    @Override
-    public void setInlinedCallCount(int count) {
-        callSetInlinedCallCount(scope.getEnv(), getHandle(), count);
-    }
-
     @TruffleFromLibGraal(CountInlinedCalls)
     @Override
     public int countInlinedCalls() {
         return callCountInlinedCalls(scope.getEnv(), getHandle());
     }
 
-    @TruffleFromLibGraal(SetCallCount)
+    @TruffleFromLibGraal(SetCallCounts)
     @Override
-    public void setCallCount(int count) {
-        callSetCallCount(scope.getEnv(), getHandle(), count);
+    public void setCallCounts(int total, int inlined) {
+        callSetCallCounts(scope.getEnv(), getHandle(), total, inlined);
     }
 
     @TruffleFromLibGraal(AddInlinedTarget)

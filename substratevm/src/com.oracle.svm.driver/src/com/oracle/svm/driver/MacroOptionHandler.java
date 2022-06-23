@@ -80,6 +80,20 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         BuildConfiguration config = nativeImage.config;
+
+        String propertyName = "BuilderOnClasspath";
+        String propertyValue = enabledOption.getProperty(config, propertyName);
+        if (propertyValue != null) {
+            boolean modulePathBuild = !Boolean.valueOf(propertyValue);
+            String imageBuilderModeEnforcer = enabledOption.getOption().toString();
+            if (config.imageBuilderModeEnforcer != null && modulePathBuild != config.modulePathBuild) {
+                NativeImage.showError(String.format("Conflicting %s property values. %s (%b) vs %s (%b)", propertyName,
+                                imageBuilderModeEnforcer, modulePathBuild, config.imageBuilderModeEnforcer, config.modulePathBuild));
+            }
+            config.imageBuilderModeEnforcer = imageBuilderModeEnforcer;
+            config.modulePathBuild = modulePathBuild;
+        }
+
         enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
 
         boolean explicitImageModulePath = enabledOption.forEachPropertyValue(

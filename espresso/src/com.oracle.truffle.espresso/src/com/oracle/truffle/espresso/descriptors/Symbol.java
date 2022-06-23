@@ -323,6 +323,10 @@ public final class Symbol<T> extends ByteSequence {
         // CallSite
         public static final Symbol<Name> target = StaticSymbols.putName("target");
 
+        // java.lang.Enum
+        public static final Symbol<Name> $VALUES = StaticSymbols.putName("$VALUES");
+        public static final Symbol<Name> ENUM$VALUES = StaticSymbols.putName("ENUM$VALUES");
+
         // LambdaForm
         public static final Symbol<Name> compileToBytecode = StaticSymbols.putName("compileToBytecode");
         public static final Symbol<Name> isCompiled = StaticSymbols.putName("isCompiled");
@@ -575,6 +579,8 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> java_lang_Class = StaticSymbols.putType("Ljava/lang/Class;");
         public static final Symbol<Type> java_lang_Class_array = StaticSymbols.putType("[Ljava/lang/Class;");
+
+        public static final Symbol<Type> java_lang_Enum = StaticSymbols.putType("Ljava/lang/Enum;");
 
         public static final Symbol<Type> java_lang_Throwable = StaticSymbols.putType("Ljava/lang/Throwable;");
         public static final Symbol<Type> java_lang_Exception = StaticSymbols.putType("Ljava/lang/Exception;");

@@ -28,12 +28,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
 public class TStringOpsRegionEqualsTest extends TStringOpsTest<ArrayRegionEqualsNode> {
@@ -112,12 +111,14 @@ public class TStringOpsRegionEqualsTest extends TStringOpsTest<ArrayRegionEquals
     }
 
     @Test
-    public void testRegionEquals() throws ClassNotFoundException {
-        ResolvedJavaMethod method = getTStringOpsMethod("regionEqualsWithOrMaskWithStrideIntl",
-                        Object.class, int.class, int.class, int.class, int.class,
-                        Object.class, int.class, int.class, int.class, int.class, byte[].class, int.class);
-        test(method, null, DUMMY_LOCATION,
+    public void testRegionEquals() {
+        test(getRegionEqualsWithOrMaskWithStrideIntl(), null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
+    }
+
+    @Override
+    protected void checkIntrinsicNode(ArrayRegionEqualsNode node) {
+        Assert.assertTrue(node.getDirectStubCallIndex() < 0);
     }
 }

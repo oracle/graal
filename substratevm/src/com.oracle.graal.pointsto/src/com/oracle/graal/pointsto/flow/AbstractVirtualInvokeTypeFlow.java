@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
@@ -57,8 +56,8 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     @SuppressWarnings("unused") protected volatile Object invokeLocations;
 
     protected AbstractVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
     }
 
     protected AbstractVirtualInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractVirtualInvokeTypeFlow original) {

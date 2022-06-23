@@ -176,8 +176,8 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
-        public void collectEnvServices(Set<Object> collectTo, Object polyglotLanguage, TruffleLanguage<?> language) {
-            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotLanguage);
+        public void collectEnvServices(Set<Object> collectTo, Object polyglotLanguageContext, TruffleLanguage<?> language) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotLanguageContext);
             Instrumenter instrumenter = instrumentationHandler.forLanguage(language);
             collectTo.add(instrumenter);
             AllocationReporter allocationReporter = instrumentationHandler.getAllocationReporter(InstrumentAccessor.langAccess().getLanguageInfo(language));

@@ -24,20 +24,17 @@
  */
 package org.graalvm.compiler.truffle.test.strings;
 
-import java.nio.ByteOrder;
-
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
-import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
 import org.junit.Assert;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public abstract class TStringOpsTest<T> extends MethodSubstitutionTest {
+public abstract class TStringOpsTest<T> extends TStringTest {
 
     protected static final com.oracle.truffle.api.nodes.Node DUMMY_LOCATION = new com.oracle.truffle.api.nodes.Node() {
     };
@@ -49,43 +46,92 @@ public abstract class TStringOpsTest<T> extends MethodSubstitutionTest {
         this.nodeClass = nodeClass;
     }
 
-    protected ResolvedJavaMethod getTStringOpsMethod(String methodName, Class<?>... argTypes) throws ClassNotFoundException {
-        Class<?> javaClass = Class.forName(T_STRING_OPS_CLASS_NAME);
-        Class<?>[] argTypesWithNode = new Class<?>[argTypes.length + 1];
-        argTypesWithNode[0] = com.oracle.truffle.api.nodes.Node.class;
-        System.arraycopy(argTypes, 0, argTypesWithNode, 1, argTypes.length);
-        return getResolvedJavaMethod(javaClass, methodName, argTypesWithNode);
+    protected ResolvedJavaMethod getTStringOpsMethod(String methodName, Class<?>... argTypes) {
+        try {
+            Class<?> javaClass = Class.forName(T_STRING_OPS_CLASS_NAME);
+            Class<?>[] argTypesWithNode = new Class<?>[argTypes.length + 1];
+            argTypesWithNode[0] = com.oracle.truffle.api.nodes.Node.class;
+            System.arraycopy(argTypes, 0, argTypesWithNode, 1, argTypes.length);
+            return getResolvedJavaMethod(javaClass, methodName, argTypesWithNode);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    protected ResolvedJavaMethod getArrayCopyWithStride() throws ClassNotFoundException {
+    protected ResolvedJavaMethod getArrayCopyWithStride() {
         return getTStringOpsMethod("arraycopyWithStride",
                         Object.class, int.class, int.class, int.class,
                         Object.class, int.class, int.class, int.class, int.class);
     }
 
-    protected ResolvedJavaMethod getArrayCopyWithStrideCB() throws ClassNotFoundException {
+    protected ResolvedJavaMethod getArrayCopyWithStrideCB() {
         return getTStringOpsMethod("arraycopyWithStrideCB",
                         char[].class, int.class,
                         byte[].class, int.class, int.class, int.class);
     }
 
-    protected ResolvedJavaMethod getArrayCopyWithStrideIB() throws ClassNotFoundException {
+    protected ResolvedJavaMethod getArrayCopyWithStrideIB() {
         return getTStringOpsMethod("arraycopyWithStrideIB",
                         int[].class, int.class,
                         byte[].class, int.class, int.class, int.class);
     }
 
-    @Override
-    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        new TruffleAMD64InvocationPlugins().registerInvocationPlugins(getProviders(), getBackend().getTarget().arch, invocationPlugins, true);
-        super.registerInvocationPlugins(invocationPlugins);
+    protected ResolvedJavaMethod getMemcmpWithStrideIntl() {
+        return getTStringOpsMethod("memcmpWithStrideIntl",
+                        Object.class, int.class, int.class,
+                        Object.class, int.class, int.class, int.class);
     }
 
+    protected ResolvedJavaMethod getRegionEqualsWithOrMaskWithStrideIntl() {
+        return getTStringOpsMethod("regionEqualsWithOrMaskWithStrideIntl",
+                        Object.class, int.class, int.class, int.class, int.class,
+                        Object.class, int.class, int.class, int.class, int.class, byte[].class, int.class);
+    }
+
+    protected ResolvedJavaMethod getIndexOfAnyByteIntl() {
+        return getTStringOpsMethod("indexOfAnyByteIntl",
+                        Object.class, int.class, int.class, int.class, byte[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOfAnyCharIntl() {
+        return getTStringOpsMethod("indexOfAnyCharIntl",
+                        Object.class, int.class, int.class, int.class, int.class, char[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOfAnyIntIntl() {
+        return getTStringOpsMethod("indexOfAnyIntIntl",
+                        Object.class, int.class, int.class, int.class, int.class, int[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOf2ConsecutiveWithStrideIntl() {
+        return getTStringOpsMethod("indexOf2ConsecutiveWithStrideIntl",
+                        Object.class, int.class, int.class, int.class, int.class, int.class, int.class);
+    }
+
+    protected InstalledCode cacheInstalledCodeConstantStride(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options, ResolvedJavaMethod expectedMethod,
+                    InstalledCode[] cache, int strideA, int strideB) {
+        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, expectedMethod, cache, strideA, strideB, 0);
+    }
+
+    protected InstalledCode cacheInstalledCodeConstantStrideLength(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options, ResolvedJavaMethod expectedMethod,
+                    InstalledCode[] cache, int strideA, int strideB, int iLength) {
+        Assert.assertEquals(expectedMethod, installedCodeOwner);
+        int index = (iLength * 9) + (strideA * 3) + strideB;
+        InstalledCode installedCode = cache[index];
+        while (installedCode == null || !installedCode.isValid()) {
+            installedCode = super.getCode(installedCodeOwner, graph, true, false, options);
+            cache[index] = installedCode;
+        }
+        return installedCode;
+    }
+
+    @SuppressWarnings("unchecked")
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
         if (getTarget().arch instanceof AMD64 && hasRequiredFeatures(((AMD64) getTarget().arch))) {
             for (Node node : graph.getNodes()) {
                 if (nodeClass.isInstance(node)) {
+                    checkIntrinsicNode((T) node);
                     return;
                 }
             }
@@ -93,59 +139,13 @@ public abstract class TStringOpsTest<T> extends MethodSubstitutionTest {
         }
     }
 
+    protected void checkIntrinsicNode(@SuppressWarnings("unused") T node) {
+    }
+
     private boolean hasRequiredFeatures(AMD64 arch) {
         if (nodeClass.equals(AMD64CalcStringAttributesNode.class)) {
             return arch.getFeatures().contains(AMD64.CPUFeature.SSE4_1);
         }
         return true;
-    }
-
-    protected static void writeValue(byte[] array, int stride, int index, int value) {
-        int i = index << stride;
-        if (stride == 0) {
-            array[i] = (byte) value;
-            return;
-        }
-        if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
-            if (stride == 1) {
-                array[i] = (byte) value;
-                array[i + 1] = (byte) (value >> 8);
-            } else {
-                array[i] = (byte) value;
-                array[i + 1] = (byte) (value >> 8);
-                array[i + 2] = (byte) (value >> 16);
-                array[i + 3] = (byte) (value >> 24);
-            }
-        } else {
-            if (stride == 1) {
-                array[i] = (byte) (value >> 8);
-                array[i + 1] = (byte) value;
-            } else {
-                array[i] = (byte) (value >> 24);
-                array[i + 1] = (byte) (value >> 16);
-                array[i + 2] = (byte) (value >> 8);
-                array[i + 3] = (byte) value;
-            }
-        }
-    }
-
-    static int readValue(byte[] array, int stride, int index) {
-        int i = index << stride;
-        if (stride == 0) {
-            return Byte.toUnsignedInt(array[i]);
-        }
-        if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
-            if (stride == 1) {
-                return Byte.toUnsignedInt(array[i]) | (Byte.toUnsignedInt(array[i + 1]) << 8);
-            } else {
-                return Byte.toUnsignedInt(array[i]) | (Byte.toUnsignedInt(array[i + 1]) << 8) | (Byte.toUnsignedInt(array[i + 2]) << 16) | (Byte.toUnsignedInt(array[i + 3]) << 24);
-            }
-        } else {
-            if (stride == 1) {
-                return Byte.toUnsignedInt(array[i + 1]) | (Byte.toUnsignedInt(array[i]) << 8);
-            } else {
-                return Byte.toUnsignedInt(array[i + 3]) | (Byte.toUnsignedInt(array[i + 2]) << 8) | (Byte.toUnsignedInt(array[i + 1]) << 16) | (Byte.toUnsignedInt(array[i]) << 24);
-            }
-        }
     }
 }

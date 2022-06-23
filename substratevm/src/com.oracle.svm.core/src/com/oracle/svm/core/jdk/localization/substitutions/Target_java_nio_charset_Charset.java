@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -40,6 +41,13 @@ import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 @TargetClass(java.nio.charset.Charset.class)
 @SuppressWarnings({"unused"})
 final class Target_java_nio_charset_Charset {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static volatile Object[] cache1;
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static volatile Object[] cache2;
 
     @Substitute
     private static Charset defaultCharset() {
@@ -57,21 +65,29 @@ final class Target_java_nio_charset_Charset {
     }
 
     @Substitute
-    private static Charset lookup(String charsetName) {
-        if (charsetName == null) {
-            throw new IllegalArgumentException("Null charset name");
+    private static Charset lookup2(String charsetName) {
+        Object[] a;
+        if ((a = cache2) != null && charsetName.equals(a[0])) {
+            cache2 = cache1;
+            cache1 = a;
+            return (Charset) a[1];
         }
 
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        Charset result = charsets.get(charsetName.toLowerCase());
-
-        if (result == null) {
-            /* Only need to check the name if we didn't find a charset for it */
-            checkName(charsetName);
+        Charset cs = charsets.get(charsetName.toLowerCase());
+        if (cs != null) {
+            cache(charsetName, cs);
+            return cs;
         }
-        return result;
+
+        /* Only need to check the name if we didn't find a charset for it */
+        checkName(charsetName);
+        return null;
     }
 
     @Alias
     private static native void checkName(String s);
+
+    @Alias
+    private static native void cache(String charsetName, Charset cs);
 }

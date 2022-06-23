@@ -64,6 +64,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
@@ -153,6 +154,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
@@ -225,6 +227,7 @@ public class CompileQueue {
     private SnippetReflectionProvider snippetReflection;
     private final FeatureHandler featureHandler;
     protected final OptionValues compileOptions;
+    protected final GlobalMetrics metricValues = new GlobalMetrics();
 
     private volatile boolean inliningProgress;
 
@@ -322,6 +325,11 @@ public class CompileQueue {
             this.method = method;
             this.reason = reason;
             compilationIdentifier = new SubstrateHostedCompilationIdentifier(method);
+        }
+
+        @Override
+        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+            return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
 
         @Override
@@ -451,6 +459,7 @@ public class CompileQueue {
         if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
             ImageSingletons.lookup(HostedHeapDumpFeature.class).compileQueueAfterCompilation();
         }
+        metricValues.print(compileOptions);
     }
 
     private boolean suitesNotCreated() {
@@ -988,6 +997,13 @@ public class CompileQueue {
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
             newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
 
+        } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoad.class) {
+            ComputedIndirectCallTargetNode.FieldLoad fieldLoad = (ComputedIndirectCallTargetNode.FieldLoad) obj;
+            newReplacement = new ComputedIndirectCallTargetNode.FieldLoad(hUniverse.lookup(fieldLoad.getField()));
+        } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoadIfZero.class) {
+            ComputedIndirectCallTargetNode.FieldLoadIfZero fieldLoadIfZero = (ComputedIndirectCallTargetNode.FieldLoadIfZero) obj;
+            newReplacement = new ComputedIndirectCallTargetNode.FieldLoadIfZero(fieldLoadIfZero.getObject(), hUniverse.lookup(fieldLoadIfZero.getField()));
+
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
             assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
@@ -1122,10 +1138,8 @@ public class CompileQueue {
                     graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
                 }
 
-                afterParse(method, graph);
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
-                assert GraphOrder.assertSchedulableGraph(graph);
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
                 if (!parseOnce) {
@@ -1151,6 +1165,8 @@ public class CompileQueue {
                     }
                 }
 
+                beforeEncode(method, graph);
+                assert GraphOrder.assertSchedulableGraph(graph);
                 method.compilationInfo.encodeGraph(graph);
                 method.compilationInfo.setCompileOptions(compileOptions);
                 checkTrivial(method, graph);
@@ -1191,7 +1207,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("unused")
-    protected void afterParse(HostedMethod method, StructuredGraph graph) {
+    protected void beforeEncode(HostedMethod method, StructuredGraph graph) {
     }
 
     protected OptionValues getCustomizedOptions(DebugContext debug) {

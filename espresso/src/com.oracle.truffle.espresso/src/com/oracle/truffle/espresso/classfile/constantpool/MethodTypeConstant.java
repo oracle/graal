@@ -78,7 +78,7 @@ public interface MethodTypeConstant extends PoolConstant {
             throw rethrow;
         }
 
-        return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(null, rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
+        return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(null, rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes, meta.getContext()));
     }
 
     /**

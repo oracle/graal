@@ -40,7 +40,9 @@ let initialize = function(tracer) {
     }, {
         roots: true,
         rootNameFilter: 'emit',
-        sourceFilter: src => src.name === 'events.js'
+        at: {
+            sourcePath: '.*events.js'
+        }
     });
 
     insight.on('return', function(ctx, frame) {
@@ -54,7 +56,9 @@ let initialize = function(tracer) {
     }, {
         roots: true,
         rootNameFilter: 'end',
-        sourceFilter: src => src.name === '_http_outgoing.js'
+        at: {
+            sourcePath: '.*_http_outgoing.js'
+        }
     });
     console.log('agent: ready');
 };

@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
+import com.oracle.svm.util.AnnotationExtracter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
@@ -200,9 +202,9 @@ public class ReflectionFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.reflect", false);
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.reflect");
 
-        reflectionData = new ReflectionDataBuilder();
+        reflectionData = new ReflectionDataBuilder((SubstrateAnnotationExtracter) ImageSingletons.lookup(AnnotationExtracter.class));
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
         ImageSingletons.add(InternalRuntimeReflectionSupport.class, reflectionData);
     }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This node is used to reserve memory on the stack. We need to make sure that the stack block is
@@ -111,12 +113,20 @@ public final class StackValueNode extends AbstractStateSplit implements LIRLower
          * Do a careful overflow check, ensuring that the multiplication does not overflow to a
          * small value that seems to be in range.
          */
-        String name = b.getGraph().method().asStackTraceElement(b.bci()).toString();
         if (UnsignedMath.aboveOrEqual(numElements, MAX_SIZE) || UnsignedMath.aboveOrEqual(elementSize, MAX_SIZE) || UnsignedMath.aboveOrEqual(numElements * elementSize, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize + ": " + name);
+            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize);
         }
 
-        int sizeInBytes = (int) (numElements * elementSize);
+        int sizeInBytes = NumUtil.safeToInt(numElements * elementSize);
+        return create(sizeInBytes, b.getGraph().method(), b.bci());
+    }
+
+    public static StackValueNode create(int sizeInBytes, ResolvedJavaMethod method, int bci) {
+        String name = method.asStackTraceElement(bci).toString();
+        if (UnsignedMath.aboveOrEqual(sizeInBytes, MAX_SIZE)) {
+            throw new PermanentBailoutException("stack value has illegal size " + sizeInBytes + ": " + name);
+        }
+
         /* Alignment is specified by StackValue API methods as "alignment used for stack frames". */
         int alignmentInBytes = ConfigurationValues.getTarget().stackAlignment;
         StackSlotIdentity slotIdentity = new StackSlotIdentity(name, false);

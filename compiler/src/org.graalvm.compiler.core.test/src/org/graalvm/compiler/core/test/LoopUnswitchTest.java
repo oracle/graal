@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -374,14 +375,15 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
 
-        new LoopUnswitchingPhase(policies).apply(graph, getDefaultHighTierContext());
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new LoopUnswitchingPhase(policies, canonicalizer).apply(graph, getDefaultHighTierContext());
 
         // Framestates create comparison problems
         graph.clearAllStateAfterForTestingOnly();
         referenceGraph.clearAllStateAfterForTestingOnly();
 
-        createCanonicalizerPhase().apply(graph, getProviders());
-        createCanonicalizerPhase().apply(referenceGraph, getProviders());
+        canonicalizer.apply(graph, getProviders());
+        canonicalizer.apply(referenceGraph, getProviders());
         try (DebugContext.Scope s = debug.scope("Test", new DebugDumpScope("Test:" + snippet))) {
             assertEquals(referenceGraph, graph);
         } catch (Throwable e) {

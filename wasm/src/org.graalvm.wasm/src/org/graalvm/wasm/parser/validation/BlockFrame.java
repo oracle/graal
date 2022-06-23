@@ -43,6 +43,8 @@ package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
+import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
 
 /**
  * Representation of a wasm block during module validation.
@@ -53,8 +55,8 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
-    byte[] getLabelTypes() {
-        return getResultTypes();
+    byte[] labelTypes() {
+        return resultTypes();
     }
 
     @Override
@@ -64,11 +66,9 @@ class BlockFrame extends ControlFrame {
 
     @Override
     void exit(ExtraDataList extraData, int offset) {
-        for (int location : conditionalBranches()) {
-            extraData.setConditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
-        }
-        for (int location : unconditionalBranches()) {
-            extraData.setUnconditionalBranchTarget(location, offset, extraData.getLocation(), getInitialStackSize(), getLabelTypeLength());
+        for (BranchTargetWithStackChange jumpTarget : branchTargets()) {
+            jumpTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
+            jumpTarget.setStackInfo(labelTypeLength(), initialStackSize());
         }
     }
 }

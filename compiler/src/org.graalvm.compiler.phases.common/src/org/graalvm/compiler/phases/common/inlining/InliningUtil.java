@@ -37,6 +37,7 @@ import java.util.function.Consumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeWorkList;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -86,6 +88,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -93,6 +96,7 @@ import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
@@ -598,22 +602,24 @@ public class InliningUtil extends ValueMergeUtil {
 
         ValueNode returnValue;
         if (!processedReturns.isEmpty()) {
-            FixedNode n = invoke.next();
+            FixedNode next = invoke.next();
             invoke.setNext(null);
             if (processedReturns.size() == 1) {
                 ReturnNode returnNode = processedReturns.get(0);
-                returnValue = returnNode.result();
-                invokeNode.replaceAtUsages(returnValue);
-                returnNode.replaceAndDelete(n);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, returnNode.result(), next);
+                returnValue = returnAnchorPair.getLeft();
+                returnNode.replaceAndDelete(returnAnchorPair.getRight());
             } else {
                 MergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
-                returnValue = mergeReturns(merge, processedReturns);
-                invokeNode.replaceAtUsages(returnValue);
-                if (merge.isPhiAtMerge(returnValue)) {
-                    fixFrameStates(graph, merge, (PhiNode) returnValue);
+                ValueNode mergedReturn = mergeReturns(merge, processedReturns);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge);
+                returnValue = returnAnchorPair.getLeft();
+                assert returnAnchorPair.getRight() == merge;
+                if (merge.isPhiAtMerge(mergedReturn)) {
+                    fixFrameStates(graph, merge, mergedReturn, returnValue);
                 }
-                merge.setNext(n);
+                merge.setNext(next);
             }
         } else {
             returnValue = null;
@@ -632,7 +638,56 @@ public class InliningUtil extends ValueMergeUtil {
         return returnValue;
     }
 
-    private static void fixFrameStates(StructuredGraph graph, MergeNode originalMerge, PhiNode returnPhi) {
+    /**
+     * Replaces invoke's usages with the provided return value while also insuring the new value's
+     * stamp is not weaker than the original invoke's stamp.
+     *
+     * @return new return and the anchoring values
+     */
+    public static Pair<ValueNode, FixedNode> replaceInvokeAtUsages(ValueNode invokeNode, ValueNode origReturn, FixedNode anchorCandidate) {
+        assert invokeNode instanceof Invoke;
+        ValueNode returnVal = origReturn;
+        FixedNode anchorVal = anchorCandidate;
+        if (origReturn != null) {
+            Stamp currentStamp = origReturn.stamp(NodeView.DEFAULT);
+            Stamp improvedStamp = currentStamp.improveWith(invokeNode.stamp(NodeView.DEFAULT));
+            if (!improvedStamp.equals(currentStamp)) {
+                StructuredGraph graph = origReturn.graph();
+                if (!(anchorCandidate instanceof AbstractBeginNode)) {
+                    // Add anchor for pi after the original candidate
+                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                    if (anchorCandidate.predecessor() == null) {
+                        anchor.setNext(anchorCandidate);
+                    } else {
+                        graph.addBeforeFixed(anchorCandidate, anchor);
+                    }
+                    anchorVal = anchor;
+                }
+                // add PiNode with improved stamp
+                returnVal = graph.addOrUnique(PiNode.create(origReturn, improvedStamp, anchorVal));
+                if (anchorVal instanceof StateSplit) {
+                    /*
+                     * Ensure pi does not replace value within its anchor's framestate.
+                     */
+                    FrameState stateAfter = ((StateSplit) anchorVal).stateAfter();
+                    stateAfter.applyToNonVirtual(new VirtualState.NodePositionClosure<>() {
+                        @Override
+                        public void apply(Node from, Position p) {
+                            if (p.get(from) == invokeNode) {
+                                p.set(from, origReturn);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        invokeNode.replaceAtUsages(returnVal);
+
+        return Pair.create(returnVal, anchorVal);
+    }
+
+    private static void fixFrameStates(StructuredGraph graph, MergeNode originalMerge, ValueNode mergeValue, ValueNode replacementValue) {
         // It is possible that some of the frame states that came from AFTER_BCI reference a Phi
         // node that was created to merge multiple returns. This can create cycles
         // (see GR-3949 and GR-3957).
@@ -642,7 +697,7 @@ public class InliningUtil extends ValueMergeUtil {
         ArrayDeque<Node> workList = new ArrayDeque<>();
         ArrayDeque<ValueNode> valueList = new ArrayDeque<>();
         workList.push(originalMerge);
-        valueList.push(returnPhi);
+        valueList.push(mergeValue);
         while (!workList.isEmpty()) {
             Node current = workList.pop();
             ValueNode currentValue = valueList.pop();
@@ -653,11 +708,11 @@ public class InliningUtil extends ValueMergeUtil {
             if (current instanceof StateSplit && current != originalMerge) {
                 StateSplit stateSplit = (StateSplit) current;
                 FrameState state = stateSplit.stateAfter();
-                if (state != null && state.values().contains(returnPhi)) {
+                if (state != null && state.values().contains(replacementValue)) {
                     int index = 0;
                     FrameState duplicate = state.duplicate();
                     for (ValueNode value : state.values()) {
-                        if (value == returnPhi) {
+                        if (value == replacementValue) {
                             duplicate.values().set(index, currentValue);
                         }
                         index++;

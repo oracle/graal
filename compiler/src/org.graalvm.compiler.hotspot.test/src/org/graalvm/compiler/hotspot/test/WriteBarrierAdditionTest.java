@@ -379,7 +379,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "VerifyBarriersPhase";
             }
         });

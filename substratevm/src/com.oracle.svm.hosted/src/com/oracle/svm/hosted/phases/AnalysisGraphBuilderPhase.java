@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
+import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -33,6 +35,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
@@ -81,8 +84,8 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
              * bits of graal. Thus the modules that contain such plugins need to be allowed such
              * access.
              */
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.meta", false, accessingClass);
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.compiler", "org.graalvm.compiler.nodes", false, accessingClass);
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 
@@ -99,6 +102,28 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return ExceptionEdgeAction.OMIT;
             }
             return super.getActionForInvokeExceptionEdge(lastInlineInfo);
+        }
+
+        private boolean tryNodePluginForDynamicInvocation(BootstrapMethodIntrospection bootstrap) {
+            for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                var result = plugin.convertInvokeDynamic(this, bootstrap);
+                if (result != null) {
+                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight());
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        protected void genInvokeDynamic(int cpi, int opcode) {
+            if (parseOnce) {
+                BootstrapMethodIntrospection bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, opcode);
+                if (bootstrap != null && tryNodePluginForDynamicInvocation(bootstrap)) {
+                    return;
+                }
+            }
+            super.genInvokeDynamic(cpi, opcode);
         }
     }
 }

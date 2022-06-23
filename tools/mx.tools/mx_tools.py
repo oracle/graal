@@ -303,18 +303,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     include_by_default=True,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
-    suite=_suite,
-    name='VisualVM',
-    short_name='vvm',
-    dir_name='visualvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=[],
-    support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
-    provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')]
-))
-
 for mode in ['jvm', 'native']:
     mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
     mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])

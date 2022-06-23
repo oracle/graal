@@ -11,6 +11,8 @@ Disable early loop invariant code motion with  `-Dgraal.EarlyLICM=false`.
 * (GR-35033): Enable floating and global value numbering of division nodes early on in the compilation pipeline if
   it is known they will not trap.
 * (GR-38405): Compute all unswitchable invariant then pick the most frequent one.  
+* (GR-38857): Deprecated and disabled the JMX `HotSpotGraalRuntime` management bean. Re-enable the `HotSpotGraalRuntime` 
+  management bean with `-Dgraal.LibGraalManagementDelay=0`.
   
 ## Version 22.1.0
 * (GR-36751): Removed the `DuplicateIrreducibleLoops` option. To disable irreducible loop handling, set

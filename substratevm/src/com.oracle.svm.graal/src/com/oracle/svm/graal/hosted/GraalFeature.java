@@ -554,11 +554,12 @@ public final class GraalFeature implements Feature {
                     return;
                 }
 
-                CanonicalizerPhase.create().apply(graph, hostedProviders);
+                CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+                canonicalizer.apply(graph, hostedProviders);
                 if (deoptimizeOnExceptionPredicate != null) {
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
-                new ConvertDeoptimizeToGuardPhase().apply(graph, hostedProviders);
+                new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
@@ -575,7 +576,7 @@ public final class GraalFeature implements Feature {
         for (MethodCallTargetNode targetNode : callTargets) {
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
             PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
-            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getMethodFlowsGraph().getInvokes().get(targetNode.invoke().bci());
+            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getInvokes().get(targetNode.invoke().bci());
 
             if (invokeFlow == null) {
                 continue;
@@ -678,7 +679,7 @@ public final class GraalFeature implements Feature {
         StrengthenStampsPhase strengthenStamps = new RuntimeStrengthenStampsPhase(config.getUniverse(), objectReplacer);
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         IterativeConditionalEliminationPhase conditionalElimination = new IterativeConditionalEliminationPhase(canonicalizer, true);
-        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuard = new ConvertDeoptimizeToGuardPhase();
+        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuard = new ConvertDeoptimizeToGuardPhase(canonicalizer);
 
         for (CallTreeNode node : methods.values()) {
             StructuredGraph graph = node.graph;

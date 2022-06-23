@@ -169,8 +169,7 @@ final class DebugConfigImpl implements DebugConfig {
         if (filter == null) {
             level = 0;
         } else {
-            String currentScope = scope.getQualifiedName();
-            level = filter.matchLevel(currentScope);
+            level = filter.matchLevel(scope);
         }
         if (level >= 0 && !checkMethodFilter(scope)) {
             level = -1;
@@ -242,7 +241,7 @@ final class DebugConfigImpl implements DebugConfig {
     @Override
     public RuntimeException interceptException(DebugContext debug, Throwable e) {
         if (e instanceof BailoutException) {
-            final boolean causedByCompilerAssert = e instanceof CausableByCompilerAssert && ((CausableByCompilerAssert) e).isCausedByCompilerAssert();
+            boolean causedByCompilerAssert = e instanceof CausableByCompilerAssert && ((CausableByCompilerAssert) e).isCausedByCompilerAssert();
             if (!DebugOptions.InterceptBailout.getValue(options) && !causedByCompilerAssert) {
                 return null;
             }

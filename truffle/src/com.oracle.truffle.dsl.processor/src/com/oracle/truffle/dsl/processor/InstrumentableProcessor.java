@@ -373,8 +373,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 wrappedExecuteMethods.add(method);
             } else {
                 String methodName = method.getSimpleName().toString();
-                if (method.getModifiers().contains(Modifier.ABSTRACT) && !methodName.equals("getSourceSection") //
-                                && !methodName.equals(METHOD_GET_NODE_COST) && !hasUnexpectedResult(context, method)) {
+                if (method.getModifiers().contains(Modifier.ABSTRACT) && !methodName.equals(METHOD_GET_NODE_COST) && !hasUnexpectedResult(context, method)) {
                     wrappedMethods.add(method);
                 }
             }

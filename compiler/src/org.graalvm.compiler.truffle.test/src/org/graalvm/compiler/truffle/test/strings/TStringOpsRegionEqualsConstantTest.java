@@ -29,13 +29,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -72,8 +68,7 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        ConstantBindingParameterPlugin constantBinding = new ConstantBindingParameterPlugin(constantArgs, this.getMetaAccess(), this.getSnippetReflection());
-        conf.getPlugins().appendParameterPlugin(constantBinding);
+        addConstantParameterBinding(conf, constantArgs);
         return super.editGraphBuilderConfiguration(conf);
     }
 
@@ -89,11 +84,8 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
 
     @Override
     @Test
-    public void testRegionEquals() throws ClassNotFoundException {
-        ResolvedJavaMethod method = getTStringOpsMethod("regionEqualsWithOrMaskWithStrideIntl",
-                        Object.class, int.class, int.class, int.class, int.class,
-                        Object.class, int.class, int.class, int.class, int.class, byte[].class, int.class);
-        test(method, null, DUMMY_LOCATION,
+    public void testRegionEquals() {
+        test(getRegionEqualsWithOrMaskWithStrideIntl(), null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }
@@ -102,10 +94,7 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
     protected void checkLowTierGraph(StructuredGraph graph) {
         if (getTarget().arch instanceof AMD64) {
             if ((lengthCMP << Math.max(strideA, strideB)) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(graph.getOptions())) {
-                StartNode start = graph.start();
-                FixedNode next = start.next();
-                assertTrue(next instanceof ReturnNode);
-                assertTrue(((ReturnNode) next).result().isConstant());
+                assertConstantReturn(graph);
             }
         }
     }

@@ -140,6 +140,8 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     public void setCodeAddressOffset(int address) {
         assert isCompiled();
+        assert !codeAddressOffsetValid;
+
         codeAddressOffset = address;
         codeAddressOffsetValid = true;
     }
@@ -362,21 +364,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     @Override
     public ConstantPool getConstantPool() {
         return constantPool;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
     }
 
     @Override

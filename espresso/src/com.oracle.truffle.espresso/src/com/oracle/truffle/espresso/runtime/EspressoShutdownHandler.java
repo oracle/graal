@@ -30,34 +30,28 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
-final class EspressoShutdownHandler implements ContextAccess {
+final class EspressoShutdownHandler extends ContextAccessImpl {
 
     private static final DebugTimer SHUTDOWN_TIMER = DebugTimer.create("shutdown");
 
     // region context
 
-    private final EspressoContext context;
     private final EspressoThreadRegistry threadManager;
     private final EspressoReferenceDrainer referenceDrainer;
     private final boolean softExit;
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
-    }
 
     // endregion context
 
     EspressoShutdownHandler(EspressoContext context,
                     EspressoThreadRegistry threadManager,
                     EspressoReferenceDrainer referenceDrainer, boolean softExit) {
-        this.context = context;
+        super(context);
         this.threadManager = threadManager;
         this.referenceDrainer = referenceDrainer;
         this.softExit = softExit;
@@ -103,7 +97,7 @@ final class EspressoShutdownHandler implements ContextAccess {
         assert getShutdownSynchronizer().isHeldByCurrentThread();
         isClosing = true;
         exitStatus = code;
-        context.getLogger().finer(() -> "Starting close process with code=" + code);
+        getContext().getLogger().finer(() -> "Starting close process with code=" + code);
     }
 
     EspressoLock getShutdownSynchronizer() {
@@ -174,7 +168,7 @@ final class EspressoShutdownHandler implements ContextAccess {
     private void waitForClose() throws EspressoExitException {
         EspressoLock synchronizer = getShutdownSynchronizer();
         Thread initiating = Thread.currentThread();
-        context.getLogger().fine("Waiting for non-daemon threads to finish or exit");
+        getContext().getLogger().fine("Waiting for non-daemon threads to finish or exit");
         synchronizer.lock();
         try {
             while (true) {
@@ -212,7 +206,7 @@ final class EspressoShutdownHandler implements ContextAccess {
     private void teardown() {
         assert isClosing();
 
-        try (DebugCloseable shutdown = SHUTDOWN_TIMER.scope(context.getTimers())) {
+        try (DebugCloseable shutdown = SHUTDOWN_TIMER.scope(getContext().getTimers())) {
             getVM().getJvmti().postVmDeath();
 
             getContext().prepareDispose();
@@ -269,7 +263,7 @@ final class EspressoShutdownHandler implements ContextAccess {
             }
         }
 
-        context.getTimers().report(context.getLogger());
+        getContext().getTimers().report(getContext().getLogger());
     }
 
     /**
@@ -277,7 +271,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * threads, giving them a chance to gracefully exit.
      */
     private void teardownPhase1(Thread initiatingThread) {
-        teardownLoop(context.getThreadAccess()::callInterrupt, initiatingThread);
+        teardownLoop(getThreadAccess()::callInterrupt, initiatingThread);
     }
 
     /**
@@ -285,7 +279,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * leftover threads a chance to terminate in guest code (running finally blocks).
      */
     private void teardownPhase2(Thread initiatingThread) {
-        teardownLoop(context.getThreadAccess()::stop, initiatingThread);
+        teardownLoop(getThreadAccess()::stop, initiatingThread);
     }
 
     /**
@@ -294,7 +288,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * will be executed. Still, monitors entered through the monitorenter bytecode will be unlocked.
      */
     private void teardownPhase3(Thread initiatingThread) {
-        teardownLoop(context.getThreadAccess()::kill, initiatingThread);
+        teardownLoop(getThreadAccess()::kill, initiatingThread);
     }
 
     /**

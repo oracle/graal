@@ -68,10 +68,15 @@ abstract class ShapeGenerator<T> {
 
     static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy,
                     String storageClassName) {
-        if (strategy == StorageStrategy.ARRAY_BASED) {
-            return ArrayBasedShapeGenerator.getShapeGenerator(language, gcl, storageSuperClass, storageFactoryInterface, storageClassName);
-        } else {
-            return FieldBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);
+        switch (strategy) {
+            case ARRAY_BASED:
+                return ArrayBasedShapeGenerator.getShapeGenerator(language, gcl, storageSuperClass, storageFactoryInterface, storageClassName);
+            case FIELD_BASED:
+                return FieldBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);
+            case POD_BASED:
+                return PodBasedShapeGenerator.getShapeGenerator(storageSuperClass, storageFactoryInterface);
+            default:
+                throw new IllegalArgumentException("Unexpected strategy: " + strategy);
         }
     }
 

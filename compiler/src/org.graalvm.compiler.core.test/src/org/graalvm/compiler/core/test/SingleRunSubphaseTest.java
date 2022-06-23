@@ -25,9 +25,11 @@
 package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.SingleRunSubphase;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -57,12 +59,21 @@ public class SingleRunSubphaseTest extends GraalCompilerTest {
         phase.apply(graph, getProviders());
     }
 
-    @Test(expected = GraalError.class)
+    @SuppressWarnings("try")
+    @Test
     public void testMultipleRuns() {
-        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("testSnippet"));
-        EmptyPhase phase = new EmptyPhase();
-        phase.apply(graph, getProviders());
-        // this second call should throw
-        phase.apply(graph, getProviders());
+        try (AutoCloseable c = new TTY.Filter()) {
+            StructuredGraph graph = parseForCompile(getResolvedJavaMethod("testSnippet"));
+            EmptyPhase phase = new EmptyPhase();
+            phase.apply(graph, getProviders());
+            // this second call should throw
+            phase.apply(graph, getProviders());
+            Assert.fail("Compilation should not reach this point, must throw an exception before");
+        } catch (Throwable t) {
+            if (t instanceof GraalError && t.getMessage().contains("Instances of SingleRunSubphase may only be applied once")) {
+                return;
+            }
+            throw new AssertionError(t);
+        }
     }
 }

@@ -26,16 +26,12 @@ package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
-
-    private final BytecodeLocation allocationSite;
-
     /** The new type provider. */
     private TypeFlow<?> newTypeFlow;
 
@@ -44,9 +40,8 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
      */
     private final AnalysisContext allocationContext;
 
-    public DynamicNewInstanceTypeFlow(BytecodePosition location, TypeFlow<?> newTypeFlow, AnalysisType type, BytecodeLocation allocationLabel) {
+    public DynamicNewInstanceTypeFlow(BytecodePosition location, TypeFlow<?> newTypeFlow, AnalysisType type) {
         super(location, type);
-        this.allocationSite = allocationLabel;
         this.allocationContext = null;
         this.newTypeFlow = newTypeFlow;
 
@@ -60,7 +55,6 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     private DynamicNewInstanceTypeFlow(PointsToAnalysis bb, DynamicNewInstanceTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {
         super(original, methodFlows);
-        this.allocationSite = original.allocationSite;
         this.allocationContext = allocationContext;
         this.newTypeFlow = methodFlows.lookupCloneOf(bb, original.newTypeFlow);
     }
@@ -80,12 +74,8 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     public void onObservedUpdate(PointsToAnalysis bb) {
         /* The state of the new type provider has changed. */
         TypeState newTypeState = newTypeFlow.getState();
-        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, state, newTypeState, allocationSite, allocationContext);
+        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, state, newTypeState, source, allocationContext);
         addState(bb, updateState);
-    }
-
-    public BytecodeLocation allocationSite() {
-        return allocationSite;
     }
 
     public AnalysisContext allocationContext() {

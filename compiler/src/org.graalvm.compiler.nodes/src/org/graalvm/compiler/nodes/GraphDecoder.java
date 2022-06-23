@@ -558,6 +558,11 @@ public class GraphDecoder {
                 } else {
                     propagateCreatedNodes(loopScope);
                     loopScope = loopScope.outer;
+
+                    if (loopScope == null) {
+                        // finished all loops of a method
+                        afterMethodScope(methodScope);
+                    }
                 }
             }
 
@@ -575,6 +580,9 @@ public class GraphDecoder {
             /* continue with the caller */
             loopScope = methodScope.callerLoopScope;
         }
+    }
+
+    protected void afterMethodScope(@SuppressWarnings("unused") MethodScope methodScope) {
     }
 
     protected void finishInlining(@SuppressWarnings("unused") MethodScope inlineScope) {
@@ -2249,7 +2257,7 @@ class LoopDetector implements Runnable {
             ValueNode curLoopValue = loopValues.get(i);
             ValueNode curExplosionHeadValue = explosionHeadValues.get(i);
 
-            if (curLoopValue != curExplosionHeadValue) {
+            if (ProxyPlaceholder.unwrap(curLoopValue) != ProxyPlaceholder.unwrap(curExplosionHeadValue)) {
                 if (loopVariableIndex != -1) {
                     throw bailout("must have only one variable that is changed in loop. " + loopValue + " != " + explosionHeadValue + " and " + curLoopValue + " != " + curExplosionHeadValue);
                 }

@@ -117,6 +117,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.amd64.substitutions.AMD64TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
@@ -127,6 +128,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -163,6 +165,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -219,8 +222,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
     private final Set<GraalFeature.CallTreeNode> neverPartOfCompilationViolations;
     Set<AnalysisMethod> runtimeCompiledMethods;
 
-    boolean afterAnalysis;
-
     public TruffleFeature() {
         blocklistMethods = new HashSet<>();
         blocklistViolations = new TreeSet<>(TruffleFeature::blocklistViolationComparator);
@@ -239,6 +240,13 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         new SubstrateThreadLocalHandshakeSnippets(options, providers, lowerings);
+    }
+
+    @Override
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        if (providers.getLowerer().getTarget().arch instanceof AMD64) {
+            AMD64TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
+        }
     }
 
     @Override

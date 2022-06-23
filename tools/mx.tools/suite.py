@@ -26,7 +26,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "22.2.0",
+    "version" : "22.3.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -607,6 +607,7 @@ suite = {
                     "extracted-dependency:VISUALVM_COMMON/lib/visualvm/*",
                     "extracted-dependency:VISUALVM_PLATFORM_SPECIFIC/./lib/visualvm/*",
                 ],
+                "LICENSE_VISUALVM.txt": "file:VISUALVM_LICENSE",
             },
         },
         "LSP_API": {

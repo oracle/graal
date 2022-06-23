@@ -32,6 +32,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -178,17 +179,17 @@ class MemoryTracerCLI extends ProfilerCLI {
         final long totalAllocations = getTotalAllocationCount(tracer);
 
         String format = " %-" + metaObjectMax + "s | %15s ";
-        String title = String.format(format, "Type", "Count");
+        String title = format(format, "Type", "Count");
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format(" Type Histogram with Allocation Counts. Recorded a total of %d allocations.", totalAllocations));
+        out.println(format(" Type Histogram with Allocation Counts. Recorded a total of %d allocations.", totalAllocations));
         out.println(sep);
         out.println(title);
         out.println(sep);
         for (String metaObjectString : keys) {
             final int allocationCount = histogram.get(metaObjectString).size();
-            final String count = String.format("%d %5.1f%%", allocationCount, (double) allocationCount * 100 / totalAllocations);
-            out.println(String.format(format, metaObjectString, count));
+            final String count = format("%d %5.1f%%", allocationCount, (double) allocationCount * 100 / totalAllocations);
+            out.println(format(format, metaObjectString, count));
         }
         out.println(sep);
     }
@@ -225,10 +226,10 @@ class MemoryTracerCLI extends ProfilerCLI {
         final long totalAllocations = getTotalAllocationCount(tracer);
 
         String format = " %-" + nameMax + "s | %15s | %15s | %8s";
-        String title = String.format(format, "Name", "Self Count", "Total Count", "Location");
+        String title = format(format, "Name", "Self Count", "Total Count", "Location");
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format(" Location Histogram with Allocation Counts. Recorded a total of %d allocations.", totalAllocations));
+        out.println(format(" Location Histogram with Allocation Counts. Recorded a total of %d allocations.", totalAllocations));
         out.println("   Total Count: Number of allocations during the execution of this element.");
         out.println("   Self Count: Number of allocations in this element alone (excluding sub calls). ");
         out.println(sep);
@@ -244,9 +245,9 @@ class MemoryTracerCLI extends ProfilerCLI {
                 self += payload.getEvents().size();
                 total += node.isRecursive() ? 0 : payload.getTotalAllocations();
             }
-            String selfCount = String.format("%d %5.1f%%", self, (double) self * 100 / totalAllocations);
-            String totalCount = String.format("%d %5.1f%%", total, (double) total * 100 / totalAllocations);
-            String output = String.format(format, profilerNodes.get(0).getRootName(), selfCount, totalCount, getShortDescription(location.getSourceSection()));
+            String selfCount = format("%d %5.1f%%", self, (double) self * 100 / totalAllocations);
+            String totalCount = format("%d %5.1f%%", total, (double) total * 100 / totalAllocations);
+            String output = format(format, profilerNodes.get(0).getRootName(), selfCount, totalCount, getShortDescription(location.getSourceSection()));
             out.println(output);
         }
         out.println(sep);
@@ -257,10 +258,10 @@ class MemoryTracerCLI extends ProfilerCLI {
         final long totalAllocations = getTotalAllocationCount(tracer);
 
         String format = " %-" + titleMax + "s | %15s | %15s | %s";
-        String title = String.format(format, "Name", "Total Count", "Self Count", "Location     ");
+        String title = format(format, "Name", "Total Count", "Self Count", "Location     ");
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format(" Call Tree with Allocation Counts. Recorded a total of %d allocations.", totalAllocations));
+        out.println(format(" Call Tree with Allocation Counts. Recorded a total of %d allocations.", totalAllocations));
         out.println("   Total Count: Number of allocations during the execution of this function.");
         out.println("   Self Count: Number of allocations in this function alone (excluding sub calls). ");
         out.println(sep);
@@ -275,9 +276,9 @@ class MemoryTracerCLI extends ProfilerCLI {
     private static void printCallTree(ProfilerNode<MemoryTracer.Payload> node, String format, int depth, long totalAllocations, PrintStream out) {
         String padding = repeat("  ", depth);
         MemoryTracer.Payload payload = node.getPayload();
-        String selfCount = String.format("%d %5.1f%%", payload.getEvents().size(), (double) payload.getEvents().size() * 100 / totalAllocations);
-        String count = String.format("%d %5.1f%%", payload.getTotalAllocations(), (double) payload.getTotalAllocations() * 100 / totalAllocations);
-        String output = String.format(format, padding + node.getRootName(), count, selfCount, getShortDescription(node.getSourceSection()));
+        String selfCount = format("%d %5.1f%%", payload.getEvents().size(), (double) payload.getEvents().size() * 100 / totalAllocations);
+        String count = format("%d %5.1f%%", payload.getTotalAllocations(), (double) payload.getTotalAllocations() * 100 / totalAllocations);
+        String output = format(format, padding + node.getRootName(), count, selfCount, getShortDescription(node.getSourceSection()));
         out.println(output);
         for (ProfilerNode<MemoryTracer.Payload> child : node.getChildren()) {
             printCallTree(child, format, depth + 1, totalAllocations, out);
@@ -335,5 +336,9 @@ class MemoryTracerCLI extends ProfilerCLI {
             sum += node.getPayload().getTotalAllocations();
         }
         return sum;
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.ENGLISH, format, args);
     }
 }

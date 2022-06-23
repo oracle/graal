@@ -35,10 +35,10 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class StatisticsPrinter {
@@ -188,11 +188,14 @@ public final class StatisticsPrinter {
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
+            if (!methodFlow.flowsGraphCreated()) {
+                continue;
+            }
             MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
 
             var cursor = originalFlows.getInstanceOfFlows().getEntries();
             while (cursor.advance()) {
-                if (BytecodeLocation.isValidBci(cursor.getKey())) {
+                if (StaticAnalysisResultsBuilder.isValidBci(cursor.getKey())) {
                     totalFilters++;
                     InstanceOfTypeFlow originalInstanceOf = cursor.getValue();
 

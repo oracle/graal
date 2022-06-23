@@ -92,12 +92,12 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
     protected void prepareGraph(StructuredGraph graph, CanonicalizerPhase canonicalizer, CoreProviders context, boolean applyLowering) {
         if (applyLowering) {
-            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
             new HighTierLoweringPhase(canonicalizer).apply(graph, context);
             canonicalizer.apply(graph, context);
         }
         canonicalizer.apply(graph, context);
-        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+        new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
     }
 
     public void testProxies(String snippet, int expectedProxiesCreated) {

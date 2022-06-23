@@ -76,13 +76,9 @@ public class TruffleInlining implements TruffleInliningData {
     }
 
     @Override
-    public void setInlinedCallCount(int count) {
-        inlinedCallCount = count;
-    }
-
-    @Override
-    public void setCallCount(int count) {
-        callCount = count;
+    public void setCallCounts(int total, int inlined) {
+        callCount = total;
+        inlinedCallCount = inlined;
     }
 
     @Override

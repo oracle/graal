@@ -28,12 +28,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
 public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNode> {
@@ -51,7 +50,7 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
                     int offsetA = offset << strideA;
                     int offsetB = offset << strideB;
                     int fromIndexA = contentLength * iFromIndex;
-                    for (int lengthCMP : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 127, 128, 129}) {
+                    for (int lengthCMP : new int[]{1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 127, 128, 129}) {
                         for (int fromIndexOffset : new int[]{-1, 0, 1}) {
                             if (fromIndexOffset == -1 && fromIndexA == 0 || fromIndexOffset == 1 && fromIndexA == contentLength * 2 && lengthCMP == 129) {
                                 continue;
@@ -110,12 +109,14 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
     }
 
     @Test
-    public void testMemCmp() throws ClassNotFoundException {
-        ResolvedJavaMethod method = getTStringOpsMethod("memcmpWithStrideIntl",
-                        Object.class, int.class, int.class,
-                        Object.class, int.class, int.class, int.class);
-        test(method, null, DUMMY_LOCATION,
+    public void testMemCmp() {
+        test(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP);
+    }
+
+    @Override
+    protected void checkIntrinsicNode(ArrayRegionCompareToNode node) {
+        Assert.assertTrue(node.getDirectStubCallIndex() < 0);
     }
 }

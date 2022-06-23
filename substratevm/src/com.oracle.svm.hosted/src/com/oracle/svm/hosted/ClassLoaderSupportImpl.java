@@ -58,25 +58,41 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
 class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
+
     private final ClassLoader imageClassLoader;
+    private final ClassPathClassLoader classPathClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
 
     ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
-        this.imageClassLoader = classLoaderSupport.getClassLoader();
+
+        imageClassLoader = classLoaderSupport.getClassLoader();
+        ClassLoader parent = imageClassLoader.getParent();
+        classPathClassLoader = parent instanceof ClassPathClassLoader ? (ClassPathClassLoader) parent : null;
+
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
 
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
-        return loader == imageClassLoader || loader instanceof NativeImageSystemClassLoader;
+        if (loader == imageClassLoader) {
+            return true;
+        }
+        if (classPathClassLoader != null && loader == classPathClassLoader) {
+            return true;
+        }
+        if (loader instanceof NativeImageSystemClassLoader) {
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -222,7 +238,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
-            ModuleSupport.exportAndOpenPackageToClass(module.getName(), packageName, false, ClassLoaderSupportImpl.class);
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ClassLoaderSupportImpl.class, false, module.getName(), packageName);
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
         }
         return resourceBundles;

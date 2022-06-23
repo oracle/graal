@@ -459,7 +459,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             if (!GraalOptions.SnippetCounters.getValue(graph.getOptions()) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
                 int sideEffectCount = 0;
                 assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
-                new ConvertDeoptimizeToGuardPhase().apply(graph, replacements.getProviders());
+                new ConvertDeoptimizeToGuardPhase(CanonicalizerPhase.create()).apply(graph, replacements.getProviders());
                 assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
 
                 new DeadCodeEliminationPhase(Required).apply(graph);

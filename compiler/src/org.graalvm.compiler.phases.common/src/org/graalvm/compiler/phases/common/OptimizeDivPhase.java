@@ -96,6 +96,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         if (!ec.getNodes().isEmpty()) {
             canon.applyIncremental(graph, context, ec.getNodes());
         }
+
     }
 
     @Override

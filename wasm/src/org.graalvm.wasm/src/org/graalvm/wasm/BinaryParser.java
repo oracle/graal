@@ -174,6 +174,11 @@ public class BinaryParser extends BinaryStreamParser {
                     fail(Failure.MALFORMED_SECTION_ID, "invalid section ID: " + sectionID);
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
+            if (sectionID == Section.DATA && !wasmContext.getContextOptions().keepDataSections()) {
+                removeSection(startOffset, size);
+                module.setData(data);
+                offset = startOffset;
+            }
         }
         if (!hasCodeSection) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
@@ -430,10 +435,11 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.IF: {
+                    final int branchOffset = offset;
                     state.popChecked(I32_TYPE); // condition
                     final byte ifReturnType = readBlockType();
 
-                    state.enterIf(ifReturnType);
+                    state.enterIf(ifReturnType, branchOffset);
                     break;
                 }
                 case Instructions.END: {
@@ -445,21 +451,24 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.BR: {
+                    final int branchOffset = offset;
                     final int branchLabel = readTargetOffset();
-                    state.addUnconditionalBranch(branchLabel);
+                    state.addUnconditionalBranch(branchLabel, branchOffset);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
                     break;
                 }
                 case Instructions.BR_IF: {
+                    final int branchOffset = offset;
                     final int branchLabel = readTargetOffset();
                     state.popChecked(I32_TYPE); // condition
-                    state.addConditionalBranch(branchLabel);
+                    state.addConditionalBranch(branchLabel, branchOffset);
 
                     break;
                 }
                 case Instructions.BR_TABLE: {
+                    final int branchOffset = offset;
                     state.popChecked(I32_TYPE); // index
                     final int length = readLength();
 
@@ -468,7 +477,7 @@ public class BinaryParser extends BinaryStreamParser {
                         final int branchLabel = readTargetOffset();
                         branchTable[i] = branchLabel;
                     }
-                    state.addBranchTable(branchTable);
+                    state.addBranchTable(branchTable, branchOffset);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();

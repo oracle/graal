@@ -123,6 +123,30 @@ public class GraalTest {
         }
     }
 
+    protected Method getMethod(Class<?> clazz, Class<?> returnType, String methodName, Class<?>... parameterTypes) {
+        Method found = null;
+        for (Method m : clazz.getMethods()) {
+            if (m.getName().equals(methodName) && m.getReturnType().equals(returnType) && Arrays.equals(m.getParameterTypes(), parameterTypes)) {
+                Assert.assertNull(found);
+                found = m;
+            }
+        }
+        if (found == null) {
+            /* Now look for non-public methods (but this does not look in superclasses). */
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (m.getName().equals(methodName) && m.getReturnType().equals(returnType) && Arrays.equals(m.getParameterTypes(), parameterTypes)) {
+                    Assert.assertNull(found);
+                    found = m;
+                }
+            }
+        }
+        if (found != null) {
+            return found;
+        } else {
+            throw new RuntimeException("method not found: " + methodName + " returning " + returnType + " " + Arrays.toString(parameterTypes));
+        }
+    }
+
     /**
      * Compares two given objects for {@linkplain Assert#assertEquals(Object, Object) equality}.
      * Does a deep copy equality comparison if {@code expected} is an array.

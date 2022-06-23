@@ -61,17 +61,19 @@ import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.loop.MathUtil;
-import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class LoopPredicationPhase extends BasePhase<MidTierContext> {
+public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierContext> {
     private static final SpeculationReasonGroup LOOP_PREDICATION = new SpeculationReasonGroup("Loop Predication", BytecodePosition.class);
 
-    public LoopPredicationPhase() {
+    public LoopPredicationPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
     }
 
     @Override

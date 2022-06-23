@@ -23,7 +23,7 @@ local devkits = common_json.devkits;
 
   common_vm_linux: self.common_vm + {
     packages+: {
-      devtoolset: '==7',# GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      "00:devtoolset": "==7", # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
     },
   },
 
@@ -99,9 +99,11 @@ local devkits = common_json.devkits;
   sulong_darwin_amd64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_amd64,
   sulong_darwin_aarch64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_aarch64,
 
-  # TRUFFLERUBY
-  truffleruby_linux: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
+  # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
+  truffleruby_linux_amd64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux + graal_common.ol7,
+  truffleruby_linux_aarch64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux, # OL7 is default on linux-aarch64
   truffleruby_darwin_amd64: self.sulong_darwin_amd64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
+  truffleruby_darwin_aarch64: self.sulong_darwin_aarch64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
 
   # FASTR
   # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
@@ -176,6 +178,8 @@ local devkits = common_json.devkits;
   },
 
   graalpython_darwin_amd64: self.sulong_darwin_amd64 + {},
+
+  graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
 
   vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
@@ -397,13 +401,17 @@ local devkits = common_json.devkits;
   maven_deploy_sdk_components:         self.maven_deploy_sdk + ['--tags', 'installable,standalone',              vm.binaries_repository],
   maven_deploy_sdk_components_dry_run: self.maven_deploy_sdk + ['--tags', 'installable,standalone', '--dry-run', vm.binaries_repository],
 
-  ruby_vm_build_linux: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux + vm.custom_vm_linux,
+  svm_vm_build_ol6_amd64: self.svm_common_linux_amd64 + vm.custom_vm_linux,
+
+  ruby_vm_build_linux: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux_amd64 + vm.custom_vm_linux,
   full_vm_build_linux: self.ruby_vm_build_linux + self.fastr_linux + self.graalpython_linux,
-  full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + vm.custom_vm_linux,
+  full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + self.truffleruby_linux_aarch64 + vm.custom_vm_linux,
 
   ruby_vm_build_darwin_amd64: self.svm_common_darwin_amd64 + self.sulong_darwin_amd64 + self.truffleruby_darwin_amd64 + vm.custom_vm_darwin,
   full_vm_build_darwin_amd64: self.ruby_vm_build_darwin_amd64 + self.fastr_darwin + self.graalpython_darwin_amd64,
-  full_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64,
+
+  ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64 + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
+  full_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
 
 
   libgraal_build(build_args):: {
@@ -479,6 +487,8 @@ local devkits = common_json.devkits;
     run: [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -502,6 +512,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -541,6 +553,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,
@@ -573,6 +587,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin-aarch64"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,
@@ -604,6 +620,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,
@@ -664,6 +682,7 @@ local devkits = common_json.devkits;
 
   deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
   deploy_vm_ruby_java11_darwin_amd64: vm.vm_java_11 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
+  deploy_vm_ruby_java11_darwin_aarch64: vm.vm_java_11 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
 
   local builds = [
     #

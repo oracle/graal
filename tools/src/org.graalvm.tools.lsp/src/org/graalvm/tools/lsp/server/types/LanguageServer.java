@@ -36,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
@@ -503,14 +504,14 @@ public class LanguageServer {
                     RequestMessage message = new RequestMessage(json);
                     if (server.getLogger().isLoggable(Level.FINER)) {
                         String format = "[Trace - %s] Received request '%s - (%s)'\nParams: %s";
-                        server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), message.getMethod(), message.getId(), message.getParams().toString()));
+                        server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), message.getMethod(), message.getId(), message.getParams().toString()));
                     }
                     processRequest(message, messageBytes);
                 } else {
                     NotificationMessage message = new NotificationMessage(json);
                     if (server.getLogger().isLoggable(Level.FINER)) {
                         String format = "[Trace - %s] Received notification '%s'\nParams: %s";
-                        server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), message.getMethod(), message.getParams().toString()));
+                        server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), message.getMethod(), message.getParams().toString()));
                     }
                     processNotification(message, messageBytes);
                 }
@@ -679,7 +680,7 @@ public class LanguageServer {
                             });
                             break;
                         default:
-                            sendErrorResponse(id, ErrorCodes.InvalidRequest, String.format("Unexpected method `%s`", req.getMethod()));
+                            sendErrorResponse(id, ErrorCodes.InvalidRequest, format("Unexpected method `%s`", req.getMethod()));
                     }
                 } else {
                     future = CompletableFuture.runAsync(() -> sendResponse(id, null));
@@ -688,7 +689,7 @@ public class LanguageServer {
                     pendingReceivedRequests.put(id, future);
                     future.exceptionally((throwable) -> {
                         if (isCancel(throwable)) {
-                            String msg = String.format("The request '%s - (%s)' has been cancelled", req.getMethod(), id);
+                            String msg = format("The request '%s - (%s)' has been cancelled", req.getMethod(), id);
                             sendErrorResponse(id, ErrorCodes.RequestCancelled, msg);
                         } else {
                             sendErrorResponse(id, ErrorCodes.InternalError, throwable.getMessage());
@@ -752,7 +753,7 @@ public class LanguageServer {
                         }
                         break;
                     default:
-                        server.getLogger().log(Level.WARNING, String.format("Unexpected method `%s`", msg.getMethod()));
+                        server.getLogger().log(Level.WARNING, format("Unexpected method `%s`", msg.getMethod()));
                 }
             } catch (Exception e) {
                 server.getLogger().log(Level.SEVERE, e.getMessage(), e);
@@ -765,7 +766,7 @@ public class LanguageServer {
             response.setResult(allResults != null ? allResults : JSONObject.NULL);
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending response '(%s)'\nResult: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), id, Objects.toString(allResults)));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), id, Objects.toString(allResults)));
             }
             writeMessage(getJSONData(response).toString());
         }
@@ -778,14 +779,14 @@ public class LanguageServer {
                 response.setResult(allResults);
                 if (server.getLogger().isLoggable(Level.FINER)) {
                     String format = "[Trace - %s] Sending response '(%s)'\nResult: %s";
-                    server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), id, allResults.toString()));
+                    server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), id, allResults.toString()));
                 }
             } else {
                 final ResponseErrorLiteral error = ResponseErrorLiteral.create(code.getIntValue(), message);
                 response.setError(error);
                 if (server.getLogger().isLoggable(Level.FINER)) {
                     String format = "[Trace - %s] Sending error response '(%s)'\nError: %s";
-                    server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), id, getJSONData(error).toString()));
+                    server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), id, getJSONData(error).toString()));
                 }
             }
             writeMessage(getJSONData(response).toString());
@@ -797,7 +798,7 @@ public class LanguageServer {
             notification.setParams(getJSONData(params));
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending notification '%s'\nParams: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), method, getJSONData(params).toString()));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), method, getJSONData(params).toString()));
             }
             writeMessage(getJSONData(notification).toString());
         }
@@ -814,7 +815,7 @@ public class LanguageServer {
 
         private static void writeMessageBytes(OutputStream out, byte[] messageBytes) throws IOException {
             int contentLength = messageBytes.length;
-            String header = String.format("Content-Length: %d\r\n\r\n", contentLength);
+            String header = format("Content-Length: %d\r\n\r\n", contentLength);
             byte[] headerBytes = header.getBytes(StandardCharsets.US_ASCII);
             synchronized (out) {
                 out.write(headerBytes);
@@ -855,5 +856,9 @@ public class LanguageServer {
         void log(Level level, String msg);
 
         void log(Level level, String msg, Throwable thrown);
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.ENGLISH, format, args);
     }
 }

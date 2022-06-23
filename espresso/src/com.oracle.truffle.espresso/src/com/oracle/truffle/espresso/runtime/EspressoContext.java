@@ -137,10 +137,6 @@ public final class EspressoContext {
     private final TimerCollection timers;
     // endregion Debug
 
-    // region Profiling
-    private final AllocationReporter allocationReporter;
-    // endregion Profiling
-
     // region Runtime
     private final StringTable strings;
     private final ClassRegistries registries;
@@ -153,6 +149,7 @@ public final class EspressoContext {
     private final EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
     @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
+    @CompilationFinal private GuestAllocator allocator;
     @CompilationFinal private EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
@@ -272,8 +269,9 @@ public final class EspressoContext {
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
 
+        this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
+
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
-        this.allocationReporter = env.lookup(AllocationReporter.class);
 
         // null if not specified
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
@@ -468,20 +466,30 @@ public final class EspressoContext {
         referenceDrainer.startReferenceDrain();
     }
 
-    public Source findOrCreateSource(Method method) {
-        String sourceFile = method.getSourceFile();
+    @TruffleBoundary
+    public Source findOrCreateSource(ObjectKlass klass) {
+        String sourceFile = klass.getSourceFile();
         if (sourceFile == null) {
             return null;
-        } else {
-            TruffleFile file = env.getInternalTruffleFile(sourceFile);
-            Source source = Source.newBuilder("java", file).content(Source.CONTENT_NONE).build();
-            // sources are interned so no cache needed (hopefully)
-            return source;
         }
+        if (!sourceFile.contains("/") && !sourceFile.contains("\\")) {
+            // try to come up with a more unique name
+            Symbol<Name> runtimePackage = klass.getRuntimePackage();
+            if (runtimePackage != null && runtimePackage.length() > 0) {
+                sourceFile = runtimePackage + "/" + sourceFile;
+            }
+        }
+        TruffleFile file = env.getInternalTruffleFile(sourceFile);
+        // sources are interned so no cache needed (hopefully)
+        return Source.newBuilder("java", file).content(Source.CONTENT_NONE).build();
     }
 
     public Meta getMeta() {
         return meta;
+    }
+
+    public GuestAllocator getAllocator() {
+        return allocator;
     }
 
     public NativeAccess getNativeAccess() {
@@ -597,8 +605,8 @@ public final class EspressoContext {
                 }
             }
             // Init memoryError instances
-            StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance();
-            StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
+            StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance(this);
+            StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance(this);
 
             // Preemptively set stack trace.
             meta.HIDDEN_FRAMES.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
@@ -800,14 +808,6 @@ public final class EspressoContext {
 
     public EspressoException getOutOfMemory() {
         return outOfMemory;
-    }
-
-    public <T> T trackAllocation(T object) {
-        if (allocationReporter != null) {
-            allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-            allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
     }
 
     public void prepareDispose() {

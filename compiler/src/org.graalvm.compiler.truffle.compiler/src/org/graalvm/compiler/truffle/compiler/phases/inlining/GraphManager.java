@@ -64,7 +64,8 @@ final class GraphManager {
         this.partialEvaluator = partialEvaluator;
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
         this.rootContext = rootContext;
-        this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
+        boolean persistentEncodedGraphCache = rootContext.options.get(PolyglotCompilerOptions.EncodedGraphCache);
+        this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache(persistentEncodedGraphCache);
         this.useSize = rootContext.options.get(PolyglotCompilerOptions.InliningUseSize);
     }
 

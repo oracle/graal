@@ -36,7 +36,6 @@ import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
@@ -51,8 +50,8 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     private TypeState seenReceiverTypes = TypeState.forEmpty();
 
     DefaultVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
     }
 
     @Override
