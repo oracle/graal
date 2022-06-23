@@ -119,7 +119,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     public CodePointer getJavaCallAddress() {
         return javaCall;
     }

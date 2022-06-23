@@ -69,48 +69,50 @@ public final class JNIGeneratedMethodSupport {
         return JNIThreadLocalEnvironment.getAddress();
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static JNIObjectHandle boxObjectInLocalHandle(Object obj) {
         return JNIObjectHandles.createLocal(obj);
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static Object unboxHandle(JNIObjectHandle handle) {
         return JNIObjectHandles.getObject(handle);
     }
 
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
         return JNIAccessibleField.getOffsetFromId(fieldId);
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static CodePointer getJavaCallAddressFromMethodId(JNIMethodId methodId) {
         return JNIReflectionDictionary.getMethodByID(methodId).getJavaCallAddress();
     }
 
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     static Object getStaticPrimitiveFieldsArray() {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
 
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     static Object getStaticObjectFieldsArray() {
         return StaticFieldsSupport.getStaticObjectFields();
     }
 
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static void setPendingException(Throwable t) {
         JNIThreadLocalPendingException.set(t);
     }
 
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static Throwable getAndClearPendingException() {
         Throwable t = JNIThreadLocalPendingException.get();
         JNIThreadLocalPendingException.clear();
         return t;
     }
 
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static void rethrowPendingException() throws Throwable {
         Throwable t = getAndClearPendingException();
         if (t != null) {

@@ -246,7 +246,7 @@ public final class JNIReflectionDictionary {
         return (JNIMethodId) value;
     }
 
-    @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
         Object obj = null;
         if (method.notEqual(WordFactory.zero())) {

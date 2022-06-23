@@ -25,6 +25,7 @@
 package com.oracle.svm.jni;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
@@ -112,22 +113,27 @@ public final class JNIObjectHandles {
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     private static ThreadLocalHandles<ObjectHandle> getExistingLocals() {
         return handles.get();
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     private static boolean isInLocalRange(JNIObjectHandle handle) {
         return ThreadLocalHandles.isInRange((ObjectHandle) handle);
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     private static ObjectHandle decodeLocal(JNIObjectHandle handle) {
         return (ObjectHandle) handle;
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     private static JNIObjectHandle encodeLocal(ObjectHandle handle) {
         return (JNIObjectHandle) handle;
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     public static <T> T getObject(JNIObjectHandle handle) {
         if (handle.equal(nullHandle())) {
             return null;
@@ -138,10 +144,18 @@ public final class JNIObjectHandles {
         if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
             return JNIImageHeapHandles.getObject(handle);
         }
+        return getObjectSlow(handle);
+    }
+
+    @Uninterruptible(reason = "Not really, but our caller is to allow inlining and we must be safe at this point.", calleeMustBe = false)
+    private static <T> T getObjectSlow(JNIObjectHandle handle) {
+        return getObjectSlow0(handle);
+    }
+
+    private static <T> T getObjectSlow0(JNIObjectHandle handle) {
         if (JNIGlobalHandles.isInRange(handle)) {
             return JNIGlobalHandles.getObject(handle);
         }
-
         throw throwIllegalArgumentException();
     }
 
@@ -163,10 +177,30 @@ public final class JNIObjectHandles {
         return JNIObjectRefType.Invalid; // intentionally includes the null handle
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     public static JNIObjectHandle createLocal(Object obj) {
+        if (obj == null) {
+            return JNIObjectHandles.nullHandle();
+        }
         if (useImageHeapHandles() && JNIImageHeapHandles.isInImageHeap(obj)) {
             return JNIImageHeapHandles.asLocal(obj);
         }
+        ThreadLocalHandles<ObjectHandle> locals = getExistingLocals();
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY, locals != null)) {
+            ObjectHandle handle = locals.tryCreateNonNull(obj);
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, handle.notEqual(nullHandle()))) {
+                return encodeLocal(handle);
+            }
+        }
+        return createLocalSlow(obj);
+    }
+
+    @Uninterruptible(reason = "Not really, but our caller is uninterruptible for inlining and we must be safe at this point.", calleeMustBe = false)
+    private static JNIObjectHandle createLocalSlow(Object obj) {
+        return createLocalSlow0(obj);
+    }
+
+    private static JNIObjectHandle createLocalSlow0(Object obj) {
         return encodeLocal(getOrCreateLocals().create(obj));
     }
 
@@ -269,6 +303,7 @@ final class JNIGlobalHandles {
     private static final SignedWord MSB = WordFactory.signed(1L << 63);
     private static final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl(JNIObjectHandles.nullHandle().add(1), HANDLE_BITS_MASK, JNIObjectHandles.nullHandle());
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static boolean isInRange(JNIObjectHandle handle) {
         return MIN_VALUE.lessOrEqual((SignedWord) handle) && MAX_VALUE.greaterThan((SignedWord) handle);
     }
@@ -355,15 +390,18 @@ final class JNIImageHeapHandles {
         assert ENTIRE_RANGE_MAX.lessThan(JNIGlobalHandles.MIN_VALUE) || ENTIRE_RANGE_MIN.greaterThan(JNIGlobalHandles.MAX_VALUE);
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static boolean isInImageHeap(Object target) {
         return target != null && Heap.getHeap().isInImageHeap(target);
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static boolean isInRange(JNIObjectHandle handle) {
         SignedWord handleValue = (SignedWord) handle;
         return handleValue.greaterOrEqual(ENTIRE_RANGE_MIN) && handleValue.lessOrEqual(ENTIRE_RANGE_MAX);
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static JNIObjectHandle asLocal(Object target) {
         assert isInImageHeap(target);
         SignedWord base = (SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
@@ -390,6 +428,7 @@ final class JNIImageHeapHandles {
         return (JNIObjectHandle) ((SignedWord) handle).and(OBJ_OFFSET_BITS_MASK).add(rangeMin);
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static <T> T getObject(JNIObjectHandle handle) {
         assert isInRange(handle);
         UnsignedWord base = (UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
