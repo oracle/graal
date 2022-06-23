@@ -2988,7 +2988,8 @@ public final class TruffleString extends AbstractTruffleString {
          * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, this node will return
          *            the encoding's minimum number of bytes per codepoint if an error occurs while
          *            reading the codepoint. If set to {@link ErrorHandling#RETURN_NEGATIVE}, a
-         *            negative value will be returned instead.
+         *            negative value will be returned instead. This parameter is expected to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object)}.
          *
          * @since 22.3
          */
@@ -2999,6 +3000,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached TStringInternalNodes.RawLengthOfCodePointNode rawLengthOfCodePointNode) {
+            CompilerAsserts.partialEvaluationConstant(errorHandling);
             a.checkEncoding(expectedEncoding);
             int rawIndex = rawIndex(byteIndex, expectedEncoding);
             a.boundsCheckRaw(rawIndex);
@@ -3168,8 +3170,25 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Decode and return the codepoint at codepoint index {@code i}.
+         * 
+         * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, the return value on
+         *            invalid codepoints depends on {@code expectedEncoding}:
+         *            <ul>
+         *            <li>{@link Encoding#UTF_8}: Unicode Replacement character {@code 0xFFFD}</li>
+         *            <li>{@link Encoding#UTF_16}: the (16-bit) {@code char} value read at index
+         *            {@code i}</li>
+         *            <li>{@link Encoding#UTF_32}: the (32-bit) {@code int} value read at index
+         *            {@code i}</li>
+         *            <li>{@link Encoding#US_ASCII}, {@link Encoding#ISO_8859_1},
+         *            {@link Encoding#BYTES}: the (8-bit) unsigned {@code byte} value read at index
+         *            {@code i}</li>
+         *            <li>All other Encodings: Unicode Replacement character {@code 0xFFFD}</li>
+         *            </ul>
+         *            If set to {@link ErrorHandling#RETURN_NEGATIVE}, a negative value will be
+         *            returned instead. This parameter is expected to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object)}.
          *
-         * @since 22.1
+         * @since 22.3
          */
         public abstract int execute(AbstractTruffleString a, int i, Encoding expectedEncoding, ErrorHandling errorHandling);
 
@@ -3179,6 +3198,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached TStringInternalNodes.CodePointAtNode readCodePointNode) {
+            CompilerAsserts.partialEvaluationConstant(errorHandling);
             a.checkEncoding(expectedEncoding);
             a.boundsCheck(i, getCodePointLengthNode);
             Object arrayA = toIndexableNode.execute(a, a.data());
@@ -3244,7 +3264,8 @@ public final class TruffleString extends AbstractTruffleString {
          *            <li>All other Encodings: Unicode Replacement character {@code 0xFFFD}</li>
          *            </ul>
          *            If set to {@link ErrorHandling#RETURN_NEGATIVE}, a negative value will be
-         *            returned instead.
+         *            returned instead. This parameter is expected to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object)}.
          * 
          * @since 22.3
          */
@@ -3255,6 +3276,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached TStringInternalNodes.CodePointAtRawNode readCodePointNode) {
+            CompilerAsserts.partialEvaluationConstant(errorHandling);
             final int i = rawIndex(byteIndex, expectedEncoding);
             a.checkEncoding(expectedEncoding);
             a.boundsCheckRaw(i);
