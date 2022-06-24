@@ -1143,21 +1143,7 @@ public final class GCImpl implements GC {
             copy = ObjectHeaderImpl.getForwardedObject(originalPtr, header);
         } else {
             assert innerOffset < LayoutEncoding.getSizeFromObject(original).rawValue();
-
-            /// from promObj
-            HeapImpl heap = HeapImpl.getHeapImpl();
-            Header<?> originalChunk = getChunk(original, isAligned);
-            Space originalSpace = HeapChunk.getSpace(originalChunk);
-            if (originalSpace == null) {
-                Log.log().string("PP warn space is null for object ").zhex(Word.objectToUntrackedPointer(original))
-                        .string(" in chunk ").zhex(originalChunk).newline();
-            }
-
-//            result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
-            assert originalSpace.isFromSpace();
-            Space toSpace = heap.getOldGeneration().getToSpace();
-            copy = toSpace.promoteAlignedObject(original, originalSpace);
-            assert copy != null : "promotion failure in old generation must have been handled";
+            copy = promoteObject(original, header);
         }
         /// from visitor code
         if (copy != original) {
