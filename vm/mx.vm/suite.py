@@ -176,6 +176,11 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
             "sha1" : "302f81578d470b0941679ce9b21987c035eee6f6"
         },
+        "GRAALPYTHON_PYFLATE_BENCHMARK_RESOURCE" : {
+            # just any reasonably sized .tar.gz or .tar.bz2 for running the benchmark
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-linux-amd64.tar.gz"],
+            "sha1" : "3f276219657688958f919110b12f329a080326c1"
+        },
         "ORG_NETBEANS_API_ANNOTATIONS_COMMON" : {
            "sha1" : "ef10fcaff10adfbedcc6058c965397ac47395ecf",
             "maven" : {
@@ -307,7 +312,8 @@ suite = {
                 "./warmup/": [
                     # "file:benchmarks/warmup/*.js",
                     # "file:benchmarks/warmup/*.rb",
-                    # "file:benchmarks/warmup/*.py",
+                    "file:benchmarks/warmup/*.py",
+                    "dependency:GRAALPYTHON_PYFLATE_BENCHMARK_RESOURCE",
                     "extracted-dependency:WARMUP_BENCHMARKS/*"
                 ],
                 "./nfi/": [
