@@ -1324,7 +1324,7 @@ suite = {
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21", "VISUALVM-LIB-JFLUID-HEAP"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_SL",
@@ -1335,7 +1335,6 @@ suite = {
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
-         "VISUALVM-LIB-JFLUID-HEAP",
       ],
       "maven" : False,
      },

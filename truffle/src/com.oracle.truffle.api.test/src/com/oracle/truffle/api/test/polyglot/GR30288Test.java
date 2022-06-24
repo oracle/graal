@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import com.oracle.truffle.api.test.ReflectionUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -89,10 +90,10 @@ public class GR30288Test {
     }
 
     /***
-     * Cleans up leaked {@link ClassValue} values after the test. Although the {@link ClassValue}
-     * instances in the {@code HostClassCache} are released, their values are still strongly
-     * reachable from the {@code Class#classValueMap} field. In order to release them you need to
-     * actively use {@code ClassValueMap}. You need to populate the
+     * Cleans up leaked {@link ClassValue} values on HotSpot after the test. Although the
+     * {@link ClassValue} instances in the {@code HostClassCache} are released, their values are
+     * still strongly reachable from the {@code Class#classValueMap} field. In order to release them
+     * you need to actively use {@code ClassValueMap}. You need to populate the
      * {@code ClassValueMap#cacheLoadLimit} values. The {@code ClassValueMap#cacheLoadLimit} can be
      * quite high, so we clean the {@code ClassValueMap} using a reflection. The
      * {@code ClassValueMap} holds {@link ClassValue} values in three places.
@@ -106,17 +107,21 @@ public class GR30288Test {
      */
     @AfterClass
     public static void tearDown() throws Exception {
-        // Perform GC to process weak references.
-        System.gc();
-        for (Object value : TEST_VALUES) {
-            // Clean the constants folding cache
-            Map<?, ?> classValueMap = (Map<?, ?>) ReflectionUtils.getField(value.getClass(), "classValueMap");
-            ReflectionUtils.invoke(classValueMap, "removeStaleEntries");
-            // Clean the ClassValueMap entries with weakly reachable ClassValues from both the map
-            // and the reference queue.
-            for (int i = 0; i < 10 && classValueMap.size() > 0; i++) {
-                // Give a GC a chance to enqueue references into a reference queue.
-                Thread.sleep(100);
+        if (!ImageInfo.inImageRuntimeCode()) {
+            // Perform GC to process weak references.
+            System.gc();
+            for (Object value : TEST_VALUES) {
+                // Clean the constants folding cache
+                Map<?, ?> classValueMap = (Map<?, ?>) ReflectionUtils.getField(value.getClass(), "classValueMap");
+                if (classValueMap != null) {
+                    ReflectionUtils.invoke(classValueMap, "removeStaleEntries");
+                    // Clean the ClassValueMap entries with weakly reachable ClassValues from both
+                    // the map and the reference queue.
+                    for (int i = 0; i < 10 && classValueMap.size() > 0; i++) {
+                        // Give a GC a chance to enqueue references into a reference queue.
+                        Thread.sleep(100);
+                    }
+                }
             }
         }
     }

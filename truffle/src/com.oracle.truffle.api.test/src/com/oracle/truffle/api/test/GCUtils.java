@@ -182,8 +182,10 @@ public final class GCUtils {
     }
 
     private static ReachabilityAnalyser<?> selectAnalyser() {
-        if (ImageInfo.inImageCode()) {
+        if (ImageInfo.inImageCode() || OSUtils.isWindows()) {
             // In the native-image, the heap dump to slow to be used.
+            // On Windows there are problems with the Heap release, which prevents the headump file
+            // from being deleted.
             return new GCAnalyser();
         } else {
             return new HeapDumpAnalyser();
