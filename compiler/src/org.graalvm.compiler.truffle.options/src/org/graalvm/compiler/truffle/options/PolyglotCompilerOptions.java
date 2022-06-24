@@ -543,7 +543,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
 
     @Option(help = "TODO", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> PropagateHotnessToSingleCaller = new OptionKey<>(false);
+    public static final OptionKey<Boolean> SubmitLexicalSingleCaller = new OptionKey<>(false);
 
     @Option(help = "The minimal scale the compilation thresholds can be reduced to (default: 0.1).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Double> DynamicCompilationThresholdsMinScale = new OptionKey<>(0.1);

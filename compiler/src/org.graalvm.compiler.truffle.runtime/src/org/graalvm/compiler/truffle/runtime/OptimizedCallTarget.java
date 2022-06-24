@@ -648,46 +648,30 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        maybeSubmitCallerForCompilation();
+        maybeSubmitCallerForCompilation(this, rootNode.getParentFrameDescriptor());
         return compile(true);
     }
 
-    private void maybeSubmitCallerForCompilation() {
-        if (!PolyglotCompilerOptions.PropagateHotnessToSingleCaller.getValue(getOptionValues())) {
-            return;
-        }
-        FrameDescriptor parentFrameDescriptor = rootNode.getParentFrameDescriptor();
-        if (parentFrameDescriptor == null) {
-            return;
-        }
-        maybeSubmitCallerForCompilation(this, parentFrameDescriptor);
-    }
     private static boolean maybeSubmitCallerForCompilation(OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor) {
-        if (current.singleCallNode == NO_CALL || current.singleCallNode == MULTIPLE_CALLS) {
+        if (!PolyglotCompilerOptions.SubmitLexicalSingleCaller.getValue(current.getOptionValues()) ||
+                        parentFrameDescriptor == null ||
+                        current.singleCallNode == NO_CALL ||
+                        current.singleCallNode == MULTIPLE_CALLS) {
             return false;
         }
-        OptimizedDirectCallNode optimizedDirectCallNode = current.singleCallNode.get();
-        assert optimizedDirectCallNode != null;
-        RootNode callerRootNode = optimizedDirectCallNode.getRootNode();
+        OptimizedDirectCallNode callerCallNode = current.singleCallNode.get();
+        assert callerCallNode != null;
+        RootNode callerRootNode = callerCallNode.getRootNode();
         if (callerRootNode == null) {
             return false;
         }
-        OptimizedCallTarget onlyCaller = (OptimizedCallTarget) callerRootNode.getCallTarget();
-        boolean submitted;
-        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor)) {
-            onlyCaller.forceCompileSomehow();
-            submitted = true;
-        } else {
-            submitted =  maybeSubmitCallerForCompilation(onlyCaller, parentFrameDescriptor);
+        OptimizedCallTarget callerCallTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
+        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || maybeSubmitCallerForCompilation(callerCallTarget, parentFrameDescriptor)) {
+            callerCallNode.forceInlining();
+            callerCallTarget.lastTierCompile();
+            return true;
         }
-        if (submitted) {
-            optimizedDirectCallNode.forceInlining();
-        }
-        return submitted;
-    }
-
-    private void forceCompileSomehow() {
-        // TODO: Implement
+        return false;
     }
 
     private Object executeRootNode(VirtualFrame frame, CompilationState tier) {
