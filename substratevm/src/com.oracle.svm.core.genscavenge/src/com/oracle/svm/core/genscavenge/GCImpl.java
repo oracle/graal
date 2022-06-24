@@ -1156,44 +1156,8 @@ public final class GCImpl implements GC {
 //            result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             assert originalSpace.isFromSpace();
             Space toSpace = heap.getOldGeneration().getToSpace();
-//            result = toSpace.promoteAlignedObject(original, originalSpace);
-            assert ObjectHeaderImpl.isAlignedObject(original);
-            assert toSpace != originalSpace && originalSpace.isFromSpace();
-//            result = toSpace.copyAlignedObject(original);
-            assert VMOperation.isGCInProgress();
-            assert ObjectHeaderImpl.isAlignedObject(original);
-
-            UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
-            if (size.belowOrEqual(0)) {
-                trace.string("PP warn obj ").zhex(originalPtr)
-                        .string(" size ").signed(size)
-//                .string(", ref ").zhex(objRef)
-                        .newline();
-            }
-
-            Pointer copyPtr = toSpace.allocateMemory(size);
-            if (probability(VERY_SLOW_PATH_PROBABILITY, copyPtr.isNull())) {
-                copy = null;
-            } else {
-                /*
-                 * This does a direct memory copy, without regard to whether the copied data contains object
-                 * references. That's okay, because all references in the copy are visited and overwritten
-                 * later on anyways (the card table is also updated at that point if necessary).
-                 */
-                UnmanagedMemoryUtil.copyLongsForward(originalPtr, copyPtr, size);
-                copy = copyPtr.toObject();
-                assert copy != null : "promotion failure in old generation must have been handled";
-
-                if (toSpace.isOldSpace()) {
-                    // If the object was promoted to the old gen, we need to take care of the remembered
-                    // set bit and the first object table (even when promoting from old to old).
-                    AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
-                    RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
-                }
-            }
-            if (copy != null) {
-                copy = ObjectHeaderImpl.installForwardingPointer(original, copy);
-            }
+            copy = toSpace.promoteAlignedObject(original, originalSpace);
+            assert copy != null : "promotion failure in old generation must have been handled";
         }
         /// from visitor code
         if (copy != original) {
