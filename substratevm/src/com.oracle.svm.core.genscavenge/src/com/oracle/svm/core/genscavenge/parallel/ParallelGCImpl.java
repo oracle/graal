@@ -19,8 +19,8 @@ public class ParallelGCImpl extends ParallelGC {
     public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
     public static final TaskQueue.Consumer PROMOTE_TASK =
-            (Pointer originalPtr, Pointer objRef, boolean compressed, Object holderObject) -> {
-                GCImpl.getGCImpl().doPromoteParallel(originalPtr, objRef, 0, compressed, holderObject);
+            (Pointer objRef, int innerOffset, boolean compressed, Object holderObject) -> {
+                GCImpl.getGCImpl().doPromoteParallel(objRef, innerOffset, compressed, holderObject);
             };
 
     private static boolean enabled;

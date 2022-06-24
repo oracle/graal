@@ -8,7 +8,8 @@ public class TaskQueue {
     private final VMMutex mutex;
     private final VMCondition cond;
     private Object holderObject;
-    private Pointer original, objRef;
+    private Pointer objRef;
+    private int innerOffset;
     private boolean compressed;
     private boolean empty;
     private volatile int idleCount;
@@ -33,13 +34,13 @@ public class TaskQueue {
 //        }
 //    }
 
-    public void put(Pointer original, Pointer objRef, boolean compressed, Object holderObject) {
+    public void put(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         try {
             mutex.lock();
             while (!empty) {
                 cond.block();
             }
-            this.original = original;
+            this.innerOffset = innerOffset;
             this.objRef = objRef;
             this.compressed = compressed;
             this.holderObject = holderObject;
@@ -53,6 +54,7 @@ public class TaskQueue {
     public void consume(Consumer consumer) {
         Object owner;
         Pointer orig, ref;
+        int offset;
         boolean comp;
         try {
             mutex.lock();
@@ -60,8 +62,8 @@ public class TaskQueue {
             while (empty) {
                 cond.block();
             }
-            orig = this.original;
             ref = this.objRef;
+            offset = this.innerOffset;
             comp = this.compressed;
             owner = this.holderObject;
         } finally {
@@ -70,7 +72,7 @@ public class TaskQueue {
             mutex.unlock();
             cond.broadcast();
         }
-        consumer.accept(orig, ref, comp, owner);
+        consumer.accept(ref, offset, comp, owner);
     }
 
     public void waitUntilIdle(int expectedIdleCount) {
@@ -86,6 +88,6 @@ public class TaskQueue {
     }
 
     public interface Consumer {
-        void accept(Pointer originalPtr, Pointer objRef, boolean compressed, Object holderObject);
+        void accept(Pointer objRef, int innerOffset, boolean compressed, Object holderObject);
     }
 }

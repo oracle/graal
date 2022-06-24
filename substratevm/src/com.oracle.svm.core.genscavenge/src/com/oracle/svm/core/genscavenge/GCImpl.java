@@ -1104,30 +1104,55 @@ public final class GCImpl implements GC {
         return result;
     }
 
-    @AlwaysInline("GC performance")
-    @SuppressWarnings("static-method")
-    boolean promoteParallel(Object original, UnsignedWord header, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        /// from promObj
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
-        Header<?> originalChunk = getChunk(original, isAligned);
-        Space originalSpace = HeapChunk.getSpace(originalChunk);
-        if (originalSpace == null) {
-            Log.log().string("PP warn space is null for object ").zhex(Word.objectToUntrackedPointer(original))
-                    .string(" in chunk ").zhex(originalChunk).newline();
-        }
-        if (!originalSpace.isFromSpace() || !isAligned || innerOffset != 0 || !ParallelGCImpl.isEnabled()) {
-            return false;
+    public void doPromoteParallel(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        Log trace = Log.log();
+
+        /// from visitor code
+        assert innerOffset >= 0;
+        assert !objRef.isNull();
+//        counters.noteObjRef();
+
+        Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+        assert offsetP.isNonNull() || innerOffset == 0;
+
+        Pointer originalPtr = offsetP.subtract(innerOffset);
+        if (originalPtr.isNull()) {
+//            counters.noteNullReferent();
+            return;
         }
 
-        Object result = null;
-        if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
-            result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
-            if (result == null) {
-                accounting.onSurvivorOverflowed();
-            }
+        if (HeapImpl.getHeapImpl().isInImageHeap(originalPtr)) {
+//            counters.noteNonHeapReferent();
+            return;
         }
-        if (result == null) { // complete collection, tenuring age reached, or survivor space full
+
+        // This is the most expensive check as it accesses the heap fairly randomly, which results
+        // in a lot of cache misses.
+        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(originalPtr);
+        boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
+
+        /// temp assertions
+        assert completeCollection;
+        assert innerOffset == 0;
+        assert isAligned;
+
+        Object original = originalPtr.toObject();
+        Object copy;
+        if (ObjectHeaderImpl.isForwardedHeader(header)) {
+//            counters.noteForwardedReferent();
+            copy = ObjectHeaderImpl.getForwardedObject(originalPtr, header);
+        } else {
+            assert innerOffset < LayoutEncoding.getSizeFromObject(original).rawValue();
+
+            /// from promObj
+            HeapImpl heap = HeapImpl.getHeapImpl();
+            Header<?> originalChunk = getChunk(original, isAligned);
+            Space originalSpace = HeapChunk.getSpace(originalChunk);
+            if (originalSpace == null) {
+                Log.log().string("PP warn space is null for object ").zhex(Word.objectToUntrackedPointer(original))
+                        .string(" in chunk ").zhex(originalChunk).newline();
+            }
+
 //            result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             assert originalSpace.isFromSpace();
             Space toSpace = heap.getOldGeneration().getToSpace();
@@ -1138,39 +1163,6 @@ public final class GCImpl implements GC {
             assert VMOperation.isGCInProgress();
             assert ObjectHeaderImpl.isAlignedObject(original);
 
-            Pointer originalMemory = Word.objectToUntrackedPointer(original);
-            ParallelGCImpl.QUEUE.put(originalMemory, objRef, compressed, holderObject);
-            if (ParallelGCImpl.WORKERS_COUNT <= 0) {
-                ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
-            }
-            return true;
-        }
-
-        /// from visitor code
-        if (result != original) {
-            // ... update the reference to point to the copy, making the reference black.
-            Object offsetCopy = (innerOffset == 0) ? result : Word.objectToUntrackedPointer(result).add(innerOffset).toObject();
-            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
-//            counters.noteCopiedReferent();
-        } else {
-            Log.log().string("PP unmod ref").newline();///
-//            counters.noteUnmodifiedReference();
-        }
-        // The reference will not be updated if a whole chunk is promoted. However, we still
-        // might have to dirty the card.
-        RememberedSet.get().dirtyCardIfNecessary(holderObject, result);
-        return true;
-    }
-
-    public void doPromoteParallel(Pointer originalPtr, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        Log trace = Log.log();
-        Object original = originalPtr.toObject();
-        Object copy;
-        if (ObjectHeaderImpl.isPointerToForwardedObject(originalPtr)) {
-            copy = ObjectHeaderImpl.getForwardedObject(originalPtr);
-        } else {
-            HeapImpl heap = HeapImpl.getHeapImpl();
-            Space toSpace = heap.getOldGeneration().getToSpace();
             UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
             if (size.belowOrEqual(0)) {
                 trace.string("PP warn obj ").zhex(originalPtr)
@@ -1199,9 +1191,9 @@ public final class GCImpl implements GC {
                     RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
                 }
             }
-        }
-        if (copy != null) {
-            copy = ObjectHeaderImpl.installForwardingPointer(original, copy);
+            if (copy != null) {
+                copy = ObjectHeaderImpl.installForwardingPointer(original, copy);
+            }
         }
         /// from visitor code
         if (copy != original) {

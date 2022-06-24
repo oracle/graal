@@ -70,6 +70,14 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     @Override
     @NeverInline("GC performance")
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        if (ParallelGCImpl.isEnabled()) {
+            ParallelGCImpl.QUEUE.put(objRef, innerOffset, compressed, holderObject);
+            if (ParallelGCImpl.WORKERS_COUNT <= 0) {
+                ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+            }
+            return true;
+        }
+
         assert innerOffset >= 0;
         assert !objRef.isNull();
         counters.noteObjRef();
@@ -106,22 +114,19 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
             assert innerOffset < LayoutEncoding.getSizeFromObject(obj).rawValue();
-            boolean scheduled = GCImpl.getGCImpl().promoteParallel(obj, header, objRef, innerOffset, compressed, holderObject);
-            if (!scheduled) {
-                Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
-                if (copy != obj) {
-                    // ... update the reference to point to the copy, making the reference black.
-                    counters.noteCopiedReferent();
-                    Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-                    ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
-                } else {
-                    counters.noteUnmodifiedReference();
-                }
-
-                // The reference will not be updated if a whole chunk is promoted. However, we still
-                // might have to dirty the card.
-                RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
+            Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
+            if (copy != obj) {
+                // ... update the reference to point to the copy, making the reference black.
+                counters.noteCopiedReferent();
+                Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
+                ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+            } else {
+                counters.noteUnmodifiedReference();
             }
+
+            // The reference will not be updated if a whole chunk is promoted. However, we still
+            // might have to dirty the card.
+            RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
         }
         return true;
     }
