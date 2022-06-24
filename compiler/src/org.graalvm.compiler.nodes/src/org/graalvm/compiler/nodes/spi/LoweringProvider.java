@@ -24,9 +24,11 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.RoundNode;
+import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -93,4 +95,16 @@ public interface LoweringProvider {
      * this case is the dividend.
      */
     boolean divisionOverflowIsJVMSCompliant();
+
+    /**
+     * Indicates whether this target platform supports uses
+     * {@link org.graalvm.compiler.lir.CastValue} for narrows.
+     */
+    boolean narrowsUseCastValue();
+
+    /**
+     * Indicates whether this target platform can fold an {@code extendKind} into a given
+     * {@link ExtendableMemoryAccess}.
+     */
+    boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind);
 }

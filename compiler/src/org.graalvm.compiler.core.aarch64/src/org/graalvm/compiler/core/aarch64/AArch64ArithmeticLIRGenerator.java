@@ -38,6 +38,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
@@ -114,19 +115,6 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             assert !setFlags : "Cannot set flags on floating point arithmetic";
             return emitBinary(resultKind, AArch64ArithmeticOp.FSUB, false, a, b);
         }
-    }
-
-    public Value emitExtendMemory(boolean isSigned, AArch64Kind accessKind, int resultBits, AArch64AddressValue address, LIRFrameState state) {
-        /*
-         * Issue an extending load of the proper bit size and set the result to the proper kind.
-         */
-        GraalError.guarantee(accessKind.isInteger(), "can only extend integer kinds");
-        AArch64Kind resultKind = resultBits <= 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD;
-        Variable result = getLIRGen().newVariable(LIRKind.value(resultKind));
-
-        AArch64Move.ExtendKind extend = isSigned ? AArch64Move.ExtendKind.SIGN_EXTEND : AArch64Move.ExtendKind.ZERO_EXTEND;
-        getLIRGen().append(new AArch64Move.LoadOp(accessKind, resultKind.getSizeInBytes() * Byte.SIZE, extend, result, address, state));
-        return result;
     }
 
     @Override
@@ -586,26 +574,40 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitLoad(LIRKind lirKind, Value address, LIRFrameState state) {
-        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
-        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
-        AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
-        getLIRGen().append(new LoadOp(kind, result, loadAddress, state));
+    public Variable emitLoad(LIRKind loadKind, Value address, LIRFrameState state, MemoryExtendKind extendKind) {
+        AArch64Kind readKind = (AArch64Kind) loadKind.getPlatformKind();
+        Variable result;
+        if (extendKind.isNotExtended()) {
+            result = getLIRGen().newVariable(getLIRGen().toRegisterKind(loadKind));
+        } else {
+            assert loadKind.isValue();
+            AArch64Kind resultKind = extendKind.getExtendedBitSize() / Byte.SIZE > AArch64Kind.DWORD.getSizeInBytes() ? AArch64Kind.QWORD : AArch64Kind.DWORD;
+            result = getLIRGen().newVariable(LIRKind.value(resultKind));
+        }
+        AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, readKind.getSizeInBytes() * Byte.SIZE);
+        getLIRGen().append(new LoadOp(readKind, extendKind, result, loadAddress, state));
         return result;
     }
 
     @Override
-    public Variable emitOrderedLoad(LIRKind lirKind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder) {
+    public Variable emitOrderedLoad(LIRKind loadKind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
         switch (memoryOrder) {
             case OPAQUE:
                 // no fences are needed for opaque memory accesses
-                return emitLoad(lirKind, address, state);
+                return emitLoad(loadKind, address, state, extendKind);
             case ACQUIRE:
             case VOLATILE:
-                AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
-                Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
-                AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
-                getLIRGen().append(new AArch64Move.LoadAcquireOp(kind, result, loadAddress, state));
+                AArch64Kind readKind = (AArch64Kind) loadKind.getPlatformKind();
+                Variable result;
+                if (extendKind.isNotExtended()) {
+                    result = getLIRGen().newVariable(getLIRGen().toRegisterKind(loadKind));
+                } else {
+                    assert loadKind.isValue();
+                    AArch64Kind resultKind = extendKind.getExtendedBitSize() / Byte.SIZE > AArch64Kind.DWORD.getSizeInBytes() ? AArch64Kind.QWORD : AArch64Kind.DWORD;
+                    result = getLIRGen().newVariable(LIRKind.value(resultKind));
+                }
+                AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, readKind.getSizeInBytes() * Byte.SIZE);
+                getLIRGen().append(new AArch64Move.LoadAcquireOp(readKind, extendKind, result, loadAddress, state));
                 return result;
             default:
                 throw GraalError.shouldNotReachHere("Unexpected memory order");
