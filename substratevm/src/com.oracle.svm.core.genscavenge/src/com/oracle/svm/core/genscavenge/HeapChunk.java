@@ -284,14 +284,20 @@ public final class HeapChunk {
     @NeverInline("GC performance")
     public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
         Pointer offset = startOffset;
-        while (offset.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
-            ParallelGCImpl.waitForIdle();
-            Object obj = offset.toObject();
-            if (!visitor.visitObjectInline(obj)) {
-                return false;
+        Pointer top = getTopPointer(that);
+        Pointer p;
+        do {
+            p = top;
+            while (offset.belowThan(top)) {
+                Object obj = offset.toObject();
+                if (!visitor.visitObjectInline(obj)) {
+                    return false;
+                }
+                offset = offset.add(LayoutEncoding.getSizeFromObjectInline(obj));
             }
-            offset = offset.add(LayoutEncoding.getSizeFromObjectInline(obj));
-        }
+            ParallelGCImpl.waitForIdle();
+            top = getTopPointer(that);
+        } while (top.aboveThan(p));
         return true;
     }
 
