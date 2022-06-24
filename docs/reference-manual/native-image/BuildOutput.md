@@ -190,6 +190,8 @@ Run `native-image --expert-options-all | grep "BuildOutput"` to see all build ou
 -H:±BuildOutputBreakdowns    Show code and heap breakdowns as part of the build output. Default: + (enabled).
 -H:±BuildOutputColorful      Colorize build output. Default: + (enabled).
 -H:±BuildOutputGCWarnings    Print GC warnings as part of build output. Default: + (enabled).
+-H:BuildOutputJSONFile=""    Print build output statistics as JSON to the specified file. The output is according to the JSON schema located at:
+                             docs/reference-manual/native-image/assets/build-output-schema-v1.json.
 -H:±BuildOutputLinks         Show links in build output. Default: + (enabled).
 -H:±BuildOutputPrefix        Prefix build output with '<pid>:<image name>'. Default: - (disabled).
 -H:±BuildOutputProgress      Report progress in build output. Default: + (enabled).
