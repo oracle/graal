@@ -1,5 +1,6 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
+import com.oracle.svm.core.genscavenge.GreyToBlackObjRefVisitor;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import org.graalvm.word.Pointer;
@@ -7,10 +8,11 @@ import org.graalvm.word.Pointer;
 public class TaskQueue {
     private final VMMutex mutex;
     private final VMCondition cond;
-    private Object holderObject;
+    private GreyToBlackObjRefVisitor visitor;
     private Pointer objRef;
     private int innerOffset;
     private boolean compressed;
+    private Object holderObject;
     private boolean empty;
     private volatile int idleCount;
 
@@ -34,14 +36,15 @@ public class TaskQueue {
 //        }
 //    }
 
-    public void put(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+    public void put(GreyToBlackObjRefVisitor visitor, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         try {
             mutex.lock();
             while (!empty) {
                 cond.block();
             }
-            this.innerOffset = innerOffset;
+            this.visitor = visitor;
             this.objRef = objRef;
+            this.innerOffset = innerOffset;
             this.compressed = compressed;
             this.holderObject = holderObject;
         } finally {
@@ -52,16 +55,18 @@ public class TaskQueue {
     }
 
     public void consume(Consumer consumer) {
-        Object owner;
-        Pointer orig, ref;
+        GreyToBlackObjRefVisitor v;
+        Pointer ref;
         int offset;
         boolean comp;
+        Object owner;
         try {
             mutex.lock();
             idleCount++;
             while (empty) {
                 cond.block();
             }
+            v = this.visitor;
             ref = this.objRef;
             offset = this.innerOffset;
             comp = this.compressed;
@@ -72,7 +77,7 @@ public class TaskQueue {
             mutex.unlock();
             cond.broadcast();
         }
-        consumer.accept(ref, offset, comp, owner);
+        consumer.accept(v, ref, offset, comp, owner);
     }
 
     public void waitUntilIdle(int expectedIdleCount) {
@@ -88,6 +93,6 @@ public class TaskQueue {
     }
 
     public interface Consumer {
-        void accept(Pointer objRef, int innerOffset, boolean compressed, Object holderObject);
+        void accept(GreyToBlackObjRefVisitor visitor, Pointer objRef, int innerOffset, boolean compressed, Object holderObject);
     }
 }

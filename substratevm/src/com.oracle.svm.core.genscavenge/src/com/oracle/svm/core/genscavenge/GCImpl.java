@@ -1104,62 +1104,6 @@ public final class GCImpl implements GC {
         return result;
     }
 
-    public void doPromoteParallel(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        Log trace = Log.log();
-
-        /// from visitor code
-        assert innerOffset >= 0;
-        assert !objRef.isNull();
-//        counters.noteObjRef();
-
-        Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-        assert offsetP.isNonNull() || innerOffset == 0;
-
-        Pointer originalPtr = offsetP.subtract(innerOffset);
-        if (originalPtr.isNull()) {
-//            counters.noteNullReferent();
-            return;
-        }
-
-        if (HeapImpl.getHeapImpl().isInImageHeap(originalPtr)) {
-//            counters.noteNonHeapReferent();
-            return;
-        }
-
-        // This is the most expensive check as it accesses the heap fairly randomly, which results
-        // in a lot of cache misses.
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(originalPtr);
-        boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
-
-        /// temp assertions
-        assert completeCollection;
-        assert innerOffset == 0;
-        assert isAligned;
-
-        Object original = originalPtr.toObject();
-        Object copy;
-        if (ObjectHeaderImpl.isForwardedHeader(header)) {
-//            counters.noteForwardedReferent();
-            copy = ObjectHeaderImpl.getForwardedObject(originalPtr, header);
-        } else {
-            assert innerOffset < LayoutEncoding.getSizeFromObject(original).rawValue();
-            copy = promoteObject(original, header);
-        }
-        /// from visitor code
-        if (copy != original) {
-            // ... update the reference to point to the copy, making the reference black.
-            Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
-//            counters.noteCopiedReferent();
-        } else {
-            trace.string("PP unmod ref").newline();///
-//            counters.noteUnmodifiedReference();
-        }
-        // The reference will not be updated if a whole chunk is promoted. However, we still
-        // might have to dirty the card.
-        RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
-    }
-
     private static Header<?> getChunk(Object obj, boolean isAligned) {
         if (isAligned) {
             return AlignedHeapChunk.getEnclosingChunk(obj);

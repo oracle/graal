@@ -2,6 +2,7 @@ package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.genscavenge.GCImpl;
+import com.oracle.svm.core.genscavenge.GreyToBlackObjRefVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
@@ -18,10 +19,7 @@ public class ParallelGCImpl extends ParallelGC {
     public static final int WORKERS_COUNT = 4;
     public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
-    public static final TaskQueue.Consumer PROMOTE_TASK =
-            (Pointer objRef, int innerOffset, boolean compressed, Object holderObject) -> {
-                GCImpl.getGCImpl().doPromoteParallel(objRef, innerOffset, compressed, holderObject);
-            };
+    public static final TaskQueue.Consumer PROMOTE_TASK = GreyToBlackObjRefVisitor::doVisitObjectReference;
 
     private static boolean enabled;
 

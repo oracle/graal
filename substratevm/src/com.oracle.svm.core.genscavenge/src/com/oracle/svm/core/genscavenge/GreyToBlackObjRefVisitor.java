@@ -50,7 +50,7 @@ import com.oracle.svm.core.log.Log;
  * Since this visitor is used during collection, one instance of it is constructed during native
  * image generation.
  */
-final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
+public final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     private final Counters counters;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -71,13 +71,24 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     @NeverInline("GC performance")
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         if (ParallelGCImpl.isEnabled()) {
-            ParallelGCImpl.QUEUE.put(objRef, innerOffset, compressed, holderObject);
+            /// temp assertions
+            Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+            assert ObjectHeaderImpl.isAlignedHeader(offsetP);
+            assert GCImpl.getGCImpl().isCompleteCollection();
+            assert innerOffset == 0;
+
+            ParallelGCImpl.QUEUE.put(this, objRef, innerOffset, compressed, holderObject);
             if (ParallelGCImpl.WORKERS_COUNT <= 0) {
                 ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
             }
             return true;
+        } else {
+            return doVisitObjectReference(objRef, innerOffset, compressed, holderObject);
         }
+    }
 
+    @NeverInline("GC performance")
+    public boolean doVisitObjectReference(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
         assert !objRef.isNull();
         counters.noteObjRef();
