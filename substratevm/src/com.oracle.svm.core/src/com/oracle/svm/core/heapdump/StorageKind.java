@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.heapdump;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.VMError;
 
-// Checkstyle: stop
+public class StorageKind {
+    public static final byte BOOLEAN = 'Z';
+    public static final byte BYTE = 'B';
+    public static final byte SHORT = 'S';
+    public static final byte CHAR = 'C';
+    public static final byte INT = 'I';
+    public static final byte FLOAT = 'F';
+    public static final byte LONG = 'J';
+    public static final byte DOUBLE = 'D';
+    public static final byte OBJECT = 'A';
 
-/**
- * Definitions manually translated from the C header file fcntl.h.
- */
-@CContext(PosixDirectives.class)
-public class Fcntl {
-
-    @CConstant
-    public static native int O_RDONLY();
-
-    @CConstant
-    public static native int O_RDWR();
-
-    @CConstant
-    public static native int O_WRONLY();
-
-    @CConstant
-    public static native int O_CREAT();
-
-    @CConstant
-    public static native int O_TRUNC();
-
-    @CConstant
-    public static native int O_EXCL();
-
-    public static class NoTransitions {
-        @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
-        public static native int open(CCharPointer pathname, int flags, int mode);
+    public static int getSize(byte storageKind) {
+        return switch (storageKind) {
+            case StorageKind.BOOLEAN, StorageKind.BYTE -> 1;
+            case StorageKind.CHAR, StorageKind.SHORT -> 2;
+            case StorageKind.INT, StorageKind.FLOAT -> 4;
+            case StorageKind.OBJECT -> ConfigurationValues.getTarget().wordSize;
+            case StorageKind.LONG, StorageKind.DOUBLE -> 8;
+            default -> throw VMError.shouldNotReachHere("Unexpected storage kind.");
+        };
     }
 }

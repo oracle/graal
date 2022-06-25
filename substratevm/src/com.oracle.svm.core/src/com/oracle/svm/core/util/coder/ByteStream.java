@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.util.coder;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 
-// Checkstyle: stop
+@RawStructure
+public interface ByteStream extends PointerBase {
+    @RawField
+    Pointer getPosition();
 
-/**
- * Definitions manually translated from the C header file fcntl.h.
- */
-@CContext(PosixDirectives.class)
-public class Fcntl {
-
-    @CConstant
-    public static native int O_RDONLY();
-
-    @CConstant
-    public static native int O_RDWR();
-
-    @CConstant
-    public static native int O_WRONLY();
-
-    @CConstant
-    public static native int O_CREAT();
-
-    @CConstant
-    public static native int O_TRUNC();
-
-    @CConstant
-    public static native int O_EXCL();
-
-    public static class NoTransitions {
-        @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
-        public static native int open(CCharPointer pathname, int flags, int mode);
-    }
+    @RawField
+    void setPosition(Pointer value);
 }

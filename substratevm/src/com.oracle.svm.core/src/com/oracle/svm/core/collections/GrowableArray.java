@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heapdump;
+package com.oracle.svm.core.collections;
 
-import java.io.IOException;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.PointerBase;
 
 /**
- * Simple interface for writing heap dump to arbitrary data source.
- *
+ * Growable array with word-sized elements. The Word[] is allocated on the C heap.
  */
-public interface AllocationFreeOutputStream {
+@RawStructure
+public interface GrowableArray extends PointerBase {
+    @RawField
+    int getSize();
 
-    void write(int b) throws IOException;
+    @RawField
+    void setSize(int value);
 
-    void write(byte[] b, int offset, int length) throws IOException;
+    @RawField
+    int getCapacity();
 
-    /**
-     * close method is called outside of critical section and can allocate objects.
-     *
-     * @throws IOException
-     */
-    void close() throws IOException;
+    @RawField
+    void setCapacity(int value);
 
-    void flush() throws IOException;
+    @RawField
+    WordPointer getData();
 
+    @RawField
+    void setData(WordPointer value);
 }

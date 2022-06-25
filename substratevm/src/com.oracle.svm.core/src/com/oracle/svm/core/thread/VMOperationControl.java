@@ -276,6 +276,7 @@ public final class VMOperationControl {
     }
 
     void enqueue(NativeVMOperationData data) {
+        assert data.getNativeVMOperation() != null;
         enqueue(data.getNativeVMOperation(), data);
     }
 

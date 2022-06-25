@@ -768,8 +768,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native boolean isOpenToCaller(String resourceName, Class<?> caller);
 
-    @KeepOriginal
-    private native ClassLoader getClassLoader();
+    @Substitute
+    public ClassLoader getClassLoader() {
+        return classLoader;
+    }
 
     @KeepOriginal
     private native ClassLoader getClassLoader0();

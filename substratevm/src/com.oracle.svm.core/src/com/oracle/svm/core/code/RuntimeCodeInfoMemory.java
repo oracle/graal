@@ -201,7 +201,7 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
-    public boolean walkRuntimeMethodsDuringGC(CodeInfoVisitor visitor) {
+    public void walkRuntimeMethodsDuringGC(CodeInfoVisitor visitor) {
         assert VMOperation.isGCInProgress() : "otherwise, we would need to make sure that the CodeInfo is not freeded by the GC";
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
@@ -221,22 +221,30 @@ public class RuntimeCodeInfoMemory {
                 }
             }
         }
-        return true;
     }
 
-    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    public boolean walkRuntimeMethodsUninterruptibly(CodeInfoVisitor visitor) {
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
+    public void walkRuntimeMethods(CodeInfoVisitor visitor) {
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
-            for (int i = 0; i < length;) {
+            for (int i = 0; i < length; i++) {
                 UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
                 if (info.isNonNull()) {
-                    visitor.visitCode(CodeInfoAccess.convert(info));
+                    Object tether = CodeInfoAccess.acquireTether(info);
+                    try {
+                        callVisitor(visitor, info, tether);
+                    } finally {
+                        CodeInfoAccess.releaseTether(info, tether);
+                    }
+                    assert info == NonmovableArrays.getWord(table, i);
                 }
-                assert info == NonmovableArrays.getWord(table, i);
             }
         }
-        return true;
+    }
+
+    @Uninterruptible(reason = "Call the visitor, which may execute interruptible code.", calleeMustBe = false)
+    private static void callVisitor(CodeInfoVisitor visitor, UntetheredCodeInfo info, Object tether) {
+        visitor.visitCode(CodeInfoAccess.convert(info, tether));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

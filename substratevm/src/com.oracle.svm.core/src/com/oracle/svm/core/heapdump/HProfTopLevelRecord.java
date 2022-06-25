@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,32 @@
  */
 package com.oracle.svm.core.heapdump;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
+import org.graalvm.compiler.core.common.NumUtil;
 
-import com.oracle.svm.core.util.VMError;
+/** See hprofTag in HotSpot. */
+public enum HProfTopLevelRecord {
+    UTF8(0x01),
+    LOAD_CLASS(0x02),
+    UNLOAD_CLASS(0x03),
+    FRAME(0x04),
+    TRACE(0x05),
+    ALLOC_SITES(0x06),
+    HEAP_SUMMARY(0x07),
+    START_THREAD(0x0A),
+    END_THREAD(0x0B),
+    HEAP_DUMP(0x0C),
+    CPU_SAMPLES(0x0D),
+    CONTROL_SETTINGS(0x0E),
+    HEAP_DUMP_SEGMENT(0x1C),
+    HEAP_DUMP_END(0x2C);
 
-public final class UnimplementedHeapDumpWriter extends HeapDumpWriter {
-    private final String message;
+    private final byte value;
 
-    public UnimplementedHeapDumpWriter(String message) {
-        this.message = message;
+    HProfTopLevelRecord(int value) {
+        this.value = NumUtil.safeToUByte(value);
     }
 
-    @Override
-    public void writeHeapTo(FileOutputStream fileOutputStream, boolean gcBefore) throws IOException {
-        throw VMError.unimplemented(message);
-    }
-
-    @Override
-    public void writeHeapTo(AllocationFreeOutputStream fileOutputStream, boolean gcBefore) throws IOException {
-        throw VMError.unimplemented(message);
+    public byte getValue() {
+        return value;
     }
 }

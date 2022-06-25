@@ -31,13 +31,12 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
-import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
  * Cleans the code cache and frees the unmanaged memory that is used by {@link CodeInfo} objects.
@@ -62,7 +61,7 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     }
 
     @Override
-    public <T extends CodeInfo> boolean visitCode(T codeInfo) {
+    public boolean visitCode(CodeInfo codeInfo) {
         if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
             return true;
         }
