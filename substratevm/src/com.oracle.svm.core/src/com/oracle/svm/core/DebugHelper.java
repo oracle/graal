@@ -24,21 +24,11 @@
  */
 package com.oracle.svm.core;
 
-import java.util.function.BooleanSupplier;
-
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.Heap;
@@ -48,7 +38,32 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaStackFrameVisitor;
+import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.Utf8;
+import jdk.internal.misc.Unsafe;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 /**
  * All {@link CEntryPoint} methods in here can be directly called from a debugger.
@@ -281,6 +296,493 @@ public class DebugHelper {
             SubstrateDiagnostics.printLocationInfo(Log.log(), mem, true, true);
         }
     }
+    public static class IdeDebugHelper {
+        /**
+         * Convert instance of java.lang.String to utf8 c-string.
+         * @param thread
+         * @param ptr pointer to instance of java.lang.String
+         * @return c-string
+         */
+        @CEntryPoint(name = "svm_dbg_string_to_utf8", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static CCharPointer stringToUtf8(@SuppressWarnings("unused") IsolateThread thread, Pointer ptr) {
+            Object obj = (Object) ptr.toObject();
+            return CTypeConversion.toCString((String) obj).get();
+        }
+
+        /**
+         * Creates instance of java.lang.String from c-string.
+         * @param thread
+         * @param ptr c-string
+         * @return instance java.lang.String
+         */
+        @CEntryPoint(name = "svm_dbg_utf8_to_string", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static Object utf8ToString(@SuppressWarnings("unused") IsolateThread thread, CCharPointer ptr) {
+            return Utf8.utf8ToString(ptr);
+        }
+
+        /**
+         * Create instance of an array.
+         * @param thread
+         * @param signature signature of array type.
+         * @param length size of array
+         * @return pointer to the array.
+         */
+        @CEntryPoint(name = "svm_dbg_create_array", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static Object createArray(@SuppressWarnings("unused") IsolateThread thread, CCharPointer signature, int length) {
+            String strSignatura = Utf8.utf8ToString(signature);
+            Log
+                    .log()
+                    .string("signatura: " + strSignatura)
+                    .character('\n');
+            if (strSignatura.startsWith("[")) {
+                if (strSignatura.startsWith("[L") && strSignatura.endsWith(";")) {
+                    Log
+                            .log()
+                            .string("object array: " + strSignatura.substring(2, strSignatura.length() - 1))
+                            .character('\n');
+                    return new Object[length];
+                } else {
+                    char typeLetter = strSignatura.charAt(1);
+                    Log
+                            .log()
+                            .string("type: " + typeLetter)
+                            .character('\n');
+                    switch (typeLetter) {
+                        case 'Z':
+                            return new boolean[length];
+                        case 'B':
+                            return new byte[length];
+                        case 'C':
+                            return new char[length];
+                        case 'S':
+                            return new short[length];
+                        case 'I':
+                            return new int[length];
+                        case 'J':
+                            return new long[length];
+                        case 'F':
+                            return new float[length];
+                        case 'D':
+                            return new double[length];
+                        default:
+                            break;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Set array's element with index position.
+         * @param thread
+         * @param ptrArray pointer to array object.
+         * @param csignature type of array.
+         * @param index index of element.
+         * @param value value to assign.
+         */
+        @CEntryPoint(name = "svm_dbg_array_set", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static void arraySetValue(@SuppressWarnings("unused") IsolateThread thread,
+                                         Pointer ptrArray,
+                                         CCharPointer csignature,
+                                         int index,
+                                         Pointer value) {
+            Object obj = (Object) ptrArray.toObject();
+            String strSignatura = Utf8.utf8ToString(csignature);
+            Log
+                    .log()
+                    .string("signatura: " + strSignatura)
+                    .character('\n');
+            if (strSignatura.startsWith("[")) {
+                if (strSignatura.startsWith("[L") && strSignatura.endsWith(";")) {
+                    Log
+                            .log()
+                            .string("object array: " + strSignatura.substring(2, strSignatura.length() - 1))
+                            .character('\n');
+
+                    ((Object[]) obj)[index] = (Object) value.toObject();
+                } else {
+                    char typeLetter = strSignatura.charAt(1);
+                    Log
+                            .log()
+                            .string("type: " + typeLetter)
+                            .character('\n');
+                    switch (typeLetter) {
+                        case 'Z':
+                            ((boolean[]) obj)[index] = value.rawValue() != 0;
+                            return;
+                        case 'B':
+                            ((byte[]) obj)[index] = (byte) value.rawValue();
+                            return;
+                        case 'C':
+                            ((char[]) obj)[index] = (char) value.rawValue();
+                            return;
+                        case 'S':
+                            ((short[]) obj)[index] = (short) value.rawValue();
+                            return;
+                        case 'I':
+                            ((int[]) obj)[index] = (int) value.rawValue();
+                            return;
+                        case 'J':
+                            ((long[]) obj)[index] = value.rawValue();
+                            return;
+                        case 'F':
+                            ((float[]) obj)[index] = (float) value.rawValue();
+                            return;
+                        case 'D':
+                            ((double[]) obj)[index] = (double) value.rawValue();
+                            return;
+                        default:
+                            break;
+                    }
+                }
+            }
+        }
+
+        /**
+         * Returns index element of array.
+         * @param thread
+         * @param ptrArray pointer to array.
+         * @param csignature type of array
+         * @param index index of desired element.
+         * @return pointer to element.
+         */
+        @CEntryPoint(name = "svm_dbg_array_get", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static long arrayGetValue(@SuppressWarnings("unused") IsolateThread thread,
+                                         Pointer ptrArray,
+                                         CCharPointer csignature,
+                                         int index) {
+            Object obj = (Object) ptrArray.toObject();
+            String strSignatura = Utf8.utf8ToString(csignature);
+            Log
+                    .log()
+                    .string("signatura: " + strSignatura)
+                    .character('\n');
+            if (strSignatura.startsWith("[")) {
+                if (strSignatura.startsWith("[L") && strSignatura.endsWith(";")) {
+                    Log
+                            .log()
+                            .string("object array: " + strSignatura.substring(2, strSignatura.length() - 1))
+                            .character('\n');
+                    return Word.objectToUntrackedPointer(((Object[]) obj)[index]).rawValue();
+                } else {
+                    char typeLetter = strSignatura.charAt(1);
+                    Log
+                            .log()
+                            .string("type: " + typeLetter)
+                            .character('\n');
+                    switch (typeLetter) {
+                        case 'Z':
+                            return ((boolean[]) obj)[index] ? 1 : 0;
+                        case 'B':
+                            return ((byte[]) obj)[index];
+                        case 'C':
+                            return ((char[]) obj)[index];
+                        case 'S':
+                            return ((short[]) obj)[index];
+                        case 'I':
+                            return ((int[]) obj)[index];
+                        case 'J':
+                            return ((long[]) obj)[index];
+                        case 'F':
+                            return (long) ((float[]) obj)[index];
+                        case 'D':
+                            return (long) ((double[]) obj)[index];
+                        default:
+                            break;
+                    }
+                }
+            }
+            return 0;
+        }
+
+        /**
+         * Get classloader from the stack.
+         * @param thread
+         * @return pointer to instance classloader.
+         */
+        @NeverInline("make compiler happy")
+        @CEntryPoint(name = "svm_dbg_classloader", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static ClassLoader getClassloaderFromStack(@SuppressWarnings("unused") IsolateThread thread) {
+            Pointer sp = KnownIntrinsics.readStackPointer();
+            int frame[] = {0};
+            ClassLoader classLoaders[] = {null};
+            JavaStackWalker.walkCurrentThread(sp, new JavaStackFrameVisitor() {
+                @Override
+                public boolean visitFrame(FrameInfoQueryResult frameInfo) {
+
+                    Log.log()
+                            .string(": frame-").unsigned(++frame[0]).string(": ");
+                    Class clazz = frameInfo.getSourceClass();
+                    if (clazz != null) {
+                        Log.log().string("className: ").string(clazz.getName());
+                        classLoaders[0] = clazz.getClassLoader();
+                        Log.log().string(", classLoader: ")
+                                .string(classLoaders[0] != null ? classLoaders[0].getName() : "null");
+                    }
+                    Log.log().string(", location:")
+                            .string(frameInfo.getSourceMethodName())
+                            .string(" (")
+                            .string(frameInfo.getSourceFileName())
+                            .string(": ")
+                            .unsigned(frameInfo.getSourceLineNumber())
+                            .string(")")
+                            .newline();
+                    return false;
+                }
+            });
+
+            return classLoaders[0];
+        }
+
+        /**
+         * Returns loaded class by name for given classloader.
+         * @param thread
+         * @param ptrClassLoader classloader which loaded named class.
+         * @param cClassName name of desired class.
+         * @return pointer to class object.
+         */
+        @CEntryPoint(name = "svm_dbg_class_for_name", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static Object getClassForName(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClassLoader, CCharPointer cClassName) {
+            Object classLoader = (Object)ptrClassLoader.toObject();
+            Log.log().string("getClassForName: ").string(cClassName).newline();
+            String className = Utf8.utf8ToString(cClassName);
+            Optional<Class<?>> opt = Heap.getHeap().getLoadedClasses().stream().filter((it) -> {
+                return it.getName().equals(className);
+            }).findFirst();
+            return opt.orElse(null);
+        }
+
+        /**
+         * Allocates uninitialized instance of given class.
+         * @param thread
+         * @param ptrClass pointer to class.
+         * @return returns uninitialized instance.
+         */
+        @CEntryPoint(name = "svm_dbg_allocate_object", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static Object getAllocateObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+            Object classObject = (Object)ptrClass.toObject();
+            try {
+                return Unsafe.getUnsafe().allocateInstance((Class)classObject);
+            } catch (InstantiationException e) {
+                return null;
+            }
+        }
+
+        /**
+         * Pin object.
+         * @param thread
+         * @param ptrObj pointer to object to pin.
+         * @return "pin object" for given object, should be passed svm_dbg_unpin_object.
+         */
+        @CEntryPoint(name = "svm_dbg_pin_object", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static Object pinObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrObj) {
+            Object obj = (Object)ptrObj.toObject();
+            return PinnedObject.create(obj);
+        }
+
+        /**
+         * Unpin object.
+         * @param thread
+         * @param ptrObj "pin object" @see svm_dbg_pin_object
+         */
+        @CEntryPoint(name = "svm_dbg_unpin_object", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static void unPinObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrObj) {
+            PinnedObject obj = (PinnedObject)ptrObj.toObject();
+            obj.close();
+        }
+
+        /**
+         * Returns modifier for given class.
+         * @param thread
+         * @param ptrClass pointer to class.
+         * @return integer representation for class's modifier.
+         */
+        @CEntryPoint(name = "svm_dbg_class_modifier", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static int classGetModifier(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+            Class clazz = (Class)ptrClass.toObject();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            return hub.getModifiers();
+        }
+
+        /**
+         * Returns array of fields' descriptors.
+         * @param thread
+         * @param ptrClass pointer of class.
+         * @return array of fields descriptors in format name:modifier:type or name:modifier, depends on how much information
+         * Graal VM can provide.
+         */
+        @CEntryPoint(name = "svm_dbg_class_fields", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static String[] classGetFields(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+            Class clazz = (Class)ptrClass.toObject();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            Field[] fields = hub.getReachableFields();
+            String[] strings = new String[fields.length];
+            for (int i = 0; i < fields.length; ++i) {
+                StringBuilder builder = new StringBuilder();
+                builder.append(fields[i].getName())
+                        .append(':')
+                        .append(fields[i].getModifiers());
+                Class type = fields[i].getType();
+                Log.log().string(fields[i].getName()).character(':')
+                        .hex(fields[i].getModifiers())
+                        .character(':');
+                if (type != null) {
+                    builder.append(":").append(toSignature(type));
+                    Log.log().string(":").string(type.getTypeName());
+                }
+                Log.log().newline();
+                strings[i] = builder.toString();
+            }
+            return strings;
+        }
+
+        private static String toSignature(Class type) {
+            if(type.isArray()){
+                return "[" + toSignature(type.getComponentType());
+            }
+            if (type.isPrimitive()) {
+                if (type == boolean.class)
+                    return "Z";
+                if (type == byte.class)
+                    return "B";
+                if (type == char.class)
+                    return "C";
+                if (type == short.class)
+                    return "S";
+                if (type == int.class)
+                    return "I";
+                if (type == long.class)
+                    return "J";
+                if (type == float.class)
+                    return "F";
+                if (type == double.class)
+                    return "D";
+                if (type == void.class)
+                    return "V";
+            }
+            else
+                return "L" + type.getName() + ";";
+            return null;
+        }
+
+        /**
+         * Returns array of methods' descriptors.
+         * @param thread
+         * @param ptrClass pointer of class.
+         * @return array of fields descriptors in format name:modifier:signature or name:modifier, depends on how much information
+         * Graal VM can provide.
+         */
+        @CEntryPoint(name = "svm_dbg_class_methods", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static String[] classGetMethods(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+            Class clazz = (Class)ptrClass.toObject();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            Method[] methods = hub.getReachableMethods();
+            Constructor[] constructors = hub.getReachableConstructors();
+            String[] strings = new String[methods.length + constructors.length];
+            for (int i = 0; i < methods.length; ++i) {
+                strings[i] = createMethodEntry(
+                        methods[i].getName(),
+                        methods[i].getModifiers(),
+                        methods[i].getReturnType(),
+                        methods[i].getParameterTypes());
+            }
+            for (int i = 0; i < constructors.length; ++i) {
+                int index = methods.length + i;
+                strings[index] = createMethodEntry(
+                        "<init>",
+                        constructors[i].getModifiers(),
+                        void.class,
+                        constructors[i].getParameterTypes());
+            }
+            return strings;
+        }
+
+        /**
+         * Returns super class for given class.
+         * @param thread
+         * @param ptrClass pointer to class.
+         * @return pointer to super class.
+         */
+        @CEntryPoint(name = "svm_dbg_class_super", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static String classGetSuper(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+            Class clazz = (Class) ptrClass.toObject();
+            Log.log().string("svm_dbg_class_super:").string(clazz.getName()).newline();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            return hub.getSuperHub().getName();
+        }
+
+        /**
+         * Returns interfaces implemented by given class.
+         * @param thread
+         * @param ptrClass pointer to class.
+         * @return array of interfaces names.
+         */
+        @CEntryPoint(name = "svm_dbg_class_interfaces", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static String[] classGetInterfaces(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+            Class clazz = (Class) ptrClass.toObject();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            DynamicHub[] interfaces = hub.getInterfaces();
+            String[] strings = new String[interfaces.length];
+            for (int i = 0; i < interfaces.length; ++i) {
+                strings[i] = interfaces[i].getName();
+            }
+            return strings;
+        }
+
+        /**
+         * Returns pointers to java null.
+         * @param thread
+         * @return pointer to java null.
+         */
+        @CEntryPoint(name = "svm_dbg_null", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
+        public static Object getNull(@SuppressWarnings("unused") IsolateThread thread) {
+            return null;
+        }
+        private static String createMethodEntry(String name, int modifiers, Class returnType, Class[] parameters) {
+            StringBuilder builder = new StringBuilder();
+            builder.append(name)
+                    .append(':')
+                    .append(modifiers);
+            Log.log().string(name).character(':')
+                    .hex(modifiers);
+            if (returnType != null && parameters != null) {
+                String parameterSignature = Arrays.stream(parameters).map(c -> {
+                    return toSignature(c);
+                }).collect(Collectors.joining());
+                builder.append(":")
+                        .append('(')
+                        .append(parameterSignature)
+                        .append(')')
+                        .append(toSignature(returnType));
+                Log.log()
+                        .string(":")
+                        .character('(')
+                        .string(parameterSignature)
+                        .character(')')
+                        .string(toSignature(returnType));
+            }
+            Log.log().newline();
+            String s = builder.toString();
+            return s;
+        }
+    }
+
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getArrayElementSize(DynamicHub hub) {
