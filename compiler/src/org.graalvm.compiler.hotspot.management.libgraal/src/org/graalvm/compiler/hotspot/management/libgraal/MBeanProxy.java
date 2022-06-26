@@ -438,6 +438,15 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     /**
+     * Gets a pointer to a global word used as a flag to show a deprecated option warning only once
+     * even in case of multiple compiler isolates per process.
+     */
+    static Pointer getOptionWarningStatePointer() {
+        // Substituted by Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy
+        return WordFactory.nullPointer();
+    }
+
+    /**
      * Lifecycle state.
      */
     private enum State {
