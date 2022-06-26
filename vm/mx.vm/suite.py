@@ -118,7 +118,7 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
-                "VISUALVM_JFLUID_HEAP",
+                "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "requires": [
                 "java.logging",
@@ -189,14 +189,6 @@ suite = {
                 "version" : "RELEASE123",
             },
         },
-        "VISUALVM_JFLUID_HEAP" : {
-           "sha1" : "87d40d1d5cefabb1c3f67968f0a6b9980349c54d",
-            "maven" : {
-                "groupId" : "org.graalvm.visualvm.modules",
-                "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
-                "version" : "2.1.2",
-            },
-        },
     },
 
     "distributions": {
@@ -253,7 +245,7 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
-                 "VISUALVM_JFLUID_HEAP",
+                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "maven" : False,
         },
