@@ -48,7 +48,7 @@ import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp;
@@ -91,7 +91,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
     private final boolean findTwoConsecutive;
     private final boolean withMask;
     private final AMD64Kind vectorKind;
-    private final Scale arrayIndexScale;
+    private final Stride arrayIndexStride;
     private final int arrayBaseOffset;
     private final int constOffset;
 
@@ -122,7 +122,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                     Value searchValue3, Value searchValue4) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, AVXSize.YMM);
         this.valueKind = valueKind;
-        this.arrayIndexScale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind)));
+        this.arrayIndexStride = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind)));
         this.arrayBaseOffset = arrayBaseOffset;
         this.findTwoConsecutive = findTwoConsecutive;
         this.withMask = withMask;
@@ -230,7 +230,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         if (useConstantOffset()) {
             asm.leaq(arrayPtr, new AMD64Address(arrayPtr, constOffset + arrayBaseOffset));
         } else {
-            asm.leaq(arrayPtr, new AMD64Address(arrayPtr, asRegister(offsetReg), Scale.Times1, arrayBaseOffset));
+            asm.leaq(arrayPtr, new AMD64Address(arrayPtr, asRegister(offsetReg), Stride.S1, arrayBaseOffset));
         }
 
         // index = fromIndex + vectorLength (+1 if findTwoConsecutive)
@@ -321,7 +321,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // compare one-by-one
         asm.bind(elementWiseLoop);
         if (findTwoConsecutive) {
-            AMD64Address arrayAddr = new AMD64Address(arrayPtr, index, arrayIndexScale, -valueKind.getByteCount());
+            AMD64Address arrayAddr = new AMD64Address(arrayPtr, index, arrayIndexStride, -valueKind.getByteCount());
             if (withMask) {
                 movSZx(asm, getDoubleOpSize(valueKind), ZERO_EXTEND, cmpResult, arrayAddr);
                 asm.orq(cmpResult, asRegister(searchValue[1]));
@@ -332,7 +332,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         } else {
             // check for match
             // address = findTwoConsecutive ? array[index - 1] : array[index]
-            AMD64Address arrayAddr = new AMD64Address(arrayPtr, index, arrayIndexScale);
+            AMD64Address arrayAddr = new AMD64Address(arrayPtr, index, arrayIndexStride);
             boolean valuesOnStack = searchValuesOnStack(searchValue);
             if (withMask) {
                 assert !valuesOnStack;
@@ -623,7 +623,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
 
     @SuppressWarnings("fallthrough")
     private void emitArrayLoad(AMD64MacroAssembler asm, AVXSize targetVectorSize, Register vecDst, Register array, Register index, int displacement) {
-        AMD64Address src = new AMD64Address(array, index, arrayIndexScale, displacement);
+        AMD64Address src = new AMD64Address(array, index, arrayIndexStride, displacement);
         if (asm.supports(CPUFeature.AVX)) {
             switch (targetVectorSize) {
                 case DWORD:

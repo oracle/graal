@@ -28,10 +28,10 @@ import java.util.EnumSet;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -74,11 +74,11 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         return size == AVXSize.XMM || size == AVXSize.YMM || size == AVXSize.ZMM;
     }
 
-    public static AMD64Address.Scale min(AMD64Address.Scale a, AMD64Address.Scale b) {
+    public static Stride min(Stride a, Stride b) {
         return a.value < b.value ? a : b;
     }
 
-    public static AMD64Address.Scale max(AMD64Address.Scale a, AMD64Address.Scale b) {
+    public static Stride max(Stride a, Stride b) {
         return a.value > b.value ? a : b;
     }
 

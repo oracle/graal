@@ -37,7 +37,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -134,12 +134,12 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
             // vector count (in chars)
             masm.andlAndJcc(len, ~(64 - 1), ConditionFlag.Zero, labelTestTail, true);
 
-            masm.leaq(ary1, new AMD64Address(ary1, len, Scale.Times1));
+            masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
             masm.negq(len);
 
             masm.bind(labelTest64Loop);
             // Check whether our 64 elements of size byte contain negatives
-            masm.evpcmpgtb(mask1, vec2, new AMD64Address(ary1, len, Scale.Times1));
+            masm.evpcmpgtb(mask1, vec2, new AMD64Address(ary1, len, Stride.S1));
             masm.kortestq(mask1, mask1);
             masm.jcc(ConditionFlag.NotZero, labelTrue);
 
@@ -174,7 +174,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
                 // vector count (in bytes)
                 masm.andlAndJcc(len, 0xffffffe0, ConditionFlag.Zero, labelCompareTail, true);
 
-                masm.leaq(ary1, new AMD64Address(ary1, len, Scale.Times1));
+                masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
                 masm.negq(len);
 
                 masm.movl(tmp1, 0x80808080); // create mask to test for Unicode chars in vector
@@ -182,14 +182,14 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
                 masm.emit(VPBROADCASTD, vec2, vec2, YMM);
 
                 masm.bind(labelCompareWideVectors);
-                masm.vmovdqu(vec1, new AMD64Address(ary1, len, Scale.Times1));
+                masm.vmovdqu(vec1, new AMD64Address(ary1, len, Stride.S1));
                 masm.vptest(vec1, vec2);
                 masm.jcc(ConditionFlag.NotZero, labelTrue);
                 masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCompareWideVectors, false);
 
                 masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, false);
 
-                masm.vmovdqu(vec1, new AMD64Address(ary1, result, Scale.Times1, -32));
+                masm.vmovdqu(vec1, new AMD64Address(ary1, result, Stride.S1, -32));
                 masm.vptest(vec1, vec2);
                 masm.jccb(ConditionFlag.NotZero, labelTrue);
                 masm.jmp(labelFalse);
@@ -208,7 +208,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
                 // vector count (in bytes)
                 masm.andlAndJcc(len, 0xfffffff0, ConditionFlag.Zero, labelCompareTail, false);
 
-                masm.leaq(ary1, new AMD64Address(ary1, len, Scale.Times1));
+                masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
                 masm.negq(len);
 
                 masm.movl(tmp1, 0x80808080);
@@ -216,14 +216,14 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
                 masm.pshufd(vec2, vec2, 0);
 
                 masm.bind(labelCompareWideVectors);
-                masm.movdqu(vec1, new AMD64Address(ary1, len, Scale.Times1));
+                masm.movdqu(vec1, new AMD64Address(ary1, len, Stride.S1));
                 masm.ptest(vec1, vec2);
                 masm.jcc(ConditionFlag.NotZero, labelTrue);
                 masm.addqAndJcc(len, 16, ConditionFlag.NotZero, labelCompareWideVectors, false);
 
                 masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, false);
 
-                masm.movdqu(vec1, new AMD64Address(ary1, result, Scale.Times1, -16));
+                masm.movdqu(vec1, new AMD64Address(ary1, result, Stride.S1, -16));
                 masm.ptest(vec1, vec2);
                 masm.jccb(ConditionFlag.NotZero, labelTrue);
                 masm.jmp(labelFalse);
@@ -237,11 +237,11 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
         // vector count (in bytes)
         masm.andlAndJcc(len, 0xfffffffc, ConditionFlag.Zero, labelCompareChar, true);
 
-        masm.leaq(ary1, new AMD64Address(ary1, len, Scale.Times1));
+        masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
         masm.negq(len);
 
         masm.bind(labelCompareVectors);
-        masm.movl(tmp1, new AMD64Address(ary1, len, Scale.Times1));
+        masm.movl(tmp1, new AMD64Address(ary1, len, Stride.S1));
         masm.andlAndJcc(tmp1, 0x80808080, ConditionFlag.NotZero, labelTrue, true);
         masm.addqAndJcc(len, 4, ConditionFlag.NotZero, labelCompareVectors, false);
 

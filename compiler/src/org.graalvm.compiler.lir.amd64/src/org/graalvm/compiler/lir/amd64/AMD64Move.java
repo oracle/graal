@@ -43,7 +43,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
@@ -955,9 +955,9 @@ public class AMD64Move {
          */
         public static void emitUncompressWithBaseRegister(AMD64MacroAssembler masm, Register resultReg, Register baseReg, Register inputReg, int shift, boolean preserveFlagsRegister) {
             assert !baseReg.equals(Register.None) || shift != 0 : "compression not enabled";
-            if (Scale.isScaleShiftSupported(shift)) {
-                AMD64Address.Scale scale = AMD64Address.Scale.fromShift(shift);
-                masm.leaq(resultReg, new AMD64Address(baseReg, inputReg, scale));
+            if (AMD64Address.isScaleShiftSupported(shift)) {
+                Stride stride = Stride.fromShift(shift);
+                masm.leaq(resultReg, new AMD64Address(baseReg, inputReg, stride));
             } else {
                 if (preserveFlagsRegister) {
                     throw GraalError.shouldNotReachHere("No valid flag-effect-free instruction available to uncompress oop");

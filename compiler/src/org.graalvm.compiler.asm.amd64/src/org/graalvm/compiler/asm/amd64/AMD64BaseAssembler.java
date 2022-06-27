@@ -55,7 +55,7 @@ import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.debug.GraalError;
 
@@ -686,7 +686,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         Register base = addr.getBase();
         Register index = addr.getIndex();
 
-        Scale scale = addr.getScale();
+        Stride stride = addr.getScale();
         int disp = addr.getDisplacement();
         Object dispAnnotation = addr.getDisplacementAnnotation();
 
@@ -710,7 +710,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     // [00 reg 100][ss index base]
                     assert !index.equals(rsp) : "illegal addressing mode";
                     emitByte(0x04 | regenc);
-                    emitByte(scale.log2 << 6 | indexenc | baseenc);
+                    emitByte(stride.log2 << 6 | indexenc | baseenc);
                 } else {
                     if (evexDisp8Scale > 1 && !overriddenForce4Byte) {
                         if (disp % evexDisp8Scale == 0) {
@@ -728,7 +728,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                         // [01 reg 100][ss index base] imm8
                         assert !index.equals(rsp) : "illegal addressing mode";
                         emitByte(0x44 | regenc);
-                        emitByte(scale.log2 << 6 | indexenc | baseenc);
+                        emitByte(stride.log2 << 6 | indexenc | baseenc);
                         assert dispAnnotation == null;
                         emitByte(disp & 0xFF);
                     } else {
@@ -736,7 +736,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                         // [10 reg 100][ss index base] disp32
                         assert !index.equals(rsp) : "illegal addressing mode";
                         emitByte(0x84 | regenc);
-                        emitByte(scale.log2 << 6 | indexenc | baseenc);
+                        emitByte(stride.log2 << 6 | indexenc | baseenc);
                         emitDisplacementInt(disp, dispAnnotation);
                     }
                 }
@@ -814,7 +814,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                 // [00 reg 100][ss index 101] disp32
                 assert !index.equals(rsp) : "illegal addressing mode";
                 emitByte(0x04 | regenc);
-                emitByte(scale.log2 << 6 | indexenc | 0x05);
+                emitByte(stride.log2 << 6 | indexenc | 0x05);
                 emitDisplacementInt(disp, dispAnnotation);
             } else {
                 // [disp] ABSOLUTE
