@@ -573,7 +573,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (AMD64Address.isScaleShiftSupported(shift)) {
                 LIRKind wordKind = LIRKind.unknownReference(target().arch.getWordKind());
                 RegisterValue heapBase = getProviders().getRegisters().getHeapBaseRegister().asValue(wordKind);
-                Stride stride = Stride.fromShift(shift);
+                Stride stride = Stride.fromLog2(shift);
                 uncompressed = new AMD64AddressValue(wordKind, heapBase, asAllocatable(address), stride, 0);
             } else {
                 uncompressed = emitUncompress(address, encoding, false);

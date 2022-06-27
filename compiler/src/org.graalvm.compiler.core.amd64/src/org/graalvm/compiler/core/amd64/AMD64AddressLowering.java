@@ -96,7 +96,7 @@ public class AMD64AddressLowering extends AddressLowering {
                 int amount = ret.getScale().log2 + shift.getY().asJavaConstant().asInt();
                 if (AMD64Address.isScaleShiftSupported(amount)) {
                     ret.setIndex(shift.getX());
-                    ret.setScale(Stride.fromShift(amount));
+                    ret.setScale(Stride.fromLog2(amount));
                     return true;
                 }
             }

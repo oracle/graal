@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements.amd64;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.amd64.AVXKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
@@ -44,10 +45,10 @@ public final class AMD64ArrayEqualsForeignCalls {
 
     @SuppressWarnings("unchecked")
     public static ForeignCallDescriptor getArrayEqualsStub(ArrayEqualsNode arrayEqualsNode, LIRGenerator gen) {
-        JavaKind stride = arrayEqualsNode.getKind();
+        Stride stride = Stride.fromJavaKind(arrayEqualsNode.getKind());
         ValueNode length = arrayEqualsNode.getLength();
         if (length.isJavaConstant() && AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(),
-                        (EnumSet<AMD64.CPUFeature>) arrayEqualsNode.getRuntimeCheckedCPUFeatures(), stride, stride,
+                        (EnumSet<AMD64.CPUFeature>) arrayEqualsNode.getRuntimeCheckedCPUFeatures(), arrayEqualsNode.getKind(), stride, stride,
                         length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize(arrayEqualsNode.getRuntimeCheckedCPUFeatures()))) {
             // Yield constant-length arrays comparison assembly
             return null;
@@ -63,6 +64,7 @@ public final class AMD64ArrayEqualsForeignCalls {
         if (directStubCallIndex >= 0 && length.isJavaConstant() &&
                         AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(),
                                         (EnumSet<AMD64.CPUFeature>) regionEqualsNode.getRuntimeCheckedCPUFeatures(),
+                                        JavaKind.Byte,
                                         StrideUtil.getConstantStrideA(directStubCallIndex),
                                         StrideUtil.getConstantStrideB(directStubCallIndex),
                                         length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize(regionEqualsNode.getRuntimeCheckedCPUFeatures()))) {

@@ -956,7 +956,7 @@ public class AMD64Move {
         public static void emitUncompressWithBaseRegister(AMD64MacroAssembler masm, Register resultReg, Register baseReg, Register inputReg, int shift, boolean preserveFlagsRegister) {
             assert !baseReg.equals(Register.None) || shift != 0 : "compression not enabled";
             if (AMD64Address.isScaleShiftSupported(shift)) {
-                Stride stride = Stride.fromShift(shift);
+                Stride stride = Stride.fromLog2(shift);
                 masm.leaq(resultReg, new AMD64Address(baseReg, inputReg, stride));
             } else {
                 if (preserveFlagsRegister) {

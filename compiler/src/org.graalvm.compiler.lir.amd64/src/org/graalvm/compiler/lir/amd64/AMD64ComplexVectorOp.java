@@ -24,10 +24,11 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+
 import java.util.EnumSet;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -39,11 +40,10 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
-
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Base class for AMD64 LIR instruction using AVX CPU features.
@@ -72,14 +72,6 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
 
     private static boolean isXMMOrGreater(AVXSize size) {
         return size == AVXSize.XMM || size == AVXSize.YMM || size == AVXSize.ZMM;
-    }
-
-    public static Stride min(Stride a, Stride b) {
-        return a.value < b.value ? a : b;
-    }
-
-    public static Stride max(Stride a, Stride b) {
-        return a.value > b.value ? a : b;
     }
 
     protected AMD64Kind getVectorKind(JavaKind valueKind) {
@@ -140,8 +132,61 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         }
     }
 
+    protected AMD64Kind getVectorKind(Stride stride) {
+        switch (vectorSize) {
+            case XMM:
+                switch (stride) {
+                    case S1:
+                        return AMD64Kind.V128_BYTE;
+                    case S2:
+                        return AMD64Kind.V128_WORD;
+                    case S4:
+                        return AMD64Kind.V128_DWORD;
+                    case S8:
+                        return AMD64Kind.V128_QWORD;
+                    default:
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                }
+            case YMM:
+                switch (stride) {
+                    case S1:
+                        return AMD64Kind.V256_BYTE;
+                    case S2:
+                        return AMD64Kind.V256_WORD;
+                    case S4:
+                        return AMD64Kind.V256_DWORD;
+                    case S8:
+                        return AMD64Kind.V256_QWORD;
+                    default:
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                }
+            case ZMM:
+                switch (stride) {
+                    case S1:
+                        return AMD64Kind.V512_BYTE;
+                    case S2:
+                        return AMD64Kind.V512_WORD;
+                    case S4:
+                        return AMD64Kind.V512_DWORD;
+                    case S8:
+                        return AMD64Kind.V512_QWORD;
+                    default:
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                }
+            default:
+                throw GraalError.shouldNotReachHere("Unsupported vector size.");
+        }
+    }
+
     protected Value[] allocateVectorRegisters(LIRGeneratorTool tool, JavaKind valueKind, int n) {
-        LIRKind kind = LIRKind.value(getVectorKind(valueKind));
+        return allocateVectorRegisters(tool, LIRKind.value(getVectorKind(valueKind)), n);
+    }
+
+    protected Value[] allocateVectorRegisters(LIRGeneratorTool tool, Stride stride, int n) {
+        return allocateVectorRegisters(tool, LIRKind.value(getVectorKind(stride)), n);
+    }
+
+    protected Value[] allocateVectorRegisters(LIRGeneratorTool tool, LIRKind kind, int n) {
         Value[] vectors = new Value[n];
         for (int i = 0; i < vectors.length; i++) {
             vectors[i] = tool.newVariable(kind);

@@ -43,6 +43,7 @@ import java.util.function.BiFunction;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
@@ -329,6 +330,7 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(kind), b.getGraph());
                 helper.emitReturnIf(b.add(new ObjectEqualsNode(arg1, arg2)), b.add(ConstantNode.forBoolean(true)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
                 GuardingNode nonNullArg1guard = helper.emitReturnIf(IsNullNode.create(arg1), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
                 GuardingNode nonNullArg2guard = helper.emitReturnIf(IsNullNode.create(arg2), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
@@ -339,7 +341,7 @@ public class StandardGraphBuilderPlugins {
                 ValueNode nonNullArg2 = b.add(new PiNode(arg2, stamp2, nonNullArg2guard.asNode()));
                 ValueNode arg2Length = b.add(new ArrayLengthNode(nonNullArg2));
                 helper.emitReturnIfNot(IntegerEqualsNode.create(arg1Length, arg2Length, NodeView.DEFAULT), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
-                helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(nonNullArg1, nonNullArg2, arg1Length, kind)));
+                helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(nonNullArg1, arrayBaseOffset, nonNullArg2, arrayBaseOffset, arg1Length, kind)));
             }
             return true;
         }
@@ -360,6 +362,7 @@ public class StandardGraphBuilderPlugins {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 ConstantNode trueValue = ConstantNode.forBoolean(true);
                 ConstantNode falseValue = ConstantNode.forBoolean(false);
+                ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte), b.getGraph());
 
                 // if (this == other) return true
                 ValueNode thisString = receiver.get();
@@ -390,7 +393,7 @@ public class StandardGraphBuilderPlugins {
                 helper.emitReturnIf(IntegerEqualsNode.create(thisLength, ConstantNode.forInt(0), NodeView.DEFAULT), trueValue,
                                 BranchProbabilityNode.SLOW_PATH_PROBABILITY);
                 // compare the array bodies
-                helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(thisValue, thatValue,
+                helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(thisValue, arrayBaseOffset, thatValue, arrayBaseOffset,
                                 thisLength.isConstant() ? thisLength : thatLength, JavaKind.Byte)));
             }
             return true;
@@ -1996,7 +1999,7 @@ public class StandardGraphBuilderPlugins {
                 LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
                 // fromIndex = max(fromIndex, 0)
                 ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
-                helper.emitFinalReturn(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(JavaKind.Byte, JavaKind.Byte, nonNullValue, length, fromIndex, ch));
+                helper.emitFinalReturn(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, nonNullValue, length, fromIndex, ch));
             }
             return true;
         }

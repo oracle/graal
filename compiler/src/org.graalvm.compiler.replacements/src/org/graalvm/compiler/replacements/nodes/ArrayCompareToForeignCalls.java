@@ -24,11 +24,10 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.word.Pointer;
-
-import jdk.vm.ci.meta.JavaKind;
 
 public final class ArrayCompareToForeignCalls {
     private static final ForeignCallDescriptor STUB_BYTE_ARRAY_COMPARE_TO_BYTE_ARRAY = foreignCallDescriptor("byteArrayCompareToByteArray");
@@ -43,22 +42,22 @@ public final class ArrayCompareToForeignCalls {
                     STUB_CHAR_ARRAY_COMPARE_TO_CHAR_ARRAY};
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name) {
-        return ForeignCalls.pureFunctionForeignCallDescriptor(name, int.class, Pointer.class, Pointer.class, int.class, int.class);
+        return ForeignCalls.pureFunctionForeignCallDescriptor(name, int.class, Pointer.class, int.class, Pointer.class, int.class);
     }
 
     public static ForeignCallDescriptor getStub(ArrayCompareToNode arrayCompareToNode) {
-        JavaKind kind1 = arrayCompareToNode.getKind1();
-        JavaKind kind2 = arrayCompareToNode.getKind2();
-        if (kind1 == JavaKind.Byte) {
-            if (kind2 == JavaKind.Byte) {
+        Stride strideA = arrayCompareToNode.getStrideA();
+        Stride strideB = arrayCompareToNode.getStrideB();
+        if (strideA == Stride.S1) {
+            if (strideB == Stride.S1) {
                 return STUB_BYTE_ARRAY_COMPARE_TO_BYTE_ARRAY;
-            } else if (kind2 == JavaKind.Char) {
+            } else if (strideB == Stride.S2) {
                 return STUB_BYTE_ARRAY_COMPARE_TO_CHAR_ARRAY;
             }
-        } else if (kind1 == JavaKind.Char) {
-            if (kind2 == JavaKind.Byte) {
+        } else if (strideA == Stride.S2) {
+            if (strideB == Stride.S1) {
                 return STUB_CHAR_ARRAY_COMPARE_TO_BYTE_ARRAY;
-            } else if (kind2 == JavaKind.Char) {
+            } else if (strideB == Stride.S2) {
                 return STUB_CHAR_ARRAY_COMPARE_TO_CHAR_ARRAY;
             }
         }

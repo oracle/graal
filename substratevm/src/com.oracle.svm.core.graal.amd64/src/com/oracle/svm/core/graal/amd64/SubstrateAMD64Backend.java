@@ -357,7 +357,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                          * an optional shift that is known to be a valid addressing mode.
                          */
                         memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                        computeRegister, Stride.fromShift(compressEncoding.getShift()),
+                                        computeRegister, Stride.fromLog2(compressEncoding.getShift()),
                                         field.getOffset());
                     } else {
                         memoryAddress = new AMD64Address(computeRegister, field.getOffset());

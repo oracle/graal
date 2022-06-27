@@ -43,17 +43,16 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -134,7 +133,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
      * @param extendMode sign- or zero-extend array elements when inflating to a bigger stride.
      * @param dynamicStrides dynamic stride dispatch as described in {@link StrideUtil}.
      */
-    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.extendMode = extendMode;
@@ -149,9 +148,8 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         this.dynamicStridesTmp = this.dynamicStrides = dynamicStrides;
 
         if (StrideUtil.useConstantStrides(dynamicStrides)) {
-            assert strideSrc.isNumericInteger() && strideDst.isNumericInteger();
-            this.strideSrcConst = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideSrc)));
-            this.strideDstConst = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideDst)));
+            this.strideSrcConst = strideSrc;
+            this.strideDstConst = strideDst;
             this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(getOp(strideDstConst, strideSrcConst))];
         } else {
             strideSrcConst = null;
@@ -163,7 +161,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         }
     }
 
-    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst,
+    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
         return movParamsAndCreate(tool, strideSrc, strideDst, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, Value.ILLEGAL, extendMode);
     }
@@ -173,7 +171,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         return movParamsAndCreate(tool, null, null, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, stride, extendMode);
     }
 
-    private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst,
+    private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArraySrc = REG_ARRAY_SRC.asValue(arraySrc.getValueKind());

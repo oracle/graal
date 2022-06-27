@@ -26,6 +26,8 @@ package org.graalvm.compiler.core.common;
 
 import org.graalvm.compiler.debug.GraalError;
 
+import jdk.vm.ci.meta.JavaKind;
+
 /**
  * A byte stride.
  */
@@ -50,6 +52,10 @@ public enum Stride {
      */
     public final int log2;
 
+    public int getBitCount() {
+        return value << 3;
+    }
+
     /**
      * Creates a {@link Stride} for the scaling factor in {@code scale}.
      */
@@ -71,7 +77,7 @@ public enum Stride {
     /**
      * Creates a {@link Stride} for the log2 scaling factor {@code shift}.
      */
-    public static Stride fromShift(int shift) {
+    public static Stride fromLog2(int shift) {
         switch (shift) {
             case 0:
                 return S1;
@@ -86,4 +92,15 @@ public enum Stride {
         }
     }
 
+    public static Stride fromJavaKind(JavaKind kind) {
+        return fromInt(kind.getByteCount());
+    }
+
+    public static Stride min(Stride a, Stride b) {
+        return a.value < b.value ? a : b;
+    }
+
+    public static Stride max(Stride a, Stride b) {
+        return a.value > b.value ? a : b;
+    }
 }

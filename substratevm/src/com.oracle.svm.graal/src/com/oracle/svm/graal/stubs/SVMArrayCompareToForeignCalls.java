@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.graal.stubs;
 
-import static org.graalvm.compiler.core.common.StrideUtil.S1;
-import static org.graalvm.compiler.core.common.StrideUtil.S2;
-
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
@@ -48,34 +46,34 @@ class SVMArrayCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int byteArrayCompareToByteArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S1, S1);
+    private static int byteArrayCompareToByteArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S1, Stride.S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int byteArrayCompareToCharArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S1, S2);
+    private static int byteArrayCompareToCharArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S1, Stride.S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int charArrayCompareToByteArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S2, S1);
+    private static int charArrayCompareToByteArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S2, Stride.S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int charArrayCompareToCharArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S2, S2);
+    private static int charArrayCompareToCharArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S2, Stride.S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int byteArrayCompareToByteArrayRTC(Pointer array1, Pointer array2, int length1, int length2) {
+    private static int byteArrayCompareToByteArrayRTC(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S1, Stride.S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -83,10 +81,10 @@ class SVMArrayCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int byteArrayCompareToCharArrayRTC(Pointer array1, Pointer array2, int length1, int length2) {
+    private static int byteArrayCompareToCharArrayRTC(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S1, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S1, Stride.S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -94,10 +92,10 @@ class SVMArrayCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int charArrayCompareToByteArrayRTC(Pointer array1, Pointer array2, int length1, int length2) {
+    private static int charArrayCompareToByteArrayRTC(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S2, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S2, Stride.S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -105,10 +103,10 @@ class SVMArrayCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int charArrayCompareToCharArrayRTC(Pointer array1, Pointer array2, int length1, int length2) {
+    private static int charArrayCompareToCharArrayRTC(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S2, Stride.S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }

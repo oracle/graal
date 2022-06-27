@@ -45,15 +45,14 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -120,7 +119,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
 
     @Temp({REG}) Value[] vectorTemp;
 
-    private AMD64ArrayRegionCompareToOp(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB,
+    private AMD64ArrayRegionCompareToOp(LIRGeneratorTool tool, Stride strideA, Stride strideB,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
@@ -129,10 +128,10 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
             this.argStrideA = null;
             this.argStrideB = null;
         } else {
-            GraalError.guarantee(strideA == JavaKind.Byte || strideA == JavaKind.Char || strideA == JavaKind.Int, "unsupported strideA");
-            GraalError.guarantee(strideB == JavaKind.Byte || strideB == JavaKind.Char || strideB == JavaKind.Int, "unsupported strideB");
-            this.argStrideA = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideA)));
-            this.argStrideB = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideB)));
+            GraalError.guarantee(strideA.value <= 4, "unsupported strideA");
+            GraalError.guarantee(strideB.value <= 4, "unsupported strideB");
+            this.argStrideA = strideA;
+            this.argStrideB = strideB;
         }
         this.resultValue = result;
         this.arrayAValue = this.arrayAValueTemp = arrayA;
@@ -155,7 +154,6 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
      * @param strideB element size of {@code arrayB}. May be one of {@link JavaKind#Byte},
      *            {@link JavaKind#Char} or {@link JavaKind#Int}. {@code strideB} must be less than
      *            or equal to {@code strideA}!
-     * @param runtimeCheckedCPUFeatures
      * @param offsetA byte offset to be added to {@code arrayA}. Must include the array base offset!
      * @param offsetB byte offset to be added to {@code arrayB}. Must include the array base offset!
      * @param length length (number of array slots in respective array's stride) of the region to
@@ -163,7 +161,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
      * @param dynamicStrides dynamic stride dispatch as described in {@link StrideUtil}.
      * @param extendMode integer extension mode for {@code arrayB}.
      */
-    public static AMD64ArrayRegionCompareToOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB,
+    public static AMD64ArrayRegionCompareToOp movParamsAndCreate(LIRGeneratorTool tool, Stride strideA, Stride strideB,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
@@ -226,8 +224,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
     }
 
     private void emitArrayCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
-                                  Stride strideA, Stride strideB,
-                                  Register result, Register arrayA, Register arrayB, Register length, Register tmp1, Register tmp2) {
+                    Stride strideA, Stride strideB,
+                    Register result, Register arrayA, Register arrayB, Register length, Register tmp1, Register tmp2) {
         Label returnLabel = new Label();
         if (isVectorCompareSupported(crb.target, runtimeCheckedCPUFeatures, strideA, strideB)) {
             emitVectorLoop(crb, masm, strideA, strideB, result, arrayA, arrayB, length, tmp1, tmp2, returnLabel);
@@ -242,8 +240,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
      * differing elements with PMOVMSK and BSF and return their scalar difference.
      */
     private void emitVectorLoop(CompilationResultBuilder crb, AMD64MacroAssembler masm, Stride strideA, Stride strideB,
-                                Register result, Register arrayA, Register arrayB, Register length, Register tmp1, Register tmp2, Label returnLabel) {
-        Stride maxStride = max(strideA, strideB);
+                    Register result, Register arrayA, Register arrayB, Register length, Register tmp1, Register tmp2, Label returnLabel) {
+        Stride maxStride = Stride.max(strideA, strideB);
 
         Register vector1 = asRegister(vectorTemp[0]);
         Register vector2 = asRegister(vectorTemp[1]);
@@ -317,7 +315,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.subq(result, tmp1);
         masm.jmp(returnLabel);
 
-        boolean canUseQWORD = !(maxStride == Stride.S4 && min(strideA, strideB) == Stride.S1);
+        boolean canUseQWORD = !(maxStride == Stride.S4 && Stride.min(strideA, strideB) == Stride.S1);
 
         masm.bind(tail);
         masm.movl(length, result);
@@ -342,8 +340,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
     }
 
     private void emitVectorizedTail(AMD64MacroAssembler masm, Stride strideA, Stride strideB,
-                                    Register result, Register arrayA, Register arrayB, Register length, Register tmp1, Register tmp2, Label returnLabel, Stride maxStride,
-                                    Register vector1, Register vector2, Register vector3, Register vector4, Label nextTail, AVXSize loadSize, AVXSize cmpSize) {
+                    Register result, Register arrayA, Register arrayB, Register length, Register tmp1, Register tmp2, Label returnLabel, Stride maxStride,
+                    Register vector1, Register vector2, Register vector3, Register vector4, Label nextTail, AVXSize loadSize, AVXSize cmpSize) {
         assert cmpSize.getBytes() == loadSize.getBytes() * 2;
         assert cmpSize == YMM || cmpSize == XMM;
         masm.cmplAndJcc(length, getElementsPerVector(loadSize, maxStride), ConditionFlag.Less, nextTail, false);
@@ -383,7 +381,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
     }
 
     private void emitScalarLoop(CompilationResultBuilder crb, AMD64MacroAssembler masm, Stride strideA, Stride strideB,
-                                Register result, Register arrayA, Register arrayB, Register length, Register tmp, Label returnLabel) {
+                    Register result, Register arrayA, Register arrayB, Register length, Register tmp, Label returnLabel) {
         Label loop = new Label();
 
         masm.leaq(arrayA, new AMD64Address(arrayA, length, strideA));

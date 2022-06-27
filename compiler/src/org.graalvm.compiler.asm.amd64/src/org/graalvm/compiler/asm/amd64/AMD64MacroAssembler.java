@@ -779,7 +779,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public static void pmovSZx(AMD64MacroAssembler asm, AVXSize size, ExtendMode extendMode, Register dst, Stride strideDst, Register src, Stride strideSrc,
-                               int displacement) {
+                    int displacement) {
         pmovSZx(asm, size, extendMode, dst, strideDst, src, strideSrc, null, displacement);
     }
 
@@ -795,11 +795,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * @param index address index offset, scaled by {@code scaleSrc}.
      * @param displacement address displacement in bytes. If {@code scaleDst} is greater than
      *            {@code scaleSrc}, this displacement is scaled by the ratio of the former and
-     *            latter scales, e.g. if {@code scaleDst} is {@link Stride#S4} and
-     *            {@code scaleSrc} is {@link Stride#S2}, the displacement is halved.
+     *            latter scales, e.g. if {@code scaleDst} is {@link Stride#S4} and {@code scaleSrc}
+     *            is {@link Stride#S2}, the displacement is halved.
      */
     public static void pmovSZx(AMD64MacroAssembler asm, AVXSize size, ExtendMode extendMode, Register dst, Stride strideDst, Register src, Stride strideSrc, Register index,
-                               int displacement) {
+                    int displacement) {
         assert size == AVXSize.QWORD || size == AVXSize.XMM || size == AVXSize.YMM;
         int scaledDisplacement = scaleDisplacement(strideDst, strideSrc, displacement);
         AMD64Address address = index == null ? new AMD64Address(src, scaledDisplacement) : new AMD64Address(src, index, strideSrc, scaledDisplacement);

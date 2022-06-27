@@ -96,7 +96,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
             addr.setBase(other);
         }
 
-        Stride stride = Stride.fromShift(encoding.getShift());
+        Stride stride = Stride.fromLog2(encoding.getShift());
         addr.setScale(stride);
         addr.setIndex(compression.getValue());
         return true;

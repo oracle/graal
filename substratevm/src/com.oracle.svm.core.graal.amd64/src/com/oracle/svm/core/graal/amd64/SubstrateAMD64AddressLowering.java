@@ -68,7 +68,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
             }
         }
 
-        Stride stride = Stride.fromShift(encoding.getShift());
+        Stride stride = Stride.fromLog2(encoding.getShift());
         addr.setBase(base);
         addr.setScale(stride);
         addr.setIndex(compression.getValue());

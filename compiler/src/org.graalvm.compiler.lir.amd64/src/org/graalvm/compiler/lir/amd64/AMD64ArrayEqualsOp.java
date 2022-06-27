@@ -44,11 +44,9 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.SSEOp;
@@ -56,6 +54,7 @@ import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -92,11 +91,6 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     private static final Register REG_STRIDE = r9;
 
     private final JavaKind elementKind;
-    private final int baseOffsetA;
-    private final int baseOffsetB;
-    private final int baseOffsetMask;
-    private final int constOffsetA;
-    private final int constOffsetB;
     private final int constLength;
     private final Stride argStrideA;
     private final Stride argStrideB;
@@ -125,53 +119,38 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
 
     @Temp({REG}) private Value[] vectorTemp;
 
-    private AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kindA, JavaKind kindB, JavaKind kindMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
+    private AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind elementKind, Stride strideA, Stride strideB, Stride strideMask,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, Value dynamicStrides,
-                    AMD64MacroAssembler.ExtendMode extendMode,
-                    int constOffsetA, int constOffsetB, int constLength) {
+                    AMD64MacroAssembler.ExtendMode extendMode, int constLength) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, AVXSize.YMM);
         this.extendMode = extendMode;
-
-        this.constOffsetA = constOffsetA;
-        this.constOffsetB = constOffsetB;
         this.constLength = constLength;
-
-        this.baseOffsetA = baseOffsetA;
-        this.baseOffsetB = baseOffsetB;
-        this.baseOffsetMask = baseOffsetMask;
-
+        this.elementKind = elementKind;
         if (StrideUtil.useConstantStrides(dynamicStrides)) {
-            assert kindA.isNumericInteger() && kindB.isNumericInteger() || kindA == kindB;
-            this.elementKind = kindA;
-            this.argStrideA = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kindA)));
-            this.argStrideB = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kindB)));
-            this.argStrideMask = Objects.requireNonNull(Stride.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kindMask)));
+            assert elementKind.isNumericInteger() || strideA == strideB;
+            this.argStrideA = strideA;
+            this.argStrideB = strideB;
+            this.argStrideMask = strideMask;
         } else {
-            this.elementKind = JavaKind.Byte;
             this.argStrideA = null;
             this.argStrideB = null;
             this.argStrideMask = null;
         }
-        this.canGenerateConstantLengthCompare = canGenerateConstantLengthCompare(tool.target(), runtimeCheckedCPUFeatures, kindA, kindB, constLength, dynamicStrides, vectorSize);
+        this.canGenerateConstantLengthCompare = canGenerateConstantLengthCompare(tool.target(), runtimeCheckedCPUFeatures, elementKind, strideA, strideB, constLength, dynamicStrides, vectorSize);
 
         this.resultValue = result;
         this.arrayAValue = this.arrayAValueTemp = arrayA;
-        // if constOffset is 0, no offset parameter was used, but we still need the register as a
-        // temp register, so we set the @Use property to ILLEGAL but keep the register in the @Temp
-        // property
-        this.offsetAValue = constOffsetA == 0 ? Value.ILLEGAL : offsetA;
-        this.offsetAValueTemp = offsetA;
+        this.offsetAValue = this.offsetAValueTemp = offsetA;
         this.arrayBValue = this.arrayBValueTemp = arrayB;
-        this.offsetBValue = constOffsetB == 0 ? Value.ILLEGAL : offsetB;
-        this.offsetBValueTemp = offsetB;
+        this.offsetBValue = this.offsetBValueTemp = offsetB;
         this.arrayMaskValue = this.arrayMaskValueTemp = mask;
         this.lengthValue = this.lengthValueTemp = length;
         this.dynamicStridesValue = this.dynamicStrideValueTemp = dynamicStrides;
 
-        if (kindA == JavaKind.Float) {
+        if (elementKind == JavaKind.Float) {
             this.tempXMM = tool.newVariable(LIRKind.value(AMD64Kind.SINGLE));
-        } else if (kindA == JavaKind.Double) {
+        } else if (elementKind == JavaKind.Double) {
             this.tempXMM = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
         } else {
             this.tempXMM = Value.ILLEGAL;
@@ -189,20 +168,43 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         }
     }
 
-    public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool,
-                    int baseOffsetA, int baseOffsetB, int baseOffsetMask,
+    public static AMD64ArrayEqualsOp movParamsAndCreate(
+                    LIRGeneratorTool tool,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, Value dynamicStrides,
+                    Value result,
+                    Value arrayA, Value offsetA,
+                    Value arrayB, Value offsetB,
+                    Value mask,
+                    Value length,
+                    Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, null, null, null, baseOffsetA, baseOffsetB, baseOffsetMask, runtimeCheckedCPUFeatures, result, arrayA, offsetA, arrayB, offsetB, mask, length, dynamicStrides,
+        return movParamsAndCreate(tool, null, null, null, null,
+                        runtimeCheckedCPUFeatures,
+                        result,
+                        arrayA, offsetA,
+                        arrayB, offsetB,
+                        mask,
+                        length,
+                        dynamicStrides,
                         extendMode);
     }
 
-    public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB, JavaKind strideMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
+    public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool,
+                    Stride strideA, Stride strideB, Stride strideMask,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length,
+                    Value result,
+                    Value arrayA, Value offsetA,
+                    Value arrayB, Value offsetB,
+                    Value mask,
+                    Value length,
                     AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, strideA, strideB, strideMask, baseOffsetA, baseOffsetB, baseOffsetMask, runtimeCheckedCPUFeatures, result, arrayA, offsetA, arrayB, offsetB, mask, length, null,
+        return movParamsAndCreate(tool, null, strideA, strideB, strideMask, runtimeCheckedCPUFeatures,
+                        result,
+                        arrayA, offsetA,
+                        arrayB, offsetB,
+                        mask,
+                        length,
+                        null,
                         extendMode);
     }
 
@@ -212,6 +214,11 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * {@code arrayMask} is not {@code null}, it is OR-ed with {@code arrayA} before comparison with
      * {@code arrayB}.
      *
+     * @param elementKind Array element kind. This is only relevant when comparing values of
+     *            {@link JavaKind#Float} or {@link JavaKind#Double}. In this case, all strides must
+     *            be equal to the element kind's {@link JavaKind#getByteCount() byte count}. If no
+     *            floating-point comparison should be done, this parameter should be set to
+     *            {@link JavaKind#Byte}.
      * @param strideA element size of {@code arrayA}. May be {@code null} if {@code dynamicStrides}
      *            is used.
      * @param strideB element size of {@code arrayB}. May be {@code null} if {@code dynamicStrides}
@@ -225,13 +232,18 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * @param dynamicStrides dynamic stride dispatch as described in {@link StrideUtil}.
      * @param extendMode integer extension mode for the array with the smaller element size.
      */
-    public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB, JavaKind strideMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
-                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value arrayMask, Value length, Value dynamicStrides,
+    public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool,
+                    JavaKind elementKind,
+                    Stride strideA, Stride strideB, Stride strideMask,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    Value result,
+                    Value arrayA, Value offsetA,
+                    Value arrayB, Value offsetB, Value arrayMask, Value length, Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArrayA = REG_ARRAY_A.asValue(arrayA.getValueKind());
-        RegisterValue regOffsetA = REG_OFFSET_A.asValue(offsetA == null ? LIRKind.value(AMD64Kind.QWORD) : offsetA.getValueKind());
+        RegisterValue regOffsetA = REG_OFFSET_A.asValue(offsetA.getValueKind());
         RegisterValue regArrayB = REG_ARRAY_B.asValue(arrayB.getValueKind());
-        RegisterValue regOffsetB = REG_OFFSET_B.asValue(offsetB == null ? LIRKind.value(AMD64Kind.QWORD) : offsetB.getValueKind());
+        RegisterValue regOffsetB = REG_OFFSET_B.asValue(offsetB.getValueKind());
         Value regMask = arrayMask == null ? Value.ILLEGAL : REG_MASK.asValue(arrayMask.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
         Value regStride = dynamicStrides == null ? Value.ILLEGAL : REG_STRIDE.asValue(dynamicStrides.getValueKind());
@@ -239,47 +251,31 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         tool.emitConvertNullToZero(regArrayA, arrayA);
         tool.emitConvertNullToZero(regArrayB, arrayB);
         tool.emitMove(regLength, length);
-        if (offsetA != null) {
-            tool.emitMove(regOffsetA, offsetA);
-        }
-        if (offsetB != null) {
-            tool.emitMove(regOffsetB, offsetB);
-        }
+        tool.emitMove(regOffsetA, offsetA);
+        tool.emitMove(regOffsetB, offsetB);
         if (arrayMask != null) {
             tool.emitMove((RegisterValue) regMask, arrayMask);
         }
         if (dynamicStrides != null) {
             tool.emitMove((RegisterValue) regStride, dynamicStrides);
         }
-        return new AMD64ArrayEqualsOp(tool, strideA, strideB, strideMask, baseOffsetA, baseOffsetB, baseOffsetMask,
+        return new AMD64ArrayEqualsOp(tool, elementKind == null ? JavaKind.Byte : elementKind, strideA, strideB, strideMask,
                         runtimeCheckedCPUFeatures, result, regArrayA, regOffsetA, regArrayB, regOffsetB, regMask, regLength, regStride,
-                        extendMode, constOffset(offsetA), constOffset(offsetB), LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1);
+                        extendMode, LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1);
     }
 
-    private static int constOffset(Value offset) {
-        if (offset == null) {
-            // no offset parameter (e.g. in Arrays.equal)
-            return 0;
-        }
-        if (LIRValueUtil.isJavaConstant(offset) && LIRValueUtil.asJavaConstant(offset).asLong() <= Integer.MAX_VALUE) {
-            // constant offset parameter
-            return (int) LIRValueUtil.asJavaConstant(offset).asLong();
-        }
-        // non-constant offset parameter
-        return -1;
+    private static boolean canGenerateConstantLengthCompare(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    JavaKind elementKind, Stride strideA, Stride strideB, int constantLength, Value stride, AVXSize vectorSize) {
+        return isIllegal(stride) && constantLength >= 0 && canGenerateConstantLengthCompare(target, runtimeCheckedCPUFeatures, elementKind, strideA, strideB, constantLength, vectorSize);
     }
 
-    private static boolean canGenerateConstantLengthCompare(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, JavaKind kindA, JavaKind kindB, int constantLength, Value stride,
-                    AVXSize vectorSize) {
-        return isIllegal(stride) && constantLength >= 0 && canGenerateConstantLengthCompare(target, runtimeCheckedCPUFeatures, kindA, kindB, constantLength, vectorSize);
-    }
-
-    public static boolean canGenerateConstantLengthCompare(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, JavaKind kindA, JavaKind kindB, int constantLength,
-                    AVXSize vectorSize) {
-        int elementSize = Math.max(kindA.getByteCount(), kindB.getByteCount());
+    public static boolean canGenerateConstantLengthCompare(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    JavaKind elementKind, Stride strideA, Stride strideB, int constantLength, AVXSize vectorSize) {
+        int elementSize = Math.max(strideA.value, strideB.value);
         int minVectorSize = AVXSize.XMM.getBytes() / elementSize;
         int maxVectorSize = vectorSize.getBytes() / elementSize;
-        return supports(target, runtimeCheckedCPUFeatures, CPUFeature.SSE4_1) && kindA.isNumericInteger() && (kindA == kindB || minVectorSize <= constantLength) && constantLength <= maxVectorSize * 2;
+        return supports(target, runtimeCheckedCPUFeatures, CPUFeature.SSE4_1) && elementKind.isNumericInteger() && (strideA == strideB || minVectorSize <= constantLength) &&
+                        constantLength <= maxVectorSize * 2;
     }
 
     private boolean isLengthConstant() {
@@ -309,11 +305,8 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         Register arrayB = asRegister(arrayBValue);
         Register mask = withMask() ? asRegister(arrayMaskValue) : null;
         // Load array base addresses.
-        loadBaseAddress(masm, arrayA, baseOffsetA, constOffsetA, offsetAValue);
-        loadBaseAddress(masm, arrayB, baseOffsetB, constOffsetB, offsetBValue);
-        if (withMask()) {
-            masm.leaq(mask, new AMD64Address(mask, baseOffsetMask));
-        }
+        masm.addq(arrayA, asRegister(offsetAValue));
+        masm.addq(arrayB, asRegister(offsetBValue));
         if (canGenerateConstantLengthCompare) {
             emitConstantLengthArrayCompareBytes(masm, result);
         } else {
@@ -375,18 +368,10 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.xorl(result, result);
     }
 
-    private static void loadBaseAddress(AMD64MacroAssembler masm, Register array, int baseOffset, int constantOffset, Value dynamicOffset) {
-        if (constantOffset >= 0) {
-            masm.leaq(array, new AMD64Address(array, constantOffset + baseOffset));
-        } else {
-            masm.leaq(array, new AMD64Address(array, asRegister(dynamicOffset), Stride.S1, baseOffset));
-        }
-    }
-
     private void emitArrayCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
-                                  Stride strideA, Stride strideB, Stride strideMask,
-                                  Register result, Register array1, Register array2, Register mask, Register length,
-                                  Label done, boolean shortJmp) {
+                    Stride strideA, Stride strideB, Stride strideMask,
+                    Register result, Register array1, Register array2, Register mask, Register length,
+                    Label done, boolean shortJmp) {
         Label trueLabel = new Label();
         Label falseLabel = new Label();
         masm.movl(result, length);
@@ -406,11 +391,11 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * Emits code that uses SSE4.1/AVX1 128-bit (16-byte) or AVX2 256-bit (32-byte) vector compares.
      */
     private void emitVectorCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
-                                   Stride strideA, Stride strideB, Stride strideMask,
-                                   Register result, Register arrayA, Register arrayB, Register mask, Register length,
-                                   Label trueLabel, Label falseLabel) {
+                    Stride strideA, Stride strideB, Stride strideMask,
+                    Register result, Register arrayA, Register arrayB, Register mask, Register length,
+                    Label trueLabel, Label falseLabel) {
         assert masm.supports(CPUFeature.SSE4_1);
-        Stride maxStride = max(strideA, strideB);
+        Stride maxStride = Stride.max(strideA, strideB);
 
         Register vector1 = asRegister(vectorTemp[0]);
         Register vector2 = asRegister(vectorTemp[1]);
@@ -513,8 +498,8 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * Emits code that uses 8-byte vector compares.
      */
     private void emit8ByteCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
-                                  Stride strideA, Stride strideB, Stride strideMask,
-                                  Register result, Register arrayA, Register arrayB, Register mask, Register length, Label trueLabel, Label falseLabel) {
+                    Stride strideA, Stride strideB, Stride strideMask,
+                    Register result, Register arrayA, Register arrayB, Register mask, Register length, Label trueLabel, Label falseLabel) {
         assert strideA == strideB && strideA == strideMask;
         Label loop = new Label();
         Label compareTail = new Label();
@@ -593,8 +578,8 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * Emits code to compare the remaining 1 to 4 bytes.
      */
     private void emitTailCompares(AMD64MacroAssembler masm,
-                                  Stride strideA, Stride strideB, Stride strideMask,
-                                  Register result, Register arrayA, Register arrayB, Register mask, Register length, Label trueLabel, Label falseLabel) {
+                    Stride strideA, Stride strideB, Stride strideMask,
+                    Register result, Register arrayA, Register arrayB, Register mask, Register length, Label trueLabel, Label falseLabel) {
         assert strideA == strideB && strideA == strideMask;
         Label compare2Bytes = new Label();
         Label compare1Byte = new Label();
@@ -663,8 +648,8 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     }
 
     private void emitDifferentKindsElementWiseCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
-                                                      Stride strideA, Stride strideB, Stride strideMask,
-                                                      Register result, Register array1, Register array2, Register mask, Register length, Label trueLabel, Label falseLabel) {
+                    Stride strideA, Stride strideB, Stride strideMask,
+                    Register result, Register array1, Register array2, Register mask, Register length, Label trueLabel, Label falseLabel) {
         assert strideA != strideB || strideA != strideMask;
         assert elementKind.isNumericInteger();
         Label loop = new Label();
@@ -737,9 +722,9 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * Emits code to compare if two floats are bitwise equal or both NaN.
      */
     private void emitFloatCompare(AMD64MacroAssembler masm,
-                                  Stride strideA, Stride strideB,
-                                  Register arrayA, Register arrayB, Register index, int offset, Label falseLabel,
-                                  boolean skipBitwiseCompare) {
+                    Stride strideA, Stride strideB,
+                    Register arrayA, Register arrayB, Register index, int offset, Label falseLabel,
+                    boolean skipBitwiseCompare) {
         AMD64Address address1 = new AMD64Address(arrayA, index, strideA, offset);
         AMD64Address address2 = new AMD64Address(arrayB, index, strideB, offset);
 
@@ -768,7 +753,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * Emits code to compare float equality within a range.
      */
     private void emitFloatCompareWithinRange(CompilationResultBuilder crb, AMD64MacroAssembler masm,
-                                             Stride strideA, Stride strideB, Register arrayA, Register arrayB, Register index, int offset, Label falseLabel, int range) {
+                    Stride strideA, Stride strideB, Register arrayA, Register arrayB, Register index, int offset, Label falseLabel, int range) {
         assert elementKind.isNumericFloat();
         Label loop = new Label();
         Register i = asRegister(offsetBValueTemp);
@@ -794,7 +779,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
             // do nothing
             return;
         }
-        Stride maxStride = max(argStrideA, argStrideB);
+        Stride maxStride = Stride.max(argStrideA, argStrideB);
         Register arrayA = asRegister(arrayAValue);
         Register arrayB = asRegister(arrayBValue);
         Register mask = withMask() ? asRegister(arrayMaskValue) : null;
