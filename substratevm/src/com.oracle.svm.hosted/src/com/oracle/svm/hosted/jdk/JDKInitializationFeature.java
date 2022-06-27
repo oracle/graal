@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -168,5 +169,9 @@ public class JDKInitializationFeature implements Feature {
         rci.rerunInitialization("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
 
         rci.rerunInitialization("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
+
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            rci.rerunInitialization("sun.nio.ch.Poller", "Contains an InnocuousThread.");
+        }
     }
 }

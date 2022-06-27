@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
@@ -693,7 +694,7 @@ final class SubstrateVirtualThread extends Thread {
     }
 }
 
-@TargetClass(className = "jdk.internal.misc.InnocuousThread", onlyWith = {ContinuationsSupported.class, NotLoomJDK.class})
+@TargetClass(className = "jdk.internal.misc.InnocuousThread", onlyWith = {ContinuationsSupported.class, NotLoomJDK.class, JDK17OrEarlier.class})
 final class Target_jdk_internal_misc_InnocuousThread {
     @Alias
     static native Thread newThread(String name, Runnable target);
