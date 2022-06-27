@@ -5,50 +5,59 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import org.graalvm.word.Pointer;
 
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
 public class TaskQueue {
+    private static final int SIZE = 1024;
+
+    private static class TaskData {
+        private GreyToBlackObjRefVisitor visitor;
+        private Pointer objRef;
+        private int innerOffset;
+        private boolean compressed;
+        private Object holderObject;
+    }
+
     private final VMMutex mutex;
     private final VMCondition cond;
-    private GreyToBlackObjRefVisitor visitor;
-    private Pointer objRef;
-    private int innerOffset;
-    private boolean compressed;
-    private Object holderObject;
-    private boolean empty;
+    private final TaskData[] data;
+    private int getIndex;
+    private int putIndex;
     private volatile int idleCount;
 
     public TaskQueue(String name) {
         mutex = new VMMutex(name + "-queue");
         cond = new VMCondition(mutex);
-        empty = true;
+        data = IntStream.range(0, SIZE).mapToObj(n -> new TaskData()).toArray(TaskData[]::new);
     }
 
-//    private UnsignedWord get() {
-//        try {
-//            mutex.lock();
-//            while (empty) {
-//                cond.block();
-//            }
-//            return word0;
-//        } finally {
-//            empty = true;
-//            mutex.unlock();
-//            cond.signal();
-//        }
-//    }
+    private int next(int index) {
+        return (index + 1) % SIZE;
+    }
+
+    private boolean canGet() {
+        return getIndex != putIndex;
+    }
+
+    private boolean canPut() {
+        return next(putIndex) != getIndex;
+    }
 
     public void put(GreyToBlackObjRefVisitor visitor, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         try {
             mutex.lock();
-            while (!empty) {
+            while (!canPut()) {
                 cond.block();
             }
-            this.visitor = visitor;
-            this.objRef = objRef;
-            this.innerOffset = innerOffset;
-            this.compressed = compressed;
-            this.holderObject = holderObject;
+            TaskData item = data[putIndex];
+            item.visitor = visitor;
+            item.objRef = objRef;
+            item.innerOffset = innerOffset;
+            item.compressed = compressed;
+            item.holderObject = holderObject;
         } finally {
-            empty = false;
+            putIndex = next(putIndex);
             mutex.unlock();
             cond.broadcast();
         }
@@ -63,16 +72,17 @@ public class TaskQueue {
         try {
             mutex.lock();
             idleCount++;
-            while (empty) {
+            while (!canGet()) {
                 cond.block();
             }
-            v = this.visitor;
-            ref = this.objRef;
-            offset = this.innerOffset;
-            comp = this.compressed;
-            owner = this.holderObject;
+            TaskData item = data[getIndex];
+            v = item.visitor;
+            ref = item.objRef;
+            offset = item.innerOffset;
+            comp = item.compressed;
+            owner = item.holderObject;
         } finally {
-            empty = true;
+            getIndex = next(getIndex);
             idleCount--;
             mutex.unlock();
             cond.broadcast();
@@ -83,7 +93,7 @@ public class TaskQueue {
     public void waitUntilIdle(int expectedIdleCount) {
         try {
             mutex.lock();
-            while (!empty) {
+            while (canGet()) {
                 cond.block();
             }
         } finally {
