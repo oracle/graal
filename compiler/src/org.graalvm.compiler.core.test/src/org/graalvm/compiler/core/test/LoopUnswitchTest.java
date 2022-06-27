@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
@@ -63,7 +64,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public static int test1Snippet(int a) {
         int sum = 0;
         for (int i = 0; i < 1000; i++) {
-            if (a > 2) {
+            if (GraalDirectives.injectBranchProbability(0.5, a > 2)) {
                 sum += 2;
             } else {
                 sum += a;
@@ -128,6 +129,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("Unswitching requires to have a known profile data but it cannot be injected in switches.")
     public void test2() {
         test("test2Snippet", "referenceSnippet2");
     }
@@ -135,7 +137,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public static int test3Snippet(int a, int b) {
         int sum = 0;
         for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); ++i) {
-            if (a > 0) {
+            if (GraalDirectives.injectBranchProbability(0.5, a > 0)) {
                 switch (b) {
                     case 0:
                         sum += 1;
@@ -338,6 +340,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("Unswitching requires to have a known profile data but it cannot be injected in switches.")
     public void test3() {
         // Use the default policy and so the if should be unswitched before the switch
         test("test3Snippet", "reference3IfSwitchSnippet");
