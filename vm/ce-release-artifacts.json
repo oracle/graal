@@ -133,7 +133,7 @@
         ]
     },
     {
-        "name": "llvm-installable-java11",
+        "name": "llvm-installable-svm-java11",
         "core": false,
         "jdk": "jdk_11",
         "artifacts": [
@@ -156,7 +156,7 @@
         ]
     },
     {
-        "name": "llvm-installable-java17",
+        "name": "llvm-installable-svm-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
