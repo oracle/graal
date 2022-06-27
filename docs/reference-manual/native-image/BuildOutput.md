@@ -23,6 +23,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
   12,128 (44.82%) of 27,058 methods reachable
       27 classes,     0 fields, and   271 methods registered for reflection
       58 classes,    59 fields, and    52 methods registered for JNI access
+       4 native libraries: dl, pthread, rt, z
 [3/7] Building universe...                                       (0.5s @ 0.61GB)
 [4/7] Parsing methods...      [*]                                (0.5s @ 0.86GB)
 [5/7] Inlining methods...     [****]                             (0.5s @ 0.73GB)
