@@ -37,6 +37,10 @@ import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * Base class for nodes that represent large intrinsic methods without side effects, such as
+ * {@link ArrayEqualsNode}. These methods are compiled as stubs and later called via foreign call.
+ */
 @NodeInfo
 public abstract class PureFunctionStubIntrinsicNode extends FixedWithNextNode implements MemoryAccess {
 
@@ -53,6 +57,10 @@ public abstract class PureFunctionStubIntrinsicNode extends FixedWithNextNode im
         this.locationIdentity = locationIdentity;
     }
 
+    /**
+     * On SVM, we AOT-compile additional stub versions with more modern CPU flags enabled. We can
+     * emit foreign calls to these variants in JIT code when these flags are available.
+     */
     public EnumSet<?> getRuntimeCheckedCPUFeatures() {
         return runtimeCheckedCPUFeatures;
     }
