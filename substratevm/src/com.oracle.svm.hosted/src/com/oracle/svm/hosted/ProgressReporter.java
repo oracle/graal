@@ -102,7 +102,6 @@ public class ProgressReporter {
     private final NativeImageSystemIOWrappers builderIO;
 
     private final boolean isEnabled; // TODO: clean up when deprecating old output (GR-35721).
-    private final boolean reachabilityAnalysis;
     private final DirectPrinter linePrinter = new DirectPrinter();
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
@@ -172,7 +171,6 @@ public class ProgressReporter {
         if (isEnabled) {
             Timer.disablePrinting();
         }
-        reachabilityAnalysis = PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options);
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
         boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
                         System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
@@ -210,6 +208,9 @@ public class ProgressReporter {
         if (SubstrateOptions.useEconomyCompilerConfig(options)) {
             l().redBold().a("You enabled -Ob for this image build. This will configure some optimizations to reduce image build time.").println();
             l().redBold().a("This feature should only be used during development and never for deployment.").reset().println();
+        }
+        if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
+            l().redBold().a("This build uses the experimental reachability analysis rather than the default points-to analysis.").reset().println();
         }
     }
 
@@ -262,7 +263,6 @@ public class ProgressReporter {
             l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription()).println();
         }
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(Heap.getHeap().getGC().getName()).println();
-        l().a(" ").doclink("Analysis", "#glossary-analysis").a(": ").a(reachabilityAnalysis ? "Reachability" : "Points-To").println();
     }
 
     public void printFeatures(List<Feature> features) {
