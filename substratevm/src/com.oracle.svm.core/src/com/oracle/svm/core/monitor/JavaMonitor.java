@@ -36,6 +36,8 @@ import com.oracle.svm.core.jfr.JfrTicks;
 
 public class JavaMonitor extends ReentrantLock {
     private long ownerTid;
+
+    //Records the number of waiters that have not yet been notified
     private int waitingThreads = 0;
     /*
      * This queue is used to record the TIDs of notifiers so that waiters have access to them when they eventually
@@ -61,12 +63,23 @@ public class JavaMonitor extends ReentrantLock {
     }
 
     public void setNotifier(boolean notifyAll) {
+        //make sure we hold the lock
+        assert isHeldByCurrentThread();
+
+        //If there are extra notifications, there will be no waiters to respond to them, so don't record them.
+        if (waitingThreads == 0) {
+            return;
+        }
         long curr = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
-        assert isHeldByCurrentThread(); //make sure we hold the lock
+
         int notifications = 1;
         if (notifyAll) {
-            notifications = waitingThreads - notifiers.size();
+            notifications = waitingThreads;
         }
+
+
+        assert notifications <= waitingThreads && waitingThreads > 0;
+
         for (int i = 0; i < notifications; i++) {
             notifiers.addLast(curr);
             waitingThreads--;
