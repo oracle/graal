@@ -167,7 +167,8 @@ public class TestOperationsParserTest {
     @Test
     public void testTryCatch() {
         RootCallTarget root = parse(b -> {
-            b.beginTryCatch(0);
+            OperationLocal local = b.createLocal();
+            b.beginTryCatch(local);
 
             b.beginIfThen();
             b.beginLessThanOperation();

@@ -557,7 +557,7 @@ public abstract class Operation {
             b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
             b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
             b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
-            b.startStatement().variable(varBeh).string(".exceptionIndex = (int)").variable(vars.operationData).string(".arguments[0]").end();
+            b.startStatement().variable(varBeh).string(".exceptionIndex = getLocalIndex(").variable(vars.operationData).string(".arguments[0])").end();
             b.startStatement().startCall("addExceptionHandler").variable(varBeh).end(2);
 
             b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
@@ -616,7 +616,7 @@ public abstract class Operation {
 
         @Override
         public List<TypeMirror> getBuilderArgumentTypes() {
-            return List.of(new CodeTypeMirror(TypeKind.INT));
+            return List.of(ProcessorContext.getInstance().getTypes().OperationLocal);
         }
     }
 

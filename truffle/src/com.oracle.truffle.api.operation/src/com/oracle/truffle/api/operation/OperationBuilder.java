@@ -111,6 +111,8 @@ public abstract class OperationBuilder {
         numChildNodes = 0;
         numBranchProfiles = 0;
 
+        exceptionHandlers.clear();
+
         resetMetadata();
     }
 
@@ -797,7 +799,11 @@ public abstract class OperationBuilder {
             if (obj == null) {
                 return "null";
             } else {
-                return String.format("%s %s", obj.getClass().getSimpleName(), obj);
+                Object repr = obj;
+                if (repr instanceof Object[]) {
+                    repr = Arrays.deepToString((Object[]) obj);
+                }
+                return String.format("%s %s", obj.getClass().getSimpleName(), repr);
             }
         }
     }
