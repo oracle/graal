@@ -1,15 +1,13 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.genscavenge.GCImpl;
-import com.oracle.svm.core.genscavenge.GreyToBlackObjRefVisitor;
+import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.Pointer;
 
 import java.util.stream.IntStream;
 
@@ -19,7 +17,7 @@ public class ParallelGCImpl extends ParallelGC {
     public static final int WORKERS_COUNT = 4;
     public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
-    public static final TaskQueue.Consumer PROMOTE_TASK = GreyToBlackObjRefVisitor::doVisitObjectReference;
+    public static final TaskQueue.Consumer PROMOTE_TASK = GreyToBlackObjectVisitor::doVisitObject;
 
     private static boolean enabled;
 

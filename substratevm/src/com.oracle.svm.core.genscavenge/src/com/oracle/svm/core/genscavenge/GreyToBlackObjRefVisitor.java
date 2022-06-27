@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
-import com.oracle.svm.core.heap.ParallelGC;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -50,7 +47,7 @@ import com.oracle.svm.core.log.Log;
  * Since this visitor is used during collection, one instance of it is constructed during native
  * image generation.
  */
-public final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
+final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     private final Counters counters;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -68,27 +65,8 @@ public final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
-    @NeverInline("GC performance")
+    @AlwaysInline("GC performance")
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        if (ParallelGCImpl.isEnabled()) {
-            /// temp assertions
-            Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-            assert ObjectHeaderImpl.isAlignedHeader(offsetP);
-            assert GCImpl.getGCImpl().isCompleteCollection();
-            assert innerOffset == 0;
-
-            ParallelGCImpl.QUEUE.put(this, objRef, innerOffset, compressed, holderObject);
-            if (ParallelGCImpl.WORKERS_COUNT <= 0) {
-                ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
-            }
-            return true;
-        } else {
-            return doVisitObjectReference(objRef, innerOffset, compressed, holderObject);
-        }
-    }
-
-    @NeverInline("GC performance")
-    public boolean doVisitObjectReference(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
         assert !objRef.isNull();
         counters.noteObjRef();

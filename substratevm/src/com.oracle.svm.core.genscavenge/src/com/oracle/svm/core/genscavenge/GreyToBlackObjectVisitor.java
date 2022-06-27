@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -56,6 +61,25 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     @Override
     @NeverInline("GC performance")
     public boolean visitObjectInline(Object o) {
+        if (ParallelGCImpl.isEnabled()) {
+            /// temp assertions
+//            Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+//            assert ObjectHeaderImpl.isAlignedHeader(offsetP);
+            assert GCImpl.getGCImpl().isCompleteCollection();
+//            assert innerOffset == 0;
+
+            ParallelGCImpl.QUEUE.put(this, o);
+            if (ParallelGCImpl.WORKERS_COUNT <= 0) {
+                ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+            }
+            return true;
+        } else {
+            return doVisitObject(o);
+        }
+    }
+
+    @NeverInline("GC performance")
+    public boolean doVisitObject(Object o) {
         ReferenceObjectProcessing.discoverIfReference(o, objRefVisitor);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);
         return true;
