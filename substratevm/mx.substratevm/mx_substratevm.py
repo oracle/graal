@@ -1577,7 +1577,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         layout = {
             './': ['file:' + join(base_jdk_home, 'lib', lib_prefix + '*' + lib_suffix)]
         }
-    register_distribution(mx.LayoutTARDistribution(suite, 'SVM_STATIC_LIBRARIES_SUPPORT', [], layout, None, True, None))
+    register_distribution(JDKLayoutTARDistribution(suite, 'SVM_STATIC_LIBRARIES_SUPPORT', [], layout, None, True, None))
+
+
+class JDKLayoutTARDistribution(mx.LayoutTARDistribution):
+    def isJDKDependent(self):
+        return True
+
 
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
