@@ -275,17 +275,17 @@ public abstract class OperationBuilder {
         return LocalSetter.create(local.id);
     }
 
-    protected LocalSetterRun createLocalSetterRun(Object o) {
+    protected LocalSetterRange createLocalSetterRange(Object o) {
         OperationLocal[] locals = (OperationLocal[]) o;
-        assert checkLocalSetterRun(locals);
+        assert checkLocalSetterRange(locals);
         if (locals.length == 0) {
-            return LocalSetterRun.EMPTY;
+            return LocalSetterRange.EMPTY;
         }
 
-        return LocalSetterRun.create(getLocalIndex(locals[0]), locals.length);
+        return LocalSetterRange.create(getLocalIndex(locals[0]), locals.length);
     }
 
-    private static boolean checkLocalSetterRun(OperationLocal[] locals) {
+    private static boolean checkLocalSetterRange(OperationLocal[] locals) {
         if (locals.length == 0) {
             return true;
         }

@@ -93,7 +93,7 @@ public class CustomInstruction extends Instruction {
         initializePops();
     }
 
-    public static final String MARKER_LOCAL_REFS = "LocalSetterRun";
+    public static final String MARKER_LOCAL_REFS = "LocalSetterRange";
     public static final String MARKER_LOCAL_REF_PREFIX = "LocalSetter_";
 
     protected void initializePops() {
@@ -199,7 +199,7 @@ public class CustomInstruction extends Instruction {
     @Override
     protected CodeTree createConstantInitCode(BuilderVariables vars, EmitArguments args, Object marker, int index) {
         if (marker.equals(MARKER_LOCAL_REFS)) {
-            return CodeTreeBuilder.createBuilder().startCall("createLocalSetterRun").tree(args.constants[index]).end().build();
+            return CodeTreeBuilder.createBuilder().startCall("createLocalSetterRange").tree(args.constants[index]).end().build();
         }
 
         if (marker instanceof String && ((String) marker).startsWith(MARKER_LOCAL_REF_PREFIX)) {

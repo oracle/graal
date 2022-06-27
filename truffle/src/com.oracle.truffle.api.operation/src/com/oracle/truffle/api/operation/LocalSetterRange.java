@@ -47,9 +47,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class LocalSetterRun {
+public final class LocalSetterRange {
     @CompilationFinal(dimensions = 2) //
-    private static LocalSetterRun[][] localSetterRuns = new LocalSetterRun[8][];
+    private static LocalSetterRange[][] localSetterRuns = new LocalSetterRange[8][];
 
     private static synchronized void resizeArray(int length) {
         if (localSetterRuns.length <= length) {
@@ -61,21 +61,21 @@ public final class LocalSetterRun {
         }
     }
 
-    private static synchronized LocalSetterRun[] createSubArray(int length, int index) {
-        LocalSetterRun[] target = localSetterRuns[length];
+    private static synchronized LocalSetterRange[] createSubArray(int length, int index) {
+        LocalSetterRange[] target = localSetterRuns[length];
         if (target == null) {
             int size = 8;
             while (size <= index) {
                 size = size << 1;
             }
-            target = new LocalSetterRun[size];
+            target = new LocalSetterRange[size];
             localSetterRuns[length] = target;
         }
         return target;
     }
 
-    private static synchronized LocalSetterRun[] resizeSubArray(int length, int index) {
-        LocalSetterRun[] target = localSetterRuns[length];
+    private static synchronized LocalSetterRange[] resizeSubArray(int length, int index) {
+        LocalSetterRange[] target = localSetterRuns[length];
         if (target.length <= index) {
             int size = target.length;
             while (size <= index) {
@@ -87,9 +87,9 @@ public final class LocalSetterRun {
         return target;
     }
 
-    public static final LocalSetterRun EMPTY = new LocalSetterRun(0, 0);
+    public static final LocalSetterRange EMPTY = new LocalSetterRange(0, 0);
 
-    public static LocalSetterRun create(int start, int length) {
+    public static LocalSetterRange create(int start, int length) {
         CompilerAsserts.neverPartOfCompilation("use #get from compiled code");
         if (start < 0 || start > Short.MAX_VALUE) {
             throw new ArrayIndexOutOfBoundsException(start);
@@ -103,7 +103,7 @@ public final class LocalSetterRun {
             resizeArray(length);
         }
 
-        LocalSetterRun[] target = localSetterRuns[length];
+        LocalSetterRange[] target = localSetterRuns[length];
         if (target == null) {
             target = createSubArray(length, start);
         }
@@ -112,23 +112,23 @@ public final class LocalSetterRun {
             target = resizeSubArray(length, start);
         }
 
-        LocalSetterRun result = target[start];
+        LocalSetterRange result = target[start];
         if (result == null) {
-            result = new LocalSetterRun(start, length);
+            result = new LocalSetterRange(start, length);
             target[start] = result;
         }
 
         return result;
     }
 
-    public static LocalSetterRun get(int start, int length) {
+    public static LocalSetterRange get(int start, int length) {
         return localSetterRuns[length][start];
     }
 
     private final int start;
     private final int length;
 
-    private LocalSetterRun(int start, int length) {
+    private LocalSetterRange(int start, int length) {
         this.start = start;
         this.length = length;
     }
@@ -136,9 +136,9 @@ public final class LocalSetterRun {
     @Override
     public String toString() {
         if (length == 0) {
-            return "LocalSetterRun[]";
+            return "LocalSetterRange[]";
         }
-        return String.format("LocalSetterRun[%d...%d]", start, start + length - 1);
+        return String.format("LocalSetterRange[%d...%d]", start, start + length - 1);
     }
 
     public int length() {

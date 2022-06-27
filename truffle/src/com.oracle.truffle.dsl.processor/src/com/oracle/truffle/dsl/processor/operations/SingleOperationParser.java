@@ -348,7 +348,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetter)) {
                 parameters.add(ParameterKind.LOCAL_SETTER);
                 numLocalSetters++;
-            } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetterRun)) {
+            } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetterRange)) {
                 parameters.add(ParameterKind.LOCAL_SETTER_ARRAY);
                 if (numLocalSetters != 0) {
                     data.addError(param, "Mixing regular and array local setters not allowed");
@@ -421,7 +421,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
         result.setSuperClass(types.Node);
 
-        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, types.LocalSetterRun));
+        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, types.LocalSetterRange));
 
         return result;
     }

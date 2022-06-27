@@ -557,7 +557,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     @Override
     public CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
         if (execution.getName().startsWith("$localRefArray")) {
-            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REFS, true, types.LocalSetterRun, false);
+            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REFS, true, types.LocalSetterRange, false);
         }
 
         if (execution.getName().startsWith("$localRef")) {
