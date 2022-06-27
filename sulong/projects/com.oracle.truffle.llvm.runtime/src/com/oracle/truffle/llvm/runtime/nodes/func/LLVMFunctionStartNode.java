@@ -190,7 +190,7 @@ public final class LLVMFunctionStartNode extends LLVMRootNode implements LLVMHas
             if (node.isAdoptable() && node instanceof Library) {
                 // DummyReceiver holds the knowledge of library nodes that should be replaced in
                 // the context of the current platform
-                Library repl = DummyReceiver.getLibraryReplacement((Library) node);
+                Library repl = DummyReceiver.getAOTLibraryReplacement((Library) node);
                 if (repl != null) {
                     node = node.replace(repl);
                 }

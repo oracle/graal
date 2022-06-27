@@ -57,6 +57,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+/**
+ * The purpose of this class is to provide a "dummy" receiver used during the AOT preparation to get
+ * rid of the Truffle library exports that are incompatible with the actual platform and thus help
+ * reduce the size of ASTs. The replacement takes place in an alternative AOT preparation AST
+ * traversal in {@link com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode}.
+ */
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = false)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = false)
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = false)
@@ -93,8 +99,15 @@ public final class DummyReceiver {
     public static final DummyReceiver INSTANCE_FOR_CREATE = new DummyReceiver();
     public static final DummyReceiver INSTANCE_FOR_ACCEPTS = new DummyReceiver();
 
+    /**
+     * This method is invoked during before the AOT preparation of a Truffle library to make an
+     * attempt to replace the given library node for the "dummy" one.
+     * 
+     * @param node the library node
+     * @return the AOT replacement for the library or <code>null</code> if there is no replacement.
+     */
     @SuppressWarnings("unchecked")
-    public static Library getLibraryReplacement(Library node) {
+    public static Library getAOTLibraryReplacement(Library node) {
         GeneratedBy generatedByAnnot = node.getClass().getAnnotation(GeneratedBy.class);
         if (generatedByAnnot != null) {
             Class<?> exportClass = generatedByAnnot.value();
@@ -104,16 +117,21 @@ public final class DummyReceiver {
             }
 
             LibraryFactory<? extends Library> libraryFactory = LibraryFactory.resolve(libClass);
-            // The dummy exports accept INSTANCE_FOR_CREATE to pass the assertion in
-            // LibraryFactory.create
+            /*
+             * The dummy exports accept INSTANCE_FOR_CREATE to pass the assertion in
+             * LibraryFactory.create
+             */
             Library dummyLibrary = libraryFactory.create(DummyReceiver.INSTANCE_FOR_CREATE);
-            // But the dummy exports DO NOT accept INSTANCE_FOR_ACCEPTS, which allows recognizing a
-            // dummy export from
-            // a possible fallback export, which is supposed to accept it.
+            /*
+             * But the dummy exports DO NOT accept INSTANCE_FOR_ACCEPTS, which allows recognizing a
+             * dummy export from a possible fallback export, which is supposed to accept it.
+             */
             if (dummyLibrary.accepts(DummyReceiver.INSTANCE_FOR_ACCEPTS)) {
-                // Accepting the dummy instance indicates that the library is not a dummy one,
-                // as a dummy library must not accept anything. If it is the case, do not replace
-                // the node.
+                /*
+                 * Accepting the dummy instance indicates that the library is not a dummy one, as a
+                 * dummy library must not accept anything. If it is the case, do not replace the
+                 * node.
+                 */
                 return null;
             }
 
