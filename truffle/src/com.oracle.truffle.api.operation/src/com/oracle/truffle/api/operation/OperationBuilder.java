@@ -46,6 +46,7 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -630,6 +631,7 @@ public abstract class OperationBuilder {
                 // this should only happen in edge cases, when we have specialized to a generic case
                 // on one thread, but other threads have already executed the child with primitive
                 // return type
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return frame.getValue(slot);
             }
         }
@@ -647,7 +649,7 @@ public abstract class OperationBuilder {
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(frame.getValue(slot));
+            throw throwUnexpectedValue(frame, slot);
         }
 
         protected static boolean expectBoolean(VirtualFrame frame, int slot) throws UnexpectedResultException {
@@ -661,8 +663,8 @@ public abstract class OperationBuilder {
                     }
                     break;
             }
-
-            throw new UnexpectedResultException(frame.getValue(slot));
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw throwUnexpectedValue(frame, slot);
         }
 
         protected static int expectInt(VirtualFrame frame, int slot) throws UnexpectedResultException {
@@ -678,7 +680,7 @@ public abstract class OperationBuilder {
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(frame.getValue(slot));
+            throw throwUnexpectedValue(frame, slot);
         }
 
         protected static float expectFloat(VirtualFrame frame, int slot) throws UnexpectedResultException {
@@ -694,7 +696,7 @@ public abstract class OperationBuilder {
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(frame.getValue(slot));
+            throw throwUnexpectedValue(frame, slot);
         }
 
         protected static long expectLong(VirtualFrame frame, int slot) throws UnexpectedResultException {
@@ -710,7 +712,11 @@ public abstract class OperationBuilder {
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(frame.getValue(slot));
+            throw throwUnexpectedValue(frame, slot);
+        }
+
+        private static UnexpectedResultException throwUnexpectedValue(VirtualFrame frame, int slot) {
+            return new UnexpectedResultException(frame.getValue(slot));
         }
 
         protected static double expectDouble(VirtualFrame frame, int slot) throws UnexpectedResultException {
@@ -726,7 +732,7 @@ public abstract class OperationBuilder {
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnexpectedResultException(frame.getValue(slot));
+            throw throwUnexpectedValue(frame, slot);
         }
 
         protected static boolean storeLocalBooleanCheck(VirtualFrame frame, int localSlot, int stackSlot) {
