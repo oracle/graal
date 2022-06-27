@@ -252,6 +252,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            return null;
+        }
         if (arrayPointer.isJavaConstant() && ((ConstantNode) arrayPointer).getStableDimension() > 0 &&
                         arrayOffset.isJavaConstant() &&
                         arrayLength.isJavaConstant() &&

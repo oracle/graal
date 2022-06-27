@@ -258,6 +258,9 @@ public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode impl
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            return null;
+        }
         if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant()) {
             int len = length.asJavaConstant().asInt();
             JavaKind constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);

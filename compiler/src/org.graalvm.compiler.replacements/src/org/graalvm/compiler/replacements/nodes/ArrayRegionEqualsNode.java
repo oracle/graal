@@ -260,6 +260,9 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            return null;
+        }
         if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant()) {
             int len = length.asJavaConstant().asInt();
             JavaKind constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
