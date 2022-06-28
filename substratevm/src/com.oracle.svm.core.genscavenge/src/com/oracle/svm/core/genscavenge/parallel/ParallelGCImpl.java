@@ -1,6 +1,7 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.log.Log;
@@ -17,7 +18,8 @@ public class ParallelGCImpl extends ParallelGC {
     public static final int WORKERS_COUNT = 4;
     public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
-    public static final TaskQueue.Consumer PROMOTE_TASK = GreyToBlackObjectVisitor::doVisitObject;
+    public static final TaskQueue.Consumer PROMOTE_TASK =
+            obj -> getVisitor().doVisitObject(obj);
 
     private static boolean enabled;
 
@@ -43,6 +45,10 @@ public class ParallelGCImpl extends ParallelGC {
         t.setName("ParallelGCWorker-" + n);
         t.setDaemon(true);
         t.start();
+    }
+
+    public static GreyToBlackObjectVisitor getVisitor() {
+        return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
     public static void waitForIdle() {

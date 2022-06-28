@@ -1204,7 +1204,7 @@ public final class GCImpl implements GC {
         return getPolicy() instanceof NeverCollect;
     }
 
-    GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {
+    public GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {
         return greyToBlackObjectVisitor;
     }
 

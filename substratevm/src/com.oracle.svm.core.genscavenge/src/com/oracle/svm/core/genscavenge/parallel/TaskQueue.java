@@ -1,6 +1,5 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
-import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -11,8 +10,7 @@ public class TaskQueue {
     private static final int SIZE = 1024; ///handle overflow
 
     private static class TaskData {
-        private GreyToBlackObjectVisitor visitor;
-        private Object object;
+        private Object object;///no need to wrap
     }
 
     private final VMMutex mutex;
@@ -40,7 +38,7 @@ public class TaskQueue {
         return next(putIndex) != getIndex;
     }
 
-    public void put(GreyToBlackObjectVisitor visitor, Object object) {
+    public void put(Object object) {
         try {
             mutex.lock();
             while (!canPut()) {
@@ -48,7 +46,6 @@ public class TaskQueue {
                 cond.block();
             }
             TaskData item = data[putIndex];
-            item.visitor = visitor;
             item.object = object;
         } finally {
             putIndex = next(putIndex);
@@ -58,7 +55,6 @@ public class TaskQueue {
     }
 
     public void consume(Consumer consumer) {
-        GreyToBlackObjectVisitor v;
         Object obj;
         try {
             mutex.lock();
@@ -68,7 +64,6 @@ public class TaskQueue {
                 cond.block();
             }
             TaskData item = data[getIndex];
-            v = item.visitor;
             obj = item.object;
         } finally {
             getIndex = next(getIndex);
@@ -76,7 +71,7 @@ public class TaskQueue {
             mutex.unlock();
             cond.broadcast();
         }
-        consumer.accept(v, obj);
+        consumer.accept(obj);
     }
 
     public void waitUntilIdle(int expectedIdleCount) {
@@ -92,6 +87,6 @@ public class TaskQueue {
     }
 
     public interface Consumer {
-        void accept(GreyToBlackObjectVisitor visitor, Object object);
+        void accept(Object object); ///j.u.f.Consumer
     }
 }
