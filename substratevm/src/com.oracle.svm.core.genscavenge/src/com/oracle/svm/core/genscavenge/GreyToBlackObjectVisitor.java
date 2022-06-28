@@ -68,10 +68,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
             assert GCImpl.getGCImpl().isCompleteCollection();
 //            assert innerOffset == 0;
 
-            ParallelGCImpl.QUEUE.put(o);
-            if (ParallelGCImpl.WORKERS_COUNT <= 0) {
-                ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
-            }
+            ParallelGCImpl.queue(o);
             return true;
         } else {
             return doVisitObject(o);

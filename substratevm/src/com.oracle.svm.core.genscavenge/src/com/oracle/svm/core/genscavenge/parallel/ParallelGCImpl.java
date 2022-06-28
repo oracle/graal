@@ -16,9 +16,9 @@ public class ParallelGCImpl extends ParallelGC {
 
     /// static -> ImageSingletons
     public static final int WORKERS_COUNT = 4;
-    public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
-    public static final TaskQueue.Consumer PROMOTE_TASK =
+    private static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
+    private static final TaskQueue.Consumer PROMOTE_TASK =
             obj -> getVisitor().doVisitObject(obj);
 
     private static boolean enabled;
@@ -51,6 +51,13 @@ public class ParallelGCImpl extends ParallelGC {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
+    public static void queue(Object obj) {
+        QUEUE.put(obj);
+        if (WORKERS_COUNT <= 0) { // execute synchronously
+            QUEUE.consume(PROMOTE_TASK);
+        }
+    }
+
     public static void waitForIdle() {
         QUEUE.waitUntilIdle(WORKERS_COUNT);
     }
@@ -61,6 +68,10 @@ public class ParallelGCImpl extends ParallelGC {
 
     public static void setEnabled(boolean enabled) {
         ParallelGCImpl.enabled = enabled;
+    }
+
+    public static TaskQueue.Stats getStats() {
+        return QUEUE.stats;
     }
 }
 
