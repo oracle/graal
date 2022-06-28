@@ -203,6 +203,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
         builder.string("$bci");
         builder.string("$sp");
+
+        for (int i = 0; i < m.getNumTosSlots(); i++) {
+            builder.string("$tos_" + i);
+        }
     }
 
     @Override

@@ -70,12 +70,18 @@ public class OperationsData extends Template {
     private TypeSystemData typeSystem;
     private final Set<TypeKind> boxingEliminatedTypes = new HashSet<>();
 
+    private int numTosSlots;
+
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);
     }
 
     public OperationsContext getOperationsContext() {
         return context;
+    }
+
+    public int getNumTosSlots() {
+        return numTosSlots;
     }
 
     public void addOperationData(SingleOperationData data) {

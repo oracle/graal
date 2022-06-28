@@ -59,6 +59,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
@@ -436,6 +437,7 @@ public class OperationsBytecodeCodeGenerator {
 
             NodeCodeGenerator generator = new NodeCodeGenerator();
             generator.setPlugs(plugs);
+            generator.setGeneratorMode(GeneratorMode.OPERATIONS);
 
             List<CodeTypeElement> resultList = generator.create(context, null, soData.getNodeData());
             if (resultList.size() != 1) {

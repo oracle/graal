@@ -206,7 +206,8 @@ public class FlatNodeGenFactory {
 
     public enum GeneratorMode {
         DEFAULT,
-        EXPORTED_MESSAGE
+        EXPORTED_MESSAGE,
+        OPERATIONS,
     }
 
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
@@ -3419,6 +3420,8 @@ public class FlatNodeGenFactory {
             builder.statement("hasLock = false");
         }
 
+        int numCachedNullChecks = 0;
+
         if (specialization.getMethod() == null) {
             builder.tree(createThrowUnsupported(builder, frameState));
         } else {
@@ -3428,11 +3431,24 @@ public class FlatNodeGenFactory {
                 Parameter parameter = specialization.getParameters().get(i);
 
                 if (parameter.getSpecification().isCached()) {
-                    LocalVariable var = frameState.get(createFieldName(specialization, parameter));
+                    String fieldName = createFieldName(specialization, parameter);
+                    LocalVariable var = frameState.get(fieldName);
                     if (var != null) {
                         bindings[i] = var.createReference();
-                    } else {
-                        bindings[i] = createCacheReference(frameState, specialization, specialization.findCache(parameter), true);
+                    }
+                    if (var == null) {
+                        CodeTree cacheReference = createCacheReference(frameState, specialization, specialization.findCache(parameter), true);
+                        if (generatorMode == GeneratorMode.OPERATIONS && frameState.getMode() == NodeExecutionMode.FAST_PATH) {
+                            String localName = createCacheLocalName(specialization, specialization.findCache(parameter));
+                            var = new LocalVariable(parameter.getType(), localName, null);
+                            frameState.set(fieldName, var);
+                            builder.tree(var.createDeclaration(cacheReference));
+                            bindings[i] = var.createReference();
+                            builder.startIf().tree(var.createReference()).string(" != null").end().startBlock();
+                            numCachedNullChecks++;
+                        } else {
+                            bindings[i] = cacheReference;
+                        }
                     }
                     bindingTypes[i] = parameter.getType();
                 } else {
@@ -3485,6 +3501,8 @@ public class FlatNodeGenFactory {
                     builder.end();
                 }
             }
+
+            builder.end(numCachedNullChecks);
         }
 
         return createCatchRewriteException(builder, specialization, forType, frameState, builder.build());

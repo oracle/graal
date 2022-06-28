@@ -2335,6 +2335,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             if (cache.isCached()) {
                 boolean weakReference = getAnnotationValue(Boolean.class, foundCached, "weak");
+                if (mode == ParseMode.OPERATION) {
+                    if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                        cache.addError("Cahced parameters with primitive types not allowed in Operation DSL.");
+                    }
+                }
                 if (weakReference) {
                     if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
                         cache.addError("Cached parameters with primitive types cannot be weak. Set weak to false to resolve this.");

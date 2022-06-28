@@ -76,6 +76,7 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     private NodeGeneratorPlugs plugs;
+    private GeneratorMode generatorMode = GeneratorMode.DEFAULT;
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, NodeData node) {
@@ -128,6 +129,10 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     public void setPlugs(NodeGeneratorPlugs plugs) {
         this.plugs = plugs;
+    }
+
+    public void setGeneratorMode(GeneratorMode generatorMode) {
+        this.generatorMode = generatorMode;
     }
 
     private static CodeTypeElement makeInnerClass(CodeTypeElement type) {
@@ -284,7 +289,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Arrays.asList(type);
         }
 
-        type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, constants, plugs).create(type);
+        type = new FlatNodeGenFactory(context, generatorMode, node, constants, plugs).create(type);
 
         return Arrays.asList(type);
     }
