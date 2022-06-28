@@ -230,6 +230,8 @@ suite = {
                     "jdk.jfr.events",
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
+                ],
+                "jdk.jfr@11..18": [
                     "jdk.jfr.internal.handlers",
                 ],
             },

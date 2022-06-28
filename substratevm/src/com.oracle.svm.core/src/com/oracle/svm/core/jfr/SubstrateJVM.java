@@ -45,7 +45,6 @@ import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.Configuration;
-import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
 
@@ -415,7 +414,7 @@ public class SubstrateJVM {
 
     /** See {@link JVM#flush}. */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public boolean flush(EventWriter writer, int uncommittedSize, int requestedSize) {
+    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 
