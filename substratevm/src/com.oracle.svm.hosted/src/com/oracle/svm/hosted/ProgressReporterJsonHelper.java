@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,8 @@ import java.util.function.Consumer;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.util.VMError;
 
-class ProgressReporterJsonStatsHelper {
+class ProgressReporterJsonHelper {
+    protected static final long UNAVAILABLE_METRIC = -1;
     private static final String ANALYSIS_RESULTS_KEY = "analysis_results";
     private static final String GENERAL_INFO_KEY = "general_info";
     private static final String IMAGE_DETAILS_KEY = "image_details";
@@ -47,7 +48,7 @@ class ProgressReporterJsonStatsHelper {
     private final Map<String, Object> statsHolder = new HashMap<>();
     private final String jsonOutputFile;
 
-    ProgressReporterJsonStatsHelper(String outFile) {
+    ProgressReporterJsonHelper(String outFile) {
         this.jsonOutputFile = outFile;
     }
 
@@ -151,7 +152,7 @@ class ProgressReporterJsonStatsHelper {
     }
 
     interface JsonMetric {
-        void record(ProgressReporterJsonStatsHelper helper, Object value);
+        void record(ProgressReporterJsonHelper helper, Object value);
     }
 
     enum ImageDetailKey implements JsonMetric {
@@ -198,7 +199,7 @@ class ProgressReporterJsonStatsHelper {
         }
 
         @Override
-        public void record(ProgressReporterJsonStatsHelper helper, Object value) {
+        public void record(ProgressReporterJsonHelper helper, Object value) {
             helper.putImageDetails(this, value);
         }
     }
@@ -220,7 +221,7 @@ class ProgressReporterJsonStatsHelper {
         }
 
         @Override
-        public void record(ProgressReporterJsonStatsHelper helper, Object value) {
+        public void record(ProgressReporterJsonHelper helper, Object value) {
             helper.putResourceUsage(this, value);
         }
 
@@ -257,7 +258,7 @@ class ProgressReporterJsonStatsHelper {
         }
 
         @Override
-        public void record(ProgressReporterJsonStatsHelper helper, Object value) {
+        public void record(ProgressReporterJsonHelper helper, Object value) {
             if (value instanceof Integer) {
                 helper.putAnalysisResults(this, (Integer) value);
             } else if (value instanceof Long) {
@@ -286,7 +287,7 @@ class ProgressReporterJsonStatsHelper {
         }
 
         @Override
-        public void record(ProgressReporterJsonStatsHelper helper, Object value) {
+        public void record(ProgressReporterJsonHelper helper, Object value) {
             helper.putGeneralInfo(this, (String) value);
         }
     }

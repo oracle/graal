@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.hosted.ProgressReporterJsonHelper.UNAVAILABLE_METRIC;
+
 import java.io.File;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
@@ -79,11 +81,11 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ProgressReporterJsonStatsHelper.AnalysisResults;
-import com.oracle.svm.hosted.ProgressReporterJsonStatsHelper.GeneralInfo;
-import com.oracle.svm.hosted.ProgressReporterJsonStatsHelper.ImageDetailKey;
-import com.oracle.svm.hosted.ProgressReporterJsonStatsHelper.JsonMetric;
-import com.oracle.svm.hosted.ProgressReporterJsonStatsHelper.ResourceUsageKey;
+import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
+import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
+import com.oracle.svm.hosted.ProgressReporterJsonHelper.ImageDetailKey;
+import com.oracle.svm.hosted.ProgressReporterJsonHelper.JsonMetric;
+import com.oracle.svm.hosted.ProgressReporterJsonHelper.ResourceUsageKey;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
@@ -93,7 +95,6 @@ import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 
 public class ProgressReporter {
-    private static final long UNAVAILABLE_METRIC = -1;
     private static final int CHARACTERS_PER_LINE;
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
@@ -109,7 +110,7 @@ public class ProgressReporter {
 
     private final NativeImageSystemIOWrappers builderIO;
 
-    private final ProgressReporterJsonStatsHelper jsonHelper;
+    private final ProgressReporterJsonHelper jsonHelper;
     private final DirectPrinter linePrinter = new DirectPrinter();
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
@@ -176,7 +177,7 @@ public class ProgressReporter {
         builderIO = NativeImageSystemIOWrappers.singleton();
 
         if (SubstrateOptions.BuildOutputJSONFile.hasBeenSet(options)) {
-            jsonHelper = new ProgressReporterJsonStatsHelper(SubstrateOptions.BuildOutputJSONFile.getValue(options));
+            jsonHelper = new ProgressReporterJsonHelper(SubstrateOptions.BuildOutputJSONFile.getValue(options));
         } else {
             jsonHelper = null;
         }
@@ -278,9 +279,9 @@ public class ProgressReporter {
             l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(cCompilerShort).println();
         }
         recordJsonMetrics(GeneralInfo.CC, cCompilerShort);
-        String gcAlgo = Heap.getHeap().getGC().getName();
-        recordJsonMetrics(GeneralInfo.GC, gcAlgo);
-        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcAlgo).println();
+        String gcName = Heap.getHeap().getGC().getName();
+        recordJsonMetrics(GeneralInfo.GC, gcName);
+        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).println();
     }
 
     public void printFeatures(List<Feature> features) {
@@ -360,10 +361,10 @@ public class ProgressReporter {
         recordJsonMetrics(AnalysisResults.FIELD_REFLECT, reflectFieldsCount);
         l().a(classesFieldsMethodFormat, reflectClassesCount, reflectFieldsCount, reflectMethodsCount)
                         .doclink("registered for reflection", "#glossary-reflection-registrations").println();
-        recordJsonMetrics(AnalysisResults.METHOD_JNI, (numJNIClasses > 0 ? numJNIMethods : UNAVAILABLE_METRIC));
+        recordJsonMetrics(AnalysisResults.METHOD_JNI, (numJNIMethods >= 0 ? numJNIMethods : UNAVAILABLE_METRIC));
         recordJsonMetrics(AnalysisResults.CLASS_JNI, (numJNIClasses >= 0 ? numJNIClasses : UNAVAILABLE_METRIC));
-        recordJsonMetrics(AnalysisResults.FIELD_JNI, (numJNIClasses > 0 ? numJNIFields : UNAVAILABLE_METRIC));
-        if (numJNIClasses > 0) {
+        recordJsonMetrics(AnalysisResults.FIELD_JNI, (numJNIFields >= 0 ? numJNIFields : UNAVAILABLE_METRIC));
+        if (numJNIClasses >= 0) {
             l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
