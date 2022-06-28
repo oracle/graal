@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
+import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -697,6 +699,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return getType().hashCode();
     }
 
+    @HostCompilerDirectives.InliningCutoff
     public final StaticObject tryInitializeAndGetStatics() {
         safeInitialize();
         return getStatics();
@@ -726,7 +729,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      */
     @Override
     public final boolean isPrimitive() {
-        return getJavaKind().isPrimitive();
+        return this instanceof PrimitiveKlass;
     }
 
     /*
@@ -797,13 +800,16 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             assert this.getContext() == other.getContext();
             return this == other;
         }
-        if (this.isArray() && other.isArray()) {
-            return ((ArrayKlass) this).arrayTypeChecks((ArrayKlass) other);
+        if (this.isArray()) {
+            if (other.isArray()) {
+                return ((ArrayKlass) this).arrayTypeChecks((ArrayKlass) other);
+            }
+        } else {
+            if (this.isFinalFlagSet()) {
+                return this == other;
+            }
         }
-        if (!this.isArray() && ModifiersProvider.super.isFinalFlagSet()) {
-            return this == other;
-        }
-        if (isInterface()) {
+        if (Modifier.isInterface(getModifiers())) {
             return checkInterfaceSubclassing(other);
         }
         return checkOrdinaryClassSubclassing(other);
@@ -979,13 +985,18 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         try {
             initialize();
         } catch (EspressoException e) {
-            StaticObject cause = e.getGuestException();
-            Meta meta = getMeta();
-            if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                throw throwExceptionInInitializerError(meta, cause);
-            } else {
-                throw e;
-            }
+            throw initializationFailed(e);
+        }
+    }
+
+    @HostCompilerDirectives.InliningCutoff
+    private RuntimeException initializationFailed(EspressoException e) {
+        StaticObject cause = e.getGuestException();
+        Meta meta = getMeta();
+        if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
+            throw throwExceptionInInitializerError(meta, cause);
+        } else {
+            throw e;
         }
     }
 
@@ -1020,20 +1031,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     // index 0 is Object, index hierarchyDepth is this
-    protected Klass[] getSuperTypes() {
-        // default implementation for primitive classes
-        return new Klass[]{this};
-    }
+    protected abstract Klass[] getSuperTypes();
 
-    protected int getHierarchyDepth() {
-        // default implementation for primitive classes
-        return 0;
-    }
+    protected abstract int getHierarchyDepth();
 
-    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
-        // default implementation for primitive classes
-        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
-    }
+    protected abstract ObjectKlass.KlassVersion[] getTransitiveInterfacesList();
 
     @TruffleBoundary
     public StaticObject allocateReferenceArray(int length) {
@@ -1318,10 +1320,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
     @Override
-    public int getModifiers() {
-        // Note: making this method non-final
-        // may cause heavy performance issues
-        return modifiers;
+    public final int getModifiers() {
+        if (this instanceof ObjectKlass && getContext().advancedRedefinitionEnabled()) {
+            // getKlassVersion().getModifiers() introduces a ~10%
+            // perf hit on some benchmarks, so put behind a check
+            return this.getClassModifiers();
+        } else {
+            return modifiers;
+        }
     }
 
     /**

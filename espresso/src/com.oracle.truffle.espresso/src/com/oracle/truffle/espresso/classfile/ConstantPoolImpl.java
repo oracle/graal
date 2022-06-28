@@ -32,6 +32,8 @@ import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Immutable constant pool implementation backed by an array of constants.
@@ -74,8 +76,12 @@ final class ConstantPoolImpl extends ConstantPool {
             return constants[index];
         } catch (IndexOutOfBoundsException exception) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ConstantPool.classFormatError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
+            throw classFormaterror(index, description);
         }
+    }
+
+    private static @JavaType(ClassFormatError.class) EspressoException classFormaterror(int index, String description) {
+        return ConstantPool.classFormatError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
     }
 
     @Override

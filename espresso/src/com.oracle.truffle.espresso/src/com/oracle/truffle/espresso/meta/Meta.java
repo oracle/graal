@@ -38,6 +38,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -1640,6 +1642,7 @@ public final class Meta extends ContextAccessImpl {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwException(@JavaType(Throwable.class) ObjectKlass exceptionKlass) {
         throw throwException(initException(exceptionKlass));
     }
@@ -1651,6 +1654,7 @@ public final class Meta extends ContextAccessImpl {
      * The given instance must be a non-{@link StaticObject#NULL NULL}, guest
      * {@link #java_lang_Throwable Throwable}.
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwException(@JavaType(Throwable.class) StaticObject throwable) {
         assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
         throw EspressoException.wrap(throwable, this);
@@ -1668,6 +1672,7 @@ public final class Meta extends ContextAccessImpl {
      *            Throwable}.
      * @param message the message to be used when initializing the exception
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         throw throwException(initExceptionWithMessage(exceptionKlass, message));
     }
@@ -1684,6 +1689,7 @@ public final class Meta extends ContextAccessImpl {
      *            Throwable}.
      * @param message the message to be used when initializing the exception
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
@@ -1701,6 +1707,7 @@ public final class Meta extends ContextAccessImpl {
      * @param msgFormat the {@linkplain java.util.Formatter format string} to be used to construct
      *            the message used when initializing the exception
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String msgFormat, Object... args) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(EspressoError.format(msgFormat, args)));
     }
@@ -1713,6 +1720,7 @@ public final class Meta extends ContextAccessImpl {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         throw throwException(initExceptionWithCause(exceptionKlass, cause));
     }

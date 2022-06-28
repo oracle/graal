@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -89,6 +90,7 @@ public abstract class InstanceOf extends EspressoNode {
         }
 
         @Specialization(replaces = "doCached")
+        @HostCompilerDirectives.InliningCutoff
         protected boolean doGeneric(Klass maybeSubType, Klass superType) {
             return superType.isAssignableFrom(maybeSubType);
         }
