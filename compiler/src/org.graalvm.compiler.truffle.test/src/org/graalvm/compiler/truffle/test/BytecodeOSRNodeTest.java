@@ -403,12 +403,12 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
-     * Test that there is no recursive OSR, by checking that a second OSR call is made in .
+     * Test that there is no infinitely recursive OSR calls.
      */
     @Test
     public void testRecursiveDeoptHandling() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        DeoptingBytecodeOSRTestNode osrNode = new DeoptingBytecodeOSRTestNode();
+        RecursiveBytecodeOSRTestNode osrNode = new RecursiveBytecodeOSRTestNode();
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         target.call();
@@ -1173,8 +1173,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
             super.restoreParentFrame(osrFrame, parentFrame);
-            // Copying should not trigger a deopt.
-            Assert.assertTrue(CompilerDirectives.inCompiledCode());
+            // Frame restoration is done in interpreter to get smaller graphs.
+            Assert.assertFalse(CompilerDirectives.inCompiledCode());
         }
 
         @Override
@@ -1274,15 +1274,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 throw new IllegalStateException("Error accessing index slot");
             }
         }
-
-        @Override
-        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-            // The parent implementation asserts we are in compiled code, so we instead explicitly
-            // do the transfer here.
-            super.restoreParentFrame(osrFrame, parentFrame);
-            // Parent frame restoration does not speculate on the state of the frame on return.
-            Assert.assertTrue(CompilerDirectives.inCompiledCode());
-        }
     }
 
     public static class FrameTransferringNodeWithUninitializedSlots extends FrameTransferringNode {
@@ -1342,7 +1333,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class DeoptingBytecodeOSRTestNode extends BytecodeOSRTestNode {
+    public static class RecursiveBytecodeOSRTestNode extends BytecodeOSRTestNode {
         private static final Object RETURN_VALUE = new Object();
         private static final Object FAIL_VALUE = new Object();
 

@@ -80,6 +80,8 @@ public final class BytecodeOSRMetadata {
      * Stores the latest call target submitted for compilation, or #DISABLE if compilation is
      * disabled for this method. All writes should be made through compareAndSet, the exception
      * being setting the #DISABLE value.
+     * 
+     * Used as a synchronization mechanism.
      */
     private final AtomicReference<Object> currentlyCompiling = new AtomicReference<>();
     private final ReAttemptsCounter compilationReAttempts = new ReAttemptsCounter();
@@ -348,6 +350,23 @@ public final class BytecodeOSRMetadata {
      * should not be too high.
      */
     public void restoreFrame(FrameWithoutBoxing source, FrameWithoutBoxing target) {
+        // GR-38646:
+        //
+        // Tag in the slots are not PE-constants here. They might be PEA-able, but that is too late;
+        // the switch on the tag introduces way too many nodes in the graph early in the graph
+        // building process. To prevent that, we transfer to interpreter here. Coming back from OSR
+        // will transfer back anyway, this simply puts the transfer back earlier.
+        //
+        // Note:
+        // - This is not an invalidating deopt.
+        // - All normally completing OSR calls will enter here, so this might pollute the tracing of
+        // transfer to interpreters.
+
+        // Forces spawning of a frame state. This ensures we return to the interpreter state after
+        // the complete execution of the OSR call.
+        forceStateSplit();
+        CompilerDirectives.transferToInterpreter();
+
         LazyState state = getLazyState();
         CompilerAsserts.partialEvaluationConstant(state);
         // The frames should use the same descriptor.
@@ -359,6 +378,10 @@ public final class BytecodeOSRMetadata {
         transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, null);
         // transfer auxiliary slots
         transferAuxiliarySlots(source, target, state);
+    }
+
+    @TruffleBoundary(allowInlining = false)
+    private static void forceStateSplit() {
     }
 
     private static void validateDescriptors(FrameWithoutBoxing source, FrameWithoutBoxing target, LazyState state) {
