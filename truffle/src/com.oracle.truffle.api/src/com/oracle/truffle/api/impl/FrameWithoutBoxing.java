@@ -617,8 +617,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private byte[] getIndexedTags() {
-        return indexedTags;
-        // return unsafeCast(indexedTags, byte[].class, true, true, true);
+        return unsafeCast(indexedTags, byte[].class, true, true, true);
     }
 
     @Override
@@ -727,10 +726,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void copyPrimitive(int srcSlot, int destSlot) {
         byte tag = getIndexedTagChecked(srcSlot);
-        assert tag == OBJECT_TAG : "copyObject must be used with Object slots";
+        assert tag != OBJECT_TAG : "copyObject must be used with non-Object slots";
         long primitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(srcSlot), true, PRIMITIVE_LOCATION);
         verifyIndexedSet(destSlot, tag);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(destSlot), primitiveValue, PRIMITIVE_LOCATION);
+        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + destSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, null, OBJECT_LOCATION);
     }
 
     public void swap(int first, int second) {
