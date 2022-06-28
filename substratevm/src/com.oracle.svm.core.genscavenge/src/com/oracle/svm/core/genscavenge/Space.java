@@ -397,11 +397,15 @@ public final class Space {
             AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
             RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
         }
+        if (ParallelGCImpl.isEnabled()) {
+            ParallelGCImpl.queue(copy);
+        }
         return copy;
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space. */
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+        /// called from GCImpl.promoteChunksWithPinnedObjects() early in the GC routine
         assert this != originalSpace && originalSpace.isFromSpace();
 
         originalSpace.extractAlignedHeapChunk(chunk);

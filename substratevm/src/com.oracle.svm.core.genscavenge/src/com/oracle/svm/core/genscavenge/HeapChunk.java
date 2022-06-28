@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.function.IntUnaryOperator;
 
-import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -281,23 +280,19 @@ public final class HeapChunk {
         return walkObjectsFromInline(that, offset, visitor);
     }
 
-    @NeverInline("GC performance")
+    @AlwaysInline("GC performance")
     public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
+        /// beware: this is called for both aligned and unaligned objects. Make sure both types are
+        /// put on the task queue. Currently only aligned ones are.
         Pointer offset = startOffset;
         Pointer top = getTopPointer(that);
-        Pointer p;
-        do {
-            p = top;
-            while (offset.belowThan(top)) {
-                Object obj = offset.toObject();
-                if (!visitor.visitObjectInline(obj)) {
-                    return false;
-                }
-                offset = offset.add(LayoutEncoding.getSizeFromObjectInline(obj));
+        while (offset.belowThan(top)) {
+            Object obj = offset.toObject();
+            if (!visitor.visitObjectInline(obj)) {
+                return false;
             }
-            ParallelGCImpl.waitForIdle();
-            top = getTopPointer(that);
-        } while (top.aboveThan(p));
+            offset = offset.add(LayoutEncoding.getSizeFromObjectInline(obj));
+        }
         return true;
     }
 
