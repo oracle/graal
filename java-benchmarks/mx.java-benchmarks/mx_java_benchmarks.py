@@ -1904,11 +1904,10 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return sorted(bench for bench in _renaissanceConfig)
 
     def defaultSuiteVersion(self):
-        #  return self.availableSuiteVersions()[-1]
-        return "0.11.0"  # stick to 0.11.0 for both JIT and AOT until Native Image is compatible with 0.13.0 (GR-34147)
+        return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0"]
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
