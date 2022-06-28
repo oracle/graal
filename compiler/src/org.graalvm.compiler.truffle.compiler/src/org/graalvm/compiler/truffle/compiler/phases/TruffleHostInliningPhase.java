@@ -105,7 +105,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         @Option(help = "Determines the maximum call depth for exploration during host inlining.")//
         public static final OptionKey<Integer> TruffleHostInliningMaxExplorationDepth = new OptionKey<>(1000);
+
+        @Option(help = "Maximum number of subtree invokes for a subtree to get inlined until it is considered too complex.")//
+        public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(10);
+
     }
+
+    private static final String TOO_MANY_SUBTREE_INVOKES_ERROR = "call has more than " + Options.TruffleHostInliningMaxSubtreeInvokes.getDefaultValue() +
+                    " fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md";
 
     static final String INDENT = "  ";
     private static final int TRIVIAL_SIZE = 30;
@@ -135,6 +142,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     private boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod targetMethod) {
         return TruffleCompilerRuntime.getRuntimeIfAvailable().isBytecodeInterpreterSwitch(translateMethod(targetMethod));
+    }
+
+    private boolean isInliningCutoff(ResolvedJavaMethod targetMethod) {
+        return TruffleCompilerRuntime.getRuntimeIfAvailable().isInliningCutoff(translateMethod(targetMethod));
     }
 
     protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
@@ -171,6 +182,13 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             sizeLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
         }
 
+        if (sizeLimit < 0) {
+            /*
+             * Host inlining phase was disabled for this method.
+             */
+            return;
+        }
+
         final DebugContext debug = context.graph.getDebug();
         debug.dump(DebugContext.VERBOSE_LEVEL, context.graph, "Before Truffle host inlining");
 
@@ -204,6 +222,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 graphSize = NodeCostUtil.computeNodesSize(context.graph.getNodes());
                 if (round == 0) {
                     beforeGraphSize = graphSize;
+                    root.graphSize = graphSize;
                     root.children = exploreGraph(context, null, root, context.graph, round, sizeLimit, 0);
                     toProcess = new ArrayList<>(root.children.size());
                     toProcess.addAll(root.children);
@@ -249,6 +268,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
                     // fixed point until no new targets are found through shallow inlining
                 } while (!newTargets.isEmpty());
+
+                recomputeSubtreeStatistics(context, root);
 
                 // ORDER BY call.subTreeInvokes ASC, call.subTreeSize ASC
                 Collections.sort(toProcess);
@@ -302,6 +323,31 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             }
         }
 
+    }
+
+    /*
+     * Inline decisions might have changed due to invokes dying or subtree invoke limit reached, so
+     * we need to compute the statistics again with a separate pass on the call tree.
+     */
+    private int recomputeSubtreeStatistics(InliningPhaseContext context, CallTree caller) {
+        int subtreeSize = caller.graphSize;
+        int subtreeInvokes = caller.invokes;
+        int invokes = 0;
+        if (caller.children != null) {
+            for (CallTree callee : caller.children) {
+                if (callee.isInlined() || shouldInline(context, callee)) {
+                    subtreeSize += recomputeSubtreeStatistics(context, callee);
+                    subtreeInvokes += callee.subTreeInvokes;
+                } else if (countToInvokes(callee)) {
+                    subtreeInvokes++;
+                    invokes++;
+                }
+            }
+        }
+        caller.invokes = invokes;
+        caller.subTreeInvokes = subtreeInvokes;
+        caller.subTreeSize = subtreeSize;
+        return subtreeSize;
     }
 
     private static boolean isInBudget(CallTree call, int graphSize, int sizeLimit) {
@@ -476,27 +522,31 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                             caller.propagatesDeopt = true;
                         }
                     }
+
+                    caller.subTreeInvokes += callee.subTreeInvokes;
                 } else {
                     /*
                      * We do not count deoptimized invokes as actual invokes. We do not want that
                      * slow-path code influences inline prioritization. Note that invokes are still
                      * accounted for in the node cost.
                      */
-                    if (!deoptimized && !inInterpreter) {
+                    if (countToInvokes(callee)) {
 
                         /*
                          * We propagate the subTreeSize to all callers until we reach the
                          * exploreRoot.
                          */
-                        CallTree current = callee;
-                        while (current != null) {
-                            current.subTreeInvokes++;
-                            if (current == exploreRoot) {
-                                break;
-                            }
-                            current = current.parent;
-                        }
+                        caller.subTreeInvokes++;
+                        caller.invokes++;
                     }
+                }
+
+                if (!caller.isInlined() && caller.subTreeInvokes >= context.maxSubtreeInvokes) {
+                    /*
+                     * We can just as well stop exploring if we already reached the number of
+                     * invokes.
+                     */
+                    return children;
                 }
             }
         }
@@ -542,22 +592,9 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         calleeGraph = lookupGraph(context, targetMethod);
         assert calleeGraph != null : "There must be a graph available for an inlinable call.";
-
         callee.graphSize = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
-
-        if (shouldContinueExploring(context, exploreRoot, exploreBudget, callee.graphSize, depth)) {
-            /*
-             * We propagate the subTreeSize to all callers until we reach the exploreRoot.
-             */
-            CallTree current = callee;
-            while (current != null) {
-                current.subTreeSize += callee.graphSize;
-                if (current == exploreRoot) {
-                    break;
-                }
-                current = current.parent;
-            }
-            return exploreGraph(context, exploreRoot, callee, calleeGraph, exploreRound, exploreBudget, depth + 1);
+        if (shouldContinueExploring(context, exploreBudget, callee.graphSize, depth)) {
+            return exploreGraph(context, exploreRoot, callee, calleeGraph, exploreRound, exploreBudget - callee.graphSize, depth + 1);
         } else {
             /*
              * We reached the limits of what we want to explore. This means this call is unlikely to
@@ -569,9 +606,35 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static boolean shouldContinueExploring(InliningPhaseContext context, CallTree exploreRoot, int exploreBudget, int graphSize, int depth) {
+    private static boolean shouldContinueExploring(InliningPhaseContext context, int exploreBudget, int graphSize, int depth) {
         int useBudget = Math.max(TRIVIAL_SIZE, exploreBudget);
-        return exploreRoot.subTreeSize + graphSize <= useBudget && depth < Options.TruffleHostInliningMaxExplorationDepth.getValue(context.options);
+        return graphSize <= useBudget && depth < Options.TruffleHostInliningMaxExplorationDepth.getValue(context.options);
+    }
+
+    /**
+     * Returns <code>true</code> if a call counts to the invoke heuristic for host inlining. We
+     * deliberately do not want to count invokes in slow-paths or dead invokes for this statistics
+     * as they should not influence decisions.
+     */
+    private static boolean countToInvokes(CallTree call) {
+        if (call.deoptimized) {
+            return false;
+        }
+        if (call.inInterpreter) {
+            return false;
+        }
+        if (call.propagatesDeopt) {
+            return false;
+        }
+        /*
+         * This is an intrinsified or dead invoke. Do no count them.
+         */
+        String failureMessage = InliningUtil.checkInvokeConditions(call.invoke);
+        if (failureMessage != null) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -658,6 +721,15 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
+        /*
+         * More than one non-slow-path invoke. This may happen if method has many truffle boundary
+         * or non-direct virtual calls.
+         */
+        if (call.subTreeInvokes >= context.maxSubtreeInvokes) {
+            call.reason = TOO_MANY_SUBTREE_INVOKES_ERROR;
+            return false;
+        }
+
         if (call.explorationIncomplete) {
             /*
              * We have given up exploring the method as it was too big. We cannot really make a
@@ -682,6 +754,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         if (context.highTierContext.getReplacements().hasSubstitution(targetMethod, context.graph.getOptions())) {
             call.reason = "has substituion";
+            return false;
+        }
+
+        if (isInliningCutoff(targetMethod)) {
+            call.reason = "method annotated as @Uncommon";
             return false;
         }
 
@@ -866,6 +943,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getTypeProfile();
             SpeculationLog.SpeculationReason speculationReason = InliningUtil.createSpeculation(invoke, typeProfile);
             SpeculationLog speculationLog = context.graph.getSpeculationLog();
+
             ResolvedJavaType resolvedType = typeProfile.getTypes()[0].getType();
             InliningUtil.insertTypeGuard(context.highTierContext, invoke, resolvedType, speculationLog.speculate(speculationReason));
             InliningUtil.replaceInvokeCallTarget(invoke, context.graph, InvokeKind.Special, targetMethod);
@@ -976,7 +1054,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     public static boolean shouldDenyTrivialInlining(ResolvedJavaMethod callee) {
         TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
         assert r != null;
-        return (r.isBytecodeInterpreterSwitch(callee) || r.isTruffleBoundary(callee) || r.isInInterpreter(callee) || r.isTransferToInterpreterMethod(callee));
+        return (r.isBytecodeInterpreterSwitch(callee) || r.isInliningCutoff(callee) || r.isTruffleBoundary(callee) || r.isInInterpreter(callee) || r.isTransferToInterpreterMethod(callee));
     }
 
     static final class BytecodeParserInlineInvokePlugin implements InlineInvokePlugin {
@@ -1004,6 +1082,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final OptionValues options;
         final TruffleCompilerRuntime truffle;
         final boolean isBytecodeSwitch;
+        final int maxSubtreeInvokes;
 
         /**
          * Caches graphs for a single run of this phase. This is not just a performance optimization
@@ -1018,6 +1097,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             this.options = graph.getOptions();
             this.truffle = truffle;
             this.isBytecodeSwitch = isBytecodeSwitch;
+            this.maxSubtreeInvokes = Options.TruffleHostInliningMaxSubtreeInvokes.getValue(options);
         }
 
     }
@@ -1093,8 +1173,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          */
         int subTreeInvokes;
 
+        int invokes;
+
         /**
-         * Sum of all Graal nodes of the entire subtree of all methods that were determend to be
+         * Sum of all Graal nodes of the entire subtree of all methods that were determined to be
          * inlined during subtree exploration.
          */
         int subTreeSize;
@@ -1143,8 +1225,12 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return targetMethod;
         }
 
+        boolean isRoot() {
+            return parent == null;
+        }
+
         boolean isInlined() {
-            return inlinedIndex != -1 || parent == null;
+            return inlinedIndex != -1 || isRoot();
         }
 
         @Override
@@ -1173,9 +1259,9 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             } else {
                 return String.format(
                                 "%-" + maxIndent +
-                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, inInterpreter %5s, propDeopt %5s, graphSize %4s, subTreeInvokes %4s, subTreeCost %4s, forced %5s, incomplete %5s,  reason %s]",
-                                indent + buildLabel(), inlinedIndex, exploredIndex, monomorphicTargetMethod != null, deoptimized, inInterpreter, propagatesDeopt, graphSize, subTreeInvokes,
-                                subTreeSize,
+                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, inInterpreter %5s, propDeopt %5s, graphSize %4s, subTreeCost %4s, invokes %4s, subTreeInvokes %4s, forced %5s, incomplete %5s,  reason %s]",
+                                indent + buildLabel(), inlinedIndex, exploredIndex, monomorphicTargetMethod != null, deoptimized, inInterpreter, propagatesDeopt, graphSize, subTreeSize, invokes,
+                                subTreeInvokes,
                                 forceShallowInline,
                                 explorationIncomplete,
                                 reason);

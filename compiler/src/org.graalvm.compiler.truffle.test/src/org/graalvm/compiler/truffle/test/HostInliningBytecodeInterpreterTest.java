@@ -31,8 +31,8 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -55,11 +55,11 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
                 ResolvedJavaMethod invokedMethod = invoke.getTargetMethod();
 
                 final String fullName = invokedMethod.format("%H.%n");
-                boolean validIndirect = fullName.contains("List") || fullName.contains("ArrayList") || fullName.contains("Object.hashCode");
+                boolean validIndirect = fullName.contains("Arrays") || fullName.contains("ArrayList") || fullName.contains("Object.hashCode");
                 boolean validException = fullName.contains("createException");
 
                 if (!validIndirect && !validException) {
-                    Assert.fail("Unexpected node type found in the graph: " + invoke);
+                    throw GraphUtil.approxSourceException(invoke, new AssertionError("Unexpected node type found in the graph: " + invoke));
                 }
             }
         }
@@ -289,6 +289,7 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
         return state.counter;
     }
 
+    @BytecodeInterpreterSwitch
     private static int opgen(int index, State state) {
         state.counter++;
         switch ((index + state.counter) % 10 + 10) {
@@ -326,7 +327,7 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
     private static int op20(State state) {
         state.stack.add(20);
         state.stack.add(state.counter);
-        return state.stack.hashCode();
+        return state.stack.size();
     }
 
     private static int op21(State state) {
@@ -515,7 +516,7 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
     private class State {
         private int counter = 0;
         private double statistic = 0.0;
-        private List<Integer> stack = new ArrayList<>();
+        private ArrayList<Integer> stack = new ArrayList<>();
 
         @Override
         public int hashCode() {

@@ -97,6 +97,7 @@ public @interface TruffleFromLibGraal {
         GetSuppliedString(String.class, Supplier.class),
         GetURI(String.class, Object.class),
         IsBytecodeInterpreterSwitch(boolean.class, Object.class, long.class),
+        IsInliningCutoff(boolean.class, Object.class, long.class),
         IsBytecodeInterpreterSwitchBoundary(boolean.class, Object.class, long.class),
         IsInInterpreter(boolean.class, Object.class, long.class),
         IsTransferToInterpreterMethod(boolean.class, Object.class, long.class),
