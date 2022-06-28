@@ -212,6 +212,7 @@ public final class GCImpl implements GC {
 
         GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause.getName());
+        ParallelGCImpl.QUEUE.stats.reset();
         boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
         printGCAfter(cause.getName());
 
@@ -436,6 +437,8 @@ public final class GCImpl implements GC {
                 } else {
                     timers.logAfterCollection(verboseGCLog);
                 }
+                verboseGCLog.newline().string("  task queue max size: ")
+                        .unsigned(ParallelGCImpl.QUEUE.stats.getMaxSize()).newline();
                 verboseGCLog.string("]");
                 verboseGCLog.string("]").newline();
             }

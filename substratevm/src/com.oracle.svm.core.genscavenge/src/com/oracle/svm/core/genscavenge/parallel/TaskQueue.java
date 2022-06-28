@@ -13,6 +13,8 @@ public class TaskQueue {
         private Object object;///no need to wrap
     }
 
+    public final Stats stats;
+
     private final VMMutex mutex;
     private final VMCondition cond;
     private final TaskData[] data;
@@ -24,6 +26,7 @@ public class TaskQueue {
         mutex = new VMMutex(name + "-queue");
         cond = new VMCondition(mutex);
         data = IntStream.range(0, SIZE).mapToObj(n -> new TaskData()).toArray(TaskData[]::new);
+        stats = new Stats();
     }
 
     private int next(int index) {
@@ -49,6 +52,7 @@ public class TaskQueue {
             item.object = object;
         } finally {
             putIndex = next(putIndex);
+            stats.noteSize(putIndex, getIndex);
             mutex.unlock();
             cond.broadcast();
         }
@@ -67,6 +71,7 @@ public class TaskQueue {
             obj = item.object;
         } finally {
             getIndex = next(getIndex);
+            stats.noteSize(putIndex, getIndex);
             idleCount--;
             mutex.unlock();
             cond.broadcast();
@@ -88,5 +93,27 @@ public class TaskQueue {
 
     public interface Consumer {
         void accept(Object object); ///j.u.f.Consumer
+    }
+
+    public static class Stats {
+        private int maxSize;
+
+        public void noteSize(int putIndex, int getIndex) {
+            int size = putIndex - getIndex;
+            if (size < 0) {
+                size += SIZE;
+            }
+            if (size > maxSize) {
+                maxSize = size;
+            }
+        }
+
+        public int getMaxSize() {
+            return maxSize;
+        }
+
+        public void reset() {
+            maxSize = 0;
+        }
     }
 }
