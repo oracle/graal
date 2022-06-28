@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 22.3.0
+
+* (GR-35797) The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
+
 ## Version 22.2.0
 
 * GR-33829 Added support on libgraal for caching encoded graphs across Truffle compilations to speedup partial evaluation. The cache is enabled by default and can be enabled/disabled with the `--engine.EncodedGraphCache` option.
