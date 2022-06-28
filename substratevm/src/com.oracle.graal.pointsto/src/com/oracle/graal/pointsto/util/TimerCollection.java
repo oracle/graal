@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,39 +44,31 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
      * A registry of well-known timers used when building images.
      */
     public enum Registry {
-        TOTAL("total", false),
-        SETUP("setup", true),
-        CLASSLIST("classlist", false),
-        CLINIT("(clinit)", true),
-        FEATURES("(features)", false),
-        VERIFY_HEAP("(verify)", false),
-        ANALYSIS("analysis", true),
-        UNIVERSE("universe", true),
-        COMPILE_TOTAL("compile", true),
-        PARSE("(parse)", true),
-        INLINE("(inline)", true),
-        COMPILE("(compile)", true),
-        DEBUG_INFO("dbginfo", true),
-        IMAGE("image", true),
-        WRITE("write", true);
+        TOTAL("total"),
+        SETUP("setup"),
+        CLASSLIST("classlist"),
+        CLINIT("(clinit)"),
+        FEATURES("(features)"),
+        VERIFY_HEAP("(verify)"),
+        ANALYSIS("analysis"),
+        UNIVERSE("universe"),
+        COMPILE_TOTAL("compile"),
+        PARSE("(parse)"),
+        INLINE("(inline)"),
+        COMPILE("(compile)"),
+        DEBUG_INFO("dbginfo"),
+        IMAGE("image"),
+        WRITE("write");
 
         public final String name;
 
-        public final boolean autoPrint;
-
-        Registry(String name, boolean autoPrint) {
+        Registry(String name) {
             this.name = name;
-            this.autoPrint = autoPrint;
         }
 
     }
 
     private final Map<String, Timer> timers = new ConcurrentHashMap<>();
-    private final String imageName;
-
-    public TimerCollection(String imageName) {
-        this.imageName = imageName;
-    }
 
     public Timer get(String name) {
         Timer timer = timers.get(name);
@@ -85,11 +77,11 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
     }
 
     public Timer get(TimerCollection.Registry type) {
-        return timers.computeIfAbsent(type.name, (name) -> new Timer(imageName, name, type.autoPrint));
+        return timers.computeIfAbsent(type.name, (name) -> new Timer(name));
     }
 
-    public static Timer.StopTimer createTimerAndStart(String prefix, String name) {
-        return singleton().createTimer(prefix, name).start();
+    public static Timer.StopTimer createTimerAndStart(String name) {
+        return singleton().createTimer(name).start();
     }
 
     public static Timer.StopTimer createTimerAndStart(TimerCollection.Registry type) {
@@ -97,20 +89,8 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
     }
 
     public Timer createTimer(String name) {
-        return createTimer(null, name, true);
-    }
-
-    public Timer createTimer(String prefix, String name) {
-        return createTimer(prefix, name, true);
-    }
-
-    public Timer createTimer(String name, boolean autoPrint) {
-        return createTimer(null, name, autoPrint);
-    }
-
-    public Timer createTimer(String prefix, String name, boolean autoPrint) {
         GraalError.guarantee(!timers.containsKey(name), "Name %s for a timer is already taken.", name);
-        Timer timer = new Timer(prefix, name, autoPrint);
+        Timer timer = new Timer(name);
         timers.put(timer.getName(), timer);
         return timer;
     }

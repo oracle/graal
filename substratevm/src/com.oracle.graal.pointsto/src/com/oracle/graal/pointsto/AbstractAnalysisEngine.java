@@ -98,7 +98,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
         this.verifyHeapTimer = timerCollection.get(TimerCollection.Registry.VERIFY_HEAP);
-        this.reachabilityTimer = timerCollection.createTimer("(reachability)", false);
+        this.reachabilityTimer = timerCollection.createTimer("(reachability)");
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
@@ -180,13 +180,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
         universe.getHeapScanner().cleanupAfterAnalysis();
         universe.getHeapVerifier().cleanupAfterAnalysis();
-    }
-
-    @Override
-    public void printTimers() {
-        reachabilityTimer.print();
-        verifyHeapTimer.print();
-        processFeaturesTimer.print();
     }
 
     @Override

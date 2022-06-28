@@ -51,7 +51,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
  * Central static analysis interface that groups together the functionality of reachability analysis
  * and heap scanning and adds utility methods and lifecycle hooks that should be used to query and
  * change the state of the analysis.
- * 
+ *
  * In long term, all mutable accesses that change the state of the analysis should go through this
  * interface.
  *
@@ -72,11 +72,6 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     HostedProviders getProviders();
 
     List<DebugHandlersFactory> getDebugHandlerFactories();
-
-    /**
-     * Prints all analysis timers.
-     */
-    void printTimers();
 
     /**
      * Prints more detailed information about all analysis timers.

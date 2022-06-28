@@ -101,7 +101,6 @@ public class ProgressReporter {
 
     private final NativeImageSystemIOWrappers builderIO;
 
-    private final boolean isEnabled; // TODO: clean up when deprecating old output (GR-35721).
     private final DirectPrinter linePrinter = new DirectPrinter();
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
@@ -167,10 +166,6 @@ public class ProgressReporter {
     public ProgressReporter(OptionValues options) {
         builderIO = NativeImageSystemIOWrappers.singleton();
 
-        isEnabled = SubstrateOptions.BuildOutputUseNewStyle.getValue(options);
-        if (isEnabled) {
-            Timer.disablePrinting();
-        }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
         boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
                         System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
@@ -597,20 +592,20 @@ public class ProgressReporter {
         });
     }
 
-    private Path reportImageBuildStatistics(String imageName, BigBang bb) {
+    private static Path reportImageBuildStatistics(String imageName, BigBang bb) {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
         String description = "image build statistics";
         if (ImageBuildStatistics.Options.ImageBuildStatisticsFile.hasBeenSet(bb.getOptions())) {
             final File file = new File(ImageBuildStatistics.Options.ImageBuildStatisticsFile.getValue(bb.getOptions()));
-            return ReportUtils.report(description, file.getAbsoluteFile().toPath(), statsReporter, !isEnabled);
+            return ReportUtils.report(description, file.getAbsoluteFile().toPath(), statsReporter, false);
         } else {
             String name = "image_build_statistics_" + ReportUtils.extractImageName(imageName);
             String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
-            return ReportUtils.report(description, path, name, "json", statsReporter, !isEnabled);
+            return ReportUtils.report(description, path, name, "json", statsReporter, false);
         }
     }
 
-    private Path reportBuildArtifacts(String imageName, Map<ArtifactType, List<Path>> buildArtifacts) {
+    private static Path reportBuildArtifacts(String imageName, Map<ArtifactType, List<Path>> buildArtifacts) {
         Path buildDir = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
 
         Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
@@ -623,7 +618,7 @@ public class ProgressReporter {
             paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
             writer.println();
         });
-        return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, !isEnabled);
+        return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, false);
     }
 
     private void printResourceStatistics() {
@@ -820,21 +815,15 @@ public class ProgressReporter {
      */
 
     private void print(char text) {
-        if (isEnabled) {
-            builderIO.getOut().print(text);
-        }
+        builderIO.getOut().print(text);
     }
 
     private void print(String text) {
-        if (isEnabled) {
-            builderIO.getOut().print(text);
-        }
+        builderIO.getOut().print(text);
     }
 
     private void println() {
-        if (isEnabled) {
-            builderIO.getOut().println();
-        }
+        builderIO.getOut().println();
     }
 
     /*
@@ -1180,7 +1169,7 @@ public class ProgressReporter {
             int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
             assert remaining >= 0 : "Column text too wide";
             a(Utils.stringFilledWith(remaining, " "));
-            assert !isEnabled || getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+            assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
             return this;
         }
 
