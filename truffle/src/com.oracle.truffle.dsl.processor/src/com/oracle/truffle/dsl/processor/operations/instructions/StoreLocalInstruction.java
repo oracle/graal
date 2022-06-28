@@ -63,7 +63,6 @@ public class StoreLocalInstruction extends Instruction {
 
     static final DeclaredType FrameSlotKind = ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.frame.FrameSlotKind");
 
-    static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = LoadLocalInstruction.INTERPRETER_ONLY_BOXING_ELIMINATION;
     private static final boolean LOG_LOCAL_STORES = false;
     private static final boolean LOG_LOCAL_STORES_SPEC = false;
 
@@ -133,10 +132,6 @@ public class StoreLocalInstruction extends Instruction {
 
         b.startAssign("int sourceSlot").variable(vars.sp).string(" - 1").end();
 
-        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
-            b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock(); // {
-        }
-
         if (kind == null) {
             b.startAssign("FrameSlotKind localTag").startCall(vars.frame, "getFrameDescriptor().getSlotKind").string("localIdx").end(2);
 
@@ -146,7 +141,7 @@ public class StoreLocalInstruction extends Instruction {
                 b.statement("System.out.printf(\" local store %2d : %s [uninit]%n\", localIdx, frame.getValue(sourceSlot))");
             }
             b.startAssert().startCall(vars.frame, "isObject").string("sourceSlot").end(2);
-            createCopy(vars, b);
+            createCopyObject(vars, b);
             // }
             b.end().startElseBlock();
             // {
@@ -193,19 +188,20 @@ public class StoreLocalInstruction extends Instruction {
             b.end(); // }
         }
 
-        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
-            b.end().startElseBlock(); // } else {
-            createCopy(vars, b);
-            b.end(); // }
-        }
-
         b.startStatement().variable(vars.sp).string("--").end();
 
         return b.build();
     }
 
-    private static void createCopy(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "copy");
+    private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
+        b.startStatement().startCall(vars.frame, "copyPrimitive");
+        b.string("sourceSlot");
+        b.string("localIdx");
+        b.end(2);
+    }
+
+    private static void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
+        b.startStatement().startCall(vars.frame, "copyObject");
         b.string("sourceSlot");
         b.string("localIdx");
         b.end(2);

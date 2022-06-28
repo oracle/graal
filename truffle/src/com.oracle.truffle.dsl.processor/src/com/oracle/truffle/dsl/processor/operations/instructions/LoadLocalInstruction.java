@@ -108,7 +108,7 @@ public class LoadLocalInstruction extends Instruction {
                 b.statement("System.out.printf(\" local load  %2d : %s [generic]%n\", localIdx, frame.getValue(localIdx))");
             }
 
-            createCopy(vars, b);
+            createCopyObject(vars, b);
         } else {
 
             b.declaration(StoreLocalInstruction.FrameSlotKind, "localType",
@@ -160,15 +160,8 @@ public class LoadLocalInstruction extends Instruction {
                 b.statement("System.out.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, frame.getValue(localIdx))");
             }
 
-            createCopy(vars, b);
+            createCopyPrimitive(vars, b);
         }
-
-        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
-            b.end().startElseBlock(); // } else {
-            createCopy(vars, b);
-            b.end(); // }
-        }
-
         b.startStatement().variable(vars.sp).string("++").end();
 
         return b.build();
@@ -184,8 +177,15 @@ public class LoadLocalInstruction extends Instruction {
         }
     }
 
-    private static void createCopy(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "copy");
+    private static void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
+        b.startStatement().startCall(vars.frame, "copyObject");
+        b.string("localIdx");
+        b.variable(vars.sp);
+        b.end(2);
+    }
+
+    private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
+        b.startStatement().startCall(vars.frame, "copyPrimitive");
         b.string("localIdx");
         b.variable(vars.sp);
         b.end(2);

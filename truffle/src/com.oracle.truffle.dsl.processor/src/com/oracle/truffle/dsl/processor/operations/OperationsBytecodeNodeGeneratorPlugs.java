@@ -485,7 +485,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         if (DO_LOG_ENS_CALLS) {
-            builder.statement("System.out.printf(\" [!!] calling E&S @ %04x : " + cinstr.name + " " + (ensCall++) + "%n\", $bci)");
+            builder.statement("System.out.printf(\" [!!] calling E&S @ %04x : " + cinstr.name + " " + (ensCall++) + " \", $bci)");
+            builder.startStatement().startCall("System.out.println").startCall("java.util.Arrays.asList");
+            frameState.addReferencesTo(builder);
+            builder.end(3);
         }
 
         if (regularReturn()) {
@@ -585,6 +588,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void createSpecialize(FrameState frameState, SpecializationData specialization, CodeTreeBuilder b) {
+
+        if (DO_LOG_ENS_CALLS) {
+            b.statement("System.out.println(\" [!!] finished E&S - " + specialization.getId() + " \")");
+        }
 
         // quickening
         if (!(cinstr instanceof QuickenedInstruction)) {

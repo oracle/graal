@@ -592,6 +592,30 @@ public interface Frame {
     }
 
     /**
+     * Copies, including the type, from one slot to another. The type must be Object.
+     *
+     * @param srcSlot the slot of the source local variable
+     * @param destSlot the slot of the target local variable
+     * @since XXX
+     */
+    default void copyObject(int srcSlot, int destSlot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Copies, including the type, from one slot to another. The type must be primitive.
+     *
+     * @param srcSlot the slot of the source local variable
+     * @param destSlot the slot of the target local variable
+     * @since XXX
+     */
+    default void copyPrimitive(int srcSlot, int destSlot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Swaps, including the type, the contents of two slots.
      *
      * @param first the slot of the first local variable
