@@ -71,7 +71,7 @@ public class ClassLoadingEnv implements LanguageAccess {
 
     public boolean loaderIsBootOrPlatform(StaticObject loader) {
         return StaticObject.isNull(loader) ||
-                        (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
+                        (language.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
     public long getNewKlassId() {
