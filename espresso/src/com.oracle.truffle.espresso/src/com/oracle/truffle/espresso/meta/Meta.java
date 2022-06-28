@@ -482,8 +482,6 @@ public final class Meta extends ContextAccessImpl {
 
         java_lang_Object_wait = java_lang_Object.requireDeclaredMethod(Name.wait, Signature._void_long);
         java_lang_Object_toString = java_lang_Object.requireDeclaredMethod(Name.toString, Signature.String);
-        java_lang_Object_equals = java_lang_Object.requireDeclaredMethod(Name.equals, Signature._boolean_Object);
-        java_lang_Object_hashCode = java_lang_Object.requireDeclaredMethod(Name.hashCode, Signature._int);
 
         // References
         java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
@@ -1281,8 +1279,6 @@ public final class Meta extends ContextAccessImpl {
 
     public final Method java_lang_Object_wait;
     public final Method java_lang_Object_toString;
-    public final Method java_lang_Object_equals;
-    public final Method java_lang_Object_hashCode;
 
     // References
     public final ObjectKlass java_lang_ref_Finalizer;

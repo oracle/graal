@@ -1703,15 +1703,45 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         // @formatter:on
     }
 
-    private static boolean takeBranchRef2(StaticObject operand1, StaticObject operand2, int opcode) {
+    private boolean takeBranchRef2(StaticObject operand1, StaticObject operand2, int opcode) {
         assert IF_ACMPEQ <= opcode && opcode <= IF_ACMPNE;
         // @formatter:off
-        switch (opcode) {
-            case IF_ACMPEQ : return operand1 == operand2;
-            case IF_ACMPNE : return operand1 != operand2;
-            default        :
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
+        if (noForeignObjects.isValid()) {
+            switch (opcode) {
+                case IF_ACMPEQ:
+                    return operand1 == operand2;
+                case IF_ACMPNE:
+                    return operand1 != operand2;
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
+            }
+        } else {
+            InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
+            InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
+            switch (opcode) {
+                case IF_ACMPEQ: {
+                    // an Espresso object can never be identical to a foreign object
+                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
+                        if (operand1Lib.hasIdentity(operand1)) {
+                            return operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                        }
+                    }
+                    return operand1 == operand2;
+                }
+                case IF_ACMPNE: {
+                    // an Espresso object can never be identical to a foreign object
+                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
+                        if (operand1Lib.hasIdentity(operand1)) {
+                            return !operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                        }
+                    }
+                    return operand1 != operand2;
+                }
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
+            }
         }
         // @formatter:on
     }
