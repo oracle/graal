@@ -250,6 +250,8 @@ Your application will:
   * Achieve peak performance with no warmup time
   * Have improved security by reducing attack surfaces and thwarting reverse engineering
 
+Find more information in [Building Native Executables](#building-native-executables) below. 
+
 ### Configuration with Tracing Agent
 
 When building a native executable, the representation of a whole program is created to figure out which classes and methods will be used at run time.
@@ -265,6 +267,8 @@ GraalVM Tools for Java extension provides the **NATIVE IMAGE** with **Agent** pa
 
 ![Native Image Agent pane](images/ni_agent_pane.png)
 
+> Note: The **NATIVE IMAGE** pane will show up when you open your Java project in VS Code workspace. 
+
 With older versions of the GraalVM Tools for Java extension, use a launch configuration - **Launch Native Image Agent & Java 8+ Application** to start a Java project with the Tracing agent.
 
 ![Special Launch Native Image Agent & Java 8+ configuration](images/ni_launch-config.png)
@@ -273,7 +277,7 @@ With older versions of the GraalVM Tools for Java extension, use a launch config
 
 In the next section you will learn how to build a native executable of your Java application and apply the Tracing agent in VS code.
 
-### Building Native Executables
+### Building Native Images
 
 To build a native executable of your Java application in VS Code, do the following:
 
@@ -301,7 +305,7 @@ To build a native executable of your Java application in VS Code, do the followi
 7. Go to **Terminal**, and click **New Terminal**. To build a native executable from a Java class file in the current working folder, use the following command:
 
     ```shell
-    native-image [options] class [imagename] [options]
+    native-image [options] class [imagename]
     ```
 
 If you project is Maven or Gradle based, there are dedicated Maven or Gradle plugins to add support for building and testing native executables written in Java. 
@@ -311,6 +315,35 @@ Refer to the following pages for more specific documentation:
 * [Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html)
 
 If you use the Micronaut framework to create your Java project, you can build a native executable of a Micronaut application using VS Code quick actions. Go [here](../micronaut/README.md#generate-native-images-of-micronaut-projects) to learn how.
+
+#### Building Native Images on Windows
+
+To use Native Image on Windows, you need Visual Studio Build Tools and Windows 10 SDK installed. 
+The `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
+For GraalVM Native Image users on Windows, the extension provides a preconfigured x64 command prompt using Microsoft Developer Tools. 
+
+Assuming you already have Visual Studio Build Tools and Windows 10 SDK, GraalVM with Native Image support installed, and opened your Java project in VS Code.
+
+1. In the **NATIVE IMAGE** pane, find click on right arrow icon, **>**. It will open a new dialog window asking to provide the path to Windows 10 SDK build tools configuration script (`vcvars64.bat`). But you do not have to type the path manaully, VS Code will detect it in the _C:\Program Files_ location and pre-populate the path field:
+
+    ![Provide Path to Microsoft Build Tools Script](images/path_build_tools_script.png)
+
+2. Click enter, and open a terminal window (go to **Terminal**, **New Termninal**). The following message will be printed out:
+    
+    ![Native Command Prompt in VS Code Windows](images/native_tools_cmd_prompt.png)
+
+    Note that the path to Windows 10 SDK build tools is saved globally, so next time you open a New Terminal, it will run inside the x64 native tools command prompt.
+
+3. Run the `native-image` builder. For example, to build a native executable for a Maven project, you would execute:
+
+    ```shell
+    ./mvnw package -Dpackaging=native-image
+    ```
+
+For Micronaut users targeting GraalVM Native Image for their Micronaut applications, the [GraalVM Tools for Micronaut extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) provides a dedicated command prompt. 
+You can check it by invoking **Micronaut: Build Native Image** task from Command Palette. Notice which shell is active:
+
+   ![Native Micronaut Command Prompt in VS Code Windows](images/micronaut_cmd_prompt.png)
 
 Read more about GraalVM Native Image [here](../../../reference-manual/native-image/README.md).
 
