@@ -29,32 +29,38 @@ import java.io.FileDescriptor;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 
-import jdk.internal.access.foreign.MemorySegmentProxy;
+@TargetClass(className = "jdk.internal.access.foreign.MemorySegmentProxy", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+@SuppressWarnings("unused")
+final class Target_jdk_internal_access_foreign_MemorySegmentProxy_JDK17OrLater {
+}
 
-@TargetClass(className = "java.nio.DirectByteBuffer", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "java.nio.DirectByteBuffer", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
 @SuppressWarnings("unused")
 final class Target_java_nio_DirectByteBuffer_JDK17OrLater {
 
     @Alias
-    protected Target_java_nio_DirectByteBuffer_JDK17OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, MemorySegmentProxy segment) {
+    protected Target_java_nio_DirectByteBuffer_JDK17OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync,
+                    Target_jdk_internal_access_foreign_MemorySegmentProxy_JDK17OrLater segment) {
     }
 
 }
 
-@TargetClass(className = "java.nio.DirectByteBufferR", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "java.nio.DirectByteBufferR", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
 @SuppressWarnings("unused")
 final class Target_java_nio_DirectByteBufferR_JDK17OrLater {
 
     @Alias
-    protected Target_java_nio_DirectByteBufferR_JDK17OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, MemorySegmentProxy segment) {
+    protected Target_java_nio_DirectByteBufferR_JDK17OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync,
+                    Target_jdk_internal_access_foreign_MemorySegmentProxy_JDK17OrLater segment) {
     }
 
 }
 
-@TargetClass(className = "sun.nio.ch.Util", onlyWith = JDK17OrLater.class)
-final class Target_sun_nio_ch_Util {
+@TargetClass(className = "sun.nio.ch.Util", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+final class Target_sun_nio_ch_Util_JDK17 {
 
     @Substitute
     private static Target_java_nio_DirectByteBuffer_JDK17OrLater newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
