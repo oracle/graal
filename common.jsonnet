@@ -96,8 +96,8 @@
   "labsjdk-ce-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
   "labsjdk-ee-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
 
-  "labsjdk-ce-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: true} }},
-  "labsjdk-ee-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] }},
+  "labsjdk-ce-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
+  "labsjdk-ee-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
 
   # Aliases to edition specific labsjdks
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
