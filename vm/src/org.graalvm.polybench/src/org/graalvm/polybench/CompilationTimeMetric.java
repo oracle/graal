@@ -46,6 +46,10 @@ final class CompilationTimeMetric extends Metric {
 
     @Override
     public void validateConfig(Config config, Map<String, String> polyglotOptions) {
+        if (Boolean.parseBoolean(polyglotOptions.get("engine.BackgroundCompilation"))) {
+            throw new IllegalStateException("The Compile Time Metric cannot be used with a background compilation.\n" +
+                            "Remove the 'engine.BackgroundCompilation=true' option.");
+        }
         if (polyglotOptions.containsKey("engine.TraceCompilation") && !Boolean.parseBoolean(polyglotOptions.get("engine.TraceCompilation"))) {
             throw new IllegalStateException("The Compile Time Metric cannot be used without TraceCompilation.\n" +
                             "Remove the 'engine.TraceCompilation=false' option.");
@@ -55,6 +59,7 @@ final class CompilationTimeMetric extends Metric {
     @Override
     public Map<String, String> getEngineOptions(Config config) {
         Map<String, String> options = new HashMap<>();
+        options.put("engine.BackgroundCompilation", "false");
         options.put("engine.TraceCompilation", "true");
         return options;
     }
