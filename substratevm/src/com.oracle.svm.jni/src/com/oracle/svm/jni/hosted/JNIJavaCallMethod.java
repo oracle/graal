@@ -78,7 +78,7 @@ public class JNIJavaCallMethod extends NonBytecodeStaticMethod {
 
     private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
 
-    static JNICallSignature getSignatureForTarget(ResolvedJavaMethod targetMethod, AnalysisUniverse analysisUniverse, WordTypes wordTypes) {
+    private static JNICallSignature getSignatureForTarget(ResolvedJavaMethod targetMethod, AnalysisUniverse analysisUniverse, WordTypes wordTypes) {
         Signature originalSignature = targetMethod.getSignature();
         int paramCount = originalSignature.getParameterCount(false);
         JavaKind[] paramKinds = new JavaKind[2 + paramCount];

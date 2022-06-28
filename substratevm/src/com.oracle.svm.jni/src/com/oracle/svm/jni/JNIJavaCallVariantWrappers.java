@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,21 @@
  */
 package com.oracle.svm.jni;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.jni.hosted.JNIJavaCallVariantWrapperMethod;
 
-/**
- * Retains one exception per thread that is pending to be handled in that thread (or none).
- */
-public class JNIThreadLocalPendingException {
-    private static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "JNIThreadLocalPendingException.pendingException");
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
-    public static Throwable get() {
-        return pendingException.get();
+/** Holder class for generated {@link JNIJavaCallVariantWrapperMethod} code. */
+public final class JNIJavaCallVariantWrappers {
+    /**
+     * Generated call wrappers need an actual constant pool, so we provide that of our private
+     * constructor.
+     */
+    public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
+        return metaAccess.lookupJavaType(JNIJavaCallVariantWrappers.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void set(Throwable t) {
-        pendingException.set(t);
-    }
-
-    public static void clear() {
-        set(null);
+    private JNIJavaCallVariantWrappers() {
     }
 }

@@ -149,6 +149,10 @@ public class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("getFieldOffsetFromId", fieldId);
     }
 
+    public InvokeWithExceptionNode getJavaCallWrapperAddressFromMethodId(ValueNode methodId) {
+        return createStaticInvoke("getJavaCallWrapperAddressFromMethodId", methodId);
+    }
+
     public InvokeWithExceptionNode getJavaCallAddressFromMethodId(ValueNode methodId) {
         return createStaticInvoke("getJavaCallAddressFromMethodId", methodId);
     }

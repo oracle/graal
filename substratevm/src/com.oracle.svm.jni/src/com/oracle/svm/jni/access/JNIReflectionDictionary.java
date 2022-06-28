@@ -254,7 +254,7 @@ public final class JNIReflectionDictionary {
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
             }
-            obj = p.toObject();
+            obj = p.toObjectNonNull();
         }
         return (JNIAccessibleMethod) obj;
     }

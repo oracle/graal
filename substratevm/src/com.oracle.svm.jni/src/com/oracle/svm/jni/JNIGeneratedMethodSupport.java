@@ -86,6 +86,12 @@ public final class JNIGeneratedMethodSupport {
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
     @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    static CodePointer getJavaCallWrapperAddressFromMethodId(JNIMethodId methodId) {
+        return JNIReflectionDictionary.getMethodByID(methodId).getCallWrapperAddress();
+    }
+
+    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static CodePointer getJavaCallAddressFromMethodId(JNIMethodId methodId) {
         return JNIReflectionDictionary.getMethodByID(methodId).getJavaCallAddress();
     }
@@ -100,19 +106,16 @@ public final class JNIGeneratedMethodSupport {
         return StaticFieldsSupport.getStaticObjectFields();
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static void setPendingException(Throwable t) {
         JNIThreadLocalPendingException.set(t);
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static Throwable getAndClearPendingException() {
         Throwable t = JNIThreadLocalPendingException.get();
         JNIThreadLocalPendingException.clear();
         return t;
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static void rethrowPendingException() throws Throwable {
         Throwable t = getAndClearPendingException();
         if (t != null) {
