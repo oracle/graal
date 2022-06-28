@@ -68,6 +68,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider {
 
+    public static final String METHOD_NAME_COLLISION_SUFFIX = "*";
     public static final String METHOD_NAME_DEOPT_SUFFIX = "**";
 
     public final AnalysisMethod wrapped;
@@ -96,17 +97,32 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     public final CompilationInfo compilationInfo;
     private final LocalVariableTable localVariableTable;
 
+    private final String name;
     private final String uniqueShortName;
 
-    public HostedMethod(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool, ExceptionHandler[] handlers, HostedMethod deoptOrigin) {
-        this.wrapped = wrapped;
-        this.holder = holder;
-        this.signature = signature;
-        this.constantPool = constantPool;
-        this.handlers = handlers;
-        this.compilationInfo = new CompilationInfo(this, deoptOrigin);
-        this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
+    public static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature,
+                    ConstantPool constantPool, ExceptionHandler[] handlers, HostedMethod deoptOrigin) {
+        String name = deoptOrigin != null ? wrapped.getName() + METHOD_NAME_DEOPT_SUFFIX : wrapped.getName();
+        LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
+        HostedMethod hostedMethod = new HostedMethod(wrapped, holder, signature, constantPool, handlers, deoptOrigin, name, localVariableTable);
+        hostedMethod = makeUnique(universe, hostedMethod, deoptOrigin, name);
+        universe.orderedMethods.add(hostedMethod);
+        return hostedMethod;
+    }
 
+    private static HostedMethod makeUnique(HostedUniverse universe, HostedMethod method, HostedMethod deoptOrigin, String name) {
+        if (!universe.orderedMethods.contains(method)) {
+            return method;
+        }
+        int collisionCount = universe.methodNameCollisions.merge(method, 1, (oldValue, value) -> oldValue + 1);
+        String collisionName = name + METHOD_NAME_COLLISION_SUFFIX + collisionCount;
+        HostedMethod hostedMethod = new HostedMethod(method.wrapped, method.holder, method.signature, method.constantPool,
+                        method.handlers, deoptOrigin, collisionName, method.localVariableTable);
+        VMError.guarantee(!universe.orderedMethods.contains(hostedMethod), "HostedMethod name collision handling failed");
+        return hostedMethod;
+    }
+
+    private static LocalVariableTable createLocalVariableTable(HostedUniverse universe, AnalysisMethod wrapped) {
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
             try {
@@ -126,7 +142,20 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
                 newLocalVariableTable = null;
             }
         }
-        localVariableTable = newLocalVariableTable;
+        return newLocalVariableTable;
+    }
+
+    private HostedMethod(AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool,
+                    ExceptionHandler[] handlers, HostedMethod deoptOrigin, String name, LocalVariableTable localVariableTable) {
+        this.wrapped = wrapped;
+        this.holder = holder;
+        this.signature = signature;
+        this.constantPool = constantPool;
+        this.handlers = handlers;
+        this.compilationInfo = new CompilationInfo(this, deoptOrigin);
+        this.localVariableTable = localVariableTable;
+        this.name = name;
+        this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
     }
 
     @Override
@@ -260,10 +289,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public String getName() {
-        if (compilationInfo.isDeoptTarget()) {
-            return wrapped.getName() + METHOD_NAME_DEOPT_SUFFIX;
-        }
-        return wrapped.getName();
+        return name;
     }
 
     @Override

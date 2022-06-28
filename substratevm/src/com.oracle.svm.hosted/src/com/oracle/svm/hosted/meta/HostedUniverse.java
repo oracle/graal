@@ -27,10 +27,12 @@ package com.oracle.svm.hosted.meta;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -56,6 +58,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -286,8 +289,10 @@ public class HostedUniverse implements Universe {
     protected EnumMap<JavaKind, HostedType> kindToType = new EnumMap<>(JavaKind.class);
 
     protected List<HostedType> orderedTypes;
-    protected List<HostedMethod> orderedMethods;
     protected List<HostedField> orderedFields;
+
+    TreeSet<HostedMethod> orderedMethods = new TreeSet<>(new MethodComparator(TYPE_COMPARATOR, false));
+    Map<HostedMethod, Integer> methodNameCollisions = new HashMap<>();
 
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
@@ -306,7 +311,8 @@ public class HostedUniverse implements Universe {
 
     public synchronized HostedMethod createDeoptTarget(HostedMethod method) {
         if (method.compilationInfo.getDeoptTargetMethod() == null) {
-            HostedMethod deoptTarget = new HostedMethod(this, method.getWrapped(), method.getDeclaringClass(), method.getSignature(), method.getConstantPool(), method.getExceptionHandlers(), method);
+            HostedMethod deoptTarget = HostedMethod.create(this, method.getWrapped(), method.getDeclaringClass(),
+                            method.getSignature(), method.getConstantPool(), method.getExceptionHandlers(), method);
             assert method.staticAnalysisResults != null;
             deoptTarget.staticAnalysisResults = method.staticAnalysisResults;
         }
@@ -449,4 +455,131 @@ public class HostedUniverse implements Universe {
     public HostedType objectType() {
         return types.get(bb.getUniverse().objectType());
     }
+
+    static final TypeComparator TYPE_COMPARATOR = new TypeComparator();
+
+    private static final class TypeComparator implements Comparator<HostedType> {
+
+        @Override
+        public int compare(HostedType o1, HostedType o2) {
+            if (o1.equals(o2)) {
+                return 0;
+            }
+
+            int result;
+            if (o1.getClass().equals(o2.getClass())) {
+                if (o1.isPrimitive() && o2.isPrimitive()) {
+                    assert o1 instanceof HostedPrimitiveType && o2 instanceof HostedPrimitiveType;
+                    result = o1.getJavaKind().compareTo(o2.getJavaKind());
+                    VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: " + o1 + ", " + o2);
+                    return result;
+                }
+
+                if (o1.isArray() && o2.isArray()) {
+                    assert o1 instanceof HostedArrayClass && o2 instanceof HostedArrayClass;
+                    result = compare(o1.getComponentType(), o2.getComponentType());
+                    VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: " + o1 + ", " + o2);
+                    return result;
+                }
+
+                result = o1.getName().compareTo(o2.getName());
+                VMError.guarantee(result != 0, "HostedType objects not distinguishable by name: " + o1 + ", " + o2);
+                return result;
+            }
+
+            result = Integer.compare(ordinal(o1), ordinal(o2));
+            VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: " + o1 + ", " + o2);
+            return result;
+        }
+
+        private static int ordinal(HostedType type) {
+            if (type.isInterface()) {
+                return 4;
+            } else if (type.isArray()) {
+                return 3;
+            } else if (type.isInstanceClass()) {
+                return 2;
+            } else if (type.getJavaKind() != JavaKind.Object) {
+                return 1;
+            } else {
+                throw VMError.shouldNotReachHere();
+            }
+        }
+    }
+
+    public static final MethodComparator METHOD_COMPARATOR = new MethodComparator(TYPE_COMPARATOR, true);
+
+    private static final class MethodComparator implements Comparator<HostedMethod> {
+
+        private final TypeComparator typeComparator;
+
+        private final boolean collisionFatal;
+
+        private MethodComparator(TypeComparator typeComparator, boolean collisionFatal) {
+            this.typeComparator = typeComparator;
+            this.collisionFatal = collisionFatal;
+        }
+
+        @Override
+        public int compare(HostedMethod o1, HostedMethod o2) {
+            if (o1.equals(o2)) {
+                return 0;
+            }
+
+            /*
+             * Sort deoptimization targets towards the end of the code cache. They are rarely
+             * executed, and we do not want a deoptimization target as the first method (because
+             * offset 0 means no deoptimization target available).
+             */
+            int result = Boolean.compare(o1.compilationInfo.isDeoptTarget(), o2.compilationInfo.isDeoptTarget());
+            if (result != 0) {
+                return result;
+            }
+
+            result = typeComparator.compare(o1.getDeclaringClass(), o2.getDeclaringClass());
+            if (result != 0) {
+                return result;
+            }
+
+            result = o1.getName().compareTo(o2.getName());
+            if (result != 0) {
+                return result;
+            }
+
+            Signature signature1 = o1.getSignature();
+            Signature signature2 = o2.getSignature();
+            int parameterCount1 = signature1.getParameterCount(false);
+            result = Integer.compare(parameterCount1, signature2.getParameterCount(false));
+            if (result != 0) {
+                return result;
+            }
+
+            for (int i = 0; i < parameterCount1; i++) {
+                result = typeComparator.compare((HostedType) signature1.getParameterType(i, null), (HostedType) signature2.getParameterType(i, null));
+                if (result != 0) {
+                    return result;
+                }
+            }
+
+            result = typeComparator.compare((HostedType) signature1.getReturnType(null), (HostedType) signature2.getReturnType(null));
+            if (result != 0) {
+                return result;
+            }
+
+            /*
+             * Note that result can still be 0 at this point. This in only allowed during
+             * HostedMethod name collision handling in HostedMethod#create.
+             */
+            VMError.guarantee(!collisionFatal, "HostedMethod objects not distinguishable: " + o1 + ", " + o2);
+            return result;
+        }
+    }
+
+    /*
+     * Order by JavaKind. This is required, since we want instance fields of the same size and kind
+     * consecutive. If the kind is the same, i.e., result == 0, we return 0 so that the sorting
+     * keeps the order unchanged and therefore keeps the field order we get from the hosting VM.
+     */
+    static final Comparator<HostedField> FIELD_COMPARATOR = Comparator.comparing(HostedField::getJavaKind);
+
 }
