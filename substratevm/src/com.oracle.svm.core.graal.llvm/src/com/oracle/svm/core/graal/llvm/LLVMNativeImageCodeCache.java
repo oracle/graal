@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,6 +93,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private HostedMethod[] methodIndex;
     private final Path basePath;
     private int batchSize;
+    private long codeAreaSize;
     private final LLVMObjectFileReader objectFileReader;
     private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
     private final StackMapDumper stackMapDumper;
@@ -118,26 +119,32 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
+    public int getCodeAreaSize() {
+        assert codeAreaSize > 0 && ((int) codeAreaSize) == codeAreaSize : "not a positive, exact int";
+        return (int) codeAreaSize;
+    }
+
+    @Override
     public int codeSizeFor(HostedMethod method) {
         return compilationResultFor(method).getTargetCodeSize();
     }
 
     @Override
     @SuppressWarnings({"unused", "try"})
-    public void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool) {
         try (Indent indent = debug.logAndIndent("layout methods")) {
             BatchExecutor executor = new BatchExecutor(bb, threadPool);
-            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(bitcode)")) {
+            try (StopTimer t = TimerCollection.createTimerAndStart("(bitcode)")) {
                 writeBitcode(executor);
             }
             int numBatches;
-            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(prelink)")) {
+            try (StopTimer t = TimerCollection.createTimerAndStart("(prelink)")) {
                 numBatches = createBitcodeBatches(executor, debug);
             }
-            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(llvm)")) {
+            try (StopTimer t = TimerCollection.createTimerAndStart("(llvm)")) {
                 compileBitcodeBatches(executor, debug, numBatches);
             }
-            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(postlink)")) {
+            try (StopTimer t = TimerCollection.createTimerAndStart("(postlink)")) {
                 linkCompiledBatches(executor, debug, numBatches);
             }
         }
@@ -231,8 +238,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         stackMapDumper.close();
 
         llvmCleanupStackMaps(debug, getLinkedFilename());
+        codeAreaSize = textSectionInfo.getCodeSize();
 
-        buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(textSectionInfo.getCodeSize()));
+        buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(codeAreaSize));
     }
 
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {

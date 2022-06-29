@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.ObjectScanner.FieldScan;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -163,7 +162,7 @@ public abstract class ImageHeapScanner {
         if (universe.sealed() && !type.isReachable()) {
             throw AnalysisError.shouldNotReachHere("Universe is sealed. New type reachable: " + type.toJavaName());
         }
-        type.registerAsInHeap();
+        universe.getBigbang().markTypeInHeap(type);
     }
 
     JavaConstant markConstantReachable(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
@@ -608,10 +607,10 @@ public abstract class ImageHeapScanner {
         if (future.isDone()) {
             return;
         }
-        ((PointsToAnalysis) universe.getBigbang()).postTask(debug -> future.ensureDone());
+        universe.getBigbang().postTask(debug -> future.ensureDone());
     }
 
     public void postTask(Runnable task) {
-        ((PointsToAnalysis) universe.getBigbang()).postTask(debug -> task.run());
+        universe.getBigbang().postTask(debug -> task.run());
     }
 }

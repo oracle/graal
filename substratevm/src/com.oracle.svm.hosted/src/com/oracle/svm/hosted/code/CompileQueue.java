@@ -42,6 +42,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -181,7 +183,6 @@ import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -422,9 +423,16 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
-            // Checking annotations does not take long enough to justify a timer.
-            UninterruptibleAnnotationChecker.checkBeforeCompilation(universe.getMethods());
-            RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
+
+            if (!PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
+                /*
+                 * Reachability Analysis creates call graphs with more edges compared to the
+                 * Points-to Analysis, therefore the annotations would have to be added to a lot
+                 * more methods if these checks are supposed to pass, see GR-39002
+                 */
+                UninterruptibleAnnotationChecker.checkBeforeCompilation(universe.getMethods());
+                RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
+            }
 
             /*
              * The graph in the analysis universe is no longer necessary. This clears the graph for
@@ -485,7 +493,9 @@ public class CompileQueue {
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
-        phaseSuite.appendPhase(new StrengthenStampsPhase());
+        if (!PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
+            phaseSuite.appendPhase(new StrengthenStampsPhase());
+        }
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(universe.hostVM().options())) {

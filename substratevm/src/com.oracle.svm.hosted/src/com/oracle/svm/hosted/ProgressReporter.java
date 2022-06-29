@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -48,6 +49,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -99,7 +101,6 @@ public class ProgressReporter {
 
     private final NativeImageSystemIOWrappers builderIO;
 
-    private final boolean isEnabled; // TODO: clean up when deprecating old output (GR-35721).
     private final DirectPrinter linePrinter = new DirectPrinter();
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
@@ -165,10 +166,6 @@ public class ProgressReporter {
     public ProgressReporter(OptionValues options) {
         builderIO = NativeImageSystemIOWrappers.singleton();
 
-        isEnabled = SubstrateOptions.BuildOutputUseNewStyle.getValue(options);
-        if (isEnabled) {
-            Timer.disablePrinting();
-        }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
         boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
                         System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
@@ -206,6 +203,9 @@ public class ProgressReporter {
         if (SubstrateOptions.useEconomyCompilerConfig(options)) {
             l().redBold().a("You enabled -Ob for this image build. This will configure some optimizations to reduce image build time.").println();
             l().redBold().a("This feature should only be used during development and never for deployment.").reset().println();
+        }
+        if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
+            l().redBold().a("This build uses the experimental reachability analysis rather than the default points-to analysis.").reset().println();
         }
     }
 
@@ -247,7 +247,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printInitializeEnd(Collection<String> libraries) {
+    public void printInitializeEnd() {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").println();
         String javaVersion = System.getProperty("java.runtime.version");
@@ -258,18 +258,6 @@ public class ProgressReporter {
             l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription()).println();
         }
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(Heap.getHeap().getGC().getName()).println();
-        printNativeLibraries(libraries);
-    }
-
-    private void printNativeLibraries(Collection<String> libraries) {
-        int numLibraries = libraries.size();
-        if (numLibraries > 0) {
-            if (numLibraries == 1) {
-                l().a(" 1 native library: ").a(libraries.iterator().next()).println();
-            } else {
-                l().a(" ").a(numLibraries).a(" native libraries: ").a(String.join(", ", libraries)).println();
-            }
-        }
     }
 
     public void printFeatures(List<Feature> features) {
@@ -299,7 +287,7 @@ public class ProgressReporter {
         printer.println();
     }
 
-    public ReporterClosable printAnalysis(BigBang bb) {
+    public ReporterClosable printAnalysis(AnalysisUniverse universe, Collection<String> libraries) {
         Timer timer = getTimer(TimerCollection.Registry.ANALYSIS);
         timer.start();
         stagePrinter.start(BuildStage.ANALYSIS);
@@ -308,12 +296,12 @@ public class ProgressReporter {
             public void closeAction() {
                 timer.stop();
                 stagePrinter.end(timer);
-                printAnalysisStatistics(bb.getUniverse());
+                printAnalysisStatistics(universe, libraries);
             }
         };
     }
 
-    private void printAnalysisStatistics(AnalysisUniverse universe) {
+    private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
         long reachableClasses = universe.getTypes().stream().filter(t -> t.isReachable()).count();
         long totalClasses = universe.getTypes().size();
@@ -340,6 +328,11 @@ public class ProgressReporter {
         if (numJNIClasses > 0) {
             l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
+        }
+        int numLibraries = libraries.size();
+        if (numLibraries > 0) {
+            TreeSet<String> sortedLibraries = new TreeSet<>(libraries);
+            l().a("%,8d native %s: ", numLibraries, numLibraries == 1 ? "library" : "libraries").a(String.join(", ", sortedLibraries)).println();
         }
     }
 
@@ -404,14 +397,14 @@ public class ProgressReporter {
         this.debugInfoTimer = timer;
     }
 
-    public void printCreationEnd(int imageSize, int numHeapObjects, long imageHeapSize, int codeCacheSize,
+    public void printCreationEnd(int imageSize, int numHeapObjects, long imageHeapSize, int codeAreaSize,
                     int numCompilations, int debugInfoSize) {
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
         stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime());
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
-        l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
         int numResources = Resources.singleton().resources().size();
         l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
@@ -424,7 +417,7 @@ public class ProgressReporter {
             }
             l.println();
         }
-        long otherBytes = imageSize - codeCacheSize - imageHeapSize - debugInfoSize;
+        long otherBytes = imageSize - codeAreaSize - imageHeapSize - debugInfoSize;
         l().a(format, Utils.bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", Utils.bytesToHuman(imageSize)).println();
@@ -599,20 +592,20 @@ public class ProgressReporter {
         });
     }
 
-    private Path reportImageBuildStatistics(String imageName, BigBang bb) {
+    private static Path reportImageBuildStatistics(String imageName, BigBang bb) {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
         String description = "image build statistics";
         if (ImageBuildStatistics.Options.ImageBuildStatisticsFile.hasBeenSet(bb.getOptions())) {
             final File file = new File(ImageBuildStatistics.Options.ImageBuildStatisticsFile.getValue(bb.getOptions()));
-            return ReportUtils.report(description, file.getAbsoluteFile().toPath(), statsReporter, !isEnabled);
+            return ReportUtils.report(description, file.getAbsoluteFile().toPath(), statsReporter, false);
         } else {
             String name = "image_build_statistics_" + ReportUtils.extractImageName(imageName);
             String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
-            return ReportUtils.report(description, path, name, "json", statsReporter, !isEnabled);
+            return ReportUtils.report(description, path, name, "json", statsReporter, false);
         }
     }
 
-    private Path reportBuildArtifacts(String imageName, Map<ArtifactType, List<Path>> buildArtifacts) {
+    private static Path reportBuildArtifacts(String imageName, Map<ArtifactType, List<Path>> buildArtifacts) {
         Path buildDir = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
 
         Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
@@ -625,7 +618,7 @@ public class ProgressReporter {
             paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
             writer.println();
         });
-        return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, !isEnabled);
+        return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, false);
     }
 
     private void printResourceStatistics() {
@@ -822,21 +815,15 @@ public class ProgressReporter {
      */
 
     private void print(char text) {
-        if (isEnabled) {
-            builderIO.getOut().print(text);
-        }
+        builderIO.getOut().print(text);
     }
 
     private void print(String text) {
-        if (isEnabled) {
-            builderIO.getOut().print(text);
-        }
+        builderIO.getOut().print(text);
     }
 
     private void println() {
-        if (isEnabled) {
-            builderIO.getOut().println();
-        }
+        builderIO.getOut().println();
     }
 
     /*
@@ -1182,7 +1169,7 @@ public class ProgressReporter {
             int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
             assert remaining >= 0 : "Column text too wide";
             a(Utils.stringFilledWith(remaining, " "));
-            assert !isEnabled || getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+            assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
             return this;
         }
 

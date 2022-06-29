@@ -51,7 +51,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Interface representing a Truffle runtime object. The runtime is responsible for creating call
@@ -68,20 +67,6 @@ public interface TruffleRuntime {
      * @since 0.8 or earlier
      */
     String getName();
-
-    /**
-     * Creates a new call target for a given root node if none exists. Otherwise, the existing call
-     * target is returned.
-     *
-     * @param rootNode the root node whose
-     *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method
-     *            represents the entry point
-     * @return the new call target object
-     * @since 0.8 or earlier
-     * @deprecated Use {@link RootNode#getCallTarget()}.
-     */
-    @Deprecated(since = "22.0")
-    RootCallTarget createCallTarget(RootNode rootNode);
 
     /**
      * Creates a new runtime specific version of {@link DirectCallNode}.
@@ -155,21 +140,6 @@ public interface TruffleRuntime {
     MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor);
 
     /**
-     * Creates an object which allows you to test for support of and set options specific for this
-     * runtime.
-     *
-     * @return the newly created compiler options object
-     * @since 0.8 or earlier
-     * @deprecated in 22.1 compiler options had no effect for several releases now. Deprecated for
-     *             removal.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.1")
-    default com.oracle.truffle.api.CompilerOptions createCompilerOptions() {
-        return com.oracle.truffle.api.impl.DefaultCompilerOptions.INSTANCE;
-    }
-
-    /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
      * {@link CallTarget}s. Iteration starts at the current frame.
      *
@@ -235,32 +205,6 @@ public interface TruffleRuntime {
      */
     default <T> T iterateFrames(FrameInstanceVisitor<T> visitor, @SuppressWarnings("unused") int skipFrames) {
         throw new AbstractMethodError();
-    }
-
-    /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor, int)} instead. This was
-     *             deprecated because a {@link FrameInstance} must never be used after
-     *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
-     *             sure this restriction is honored when migrating this API as this may lead to
-     *             difficult to debug problems and sometimes even VM crashes.
-     */
-    @Deprecated(since = "22.1")
-    default FrameInstance getCallerFrame() {
-        return iterateFrames((f) -> f, 1);
-    }
-
-    /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor)} instead. This was deprecated
-     *             because a {@link FrameInstance} must never be used after
-     *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
-     *             sure this restriction is honored when migrating this API as this may lead to
-     *             difficult to debug problems and sometimes even VM crashes.
-     */
-    @Deprecated(since = "22.1")
-    default FrameInstance getCurrentFrame() {
-        return iterateFrames((f) -> f, 0);
     }
 
     /**

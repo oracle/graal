@@ -504,9 +504,9 @@ public abstract class Accessor {
 
         public abstract <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
 
-        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> createContextReference(Node node, Class<T> languageClass);
+        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> createContextReference(Class<T> languageClass);
 
-        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> createLanguageReference(Node node, Class<T> targetLanguageClass);
+        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> createLanguageReference(Class<T> targetLanguageClass);
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 

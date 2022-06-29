@@ -147,6 +147,18 @@ suite = {
       "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
       "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
     },
+
+    "VISUALVM-LIB-JFLUID-HEAP" : {
+      "moduleName" : "org.graalvm.visualvm.lib.jfluid.heap",
+      "sha1" : "5aa80db98a1d040dc1917a063bf059326e2afad7",
+      "sourceSha1" : "40a51050dfe481a7542f9eb7b1d8fb484a1eb2c1",
+      "maven" : {
+        "groupId" : "org.graalvm.visualvm.modules",
+        "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
+        "version" : "2.1.3",
+      },
+    },
+
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -225,6 +237,7 @@ suite = {
         "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
+        "VISUALVM-LIB-JFLUID-HEAP",
         "mx:JUNIT",
       ],
       "requires" : [
@@ -1311,7 +1324,7 @@ suite = {
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21", "VISUALVM-LIB-JFLUID-HEAP"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_SL",

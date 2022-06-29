@@ -123,7 +123,6 @@ public final class UnknownIdentifierException extends InteropException {
      * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
-    @SuppressWarnings("deprecation")
     public static UnknownIdentifierException create(String unknownIdentifier, Throwable cause) {
         return new UnknownIdentifierException(unknownIdentifier, cause);
     }

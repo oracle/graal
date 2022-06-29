@@ -388,7 +388,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         ExactMath.class,
                         ArrayUtils.class,
                         FrameDescriptor.class,
-                        com.oracle.truffle.api.frame.FrameSlot.class,
                         FrameSlotKind.class,
                         MethodHandle.class,
                         ArrayList.class,
@@ -693,13 +692,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public abstract SpeculationLog createSpeculationLog();
-
-    @Override
-    @Deprecated(since = "22.0")
-    @SuppressWarnings("deprecation")
-    public final RootCallTarget createCallTarget(RootNode rootNode) {
-        return rootNode.getCallTarget();
-    }
 
     protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
 

@@ -25,17 +25,16 @@
  */
 package com.oracle.graal.pointsto.reports;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 
 public class AnalysisReporter {
@@ -59,12 +58,13 @@ public class AnalysisReporter {
             }
 
             if (PointstoOptions.PrintSynchronizedAnalysis.getValue(options)) {
-                TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-                String typesString = TypeStateUtils.closeToAllInstantiated((PointsToAnalysis) bb, allSynchronizedTypeState) ? "close to all instantiated" : //
-                                StreamSupport.stream(allSynchronizedTypeState.types(bb).spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
+                List<AnalysisType> synchronizedTypes = new ArrayList<>();
+                bb.getAllSynchronizedTypes().forEach(synchronizedTypes::add);
+                String typesString = TypeStateUtils.closeToAllInstantiated(bb, synchronizedTypes) ? "close to all instantiated" : //
+                                synchronizedTypes.stream().map(AnalysisType::getName).collect(Collectors.joining(", "));
                 System.out.println();
                 System.out.println("AllSynchronizedTypes");
-                System.out.println("Synchronized types #: " + allSynchronizedTypeState.typesCount());
+                System.out.println("Synchronized types #: " + synchronizedTypes.size());
                 System.out.println("Types: " + typesString);
                 System.out.println();
             }

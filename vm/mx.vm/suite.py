@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "1c4ee400758f18a2ecad9c09cc208cbda2ac30f7",
+                "version": "186cb555e7103d9c96e9b579f8010855abd15ffb",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "1c4ee400758f18a2ecad9c09cc208cbda2ac30f7",
+                "version": "186cb555e7103d9c96e9b579f8010855abd15ffb",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "c5f5bcfb55e7308f4a98f28e6e01921a2f1cb10c",
+                "version": "4d2ba76ef50d2a301d29d2945bf709c12a4644c9",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "feee80f51282f217846d657193d5fd57857cc4fb",
+                "version": "ad30df4e80a525af960f6d13132c97e071fce1a8",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "214f4f6757685ff1670b7aae263a5f4d1e4e9ef8",
+                "version": "470149ebad7903408fe15d50bce9e39d3865ec45",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -118,7 +118,7 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
-                "VISUALVM_JFLUID_HEAP",
+                "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "requires": [
                 "java.logging",
@@ -176,20 +176,17 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
             "sha1" : "302f81578d470b0941679ce9b21987c035eee6f6"
         },
+        "GRAALPYTHON_PYFLATE_BENCHMARK_RESOURCE" : {
+            # just any reasonably sized .tar.gz or .tar.bz2 for running the benchmark
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-linux-amd64.tar.gz"],
+            "sha1" : "3f276219657688958f919110b12f329a080326c1"
+        },
         "ORG_NETBEANS_API_ANNOTATIONS_COMMON" : {
            "sha1" : "ef10fcaff10adfbedcc6058c965397ac47395ecf",
             "maven" : {
                 "groupId" : "org.netbeans.api",
                 "artifactId" : "org-netbeans-api-annotations-common",
                 "version" : "RELEASE123",
-            },
-        },
-        "VISUALVM_JFLUID_HEAP" : {
-           "sha1" : "87d40d1d5cefabb1c3f67968f0a6b9980349c54d",
-            "maven" : {
-                "groupId" : "org.graalvm.visualvm.modules",
-                "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
-                "version" : "2.1.2",
             },
         },
     },
@@ -248,7 +245,7 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
-                 "VISUALVM_JFLUID_HEAP",
+                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "maven" : False,
         },
@@ -307,7 +304,8 @@ suite = {
                 "./warmup/": [
                     # "file:benchmarks/warmup/*.js",
                     # "file:benchmarks/warmup/*.rb",
-                    # "file:benchmarks/warmup/*.py",
+                    "file:benchmarks/warmup/*.py",
+                    "dependency:GRAALPYTHON_PYFLATE_BENCHMARK_RESOURCE",
                     "extracted-dependency:WARMUP_BENCHMARKS/*"
                 ],
                 "./nfi/": [

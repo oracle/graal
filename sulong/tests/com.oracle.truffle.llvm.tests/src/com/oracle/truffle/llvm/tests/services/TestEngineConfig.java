@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import org.graalvm.polyglot.Context;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -77,6 +78,10 @@ public interface TestEngineConfig extends Comparable<TestEngineConfig> {
      */
     default Map<String, String> getContextOptions() {
         return getContextOptions(null);
+    }
+
+    default Map<String, String> getEngineOptions() {
+        return new HashMap<>();
     }
 
     Map<String, String> getContextOptions(String testName);

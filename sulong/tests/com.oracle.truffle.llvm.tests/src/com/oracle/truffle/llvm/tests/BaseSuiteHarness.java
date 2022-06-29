@@ -166,7 +166,7 @@ public abstract class BaseSuiteHarness {
 
     @BeforeClass
     public static void createEngine() {
-        engine = Engine.newBuilder().allowExperimentalOptions(true).build();
+        engine = Engine.newBuilder().allowExperimentalOptions(true).options(TestEngineConfig.getInstance().getEngineOptions()).build();
     }
 
     @AfterClass

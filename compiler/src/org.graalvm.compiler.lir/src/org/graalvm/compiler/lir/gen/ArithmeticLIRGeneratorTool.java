@@ -26,6 +26,7 @@ package org.graalvm.compiler.lir.gen;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -105,9 +106,9 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitBitScanReverse(Value operand);
 
-    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
+    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryExtendKind extendKind);
 
-    Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder);
+    Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind);
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
 
