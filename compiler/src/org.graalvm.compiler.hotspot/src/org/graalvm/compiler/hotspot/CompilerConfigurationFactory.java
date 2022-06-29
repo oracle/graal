@@ -271,6 +271,10 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         nativeImageLocationQualifier = s;
     }
 
+    public static void clearNativeImageLocationQualifier() {
+        nativeImageLocationQualifier = null;
+    }
+
     private static void printConfigInfo(CompilerConfigurationFactory factory) {
         Object location = factory.getLoadedFromLocation();
         TTY.printf("Using compiler configuration '%s' provided by %s loaded from %s%n", factory.name, factory.getClass().getName(), location);

@@ -47,6 +47,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
@@ -634,11 +635,13 @@ public class FeatureImpl {
 
     public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
         private final Map<HostedMethod, CompileTask> compilations;
-
+        private final NativeImageCodeCache codeCache;
         public AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
-                        Map<HostedMethod, CompileTask> compilations, NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
+                        Map<HostedMethod, CompileTask> compilations, NativeImageCodeCache codeCache, NativeImageHeap heap, DebugContext debugContext,
+                        SharedRuntimeConfigurationBuilder runtimeBuilder) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
             this.compilations = compilations;
+            this.codeCache = codeCache;
         }
 
         public Collection<CompileTask> getCompilationTasks() {
@@ -647,6 +650,10 @@ public class FeatureImpl {
 
         public Map<HostedMethod, CompileTask> getCompilations() {
             return compilations;
+        }
+
+        public NativeImageCodeCache getcodeCache() {
+            return codeCache;
         }
     }
 

@@ -526,6 +526,14 @@ public abstract class NativeImageCodeCache {
 
     public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile);
 
+    public Map<HostedMethod, CompilationResult> getCompilations() {
+        return compilations;
+    }
+
+    public NavigableMap<Integer, CompilationResult> getCompilationsByStart() {
+        return compilationsByStart;
+    }
+
     public void printCompilationResults() {
         System.out.println("--- compiled methods");
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
