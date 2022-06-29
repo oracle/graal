@@ -316,34 +316,36 @@ Refer to the following pages for more specific documentation:
 
 If you use the Micronaut framework to create your Java project, you can build a native executable of a Micronaut application using VS Code quick actions. Go [here](../micronaut/README.md#generate-native-images-of-micronaut-projects) to learn how.
 
-#### Building Native Images on Windows
+### Building Native Images on Windows
 
-To use Native Image on Windows, you need Visual Studio Build Tools and Windows 10 SDK installed. 
-The `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
-For GraalVM Native Image users on Windows, the extension provides a preconfigured x64 command prompt using Microsoft Developer Tools. 
+To use Native Image on Windows, you need Visual Studio Build Tools with Windows SDK installed. 
+The `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**. Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for more details.
 
-Assuming you already have Visual Studio Build Tools and Windows 10 SDK, GraalVM with Native Image support installed, and opened your Java project in VS Code.
+For Windows users, the extension provides a preconfigured x64 command prompt using Microsoft Developer Tools. Assuming you already have Visual Studio Build Tools with Windows SDK, GraalVM with Native Image support installed, and opened your Java project in VS Code.
 
-1. In the **NATIVE IMAGE** pane, find click on right arrow icon, **>**. It will open a new dialog window asking to provide the path to Windows 10 SDK build tools configuration script (`vcvars64.bat`). But you do not have to type the path manaully, VS Code will detect it in the _C:\Program Files_ location and pre-populate the path field:
+1. In the **NATIVE IMAGE** pane, click on right arrow, **>**:
+
+    ![NATIVE IMAGE page on Windows](images/ni_pane_windows.png)
+    
+    It will open a dialog window asking you to select an existing Windows SDK build tools configuration script (`vcvars64.bat`) from the default installation location, or to select a custom configuration script. VS Code will detect the script and pre-populate the path:
 
     ![Provide Path to Microsoft Build Tools Script](images/path_build_tools_script.png)
 
-2. Click enter, and open a terminal window (go to **Terminal**, **New Termninal**). The following message will be printed out:
+2. Click enter. A new Terminal window will open running inside the x64 native tools command prompt. You can see that from the message printed:
     
     ![Native Command Prompt in VS Code Windows](images/native_tools_cmd_prompt.png)
 
-    Note that the path to Windows 10 SDK build tools is saved globally, so next time you open a New Terminal, it will run inside the x64 native tools command prompt.
+    Note that the path to Windows SDK build tools is saved globally, so next time you open a New Terminal 
+    from the **NATIVE IMAGE** pane, it will run inside the x64 native tools command prompt.
 
-3. Run the `native-image` builder. For example, to build a native executable for a Maven project, you would execute:
+3. Run the `native-image` builder, for example, check the version:
 
     ```shell
-    ./mvnw package -Dpackaging=native-image
+    native-image --version
     ```
 
 For Micronaut users targeting GraalVM Native Image for their Micronaut applications, the [GraalVM Tools for Micronaut extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) provides a dedicated command prompt. 
-You can check it by invoking **Micronaut: Build Native Image** task from Command Palette. Notice which shell is active:
-
-   ![Native Micronaut Command Prompt in VS Code Windows](images/micronaut_cmd_prompt.png)
+You can check it by invoking the **Micronaut: Build Native Image** task from Command Palette.
 
 Read more about GraalVM Native Image [here](../../../reference-manual/native-image/README.md).
 
