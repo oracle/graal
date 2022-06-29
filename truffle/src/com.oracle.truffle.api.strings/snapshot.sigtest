@@ -98,9 +98,12 @@ meth public final int byteIndexOfStringUncached(com.oracle.truffle.api.strings.T
 meth public final int byteIndexToCodePointIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteLength(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteLengthOfCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final int byteLengthOfCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int charIndexOfAnyCharUTF16Uncached(int,int,char[])
 meth public final int codePointAtByteIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final int codePointAtByteIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int codePointAtIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final int codePointAtIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int codePointIndexToByteIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int codePointLengthUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int compareBytesUncached(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -297,6 +300,8 @@ innr public abstract static SwitchEncodingNode
 innr public abstract static ToJavaStringNode
 innr public final static !enum CodeRange
 innr public final static !enum Encoding
+innr public final static !enum ErrorHandling
+innr public final static InvalidCodePointException
 innr public final static NumberFormatException
 innr public final static WithMask
 meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUncached(byte[],com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -361,7 +366,8 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteLengthOfCodePointNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
+meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteLengthOfCodePointNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteLengthOfCodePointNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -375,14 +381,16 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CodePointAtByteIndexNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
+meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtByteIndexNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtByteIndexNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CodePointAtIndexNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
+meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtIndexNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtIndexNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -596,6 +604,14 @@ meth public static com.oracle.truffle.api.strings.TruffleString$EqualNode create
 meth public static com.oracle.truffle.api.strings.TruffleString$EqualNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
+CLSS public final static !enum com.oracle.truffle.api.strings.TruffleString$ErrorHandling
+ outer com.oracle.truffle.api.strings.TruffleString
+fld public final static com.oracle.truffle.api.strings.TruffleString$ErrorHandling BEST_EFFORT
+fld public final static com.oracle.truffle.api.strings.TruffleString$ErrorHandling RETURN_NEGATIVE
+meth public static com.oracle.truffle.api.strings.TruffleString$ErrorHandling valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.strings.TruffleString$ErrorHandling[] values()
+supr java.lang.Enum<com.oracle.truffle.api.strings.TruffleString$ErrorHandling>
+
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ForceEncodingNode
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -622,8 +638,11 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
+meth public abstract com.oracle.truffle.api.strings.TruffleString executeChecked(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean) throws com.oracle.truffle.api.strings.TruffleString$InvalidCodePointException
 meth public final com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
+meth public final com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -714,6 +733,12 @@ meth public static com.oracle.truffle.api.strings.TruffleString$IntIndexOfAnyInt
 meth public static com.oracle.truffle.api.strings.TruffleString$IntIndexOfAnyIntUTF32Node getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
+CLSS public final static com.oracle.truffle.api.strings.TruffleString$InvalidCodePointException
+ outer com.oracle.truffle.api.strings.TruffleString
+meth public java.lang.Throwable fillInStackTrace()
+supr java.lang.Exception
+hfds serialVersionUID
+
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$IsValidNode
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract boolean execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -759,9 +784,30 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException
  outer com.oracle.truffle.api.strings.TruffleString
+innr public final static !enum Reason
+meth public com.oracle.truffle.api.strings.AbstractTruffleString getString()
+meth public com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason getReason()
+meth public int getRegionByteLength()
+meth public int getRegionByteOffset()
+meth public java.lang.String getMessage()
 meth public java.lang.Throwable fillInStackTrace()
 supr java.lang.Exception
-hfds serialVersionUID
+hfds reason,regionLength,regionOffset,serialVersionUID,string
+
+CLSS public final static !enum com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason
+ outer com.oracle.truffle.api.strings.TruffleString$NumberFormatException
+fld public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason EMPTY
+fld public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason INVALID_CODEPOINT
+fld public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason LONE_SIGN
+fld public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason MALFORMED_HEX_ESCAPE
+fld public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason MULTIPLE_DECIMAL_POINTS
+fld public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason OVERFLOW
+fld public final static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason UNSUPPORTED_RADIX
+meth public java.lang.String getMessage()
+meth public static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason[] values()
+supr java.lang.Enum<com.oracle.truffle.api.strings.TruffleString$NumberFormatException$Reason>
+hfds message
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ParseDoubleNode
  outer com.oracle.truffle.api.strings.TruffleString
