@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.collections.EconomicMap;
@@ -110,9 +111,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(10);
 
     }
-
-    private static final String TOO_MANY_SUBTREE_INVOKES_ERROR = "call has more than " + Options.TruffleHostInliningMaxSubtreeInvokes.getDefaultValue() +
-                    " fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md";
 
     static final String INDENT = "  ";
     private static final int TRIVIAL_SIZE = 30;
@@ -313,17 +311,23 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                     debug.log("Warning method host inlining limit exceeded limit %s with graph size %s.", sizeLimit, graphSize);
                 }
 
+                int diff = graphSize - beforeGraphSize;
+                long total = totalCostCounter.addAndGet(diff);
+
                 /*
                  * The call tree is very convenient to debug host inlining decisions in addition to
                  * IGV. To use pass
                  * -H:Log=TruffleHostInliningPhase,~TruffleHostInliningPhase.CanonicalizerPhase to
                  * filter noise by canonicalization.
                  */
-                debug.log("Truffle host inlining completed after %s rounds. Graph cost changed from %s to %s after inlining: %n%s", round, beforeGraphSize, graphSize, printCallTree(context, root));
+                debug.log("Truffle host inlining completed after %s rounds. Graph cost changed from %s to %s after inlining (total cost %s): %n%s", round, beforeGraphSize, graphSize, total,
+                                printCallTree(context, root));
             }
         }
 
     }
+
+    private static final AtomicLong totalCostCounter = new AtomicLong();
 
     /*
      * Inline decisions might have changed due to invokes dying or subtree invoke limit reached, so
@@ -546,7 +550,13 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                      * We can just as well stop exploring if we already reached the number of
                      * invokes.
                      */
-                    return children;
+                    if (!context.printExplored) {
+                        /*
+                         * We only stop exploring if we do not print the explored.
+                         */
+                        caller.explorationIncomplete = true;
+                        return children;
+                    }
                 }
             }
         }
@@ -721,12 +731,17 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
+        if (isInliningCutoff(targetMethod)) {
+            call.reason = "method annotated with @InliningCutoff";
+            return false;
+        }
+
         /*
          * More than one non-slow-path invoke. This may happen if method has many truffle boundary
          * or non-direct virtual calls.
          */
         if (call.subTreeInvokes >= context.maxSubtreeInvokes) {
-            call.reason = TOO_MANY_SUBTREE_INVOKES_ERROR;
+            call.reason = "call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md";
             return false;
         }
 
@@ -754,11 +769,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         if (context.highTierContext.getReplacements().hasSubstitution(targetMethod, context.graph.getOptions())) {
             call.reason = "has substituion";
-            return false;
-        }
-
-        if (isInliningCutoff(targetMethod)) {
-            call.reason = "method annotated as @Uncommon";
             return false;
         }
 
@@ -1083,6 +1093,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final TruffleCompilerRuntime truffle;
         final boolean isBytecodeSwitch;
         final int maxSubtreeInvokes;
+        final boolean printExplored;
 
         /**
          * Caches graphs for a single run of this phase. This is not just a performance optimization
@@ -1098,6 +1109,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             this.truffle = truffle;
             this.isBytecodeSwitch = isBytecodeSwitch;
             this.maxSubtreeInvokes = Options.TruffleHostInliningMaxSubtreeInvokes.getValue(options);
+            this.printExplored = Options.TruffleHostInliningPrintExplored.getValue(options);
         }
 
     }

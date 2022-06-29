@@ -64,6 +64,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -120,6 +121,7 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testExplorationDepth1Fail");
         runTest("testExplorationDepth2Fail");
         runTest("testBytecodeSwitchtoBytecodeSwitch");
+        runTest("testInliningCutoff");
     }
 
     @SuppressWarnings("try")
@@ -256,6 +258,11 @@ public class HostInliningTest extends GraalCompilerTest {
         sum += (v / 2 + v / 3 + v + v / 4 + v / 5);
         sum += (v / 6 + v / 7 + v + v / 8 + v / 9);
         return sum;
+    }
+
+    @InliningCutoff
+    static int inliningCutoff(int v) {
+        return v;
     }
 
     static void trivalWithBoundary() {
@@ -650,6 +657,12 @@ public class HostInliningTest extends GraalCompilerTest {
                 trivialMethod();
                 return -1;
         }
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined({"inliningCutoff"})
+    static int testInliningCutoff(int value) {
+        return inliningCutoff(value);
     }
 
     @Retention(RetentionPolicy.RUNTIME)

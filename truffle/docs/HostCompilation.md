@@ -209,10 +209,10 @@ Additionally, to avoid the explosion of code size, host inlining has a built-in 
 For example, the tracing may print the following:
 
 ```
-CUTOFF com.oracle.truffle.espresso.nodes.BytecodeNode.putPoolConstant(VirtualFrame, int, char, int)   [inlined   -1, explored    0, monomorphic false, deopt false, inInterpreter false, propDeopt false, graphSize 1132, subTreeCost 5136, invokes    1, subTreeInvokes   12, forced false, incomplete false,  reason call has more than 10 fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md]
+CUTOFF com.oracle.truffle.espresso.nodes.BytecodeNode.putPoolConstant(VirtualFrame, int, char, int)   [inlined   -1, explored    0, monomorphic false, deopt false, inInterpreter false, propDeopt false, graphSize 1132, subTreeCost 5136, invokes    1, subTreeInvokes   12, forced false, incomplete false,  reason call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md
 ```
 
-This indicates that there are too many fast-path invokes (by default 10) in the subtree.
+This indicates that there are too many fast-path invokes (by default 10) in the subtree, it also stops exploring after that number.
 The `-Dgraal.TruffleHostInliningPrintExplored=true` flag may be provided to see the entire subtree for the decision.
 The following calls are considered fast-path invokes:
 
