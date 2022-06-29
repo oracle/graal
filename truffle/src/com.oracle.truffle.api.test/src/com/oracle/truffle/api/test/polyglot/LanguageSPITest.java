@@ -57,6 +57,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1892,7 +1893,7 @@ public class LanguageSPITest {
     @ExportLibrary(InteropLibrary.class)
     static final class TestScope implements TruffleObject {
 
-        final Map<String, Object> values = new HashMap<>();
+        final Map<String, Object> values = new LinkedHashMap<>();
         TestScope parentScope;
         boolean modifiable;
         boolean insertable;
@@ -2160,9 +2161,9 @@ public class LanguageSPITest {
             // Expected as the merged scope does not contain parent scopes.
         }
         // Correct the scope hierarchy:
-        scopes[0].values.put("foo", "val");
         scopes[0].values.put("bar", "val");
-        scopes[1].values.put("bar", "val");
+        scopes[0].values.put("foo", "val");
+        scopes[3].values.clear();
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         c.close();
