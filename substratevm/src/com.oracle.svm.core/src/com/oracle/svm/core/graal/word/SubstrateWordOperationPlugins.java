@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.word;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -77,7 +78,7 @@ public class SubstrateWordOperationPlugins extends WordOperationPlugin {
                 assert args[2].isConstant() : args[2];
                 location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
                 assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
-                FixedAccessNode read = b.add(new ReadNode(address, location, StampFactory.forKind(readKind), BarrierType.NONE));
+                FixedAccessNode read = b.add(new ReadNode(address, location, StampFactory.forKind(readKind), BarrierType.NONE, MemoryOrderMode.PLAIN));
                 if (!(args[3] instanceof ConstantNode)) {
                     // guard can be the null constant
                     read.setGuard((GuardingNode) args[3]);

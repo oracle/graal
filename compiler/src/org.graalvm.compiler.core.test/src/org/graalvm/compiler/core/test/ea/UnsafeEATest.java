@@ -86,7 +86,7 @@ public class UnsafeEATest extends EATestBase {
                 } else if (node instanceof RawLoadNode) {
                     RawLoadNode load = (RawLoadNode) node;
                     RawLoadNode newLoad = graph.add(new RawLoadNode(load.object(), load.offset(), load.accessKind(), NamedLocationIdentity.any(),
-                                    true));
+                                    true, load.getMemoryOrder()));
                     graph.replaceFixedWithFixed(load, newLoad);
                 }
             }
