@@ -142,8 +142,7 @@ public abstract class PointsToAnalysis implements BigBang {
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
         this.debug = new Builder(options, debugHandlerFactories).build();
         this.hostVM = hostVM;
-        String imageName = hostVM.getImageName();
-        this.typeFlowTimer = timerCollection.createTimer(imageName, "(typeflow)", false);
+        this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
         this.verifyHeapTimer = timerCollection.get(TimerCollection.Registry.VERIFY_HEAP);
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
@@ -182,13 +181,6 @@ public abstract class PointsToAnalysis implements BigBang {
         heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
-    }
-
-    @Override
-    public void printTimers() {
-        typeFlowTimer.print();
-        verifyHeapTimer.print();
-        processFeaturesTimer.print();
     }
 
     @Override
@@ -465,7 +457,7 @@ public abstract class PointsToAnalysis implements BigBang {
                  * virtual invoke type flow. Since the virtual invoke observes the receiver flow
                  * state it will get notified for any future reachable subtypes and will resolve the
                  * method in each subtype.
-                 * 
+                 *
                  * In both cases the context-insensitive invoke parameters are initialized with the
                  * corresponding declared type state. When a callee is resolved the method is parsed
                  * and the actual parameter type state is propagated to the formal parameters. Then
@@ -483,7 +475,7 @@ public abstract class PointsToAnalysis implements BigBang {
                      * Initialize the type flow of the invoke's actual parameters with the
                      * corresponding parameter declared type. Thus, when the invoke links callees it
                      * will propagate the parameter types too.
-                     * 
+                     *
                      * The parameter iteration skips the primitive parameters, as these are not
                      * modeled. The type flow of the receiver is set to the receiver type already
                      * when the invoke is created.

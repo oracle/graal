@@ -32,8 +32,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
@@ -46,6 +44,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
@@ -78,7 +78,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
                     UnsupportedFeatures unsupportedFeatures, MethodSummaryProvider methodSummaryProvider, TimerCollection timerCollection) {
         super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
         this.methodSummaryProvider = methodSummaryProvider;
-        this.summaryTimer = timerCollection.createTimer("((summaries))", false);
+        this.summaryTimer = timerCollection.createTimer("((summaries))");
         ReachabilityAnalysisType objectType = assertReachabilityAnalysisType(metaAccess.lookupJavaType(Object.class));
         this.allInstantiatedTypes = Collections.unmodifiableSet(objectType.getInstantiatedSubtypes());
     }
@@ -408,11 +408,5 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     public static ReachabilityAnalysisType assertReachabilityAnalysisType(AnalysisType type) {
         return (ReachabilityAnalysisType) type;
-    }
-
-    @Override
-    public void printTimers() {
-        summaryTimer.print();
-        super.printTimers();
     }
 }
