@@ -38,6 +38,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -246,6 +247,11 @@ public class SubstrateJVM {
         } else {
             return 0L;
         }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getStackTraceId(JfrEvent eventType, int skipCount) {
+        return getStackTraceId(eventType.getId(), skipCount);
     }
 
     /** See {@link JVM#getStackTraceId}. */

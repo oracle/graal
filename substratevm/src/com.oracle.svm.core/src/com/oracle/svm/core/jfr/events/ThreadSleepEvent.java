@@ -54,7 +54,7 @@ public class ThreadSleepEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadSleep.getId(), 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadSleep, 0));
             JfrNativeEventWriter.putLong(data, time);
             JfrNativeEventWriter.endSmallEvent(data);
         }

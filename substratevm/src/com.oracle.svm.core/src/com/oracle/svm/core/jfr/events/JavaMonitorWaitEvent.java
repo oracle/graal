@@ -50,7 +50,7 @@ public class JavaMonitorWaitEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorWait.getId(), 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorWait, 0));
             JfrNativeEventWriter.putClass(data, obj.getClass());
             JfrNativeEventWriter.putLong(data, notifier);
             JfrNativeEventWriter.putLong(data, timeout);
