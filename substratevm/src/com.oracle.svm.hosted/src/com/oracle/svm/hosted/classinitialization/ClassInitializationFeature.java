@@ -29,6 +29,7 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -40,6 +41,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -186,6 +188,7 @@ public class ClassInitializationFeature implements InternalFeature {
             if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
                 List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
+                                .filter(c -> JavaVersionUtil.JAVA_SPEC < 19 || !Proxy.isProxyClass(c))
                                 .map(Class::getTypeName)
                                 .collect(Collectors.toList());
                 if (!unspecifiedClasses.isEmpty()) {
