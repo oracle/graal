@@ -51,6 +51,7 @@ final class UnsafeAccess {
     static final long ARRAY_INT_BASE_OFFSET = UNSAFE.arrayBaseOffset(int[].class);
     static final long ARRAY_INT_INDEX_SCALE = UNSAFE.arrayIndexScale(int[].class);
 
+    @SuppressWarnings("deprecation")
     static long objectFieldOffset(Field field) {
         return UNSAFE.objectFieldOffset(field);
     }
