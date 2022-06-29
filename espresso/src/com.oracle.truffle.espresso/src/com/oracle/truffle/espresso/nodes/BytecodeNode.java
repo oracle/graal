@@ -1717,24 +1717,36 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
             }
         } else {
-            InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
-            InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
             switch (opcode) {
                 case IF_ACMPEQ: {
+                    if (operand1 == operand2) {
+                        return true;
+                    }
+                    // Espresso null == foreign null
+                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
+                        return true;
+                    }
                     // an Espresso object can never be identical to a foreign object
                     if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        if (operand1Lib.hasIdentity(operand1)) {
-                            return operand1Lib.isIdentical(operand1, operand2, operand2Lib);
-                        }
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
+                        return operand1Lib.isIdentical(operand1, operand2, operand2Lib);
                     }
-                    return operand1 == operand2;
+                    return false;
                 }
                 case IF_ACMPNE: {
+                    if (operand1 == operand2) {
+                        return false;
+                    }
+                    // Espresso null == foreign null
+                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
+                        return false;
+                    }
                     // an Espresso object can never be identical to a foreign object
                     if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        if (operand1Lib.hasIdentity(operand1)) {
-                            return !operand1Lib.isIdentical(operand1, operand2, operand2Lib);
-                        }
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
+                        return !operand1Lib.isIdentical(operand1, operand2, operand2Lib);
                     }
                     return operand1 != operand2;
                 }
