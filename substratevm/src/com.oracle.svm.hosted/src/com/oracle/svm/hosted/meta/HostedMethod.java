@@ -155,7 +155,8 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.compilationInfo = new CompilationInfo(this, deoptOrigin);
         this.localVariableTable = localVariableTable;
         this.name = name;
-        this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
+        StringBuilder sb = new StringBuilder(SubstrateUtil.classLoaderNameAndId(holder.getJavaClass().getClassLoader()));
+        this.uniqueShortName = SubstrateUtil.uniqueShortName(sb, this);
     }
 
     @Override

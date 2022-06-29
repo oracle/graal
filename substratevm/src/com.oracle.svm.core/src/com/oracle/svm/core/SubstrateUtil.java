@@ -278,20 +278,36 @@ public class SubstrateUtil {
      * name includes a digest of the fully qualified method name, which ensures uniqueness.
      */
     public static String uniqueShortName(ResolvedJavaMethod m) {
-        StringBuilder fullName = new StringBuilder();
-        fullName.append(m.getDeclaringClass().toClassName()).append(".").append(m.getName()).append("(");
+        return uniqueShortName(new StringBuilder(), m);
+    }
+
+    public static String uniqueShortName(StringBuilder sb, ResolvedJavaMethod m) {
+        sb.append(m.getDeclaringClass().toClassName()).append(".").append(m.getName()).append("(");
         for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
-            fullName.append(m.getSignature().getParameterType(i, null).toClassName()).append(",");
+            sb.append(m.getSignature().getParameterType(i, null).toClassName()).append(",");
         }
-        fullName.append(')');
+        sb.append(')');
         if (!m.isConstructor()) {
-            fullName.append(m.getSignature().getReturnType(null).toClassName());
+            sb.append(m.getSignature().getReturnType(null).toClassName());
         }
 
         return stripPackage(m.getDeclaringClass().toJavaName()) + "_" +
                         (m.isConstructor() ? "constructor" : m.getName()) + "_" +
-                        SubstrateUtil.digest(fullName.toString());
+                        SubstrateUtil.digest(sb.toString());
     }
+
+    public static String classLoaderNameAndId(ClassLoader loader) {
+        if (loader == null) {
+            return "";
+        }
+        try {
+            return (String) classLoaderNameAndId.get(loader);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere("Cannot reflectively access ClassLoader.nameAndId");
+        }
+    }
+
+    private static final Field classLoaderNameAndId = ReflectionUtil.lookupField(ClassLoader.class, "nameAndId");
 
     /**
      * Returns a short, reasonably descriptive, but still unique name for the provided

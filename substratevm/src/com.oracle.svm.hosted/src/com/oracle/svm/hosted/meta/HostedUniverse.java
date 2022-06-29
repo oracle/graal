@@ -32,6 +32,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeSet;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -54,6 +55,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -466,29 +468,35 @@ public class HostedUniverse implements Universe {
                 return 0;
             }
 
-            int result;
-            if (o1.getClass().equals(o2.getClass())) {
-                if (o1.isPrimitive() && o2.isPrimitive()) {
-                    assert o1 instanceof HostedPrimitiveType && o2 instanceof HostedPrimitiveType;
-                    result = o1.getJavaKind().compareTo(o2.getJavaKind());
-                    VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: " + o1 + ", " + o2);
-                    return result;
-                }
-
-                if (o1.isArray() && o2.isArray()) {
-                    assert o1 instanceof HostedArrayClass && o2 instanceof HostedArrayClass;
-                    result = compare(o1.getComponentType(), o2.getComponentType());
-                    VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: " + o1 + ", " + o2);
-                    return result;
-                }
-
-                result = o1.getName().compareTo(o2.getName());
-                VMError.guarantee(result != 0, "HostedType objects not distinguishable by name: " + o1 + ", " + o2);
+            if (!o1.getClass().equals(o2.getClass())) {
+                int result = Integer.compare(ordinal(o1), ordinal(o2));
+                VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: " + o1 + ", " + o2);
                 return result;
             }
 
-            result = Integer.compare(ordinal(o1), ordinal(o2));
-            VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: " + o1 + ", " + o2);
+            if (o1.isPrimitive() && o2.isPrimitive()) {
+                assert o1 instanceof HostedPrimitiveType && o2 instanceof HostedPrimitiveType;
+                int result = o1.getJavaKind().compareTo(o2.getJavaKind());
+                VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: " + o1 + ", " + o2);
+                return result;
+            }
+
+            if (o1.isArray() && o2.isArray()) {
+                assert o1 instanceof HostedArrayClass && o2 instanceof HostedArrayClass;
+                int result = compare(o1.getComponentType(), o2.getComponentType());
+                VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: " + o1 + ", " + o2);
+                return result;
+            }
+
+            int result = o1.getName().compareTo(o2.getName());
+            if (result != 0) {
+                return result;
+            }
+
+            ClassLoader l1 = Optional.ofNullable(o1.getJavaClass()).map(Class::getClassLoader).orElse(null);
+            ClassLoader l2 = Optional.ofNullable(o2.getJavaClass()).map(Class::getClassLoader).orElse(null);
+            result = SubstrateUtil.classLoaderNameAndId(l1).compareTo(SubstrateUtil.classLoaderNameAndId(l2));
+            VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: " + o1 + ", " + o2);
             return result;
         }
 
@@ -513,11 +521,11 @@ public class HostedUniverse implements Universe {
 
         private final TypeComparator typeComparator;
 
-        private final boolean collisionFatal;
+        private final boolean strict;
 
-        private MethodComparator(TypeComparator typeComparator, boolean collisionFatal) {
+        private MethodComparator(TypeComparator typeComparator, boolean strict) {
             this.typeComparator = typeComparator;
-            this.collisionFatal = collisionFatal;
+            this.strict = strict;
         }
 
         @Override
@@ -570,7 +578,7 @@ public class HostedUniverse implements Universe {
              * Note that result can still be 0 at this point. This in only allowed during
              * HostedMethod name collision handling in HostedMethod#create.
              */
-            VMError.guarantee(!collisionFatal, "HostedMethod objects not distinguishable: " + o1 + ", " + o2);
+            VMError.guarantee(!strict, "HostedMethod objects not distinguishable: " + o1 + ", " + o2);
             return result;
         }
     }
@@ -580,6 +588,6 @@ public class HostedUniverse implements Universe {
      * consecutive. If the kind is the same, i.e., result == 0, we return 0 so that the sorting
      * keeps the order unchanged and therefore keeps the field order we get from the hosting VM.
      */
-    static final Comparator<HostedField> FIELD_COMPARATOR = Comparator.comparing(HostedField::getJavaKind);
+    static final Comparator<HostedField> FIELD_COMPARATOR_RELAXED = Comparator.comparing(HostedField::getJavaKind);
 
 }

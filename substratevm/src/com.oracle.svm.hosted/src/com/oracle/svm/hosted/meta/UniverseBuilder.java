@@ -158,9 +158,6 @@ public class UniverseBuilder {
                 makeMethod(aMethod);
             }
 
-            System.out.println("methodNameCollisions:");
-            hUniverse.methodNameCollisions.forEach((method, count) -> System.out.println(count + ": " + method));
-
             Collection<HostedType> allTypes = hUniverse.types.values();
             HostedType objectType = hUniverse.objectType();
             HostedType cloneableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Cloneable.class));
@@ -184,7 +181,7 @@ public class UniverseBuilder {
             processFieldLocations();
 
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
-            Collections.sort(hUniverse.orderedFields, HostedUniverse.FIELD_COMPARATOR);
+            Collections.sort(hUniverse.orderedFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
             profilingInformationBuildTask.join();
         }
     }
@@ -443,7 +440,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(rawFields, HostedUniverse.FIELD_COMPARATOR);
+        Collections.sort(rawFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
 
         int nextOffset = startSize;
         while (rawFields.size() > 0) {
@@ -522,7 +519,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(fields, HostedUniverse.FIELD_COMPARATOR);
+        Collections.sort(fields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
