@@ -32,14 +32,20 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-
+import org.graalvm.compiler.word.Word;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 public class JavaMonitorWaitEvent {
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
+        if (HasJfrSupport.get()) {
+            emit0(startTicks, obj, notifier, timeout, timedOut);
+        }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static void emit0(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.JavaMonitorWait)) {
             JfrNativeEventWriterData data = org.graalvm.nativeimage.StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaMonitorWait);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
@@ -49,9 +55,8 @@ public class JavaMonitorWaitEvent {
             JfrNativeEventWriter.putLong(data, notifier);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putBoolean(data, timedOut);
-            JfrNativeEventWriter.putLong(data, org.graalvm.compiler.word.Word.objectToUntrackedPointer(obj).rawValue());
+            JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
-
         }
     }
 }

@@ -40,6 +40,13 @@ public class ThreadSleepEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(long time, long startTicks) {
+        if (com.oracle.svm.core.jfr.HasJfrSupport.get()) {
+            emit0(time, startTicks);
+        }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static void emit0(long time, long startTicks) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadSleep)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -51,8 +58,6 @@ public class ThreadSleepEvent {
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadSleep.getId(), 0));
             JfrNativeEventWriter.putLong(data, time);
             JfrNativeEventWriter.endSmallEvent(data);
-
         }
     }
-
 }

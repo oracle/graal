@@ -35,6 +35,7 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import org.graalvm.compiler.word.Word;
 
 public class JavaMonitorEnterEvent {
 
@@ -56,7 +57,7 @@ public class JavaMonitorEnterEvent {
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorEnter.getId(), 0));
             JfrNativeEventWriter.putClass(data, obj.getClass());
             JfrNativeEventWriter.putLong(data, previousOwner);
-            JfrNativeEventWriter.putLong(data, org.graalvm.compiler.word.Word.objectToUntrackedPointer(obj).rawValue());
+            JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
 
         }
