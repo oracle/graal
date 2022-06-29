@@ -172,7 +172,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          */
         for (ObjectKlass intf : interfaces) {
             for (Method m : intf.getDeclaredMethods()) {
-                if (!Modifier.isStatic(m.getModifiers())) {
+                if (!Modifier.isStatic(m.getModifiers()) && !Modifier.isPrivate(m.getModifiers())) {
                     addProxyMethod(m);
                 }
             }
@@ -238,58 +238,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKESPECIAL, JLR_UNDECLARED_THROWABLE_EX,
                         "<init>", "(Ljava/lang/Throwable;)V", false);
-        mv.visitInsn(ATHROW);
-        // Maxs computed by ClassWriter.COMPUTE_FRAMES, these arguments ignored
-        mv.visitMaxs(-1, -1);
-        mv.visitEnd();
-    }
-
-    private void generateHashCodeMethod() {
-        MethodVisitor mv = visitMethod(ACC_PUBLIC | ACC_FINAL,
-                "hashCode", "()I", null,
-                null);
-
-        mv.visitCode();
-        Label startBlock = new Label();
-        Label endBlock = new Label();
-        Label runtimeHandler = new Label();
-        Label throwableHandler = new Label();
-        Label noIdentity = new Label();
-
-        mv.visitLabel(startBlock);
-
-        mv.visitVarInsn(ALOAD, 0);
-
-        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                "hasIdentity",
-                "(Ljava/lang/Object;)Z",
-                false);
-
-        mv.visitJumpInsn(IFEQ, noIdentity);
-        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                "identityHashCode",
-                "(Ljava/lang/Object;)I",
-                false);
-
-        mv.visitInsn(IRETURN);
-
-        mv.visitLabel(noIdentity);
-
-
-
-        mv.visitLabel(endBlock);
-
-        // Generate exception handler
-        mv.visitLabel(runtimeHandler);
-        mv.visitInsn(ATHROW);   // just rethrow the exception
-
-        mv.visitLabel(throwableHandler);
-        mv.visitVarInsn(ASTORE, 1);
-        mv.visitTypeInsn(NEW, JLR_UNDECLARED_THROWABLE_EX);
-        mv.visitInsn(DUP);
-        mv.visitVarInsn(ALOAD, 1);
-        mv.visitMethodInsn(INVOKESPECIAL, JLR_UNDECLARED_THROWABLE_EX,
-                "<init>", "(Ljava/lang/Throwable;)V", false);
         mv.visitInsn(ATHROW);
         // Maxs computed by ClassWriter.COMPUTE_FRAMES, these arguments ignored
         mv.visitMaxs(-1, -1);

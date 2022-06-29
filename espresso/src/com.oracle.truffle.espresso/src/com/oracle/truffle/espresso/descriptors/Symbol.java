@@ -174,7 +174,6 @@ public final class Symbol<T> extends ByteSequence {
         // Object and arrays
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         public static final Symbol<Name> toString = StaticSymbols.putName("toString");
-        public static final Symbol<Name> equals = StaticSymbols.putName("equals");
         // variable 'this' name
         public static final Symbol<Name> thiz = StaticSymbols.putName("this");
 
