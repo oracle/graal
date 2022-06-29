@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import static com.oracle.truffle.api.nodes.NodeAccessor.ENGINE;
 import static com.oracle.truffle.api.nodes.NodeAccessor.INSTRUMENT;
 
 import java.lang.annotation.ElementType;
@@ -61,8 +60,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
@@ -645,25 +642,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         return "";
     }
 
-    /**
-     * @since 19.0
-     * @deprecated in 21.3, use static final context references instead. See
-     *             {@link LanguageReference} for the new intended usage.
-     */
-    @Deprecated(since = "21.3")
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    @TruffleBoundary
-    protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
-        try {
-            if (languageClass == null) {
-                throw new NullPointerException();
-            }
-            return ENGINE.createLanguageReference(this, languageClass);
-        } catch (Throwable t) {
-            throw ENGINE.engineToLanguageException(t);
-        }
-    }
-
     @ExplodeLoop
     private ExecutableNode getExecutableNode() {
         Node node = this;
@@ -686,25 +664,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     private void checkAdoptable() {
         if (isAdoptable()) {
             throw new IllegalStateException("Node must be adopted before a reference can be looked up.");
-        }
-    }
-
-    /**
-     * @since 19.0
-     * @deprecated in 21.3, use static final context references instead. See
-     *             {@link LanguageReference} for the new intended usage.
-     */
-    @Deprecated(since = "21.3")
-    @SuppressWarnings("unchecked")
-    @TruffleBoundary
-    protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {
-        try {
-            if (languageClass == null) {
-                throw new NullPointerException();
-            }
-            return ENGINE.createContextReference(this, languageClass);
-        } catch (Throwable t) {
-            throw ENGINE.engineToLanguageException(t);
         }
     }
 

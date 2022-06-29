@@ -323,7 +323,6 @@ public final class DebugException extends RuntimeException {
      *
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     public boolean isInternalError() {
         if (!isTruffleException(exception)) {
             if (exception instanceof DebugException) {
@@ -340,7 +339,6 @@ public final class DebugException extends RuntimeException {
      * @return an exception object, or <code>null</code>
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     public DebugValue getExceptionObject() {
         if (!isTruffleException(exception)) {
             return null;

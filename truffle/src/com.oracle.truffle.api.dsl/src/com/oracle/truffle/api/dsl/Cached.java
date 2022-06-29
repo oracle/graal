@@ -239,8 +239,6 @@ import com.oracle.truffle.api.nodes.NodeInterface;
  * @see Specialization#replaces()
  * @see Specialization#limit()
  * @see ImportStatic
- * @see CachedContext @CachedContext to access the current context.
- * @see CachedLanguage @CachedLanguage to access the current Truffle language.
  * @since 0.8 or earlier
  */
 // @formatter:on

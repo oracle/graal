@@ -819,11 +819,11 @@ meth public static java.lang.String toJavaString(org.graalvm.nativeimage.c.type.
 meth public static java.lang.String toJavaString(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 meth public static java.lang.String toJavaString(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord,java.nio.charset.Charset)
 meth public static java.nio.ByteBuffer asByteBuffer(org.graalvm.word.PointerBase,int)
+meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHolder toCBytes(byte[])
 meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHolder toCString(java.lang.CharSequence)
 meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerPointerHolder toCStrings(java.lang.CharSequence[])
 meth public static org.graalvm.word.UnsignedWord toCString(java.lang.CharSequence,java.nio.charset.Charset,org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 meth public static org.graalvm.word.UnsignedWord toCString(java.lang.CharSequence,org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
-meth public static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHolder toCBytes(byte[])
 supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerHolder

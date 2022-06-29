@@ -58,7 +58,6 @@ import sun.misc.Unsafe;
  * and therefore is much faster. Should not be used during debugging as potential misuses of the
  * frame object would show up very late and would be hard to identify.
  */
-@SuppressWarnings("deprecation")
 public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame {
     private static final String UNEXPECTED_STATIC_READ = "Cannot read non-static frame slot with static API";
     private static final String UNEXPECTED_STATIC_WRITE = "Cannot write non-static frame slot with static API";
@@ -69,9 +68,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private final FrameDescriptor descriptor;
     private final Object[] arguments;
-    private Object[] locals;
-    private long[] primitiveLocals;
-    private byte[] tags;
 
     private final Object[] indexedLocals;
     private final long[] indexedPrimitiveLocals;
@@ -132,30 +128,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
-        final int size = descriptor.getSize();
         final int indexedSize = descriptor.getNumberOfSlots();
         final int auxiliarySize = descriptor.getNumberOfAuxiliarySlots();
         Object defaultValue = descriptor.getDefaultValue();
         final Accessor.FrameSupport frameSupport = DefaultRuntimeAccessor.FRAME;
-        final Object[] localsArray;
-        final long[] primitiveLocalsArray;
-        final byte[] tagsArray;
         final Object[] indexedLocalsArray;
         final long[] indexedPrimitiveLocalsArray;
         final byte[] indexedTagsArray;
         final Object[] auxiliarySlotsArray;
-        if (size == 0) {
-            localsArray = EMPTY_OBJECT_ARRAY;
-            primitiveLocalsArray = EMPTY_LONG_ARRAY;
-            tagsArray = EMPTY_BYTE_ARRAY;
-        } else {
-            localsArray = new Object[size];
-            if (defaultValue != null) {
-                Arrays.fill(localsArray, defaultValue);
-            }
-            primitiveLocalsArray = new long[size];
-            tagsArray = new byte[size];
-        }
         if (indexedSize == 0) {
             indexedLocalsArray = EMPTY_OBJECT_ARRAY;
             indexedPrimitiveLocalsArray = EMPTY_LONG_ARRAY;
@@ -184,9 +164,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         }
         this.descriptor = descriptor;
         this.arguments = arguments;
-        this.locals = localsArray;
-        this.primitiveLocals = primitiveLocalsArray;
-        this.tags = tagsArray;
         this.indexedLocals = indexedLocalsArray;
         this.indexedPrimitiveLocals = indexedPrimitiveLocalsArray;
         this.indexedTags = indexedTagsArray;
@@ -204,188 +181,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return this;
     }
 
-    @Override
-    public Object getObject(com.oracle.truffle.api.frame.FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = verifyGet(slotIndex, OBJECT_TAG);
-        return getObjectUnsafe(slotIndex, slot, condition);
-    }
-
-    private Object[] getLocals() {
-        return unsafeCast(locals, Object[].class, true, true, true);
-    }
-
-    private long[] getPrimitiveLocals() {
-        return unsafeCast(primitiveLocals, long[].class, true, true, true);
-    }
-
-    public byte[] getTags() {
-        return unsafeCast(tags, byte[].class, true, true, true);
-    }
-
     private static long extend(int value) {
         return value & INT_MASK;
-    }
-
-    Object getObjectUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
-        return unsafeGetObject(getLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slotIndex * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, condition, slot);
-    }
-
-    @Override
-    public void setObject(com.oracle.truffle.api.frame.FrameSlot slot, Object value) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, OBJECT_TAG);
-        setObjectUnsafe(slotIndex, slot, value);
-    }
-
-    private void setObjectUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, Object value) {
-        unsafePutObject(getLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slotIndex * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, slot);
-    }
-
-    @Override
-    public byte getByte(com.oracle.truffle.api.frame.FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = verifyGet(slotIndex, BYTE_TAG);
-        return getByteUnsafe(slotIndex, slot, condition);
-    }
-
-    byte getByteUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
-        long offset = getPrimitiveOffset(slotIndex);
-        // Multiple casts are not strictly needed for semantics, but we want to use "int" semantics
-        // everywhere and it's easier to let the compiler decide how to merge them.
-        return (byte) (int) unsafeGetLong(getPrimitiveLocals(), offset, condition, slot);
-    }
-
-    @Override
-    public void setByte(com.oracle.truffle.api.frame.FrameSlot slot, byte value) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, BYTE_TAG);
-        setByteUnsafe(slotIndex, slot, value);
-    }
-
-    private void setByteUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, byte value) {
-        long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, extend(value), slot);
-    }
-
-    @Override
-    public boolean getBoolean(com.oracle.truffle.api.frame.FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = verifyGet(slotIndex, BOOLEAN_TAG);
-        return getBooleanUnsafe(slotIndex, slot, condition);
-    }
-
-    boolean getBooleanUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
-        long offset = getPrimitiveOffset(slotIndex);
-        return (int) unsafeGetLong(getPrimitiveLocals(), offset, condition, slot) != 0;
-    }
-
-    @Override
-    public void setBoolean(com.oracle.truffle.api.frame.FrameSlot slot, boolean value) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, BOOLEAN_TAG);
-        setBooleanUnsafe(slotIndex, slot, value);
-    }
-
-    private void setBooleanUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean value) {
-        long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, value ? 1L : 0L, slot);
-    }
-
-    @Override
-    public float getFloat(com.oracle.truffle.api.frame.FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = verifyGet(slotIndex, FLOAT_TAG);
-        return getFloatUnsafe(slotIndex, slot, condition);
-    }
-
-    float getFloatUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
-        long offset = getPrimitiveOffset(slotIndex);
-        return Float.intBitsToFloat((int) unsafeGetLong(getPrimitiveLocals(), offset, condition, slot));
-    }
-
-    @Override
-    public void setFloat(com.oracle.truffle.api.frame.FrameSlot slot, float value) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, FLOAT_TAG);
-        setFloatUnsafe(slotIndex, slot, value);
-    }
-
-    private void setFloatUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, float value) {
-        long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, extend(Float.floatToRawIntBits(value)), slot);
-    }
-
-    @Override
-    public long getLong(com.oracle.truffle.api.frame.FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = verifyGet(slotIndex, LONG_TAG);
-        return getLongUnsafe(slotIndex, slot, condition);
-    }
-
-    long getLongUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
-        long offset = getPrimitiveOffset(slotIndex);
-        return unsafeGetLong(getPrimitiveLocals(), offset, condition, slot);
-    }
-
-    @Override
-    public void setLong(com.oracle.truffle.api.frame.FrameSlot slot, long value) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, LONG_TAG);
-        setLongUnsafe(slotIndex, slot, value);
-    }
-
-    private void setLongUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, long value) {
-        long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, value, slot);
-    }
-
-    @Override
-    public int getInt(com.oracle.truffle.api.frame.FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = verifyGet(slotIndex, INT_TAG);
-        return getIntUnsafe(slotIndex, slot, condition);
-    }
-
-    int getIntUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
-        long offset = getPrimitiveOffset(slotIndex);
-        return (int) unsafeGetLong(getPrimitiveLocals(), offset, condition, slot);
-    }
-
-    @Override
-    public void setInt(com.oracle.truffle.api.frame.FrameSlot slot, int value) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, INT_TAG);
-        setIntUnsafe(slotIndex, slot, value);
-    }
-
-    private void setIntUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, int value) {
-        long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, extend(value), slot);
-    }
-
-    @Override
-    public double getDouble(com.oracle.truffle.api.frame.FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = verifyGet(slotIndex, DOUBLE_TAG);
-        return getDoubleUnsafe(slotIndex, slot, condition);
-    }
-
-    double getDoubleUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, boolean condition) {
-        long offset = getPrimitiveOffset(slotIndex);
-        return Double.longBitsToDouble(unsafeGetLong(getPrimitiveLocals(), offset, condition, slot));
-    }
-
-    @Override
-    public void setDouble(com.oracle.truffle.api.frame.FrameSlot slot, double value) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, DOUBLE_TAG);
-        setDoubleUnsafe(slotIndex, slot, value);
-    }
-
-    private void setDoubleUnsafe(int slotIndex, com.oracle.truffle.api.frame.FrameSlot slot, double value) {
-        long offset = getPrimitiveOffset(slotIndex);
-        unsafePutLong(getPrimitiveLocals(), offset, Double.doubleToRawLongBits(value), slot);
     }
 
     @Override
@@ -393,96 +190,13 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeCast(descriptor, FrameDescriptor.class, true, true, false);
     }
 
-    private void verifySet(int slotIndex, byte tag) {
-        try {
-            assert getTags()[slotIndex] != STATIC_TAG : UNEXPECTED_NON_STATIC_WRITE;
-            getTags()[slotIndex] = tag;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            resizeAndGetTagsOrThrow(slotIndex)[slotIndex] = tag;
-        }
-    }
-
-    private boolean verifyGet(int slotIndex, byte expectedTag) throws FrameSlotTypeException {
-        byte actualTag = getTagChecked(slotIndex);
-        boolean condition = actualTag == expectedTag;
-        if (!condition) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw frameSlotTypeException();
-        }
-        return condition;
-    }
-
-    private byte getTagChecked(int slotIndex) {
-        try {
-            byte tag = getTags()[slotIndex];
-            assert tag != STATIC_TAG : UNEXPECTED_NON_STATIC_READ;
-            return tag;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            return resizeAndGetTagsOrThrow(slotIndex)[slotIndex];
-        }
-    }
-
     private static FrameSlotTypeException frameSlotTypeException() throws FrameSlotTypeException {
         CompilerAsserts.neverPartOfCompilation();
         throw new FrameSlotTypeException();
     }
 
-    private byte[] resizeAndGetTagsOrThrow(int slotIndex) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (resize()) {
-            byte[] newTags = getTags();
-            if (Integer.compareUnsigned(slotIndex, newTags.length) < 0) {
-                return newTags;
-            }
-        }
-        throw outOfBoundsException(slotIndex);
-    }
-
-    private static IllegalArgumentException outOfBoundsException(int slotIndex) {
-        CompilerAsserts.neverPartOfCompilation();
-        throw new IllegalArgumentException("The frame slot '" + slotIndex + "' is not known by the frame descriptor.");
-    }
-
     private static long getPrimitiveOffset(int slotIndex) {
         return Unsafe.ARRAY_LONG_BASE_OFFSET + slotIndex * (long) Unsafe.ARRAY_LONG_INDEX_SCALE;
-    }
-
-    @Override
-    public Object getValue(com.oracle.truffle.api.frame.FrameSlot slot) {
-        byte tag = getTag(slot);
-        assert tag != STATIC_TAG : UNEXPECTED_NON_STATIC_READ;
-        switch (tag) {
-            case BOOLEAN_TAG:
-                return getBoolean(slot);
-            case BYTE_TAG:
-                return getByte(slot);
-            case INT_TAG:
-                return getInt(slot);
-            case DOUBLE_TAG:
-                return getDouble(slot);
-            case LONG_TAG:
-                return getLong(slot);
-            case FLOAT_TAG:
-                return getFloat(slot);
-            case OBJECT_TAG:
-                return getObject(slot);
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
-    }
-
-    boolean resize() {
-        CompilerAsserts.neverPartOfCompilation();
-        int oldSize = tags.length;
-        int newSize = descriptor.getSize();
-        if (newSize > oldSize) {
-            locals = Arrays.copyOf(locals, newSize);
-            Arrays.fill(locals, oldSize, newSize, descriptor.getDefaultValue());
-            primitiveLocals = Arrays.copyOf(primitiveLocals, newSize);
-            tags = Arrays.copyOf(tags, newSize);
-            return true;
-        }
-        return false;
     }
 
     @Override
@@ -491,66 +205,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             return getIndexedTags()[slotIndex];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw CompilerDirectives.shouldNotReachHere("invalid indexed slot", e);
-        }
-    }
-
-    public byte getTag(com.oracle.truffle.api.frame.FrameSlot slot) {
-        int slotIndex = getFrameSlotIndex(slot);
-        try {
-            return getTags()[slotIndex];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            return resizeAndGetTags()[slotIndex];
-        }
-    }
-
-    private byte[] resizeAndGetTags() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        resize();
-        return getTags();
-    }
-
-    @Override
-    public boolean isObject(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return getTag(slot) == OBJECT_TAG;
-    }
-
-    @Override
-    public boolean isByte(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return getTag(slot) == BYTE_TAG;
-    }
-
-    @Override
-    public boolean isBoolean(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return getTag(slot) == BOOLEAN_TAG;
-    }
-
-    @Override
-    public boolean isInt(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return getTag(slot) == INT_TAG;
-    }
-
-    @Override
-    public boolean isLong(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return getTag(slot) == LONG_TAG;
-    }
-
-    @Override
-    public boolean isFloat(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return getTag(slot) == FLOAT_TAG;
-    }
-
-    @Override
-    public boolean isDouble(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return getTag(slot) == DOUBLE_TAG;
-    }
-
-    @Override
-    public void clear(com.oracle.truffle.api.frame.FrameSlot slot) {
-        int slotIndex = getFrameSlotIndex(slot);
-        verifySet(slotIndex, ILLEGAL_TAG);
-        setObjectUnsafe(slotIndex, slot, null);
-        if (CompilerDirectives.inCompiledCode()) {
-            setLongUnsafe(slotIndex, slot, 0L);
         }
     }
 
@@ -601,11 +255,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static int getFrameSlotIndex(com.oracle.truffle.api.frame.FrameSlot slot) {
-        return slot.getIndex();
     }
 
     private Object[] getIndexedLocals() {
