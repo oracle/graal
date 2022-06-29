@@ -154,22 +154,7 @@ public class LLVMExceptionUnwind {
 
     /* _Unwind_Reason_Code */
     @CConstant
-    private static native int _URC_NO_REASON();
-
-    @CConstant
-    private static native int _URC_FOREIGN_EXCEPTION_CAUGHT();
-
-    @CConstant
-    private static native int _URC_FATAL_PHASE2_ERROR();
-
-    @CConstant
     private static native int _URC_FATAL_PHASE1_ERROR();
-
-    @CConstant
-    private static native int _URC_NORMAL_STOP();
-
-    @CConstant
-    private static native int _URC_END_OF_STACK();
 
     @CConstant
     private static native int _URC_HANDLER_FOUND();
@@ -186,15 +171,6 @@ public class LLVMExceptionUnwind {
 
     @CConstant
     private static native int _UA_CLEANUP_PHASE();
-
-    @CConstant
-    private static native int _UA_HANDLER_FRAME();
-
-    @CConstant
-    private static native int _UA_FORCE_UNWIND();
-
-    @CConstant
-    private static native int _UA_END_OF_STACK();
 
     @CStruct(addStructKeyword = true)
     private interface _Unwind_Exception extends PointerBase {
@@ -224,17 +200,11 @@ public class LLVMExceptionUnwind {
     @CFunction(value = "_Unwind_SetIP")
     public static native Pointer setIP(_Unwind_Context context, Pointer ip);
 
-    @CFunction(value = "_Unwind_SetGR")
-    public static native Pointer setGR(_Unwind_Context context, int reg, long value);
-
     @CFunction(value = "_Unwind_GetRegionStart")
     public static native Pointer getRegionStart(_Unwind_Context context);
 
     @CFunction(value = "_Unwind_GetLanguageSpecificData")
     public static native Pointer getLanguageSpecificData(_Unwind_Context context);
-
-    @CFunction(value = "__builtin_eh_return_data_regno")
-    public static native int builtinEHReturnDataRegno(int id);
 }
 
 // Checkstyle: resume
