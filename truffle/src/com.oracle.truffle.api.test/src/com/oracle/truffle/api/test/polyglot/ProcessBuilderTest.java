@@ -88,7 +88,31 @@ public class ProcessBuilderTest {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
         try (Context context = Context.newBuilder().allowIO(true).build()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, ExecuteDeniedTestLanguage.class, "").execute(javaExecutable.toString());
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationDeniedLanguage.class, "").execute(javaExecutable.toString());
+        }
+    }
+
+    @Test
+    public void testCustomHandlerProcessCreationDenied() {
+        MockProcessHandler testHandler = new MockProcessHandler();
+        try (Context context = Context.newBuilder().allowIO(true).processHandler(testHandler).build()) {
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationDeniedLanguage.class, "").execute("process");
+        }
+    }
+
+    @Registration
+    public static final class TestProcessCreationDeniedLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try {
+                env.newProcessBuilder(interop.asString(frameArguments[0])).start();
+                Assert.fail("SecurityException expected.");
+            } catch (SecurityException se) {
+                // Expected
+            }
+            return null;
         }
     }
 
@@ -97,7 +121,7 @@ public class ProcessBuilderTest {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
         try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).build()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, ExecuteAllowedTestLanguage.class, "").execute(javaExecutable.toString());
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationAllowedLanguage.class, "").execute(javaExecutable.toString());
         }
     }
 
@@ -106,7 +130,33 @@ public class ProcessBuilderTest {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, ExecuteAllowedTestLanguage.class, "").execute(javaExecutable.toString());
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationAllowedLanguage.class, "").execute(javaExecutable.toString());
+        }
+    }
+
+    @Test
+    public void testCustomHandlerProcessCreationAllowed() {
+        MockProcessHandler testHandler = new MockProcessHandler();
+        try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).build()) {
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationAllowedLanguage.class, "").execute("process");
+        }
+        ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
+        Assert.assertNotNull(command);
+        Assert.assertEquals(1, command.getCommand().size());
+        Assert.assertEquals("process", command.getCommand().get(0));
+    }
+
+    @Registration
+    public static final class TestProcessCreationAllowedLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Process p = env.newProcessBuilder(interop.asString(frameArguments[0])).start();
+            if (!p.waitFor(5, TimeUnit.SECONDS)) {
+                p.destroyForcibly().waitFor();
+            }
+            return null;
         }
     }
 
@@ -117,7 +167,28 @@ public class ProcessBuilderTest {
         Path cp = getLocation();
         Assume.assumeNotNull(cp);
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, RedirectToStreamTestLanguage.class, "").execute(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName());
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestRedirectToStreamLanguage.class, "").execute(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName());
+        }
+    }
+
+    @Registration
+    public static final class TestRedirectToStreamLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+            TruffleProcessBuilder builder = env.newProcessBuilder(toStringArray(frameArguments));
+            Process p = builder.redirectOutput(builder.createRedirectToStream(stdout)).redirectError(builder.createRedirectToStream(stderr)).start();
+            if (!p.waitFor(30, TimeUnit.SECONDS)) {
+                p.destroy();
+                Assert.fail("Process did not finish in expected time.");
+            }
+            Assert.assertEquals(0, p.exitValue());
+            Assert.assertEquals(Main.expectedStdOut(), stdout.toString(StandardCharsets.UTF_8));
+            Assert.assertEquals(Main.expectedStdErr(), stderr.toString(StandardCharsets.UTF_8));
+            return null;
         }
     }
 
@@ -128,35 +199,58 @@ public class ProcessBuilderTest {
         Path cp = getLocation();
         Assume.assumeNotNull(cp);
         Context context = Context.newBuilder().allowAllAccess(true).allowHostAccess(HostAccess.ALL).build();
-        AbstractExecutableTestLanguage.parseTestLanguage(context, UnfinishedSubProcessTestLanguage.class, "", (Runnable) context::close).execute(javaExecutable.toString(), "-cp", cp.toString(),
+        AbstractExecutableTestLanguage.parseTestLanguage(context, TestUnfinishedSubProcessLanguage.class, "", (Runnable) context::close).execute(javaExecutable.toString(), "-cp", cp.toString(),
                         Main2.class.getName());
     }
 
-    @Test
-    public void testCustomHandlerProcessCreationDenied() {
-        MockProcessHandler testHandler = new MockProcessHandler();
-        try (Context context = Context.newBuilder().allowIO(true).processHandler(testHandler).build()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, ExecuteDeniedTestLanguage.class, "").execute("process");
-        }
-    }
+    @Registration
+    public static final class TestUnfinishedSubProcessLanguage extends AbstractExecutableTestLanguage {
 
-    @Test
-    public void testCustomHandlerProcessCreationAllowed() {
-        MockProcessHandler testHandler = new MockProcessHandler();
-        try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).build()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, ExecuteAllowedTestLanguage.class, "").execute("process");
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, TruffleLanguage.Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object closeContextCallBack = contextArguments[0];
+            Process p = env.newProcessBuilder(toStringArray(frameArguments)).start();
+            try {
+                interop.execute(closeContextCallBack);
+                Assert.fail("Expected host exception.");
+            } catch (AbstractTruffleException hostException) {
+                Assert.assertTrue(interop.asString(interop.getExceptionMessage(hostException)).startsWith("The context has an alive sub-process"));
+            } finally {
+                p.destroyForcibly();
+            }
+            return null;
         }
-        ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
-        Assert.assertNotNull(command);
-        Assert.assertEquals(1, command.getCommand().size());
-        Assert.assertEquals("process", command.getCommand().get(0));
     }
 
     @Test
     public void testCommands() {
         MockProcessHandler testHandler = new MockProcessHandler();
         try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(context, ExecuteCommandTestLanguage.class, "", (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
+            AbstractExecutableTestLanguage.evalTestLanguage(context, TestCommandsLanguage.class, "", (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
+        }
+    }
+
+    @Registration
+    public static final class TestCommandsLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object commandProvider = contextArguments[0];
+
+            env.newProcessBuilder("process", "param1", "param2").start();
+            Object command = interop.execute(commandProvider);
+            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
+
+            env.newProcessBuilder().command("process", "param1", "param2").start();
+            command = interop.execute(commandProvider);
+            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
+
+            env.newProcessBuilder().command(List.of("process", "param1", "param2")).start();
+            command = interop.execute(commandProvider);
+            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
+            return null;
         }
     }
 
@@ -164,50 +258,71 @@ public class ProcessBuilderTest {
     public void testCurrentWorkingDirectory() {
         MockProcessHandler testHandler = new MockProcessHandler();
         try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(context, ExecuteInCustomWorkingDirectoryTestLanguage.class, "",
+            AbstractExecutableTestLanguage.evalTestLanguage(context, TestCurrentWorkingDirectoryLanguage.class, "",
                             (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
+        }
+    }
+
+    @Registration
+    public static final class TestCurrentWorkingDirectoryLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object commandProvider = contextArguments[0];
+
+            String workdirPath = Paths.get("/workdir").toString();
+            TruffleFile workDir = env.getPublicTruffleFile(workdirPath);
+            env.newProcessBuilder("process").directory(workDir).start();
+            Object command = interop.execute(commandProvider);
+            Assert.assertEquals(workdirPath, interop.asString(interop.invokeMember(command, "getDirectory")));
+
+            env.newProcessBuilder("process").start();
+            command = interop.execute(commandProvider);
+            Assert.assertEquals(env.getCurrentWorkingDirectory().getPath(), interop.asString(interop.invokeMember(command, "getDirectory")));
+            return null;
         }
     }
 
     @Test
     public void testEnvironment() {
-        Assert.assertEquals(Collections.emptyMap(), envFromContext(EnvironmentAccess.NONE));
+        Assert.assertEquals(Collections.emptyMap(), environmentFromContext(EnvironmentAccess.NONE));
         Map<String, String> expected = pairsAsMap("k1", "v1", "k2", "v2");
-        Assert.assertEquals(expected, envFromContext(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
-        Assert.assertEquals(System.getenv(), envFromContext(EnvironmentAccess.INHERIT));
+        Assert.assertEquals(expected, environmentFromContext(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
+        Assert.assertEquals(System.getenv(), environmentFromContext(EnvironmentAccess.INHERIT));
         expected = new HashMap<>(System.getenv());
         expected.putAll(pairsAsMap("k1", "v1", "k2", "v2"));
-        Assert.assertEquals(expected, envFromContext(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
+        Assert.assertEquals(expected, environmentFromContext(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
 
         expected = pairsAsMap("k3", "v3", "k4", "v4");
-        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.NONE));
+        Assert.assertEquals(expected, environmentExtendedByProcessBuilder(EnvironmentAccess.NONE));
         expected = pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4");
-        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
+        Assert.assertEquals(expected, environmentExtendedByProcessBuilder(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
         expected = new HashMap<>(System.getenv());
         expected.putAll(pairsAsMap("k3", "v3", "k4", "v4"));
-        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.INHERIT));
+        Assert.assertEquals(expected, environmentExtendedByProcessBuilder(EnvironmentAccess.INHERIT));
         expected = new HashMap<>(System.getenv());
         expected.putAll(pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4"));
-        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
+        Assert.assertEquals(expected, environmentExtendedByProcessBuilder(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
 
         String newValue = "override";
-        Assert.assertEquals(Collections.emptyMap(), envOverriddenByProcessBuilder(EnvironmentAccess.NONE, null, newValue));
+        Assert.assertEquals(Collections.emptyMap(), environmentOverriddenByProcessBuilder(EnvironmentAccess.NONE, null, newValue));
         expected = pairsAsMap("k1", "v1", "k2", newValue);
-        Assert.assertEquals(expected, envOverriddenByProcessBuilder(EnvironmentAccess.NONE, "k2", newValue, "k1", "v1", "k2", "v2"));
+        Assert.assertEquals(expected, environmentOverriddenByProcessBuilder(EnvironmentAccess.NONE, "k2", newValue, "k1", "v1", "k2", "v2"));
         expected = new HashMap<>();
         for (Map.Entry<String, String> e : System.getenv().entrySet()) {
             expected.put(e.getKey(), newValue);
         }
-        Assert.assertEquals(expected, envOverriddenByProcessBuilder(EnvironmentAccess.INHERIT, null, newValue));
+        Assert.assertEquals(expected, environmentOverriddenByProcessBuilder(EnvironmentAccess.INHERIT, null, newValue));
 
         expected = pairsAsMap("k3", "v3", "k4", "v4");
-        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.NONE));
-        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
-        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.INHERIT));
-        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
+        Assert.assertEquals(expected, environmentCleanedByProcessBuilder(EnvironmentAccess.NONE));
+        Assert.assertEquals(expected, environmentCleanedByProcessBuilder(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
+        Assert.assertEquals(expected, environmentCleanedByProcessBuilder(EnvironmentAccess.INHERIT));
+        Assert.assertEquals(expected, environmentCleanedByProcessBuilder(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
     }
 
-    private static Map<String, String> envFromContext(EnvironmentAccess envAccess, String... envKeyValuePairs) {
+    private static Map<String, String> environmentFromContext(EnvironmentAccess envAccess, String... envKeyValuePairs) {
         if ((envKeyValuePairs.length & 1) == 1) {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
@@ -217,14 +332,25 @@ public class ProcessBuilderTest {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
         try (Context context = builder.build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(context, ExecuteWithContextEnvironmentTestLanguage.class, "");
+            AbstractExecutableTestLanguage.evalTestLanguage(context, EnvironmentFromContextLanguage.class, "");
         }
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
         return command.getEnvironment();
     }
 
-    private static Map<String, String> envExtendedByProcessBuilder(EnvironmentAccess envAccess, String... envKeyValuePairs) {
+    @Registration
+    public static final class EnvironmentFromContextLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            env.newProcessBuilder("process").start();
+            return null;
+        }
+    }
+
+    private static Map<String, String> environmentExtendedByProcessBuilder(EnvironmentAccess envAccess, String... envKeyValuePairs) {
         if ((envKeyValuePairs.length & 1) == 1) {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
@@ -235,14 +361,27 @@ public class ProcessBuilderTest {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
         try (Context context = builder.build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(context, ExecuteWithCustomEnvironmentTestLanguage.class, "");
+            AbstractExecutableTestLanguage.evalTestLanguage(context, EnvironmentExtendedByProcessBuilderLanguage.class, "");
         }
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
         return command.getEnvironment();
     }
 
-    private static Map<String, String> envOverriddenByProcessBuilder(EnvironmentAccess envAccess, String toOverride, String value, String... envKeyValuePairs) {
+    @Registration
+    public static final class EnvironmentExtendedByProcessBuilderLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleProcessBuilder builder = env.newProcessBuilder("process");
+            builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
+            builder.start();
+            return null;
+        }
+    }
+
+    private static Map<String, String> environmentOverriddenByProcessBuilder(EnvironmentAccess envAccess, String toOverride, String value, String... envKeyValuePairs) {
         if ((envKeyValuePairs.length & 1) == 1) {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
@@ -252,14 +391,35 @@ public class ProcessBuilderTest {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
         try (Context context = builder.build()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, ExecuteWithOverriddenEnvironmentTestLanguage.class, "").execute(toOverride, value);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, EnvironmentOverriddenByProcessBuilderLanguage.class, "").execute(toOverride, value);
         }
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
         return command.getEnvironment();
     }
 
-    private static Map<String, String> envCleanedByProcessBuilder(EnvironmentAccess envAccess, String... envKeyValuePairs) {
+    @Registration
+    public static final class EnvironmentOverriddenByProcessBuilderLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleProcessBuilder builder = env.newProcessBuilder("process");
+            String value = interop.asString(frameArguments[1]);
+            if (interop.isNull(frameArguments[0])) {
+                Map<String, String> newEnv = new HashMap<>();
+                for (String key : env.getEnvironment().keySet()) {
+                    newEnv.put(key, value);
+                }
+                builder.environment(newEnv);
+            } else {
+                builder.environment(interop.asString(frameArguments[0]), value);
+            }
+            builder.start();
+            return null;
+        }
+    }
+
+    private static Map<String, String> environmentCleanedByProcessBuilder(EnvironmentAccess envAccess, String... envKeyValuePairs) {
         if ((envKeyValuePairs.length & 1) == 1) {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
@@ -269,18 +429,88 @@ public class ProcessBuilderTest {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
         try (Context context = builder.build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(context, ExecuteWithCleanedEnvironmentTestLanguage.class, "");
+            AbstractExecutableTestLanguage.evalTestLanguage(context, EnvironmentCleanedByProcessBuilderLanguage.class, "");
         }
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
         return command.getEnvironment();
+    }
+
+    @Registration
+    public static final class EnvironmentCleanedByProcessBuilderLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleProcessBuilder builder = env.newProcessBuilder("process");
+            builder.clearEnvironment(true);
+            builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
+            builder.start();
+            return null;
+        }
     }
 
     @Test
     public void testRedirects() {
         MockProcessHandler testHandler = new MockProcessHandler();
         try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(context, RedirectIOTestLanguage.class, "", (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
+            AbstractExecutableTestLanguage.evalTestLanguage(context, TestRedirectsLanguage.class, "", (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
+        }
+    }
+
+    @Registration
+    public static final class TestRedirectsLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object commandProvider = contextArguments[0];
+
+            env.newProcessBuilder("process").start();
+            Object command = interop.execute(commandProvider);
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+
+            env.newProcessBuilder("process").redirectErrorStream(true).start();
+            command = interop.execute(commandProvider);
+            Assert.assertTrue(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+
+            env.newProcessBuilder("process").inheritIO(true).start();
+            command = interop.execute(commandProvider);
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+
+            env.newProcessBuilder("process").redirectInput(ProcessHandler.Redirect.INHERIT).start();
+            command = interop.execute(commandProvider);
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+
+            env.newProcessBuilder("process").redirectOutput(ProcessHandler.Redirect.INHERIT).start();
+            command = interop.execute(commandProvider);
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+
+            env.newProcessBuilder("process").redirectError(ProcessHandler.Redirect.INHERIT).start();
+            command = interop.execute(commandProvider);
+            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
+            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
+            return null;
+        }
+
+        private String toString(Object hostObject) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
+            return interop.asString(interop.invokeMember(hostObject, "toString"));
         }
     }
 
@@ -452,236 +682,6 @@ public class ProcessBuilderTest {
             return res;
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
             throw CompilerDirectives.shouldNotReachHere(e);
-        }
-    }
-
-    @Registration
-    public static final class ExecuteDeniedTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try {
-                env.newProcessBuilder(interop.asString(frameArguments[0])).start();
-                Assert.fail("SecurityException expected.");
-            } catch (SecurityException se) {
-                // Expected
-            }
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class ExecuteAllowedTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            Process p = env.newProcessBuilder(interop.asString(frameArguments[0])).start();
-            if (!p.waitFor(5, TimeUnit.SECONDS)) {
-                p.destroyForcibly().waitFor();
-            }
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class RedirectToStreamTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
-            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-            TruffleProcessBuilder builder = env.newProcessBuilder(toStringArray(frameArguments));
-            Process p = builder.redirectOutput(builder.createRedirectToStream(stdout)).redirectError(builder.createRedirectToStream(stderr)).start();
-            if (!p.waitFor(30, TimeUnit.SECONDS)) {
-                p.destroy();
-                Assert.fail("Process did not finish in expected time.");
-            }
-            Assert.assertEquals(0, p.exitValue());
-            Assert.assertEquals(Main.expectedStdOut(), stdout.toString(StandardCharsets.UTF_8));
-            Assert.assertEquals(Main.expectedStdErr(), stderr.toString(StandardCharsets.UTF_8));
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class UnfinishedSubProcessTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, TruffleLanguage.Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            Object closeContextCallBack = contextArguments[0];
-            Process p = env.newProcessBuilder(toStringArray(frameArguments)).start();
-            try {
-                interop.execute(closeContextCallBack);
-                Assert.fail("Expected host exception.");
-            } catch (AbstractTruffleException hostException) {
-                Assert.assertTrue(interop.asString(interop.getExceptionMessage(hostException)).startsWith("The context has an alive sub-process"));
-            } finally {
-                p.destroyForcibly();
-            }
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class ExecuteCommandTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            Object commandProvider = contextArguments[0];
-
-            env.newProcessBuilder("process", "param1", "param2").start();
-            Object command = interop.execute(commandProvider);
-            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
-
-            env.newProcessBuilder().command("process", "param1", "param2").start();
-            command = interop.execute(commandProvider);
-            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
-
-            env.newProcessBuilder().command(List.of("process", "param1", "param2")).start();
-            command = interop.execute(commandProvider);
-            Assert.assertArrayEquals(new String[]{"process", "param1", "param2"}, toStringArray(interop.invokeMember(command, "getCommand")));
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class ExecuteInCustomWorkingDirectoryTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            Object commandProvider = contextArguments[0];
-
-            String workdirPath = Paths.get("/workdir").toString();
-            TruffleFile workDir = env.getPublicTruffleFile(workdirPath);
-            env.newProcessBuilder("process").directory(workDir).start();
-            Object command = interop.execute(commandProvider);
-            Assert.assertEquals(workdirPath, interop.asString(interop.invokeMember(command, "getDirectory")));
-
-            env.newProcessBuilder("process").start();
-            command = interop.execute(commandProvider);
-            Assert.assertEquals(env.getCurrentWorkingDirectory().getPath(), interop.asString(interop.invokeMember(command, "getDirectory")));
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class ExecuteWithContextEnvironmentTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            env.newProcessBuilder("process").start();
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class ExecuteWithCustomEnvironmentTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            TruffleProcessBuilder builder = env.newProcessBuilder("process");
-            builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
-            builder.start();
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class ExecuteWithOverriddenEnvironmentTestLanguage extends AbstractExecutableTestLanguage {
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            TruffleProcessBuilder builder = env.newProcessBuilder("process");
-            String value = interop.asString(frameArguments[1]);
-            if (interop.isNull(frameArguments[0])) {
-                Map<String, String> newEnv = new HashMap<>();
-                for (String key : env.getEnvironment().keySet()) {
-                    newEnv.put(key, value);
-                }
-                builder.environment(newEnv);
-            } else {
-                builder.environment(interop.asString(frameArguments[0]), value);
-            }
-            builder.start();
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class ExecuteWithCleanedEnvironmentTestLanguage extends AbstractExecutableTestLanguage {
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            TruffleProcessBuilder builder = env.newProcessBuilder("process");
-            builder.clearEnvironment(true);
-            builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
-            builder.start();
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class RedirectIOTestLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            Object commandProvider = contextArguments[0];
-
-            env.newProcessBuilder("process").start();
-            Object command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
-
-            env.newProcessBuilder("process").redirectErrorStream(true).start();
-            command = interop.execute(commandProvider);
-            Assert.assertTrue(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
-
-            env.newProcessBuilder("process").inheritIO(true).start();
-            command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
-
-            env.newProcessBuilder("process").redirectInput(ProcessHandler.Redirect.INHERIT).start();
-            command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
-
-            env.newProcessBuilder("process").redirectOutput(ProcessHandler.Redirect.INHERIT).start();
-            command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
-
-            env.newProcessBuilder("process").redirectError(ProcessHandler.Redirect.INHERIT).start();
-            command = interop.execute(commandProvider);
-            Assert.assertFalse(interop.asBoolean(interop.invokeMember(command, "isRedirectErrorStream")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getInputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.PIPE.toString(), toString(interop.invokeMember(command, "getOutputRedirect")));
-            Assert.assertEquals(ProcessHandler.Redirect.INHERIT.toString(), toString(interop.invokeMember(command, "getErrorRedirect")));
-            return null;
-        }
-
-        private String toString(Object hostObject) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
-            return interop.asString(interop.invokeMember(hostObject, "toString"));
         }
     }
 }
