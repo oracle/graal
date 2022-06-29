@@ -409,24 +409,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForClass(DuringAnalysisAccessImpl access, AnalysisType analysisType, Class<?> clazz) {
-        List<Throwable> errors = new ArrayList<>();
-        makeTypeReachable(access, query(clazz::getGenericSuperclass, errors));
-        Type[] genericInterfaces = query(clazz::getGenericInterfaces, errors);
+        makeTypeReachable(access, query(clazz::getGenericSuperclass, null));
+        Type[] genericInterfaces = query(clazz::getGenericInterfaces, null);
         if (genericInterfaces != null) {
             for (Type genericInterface : genericInterfaces) {
                 try {
                     makeTypeReachable(access, genericInterface);
-                } catch (TypeNotPresentException | LinkageError e) {
-                    errors.add(e);
+                } catch (TypeNotPresentException | LinkageError ignored) {
                 }
             }
         }
-        Executable enclosingMethod = enclosingMethodOrConstructor(clazz, errors);
+        Executable enclosingMethod = enclosingMethodOrConstructor(clazz, null);
         if (enclosingMethod != null) {
             makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(enclosingMethod.getDeclaringClass()));
             RuntimeReflection.registerAsQueried(enclosingMethod);
         }
-        reportLinkingErrors(clazz, errors);
 
         Object[] recordComponents = buildRecordComponents(clazz, access);
         if (recordComponents != null) {
@@ -701,7 +698,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             return callable.call();
         } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
-            errors.add(e);
+            if (errors != null) {
+                errors.add(e);
+            }
         } catch (Exception e) {
             throw VMError.shouldNotReachHere(e);
         }
