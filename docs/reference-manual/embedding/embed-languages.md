@@ -671,9 +671,9 @@ If multiple languages are selected, then `libpolyglot`, the library containing a
 If a matching library is not available, creation of the engine will fail.
 
 Only one language library can be loaded during GraalVM's lifetime.
-This means that the first isolated engine that is created sets the default for the remainder of the execution: if an isolated engine with solely Javascript was created first, only Javascript will be available in isolated engines.
+This means that the first isolated engine that is created sets the default for the remainder of the execution: if an isolated engine with solely JavaScript was created first, only JavaScript will be available in isolated engines.
 
-### Setting the heap size
+### Setting the Heap Size
 
 Engines running in an isolate can make use of [native image runtime options](../native-image/HostedvsRuntimeOptions.md) by passing `--engine.IsolateOption.<option>` to the engine builder.
 For example, this can be used to limit the maximum heap memory used by an engine by setting the maximum heap size for the isolate via `--engine.IsolateOption.MaxHeapSize=128m`:
@@ -700,7 +700,7 @@ public class PolyglotIsolateMaxHeap {
 ```
 Exceeding the maximum heap size will automatically close the context and raise a `PolyglotException`.
 
-### Ensuring host callback stack headroom
+### Ensuring Host Callback Stack Headroom
 
 With Polyglot Isolates, the experimental `--engine.HostCallStackHeadRoom` option can require a minimum stack size that is guaranteed when performing a host callback.
 If the available stack size drops below the specified threshold, the host callback fails.
