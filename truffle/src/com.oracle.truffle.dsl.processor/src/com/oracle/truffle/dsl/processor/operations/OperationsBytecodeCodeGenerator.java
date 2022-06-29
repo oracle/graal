@@ -246,7 +246,7 @@ public class OperationsBytecodeCodeGenerator {
         CodeVariableElement argStartBci = new CodeVariableElement(context.getType(int.class), "startBci");
         CodeVariableElement argStartSp = new CodeVariableElement(context.getType(int.class), "startSp");
         CodeExecutableElement mContinueAt = new CodeExecutableElement(
-                        Set.of(Modifier.PROTECTED), context.getType(Object.class), "continueAt",
+                        Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(Object.class), "continueAt",
                         argFrame, argStartBci, argStartSp);
         builderBytecodeNodeType.getEnclosedElements().add(0, mContinueAt);
 

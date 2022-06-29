@@ -3404,6 +3404,7 @@ public class FlatNodeGenFactory {
         }
         builder.tree(createCallSpecialization(builder, frameState, forType, specialization, inBoundary));
         builder.end(ifCount);
+
         return builder.build();
     }
 
@@ -3503,6 +3504,9 @@ public class FlatNodeGenFactory {
             }
 
             builder.end(numCachedNullChecks);
+            if (numCachedNullChecks > 0 && inBoundary) {
+                builder.startThrow().staticReference(types.BoundaryCallFailedException, "INSTANCE").end();
+            }
         }
 
         return createCatchRewriteException(builder, specialization, forType, frameState, builder.build());
@@ -3827,6 +3831,7 @@ public class FlatNodeGenFactory {
                 }
                 nonBoundaryIfCount = nonBoundaryIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(nonBoundaryGuards), false));
                 innerBuilder = extractInBoundaryMethod(builder, frameState, specialization);
+                frameState.setBoolean("operations_had_cache_null_check", false);
 
                 if (plugs != null) {
                     plugs.initializeFrameState(innerFrameState, innerBuilder);
@@ -3888,7 +3893,8 @@ public class FlatNodeGenFactory {
             }
 
             builder.end(ifCount.blockCount);
-            hasFallthrough |= ifCount.ifCount > 0;
+
+            hasFallthrough |= ifCount.blockCount > 0;
 
         } else if (mode.isSlowPath()) {
 
@@ -4173,10 +4179,12 @@ public class FlatNodeGenFactory {
                 frameState.addReferencesTo(b, includeFrameParameter, createSpecializationLocalName(specialization));
             });
         } else {
+            builder.startTryBlock();
             builder.startReturn().startCall("this", boundaryMethod);
             multiState.addReferencesTo(frameState, builder);
             frameState.addReferencesTo(builder, includeFrameParameter, createSpecializationLocalName(specialization));
             builder.end().end();
+            builder.end().startCatchBlock(types.BoundaryCallFailedException, "ex").end();
         }
 
         return innerBuilder;

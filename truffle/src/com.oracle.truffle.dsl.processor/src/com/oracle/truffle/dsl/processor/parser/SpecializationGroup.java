@@ -394,11 +394,13 @@ public final class SpecializationGroup {
         if (hasFallthrough) {
             return true;
         }
+        if (specialization != null) {
+            return specialization.hasCachedExpression();
+        }
         SpecializationGroup lastChild = getLast();
         if (lastChild != null) {
             return lastChild.hasFallthrough();
         }
         return false;
     }
-
 }

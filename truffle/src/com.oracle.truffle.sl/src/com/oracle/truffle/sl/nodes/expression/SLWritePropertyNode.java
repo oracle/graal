@@ -79,8 +79,8 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeArray(Object receiver, Object index, Object value,
-                    @Cached("this") Node node,
-                    @Cached("$bci") int bci,
+                    @Bind("this") Node node,
+                    @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {

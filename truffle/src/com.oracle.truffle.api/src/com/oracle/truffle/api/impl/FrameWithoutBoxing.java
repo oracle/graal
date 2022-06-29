@@ -721,6 +721,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         Object value = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + srcSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
         verifyIndexedSet(destSlot, tag);
         unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + destSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, OBJECT_LOCATION);
+        if (CompilerDirectives.inCompiledCode()) {
+            unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(destSlot), 0L, PRIMITIVE_LOCATION);
+        }
     }
 
     @Override
