@@ -14,7 +14,7 @@
     "general_info": {
       "type": "object",
       "default": {},
-      "title": "General information about the image build process",
+      "title": "General information about the build process",
       "required": [
         "name",
         "graalvm_version",
@@ -26,27 +26,27 @@
         "name": {
           "type": "string",
           "default": "",
-          "title": "The native image name"
+          "title": "The name of the native executable"
         },
         "graalvm_version": {
           "type": "string",
           "default": "",
-          "title": "The GraalVM Version"
+          "title": "The GraalVM Native Image version. This value is also used for the 'java.vm.version' property within the generated image"
         },
         "java_version": {
           "type": ["string", "null"],
           "default": null,
-          "title": "The precise Java version used for running the image builder (or null if not available)"
+          "title": "The Java version of the Native Image build process (or null if not available)"
         },
         "c_compiler": {
           "type": ["string", "null"],
           "default": null,
-          "title": "The C compiler used for native compilation and linkage (or null if not available)"
+          "title": "The C compiler used by the Native Image build process (or null if not available)"
         },
         "garbage_collector": {
           "type": "string",
           "default": "",
-          "title": "The garbage collection algorithm in use for the generated native image"
+          "title": "The garbage collector used within the generated image"
         }
       },
       "examples": [
@@ -62,7 +62,7 @@
     "analysis_results": {
       "type": "object",
       "default": {},
-      "title": "Schema for the image generator statistics of the analysis phase",
+      "title": "Information from the analysis",
       "required": [
         "classes",
         "fields",
@@ -72,7 +72,7 @@
         "classes": {
           "type": "object",
           "default": {},
-          "title": "Number of classes detected during analysis phase",
+          "title": "Class information from the analysis",
           "required": [
             "total",
             "reachable",
@@ -88,24 +88,24 @@
             "reachable": {
               "type": "integer",
               "default": 0,
-              "title": "The reachable reachable classes"
+              "title": "The number of reachable classes"
             },
             "reflection": {
               "type": "integer",
               "default": 0,
-              "title": "The classes registered for reflective access"
+              "title": "The number of classes registered for reflection"
             },
             "jni": {
               "type": "integer",
               "default": -1,
-              "title": "The classes registered for JNI access (or -1 if unset)"
+              "title": "The number of classes registered for JNI access (or -1 if unset)"
             }
           }
         },
         "fields": {
           "type": "object",
           "default": {},
-          "title": "Number of fields detected during analysis phase",
+          "title": "Field information from the analysis",
           "required": [
             "total",
             "reachable",
@@ -121,12 +121,12 @@
             "reachable": {
               "type": "integer",
               "default": 0,
-              "title": "The reachable number of fields"
+              "title": "The number of reachable fields"
             },
             "reflection": {
               "type": "integer",
               "default": 0,
-              "title": "The number of fields registered for reflective access"
+              "title": "The number of fields registered for reflection"
             },
             "jni": {
               "type": "integer",
@@ -138,7 +138,7 @@
         "methods": {
           "type": "object",
           "default": {},
-          "title": "Number of methods detected during analysis phase",
+          "title": "Method information from the analysis",
           "required": [
             "total",
             "reachable",
@@ -154,12 +154,12 @@
             "reachable": {
               "type": "integer",
               "default": 0,
-              "title": "The reachable number of methods"
+              "title": "The number of reachable methods"
             },
             "reflection": {
               "type": "integer",
               "default": 0,
-              "title": "The number of methods registered for reflective access"
+              "title": "The number of methods registered for reflection"
             },
             "jni": {
               "type": "integer",
@@ -195,7 +195,7 @@
     "image_details": {
       "type": "object",
       "default": {},
-      "title": "Schema for statistics of the image creation phase of the image generator",
+      "title": "Statistics about the generated native image",
       "required": [
         "total_bytes",
         "code_area",
@@ -205,12 +205,12 @@
         "total_bytes": {
           "type": "integer",
           "default": 0,
-          "title": "The total image size (in bytes)"
+          "title": "The total number of bytes of the image"
         },
         "code_area": {
           "type": "object",
           "default": {},
-          "title": "The code area statistics",
+          "title": "Code area statistics",
           "required": [
             "bytes",
             "compilation_units"
@@ -219,7 +219,7 @@
             "bytes": {
               "type": "integer",
               "default": 0,
-              "title": "Bytes used for the code area"
+              "title": "The number of bytes used for the code area"
             },
             "compilation_units": {
               "type": "integer",
@@ -231,7 +231,7 @@
         "image_heap": {
           "type": "object",
           "default": {},
-          "title": "The image heap statistics",
+          "title": "Image heap statistics",
           "required": [
             "bytes",
             "resources"
@@ -240,12 +240,12 @@
             "bytes": {
               "type": "integer",
               "default": 0,
-              "title": "Number of bytes used for the image heap"
+              "title": "The number of bytes used for image heap"
             },
             "resources": {
               "type": "object",
               "default": {},
-              "title": "Resource statistics of the image",
+              "title": "Resource statistics",
               "required": [
                 "count",
                 "bytes"
@@ -254,7 +254,7 @@
                 "count": {
                   "type": "integer",
                   "default": 0,
-                  "title": "Number of resources included in the image"
+                  "title": "Number of resources embedded in the image"
                 },
                 "bytes": {
                   "type": "integer",
@@ -268,7 +268,7 @@
         "debug_info": {
           "type": "object",
           "default": {},
-          "title": "The debug info statistics",
+          "title": "Debug info statistics",
           "required": [
             "bytes"
           ],
@@ -304,7 +304,7 @@
     "resource_usage": {
       "type": "object",
       "default": {},
-      "title": "Schema for image generator ressource usage statistics",
+      "title": "Resource usage statistics",
       "required": [
         "cpu",
         "garbage_collection",
@@ -314,7 +314,7 @@
         "cpu": {
           "type": "object",
           "default": {},
-          "title": "The cpu resource schema",
+          "title": "CPU usage statistics",
           "required": [
             "load",
             "total_cores"
@@ -323,19 +323,19 @@
             "load": {
               "type": "number",
               "default": -1,
-              "title": "The cpu load of the build system after image building (or -1 if unavailable)"
+              "title": "The CPU load of the build process before terminating (or -1 if unavailable)"
             },
             "total_cores": {
               "type": "integer",
               "default": 0,
-              "title": "The total number of cores on the build system"
+              "title": "The total number of cores of the build machine"
             }
           }
         },
         "garbage_collection": {
           "type": "object",
           "default": {},
-          "title": "The garbage collection resource usage schema",
+          "title": "Garbage collection usage statistics",
           "required": [
             "count",
             "total_secs"
@@ -349,14 +349,14 @@
             "total_secs": {
               "type": "number",
               "default": 0.0,
-              "title": "The total time spent in GC (in seconds)"
+              "title": "The total number of seconds spent in GC"
             }
           }
         },
         "memory": {
           "type": "object",
           "default": {},
-          "title": "The memory statistics schema",
+          "title": "Memory usage statistics",
           "required": [
             "system_total",
             "peak_rss_bytes"
@@ -365,7 +365,7 @@
             "system_total": {
               "type": "integer",
               "default": 0,
-              "title": "The total system memory"
+              "title": "The total number of bytes of available system memory"
             },
             "peak_rss_bytes": {
               "type": "integer",
