@@ -26,22 +26,18 @@ package com.oracle.svm.jni;
 
 import java.lang.reflect.Array;
 
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
-import com.oracle.svm.jni.access.JNIReflectionDictionary;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.internal.misc.Unsafe;
@@ -82,18 +78,6 @@ public final class JNIGeneratedMethodSupport {
     @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
         return JNIAccessibleField.getOffsetFromId(fieldId);
-    }
-
-    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
-    static CodePointer getJavaCallWrapperAddressFromMethodId(JNIMethodId methodId) {
-        return JNIReflectionDictionary.getMethodByID(methodId).getCallWrapperAddress();
-    }
-
-    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
-    static CodePointer getJavaCallAddressFromMethodId(JNIMethodId methodId) {
-        return JNIReflectionDictionary.getMethodByID(methodId).getJavaCallAddress();
     }
 
     @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)

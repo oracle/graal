@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jni.hosted;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -49,6 +50,9 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.jni.JNIGeneratedMethodSupport;
+import com.oracle.svm.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -150,11 +154,23 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     public InvokeWithExceptionNode getJavaCallWrapperAddressFromMethodId(ValueNode methodId) {
-        return createStaticInvoke("getJavaCallWrapperAddressFromMethodId", methodId);
+        return invokeJNIMethodMethod(methodId, "getCallWrapperAddress");
     }
 
     public InvokeWithExceptionNode getJavaCallAddressFromMethodId(ValueNode methodId) {
-        return createStaticInvoke("getJavaCallAddressFromMethodId", methodId);
+        return invokeJNIMethodMethod(methodId, "getJavaCallAddress");
+    }
+
+    /**
+     * Used in native-to-Java call wrappers where the method ID has already been used to dispatch
+     * and we would have crashed if something is wrong, so we can avoid null and type checks.
+     */
+    private InvokeWithExceptionNode invokeJNIMethodMethod(ValueNode methodId, String name) {
+        InvokeWithExceptionNode methodObj = createInvokeWithExceptionAndUnwind(
+                        findMethod(JNIReflectionDictionary.class, "getObjectFromMethodID", JNIMethodId.class), InvokeKind.Static, getFrameState(), bci(), methodId);
+        ObjectStamp stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(getMetaAccess().lookupJavaType(JNIAccessibleMethod.class)));
+        PiNode pi = createPiNode(methodObj, stamp);
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, name), InvokeKind.Special, getFrameState(), bci(), pi);
     }
 
     public InvokeWithExceptionNode getStaticPrimitiveFieldsArray() {
