@@ -76,7 +76,7 @@ public abstract class ExpectStringOrTruffleObjectNode extends Node {
         }
     }
 
-    @Deprecated
+    // Deprecated
     @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
     static Object doBoxedCharArray(Object input,
                     @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {

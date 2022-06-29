@@ -1481,10 +1481,38 @@ public final class TruffleString extends AbstractTruffleString {
         }
     }
 
+    /**
+     * Error handling instructions for operations that return integer values, such as indices or
+     * code points.
+     * 
+     * @since 22.3
+     */
     public enum ErrorHandling {
+
+        /**
+         * This mode generally means that the operation will try to determine the "most reasonable"
+         * or "most useful" return value in respect to the expected encoding and the error that
+         * occurred.
+         *
+         * For example: best-effort error handling will cause {@link CodePointAtByteIndexNode} to
+         * return the value of the integer read when reading an invalid codepoint from a
+         * {@link Encoding#UTF_32} string.
+         *
+         * @since 22.3
+         */
         BEST_EFFORT,
+
+        /**
+         * This mode will cause a negative value to be returned in all error cases.
+         *
+         * For example: return-negative error handling will cause {@link CodePointAtByteIndexNode}
+         * to return a negative value when reading an invalid codepoint from a
+         * {@link Encoding#UTF_32} string.
+         *
+         * @since 22.3
+         */
         RETURN_NEGATIVE
-    };
+    }
 
     /**
      * Node to create a new {@link TruffleString} from a single codepoint.
@@ -4894,12 +4922,54 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.3
          */
         public enum Reason {
+
+            /**
+             * The string was empty, or contained no digits.
+             *
+             * @since 22.3
+             */
             EMPTY("no digits found"),
+
+            /**
+             * An invalid codepoint was encountered during parsing.
+             *
+             * @since 22.3
+             */
             INVALID_CODEPOINT("invalid codepoint"),
+
+            /**
+             * A '+' or '-' sign without any subsequent digits was encountered.
+             *
+             * @since 22.3
+             */
             LONE_SIGN("lone '+' or '-'"),
+
+            /**
+             * The parsed number was too large to fit in an {@code int}/{@code long}.
+             *
+             * @since 22.3
+             */
             OVERFLOW("overflow"),
+
+            /**
+             * Invalid codepoints encountered when parsing a hex number.
+             *
+             * @since 22.3
+             */
             MALFORMED_HEX_ESCAPE("malformed hex escape sequence"),
+
+            /**
+             * Multiple decimal points encountered.
+             *
+             * @since 22.3
+             */
             MULTIPLE_DECIMAL_POINTS("multiple decimal points"),
+
+            /**
+             * The given radix is unsupported.
+             *
+             * @since 22.3
+             */
             UNSUPPORTED_RADIX("unsupported radix");
 
             private final String message;
@@ -4971,6 +5041,13 @@ public final class TruffleString extends AbstractTruffleString {
             return regionOffset < 0 ? regionOffset : regionOffset << string.stride();
         }
 
+        /**
+         * Returns a default error message comprised of all information available through
+         * {@link #getString()}, {@link #getReason()}, {@link #getRegionByteOffset()} and
+         * {@link #getRegionByteLength()}. Not designed to be used on fast paths.
+         *
+         * @since 22.3
+         */
         @TruffleBoundary
         @Override
         public String getMessage() {
