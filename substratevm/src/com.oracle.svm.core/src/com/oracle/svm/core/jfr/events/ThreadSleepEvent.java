@@ -38,7 +38,6 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 
 public class ThreadSleepEvent {
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(long time, long startTicks) {
         if (com.oracle.svm.core.jfr.HasJfrSupport.get()) {
             emit0(time, startTicks);
