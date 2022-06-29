@@ -31,6 +31,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,7 +66,6 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -109,10 +109,12 @@ import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -742,5 +744,14 @@ public class SVMHost extends HostVM {
             }
         }
         return false;
+    }
+
+    @Override
+    public Comparator<? super ResolvedJavaType> getTypeComparator() {
+        return (Comparator<ResolvedJavaType>) (o1, o2) -> {
+            VMError.guarantee(o1 instanceof HostedType, "Expected HostedType. Got " + o1.getClass().getName());
+            VMError.guarantee(o2 instanceof HostedType, "Expected HostedType. Got " + o2.getClass().getName());
+            return HostedUniverse.TYPE_COMPARATOR.compare((HostedType) o1, (HostedType) o2);
+        };
     }
 }

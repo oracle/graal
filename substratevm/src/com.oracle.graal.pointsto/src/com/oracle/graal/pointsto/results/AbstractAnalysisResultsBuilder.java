@@ -128,6 +128,7 @@ public abstract class AbstractAnalysisResultsBuilder {
         double probability = 1d / typeState.typesCount();
         JavaTypeProfile.ProfiledType[] pitems = typeState.typesStream(bb)
                         .map(analysisType -> converter == null ? analysisType : converter.lookup(analysisType))
+                        .sorted(converter.hostVM().getTypeComparator())
                         .map(type -> new JavaTypeProfile.ProfiledType(type, probability))
                         .toArray(JavaTypeProfile.ProfiledType[]::new);
 

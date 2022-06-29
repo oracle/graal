@@ -458,7 +458,7 @@ public class HostedUniverse implements Universe {
         return types.get(bb.getUniverse().objectType());
     }
 
-    static final TypeComparator TYPE_COMPARATOR = new TypeComparator();
+    public static final Comparator<HostedType> TYPE_COMPARATOR = new TypeComparator();
 
     private static final class TypeComparator implements Comparator<HostedType> {
 
@@ -515,15 +515,15 @@ public class HostedUniverse implements Universe {
         }
     }
 
-    public static final MethodComparator METHOD_COMPARATOR = new MethodComparator(TYPE_COMPARATOR, true);
+    public static final Comparator<HostedMethod> METHOD_COMPARATOR = new MethodComparator(TYPE_COMPARATOR, true);
 
     private static final class MethodComparator implements Comparator<HostedMethod> {
 
-        private final TypeComparator typeComparator;
+        private final Comparator<HostedType> typeComparator;
 
         private final boolean strict;
 
-        private MethodComparator(TypeComparator typeComparator, boolean strict) {
+        private MethodComparator(Comparator<HostedType> typeComparator, boolean strict) {
             this.typeComparator = typeComparator;
             this.strict = strict;
         }
