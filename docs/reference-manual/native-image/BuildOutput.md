@@ -182,6 +182,26 @@ If the [GC statistics](#glossary-garbage-collection) do not show any problems, t
 The CPU time used by the process divided by the total process time.
 Increase the number of CPU threads to reduce the time to build the image.
 
+
+## Machine-readable Build Output
+
+The build output produced by the `native-image` builder is designed for humans, can evolve with new releases, and should thus not be parsed in any way by tools.
+Instead, use the `-H:BuildOutputJSONFile=<file.json>` option to instruct the builder to produce machine-readable build output in the JSON format that can be used, for example, for building monitoring tools.
+These JSON files validate against the JSON schema defined in [`build-output-schema-v1.json`][json_schema], which can be considered public API.
+Note that a JSON file is produced if and only if a build succeeds.
+
+The following example illustrates how this could be used in a CI/CD build pipeline to check that the number of reachable methods does not exceed a certain threshold:
+
+```bash
+native-image -H:BuildOutputJSONFile=build.json HelloWorld
+# ...
+cat build.json | python3 -c "import json,sys;c = json.load(sys.stdin)['analysis_results']['methods']['reachable']; assert c < 12000, f'Too many reachable methods: {c}'"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+AssertionError: Too many reachable methods: 12128
+```
+
+
 ## Build Output Options
 
 Run `native-image --expert-options-all | grep "BuildOutput"` to see all build output options:
@@ -199,6 +219,7 @@ Run `native-image --expert-options-all | grep "BuildOutput"` to see all build ou
 
 
 [jdoc_feature]: https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html
+[json_schema]: https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v1.json
 [doc_jni]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/JNI.md
 [doc_mem_mgmt]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/MemoryManagement.md
 [doc_shared_library]: https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image#build-a-shared-library
