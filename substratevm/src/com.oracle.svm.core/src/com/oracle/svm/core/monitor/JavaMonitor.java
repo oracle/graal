@@ -69,7 +69,7 @@ public class JavaMonitor extends ReentrantLock {
         if (waitingThreads == 0) {
             return;
         }
-        long curr = SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
+        long curr = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
 
         int notifications = 1;
         if (notifyAll) {
