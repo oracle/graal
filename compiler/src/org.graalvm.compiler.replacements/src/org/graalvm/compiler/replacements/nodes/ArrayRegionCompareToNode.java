@@ -75,7 +75,7 @@ import jdk.vm.ci.meta.Value;
  * Returns the result of {@code arrayA[i] - arrayB[i]} at the first index {@code i} where
  * {@code arrayA[i] != arrayB[i]}. If no such index exists, returns 0.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
 public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<ArrayRegionCompareToNode> TYPE = NodeClass.create(ArrayRegionCompareToNode.class);

@@ -26,7 +26,7 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1024;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1024;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import java.util.EnumSet;
 
@@ -56,7 +56,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Compares two arrays lexicographically.
  */
-@NodeInfo(cycles = CYCLES_1024, size = SIZE_1024)
+@NodeInfo(cycles = CYCLES_1024, size = SIZE_16)
 public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements LIRLowerable, Canonicalizable, Virtualizable {
 
     public static final NodeClass<ArrayCompareToNode> TYPE = NodeClass.create(ArrayCompareToNode.class);

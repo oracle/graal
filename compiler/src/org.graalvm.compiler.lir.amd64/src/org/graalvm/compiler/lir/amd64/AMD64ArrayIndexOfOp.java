@@ -33,8 +33,6 @@ import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movSZx;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pand;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeq;
@@ -60,7 +58,6 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -149,16 +146,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         this.searchValue4 = searchValue4;
 
         this.vectorKind = getVectorKind(valueKind);
-        this.vectorCompareVal = allocateVectorRegisters(tool, vectorKind, nValues);
-        this.vectorArray = allocateVectorRegisters(tool, vectorKind, 4);
-    }
-
-    private static Value[] allocateVectorRegisters(LIRGeneratorTool tool, AMD64Kind vectorKind, int n) {
-        Value[] vectors = new Value[n];
-        for (int i = 0; i < vectors.length; i++) {
-            vectors[i] = tool.newVariable(LIRKind.value(vectorKind));
-        }
-        return vectors;
+        this.vectorCompareVal = allocateVectorRegisters(tool, valueKind, nValues);
+        this.vectorArray = allocateVectorRegisters(tool, valueKind, 4);
     }
 
     private static Register[] asRegisters(Value[] values) {
@@ -449,11 +438,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
         asm.bind(bsfAdd);
         // find offset
-        if (supportsTZCNT()) {
-            TZCNT.emit(asm, QWORD, cmpResult, cmpResult);
-        } else {
-            asm.bsfq(cmpResult, cmpResult);
-        }
+        bsfq(asm, cmpResult, cmpResult);
         if (valueKind.getByteCount() > 1) {
             // convert byte offset to chars
             asm.shrq(cmpResult, strideAsPowerOf2());

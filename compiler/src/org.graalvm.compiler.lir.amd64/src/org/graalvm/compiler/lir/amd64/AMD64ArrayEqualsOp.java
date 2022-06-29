@@ -496,7 +496,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     }
 
     private void pmovSZx(AMD64MacroAssembler asm, AVXSize size, Register dst, Scale maxScale, Register src, Register index, int displacement, Scale scale) {
-        AMD64MacroAssembler.pmovSZx(asm, size, dst, extendMode, maxScale, src, scale, index, displacement);
+        AMD64MacroAssembler.pmovSZx(asm, size, extendMode, dst, maxScale, src, scale, index, displacement);
     }
 
     private static void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
@@ -883,7 +883,4 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         }
     }
 
-    public static Scale max(Scale a, Scale b) {
-        return a.value > b.value ? a : b;
-    }
 }

@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.Value;
  * {@code char}, and the underlying array must be a {@code byte} array (this condition is not
  * checked). Other combinations of kinds are currently not allowed.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
 public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<ArrayRegionEqualsNode> TYPE = NodeClass.create(ArrayRegionEqualsNode.class);

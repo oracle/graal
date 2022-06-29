@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.Value;
  *
  * @see AMD64CalcStringAttributesOp
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
 public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrinsicNode implements LIRLowerable {
 
     public static final NodeClass<AMD64CalcStringAttributesNode> TYPE = NodeClass.create(AMD64CalcStringAttributesNode.class);

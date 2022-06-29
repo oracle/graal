@@ -26,7 +26,12 @@ package org.graalvm.compiler.lir.amd64;
 
 import java.util.EnumSet;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -36,6 +41,9 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
+
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 
 /**
  * Base class for AMD64 LIR instruction using AVX CPU features.
@@ -64,6 +72,14 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
 
     private static boolean isXMMOrGreater(AVXSize size) {
         return size == AVXSize.XMM || size == AVXSize.YMM || size == AVXSize.ZMM;
+    }
+
+    public static AMD64Address.Scale min(AMD64Address.Scale a, AMD64Address.Scale b) {
+        return a.value < b.value ? a : b;
+    }
+
+    public static AMD64Address.Scale max(AMD64Address.Scale a, AMD64Address.Scale b) {
+        return a.value > b.value ? a : b;
     }
 
     protected AMD64Kind getVectorKind(JavaKind valueKind) {
@@ -124,6 +140,15 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         }
     }
 
+    protected Value[] allocateVectorRegisters(LIRGeneratorTool tool, JavaKind valueKind, int n) {
+        LIRKind kind = LIRKind.value(getVectorKind(valueKind));
+        Value[] vectors = new Value[n];
+        for (int i = 0; i < vectors.length; i++) {
+            vectors[i] = tool.newVariable(kind);
+        }
+        return vectors;
+    }
+
     public static boolean supports(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, CPUFeature cpuFeature) {
         return runtimeCheckedCPUFeatures != null && runtimeCheckedCPUFeatures.contains(cpuFeature) || ((AMD64) target.arch).getFeatures().contains(cpuFeature);
     }
@@ -150,6 +175,14 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
 
     protected boolean supportsTZCNT() {
         return supports(AMD64.CPUFeature.BMI1) && ((AMD64) targetDescription.arch).getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction);
+    }
+
+    protected void bsfq(AMD64MacroAssembler masm, Register dst, Register src) {
+        if (supportsTZCNT()) {
+            TZCNT.emit(masm, QWORD, dst, src);
+        } else {
+            masm.bsfq(dst, src);
+        }
     }
 
     @Override

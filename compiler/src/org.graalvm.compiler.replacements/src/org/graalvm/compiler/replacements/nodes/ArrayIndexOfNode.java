@@ -29,7 +29,7 @@ import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
 import static org.graalvm.compiler.core.common.StrideUtil.S2;
 import static org.graalvm.compiler.core.common.StrideUtil.S4;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import java.util.EnumSet;
 
@@ -92,7 +92,7 @@ import jdk.vm.ci.meta.Value;
  * {@code (array[i] | searchValues[2]) == searchValues[0] && (array[i + 1] | searchValues[3]) == searchValues[1]}.</li>
  * </ul>
  */
-@NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_16)
 public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable {
 
     public static final NodeClass<ArrayIndexOfNode> TYPE = NodeClass.create(ArrayIndexOfNode.class);
@@ -232,7 +232,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     }
 
     private void generateArrayIndexOf(NodeLIRBuilderTool gen) {
-        int arrayBaseOffset = arrayKind == JavaKind.Void ? 0 : getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), arrayPointer, arrayKind);
+        int arrayBaseOffset = arrayKind == NONE ? 0 : getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), arrayPointer, arrayKind);
         Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayBaseOffset, stride, findTwoConsecutive, withMask,
                         getRuntimeCheckedCPUFeatures(), gen.operand(arrayPointer), gen.operand(arrayOffset), gen.operand(arrayLength), gen.operand(fromIndex), searchValuesAsOperands(gen));
         gen.setResult(this, result);
