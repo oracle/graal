@@ -226,7 +226,6 @@ public final class StandardTags {
      *
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     @Tag.Identifier("TRY_BLOCK")
     public static final class TryBlockTag extends Tag {
 

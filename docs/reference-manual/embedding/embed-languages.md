@@ -137,10 +137,11 @@ R where indices start with one.
 Polyglot applications offer bi-directional access between guest languages and host languages.
 As a result, you can pass Java objects to guest languages.
 
-Use the code example in this section with your polyglot application to show how guest languages can access primitive Java values, objects, arrays, and functional interfaces.
+Since the Polyglot API is secure by default, access is limited in the default configuration.
+To permit guest languages to access any public method or field of a Java object, you have to explicitly specify `allowAllAccess(true)` when the context is built.
+In this mode, the guest language code can access any resource that is accessible to host Java code.
 
-To permit guest languages to access any public method or field of a Java object, set `allowAllAccess(true)` when the context is built.
-In this mode, the guest language code must be fully trusted, as it can access other not explicitly exported Java methods using reflection.
+Use the code example in this section with your polyglot application to show how guest languages can access primitive Java values, objects, arrays, and functional interfaces.
 
 {%
 include snippet-tabs
@@ -271,7 +272,7 @@ Host access is fully customizable by creating a custom [`HostAccess`](https://ww
 By default, a `Value` lives as long as the corresponding `Context`.
 However, it may be desireable to change this default behavior and bind a value to a scope, such that when execution leaves the scope, the value is invalidated.
 An example for such a scope are guest-to-host callbacks, where a `Value` may be passed as a callback parameter.
-We have already seen above how this works with the default `HostAccess.EXPLICIT`:
+We have already seen above how passing callback parameters works with the default `HostAccess.EXPLICIT`:
 
 ```java
 public class Services {
@@ -297,7 +298,7 @@ public static void main(String[] args) {
 }
 ```
 
-In this example, `lastResult` maintains a reference to the value from the guest is stored on the host and remains accessible until after the scope of `callback()` has ended.
+In this example, `lastResult` maintains a reference to the value from the guest that is stored on the host and remains accessible also after the scope of `callback()` has ended.
 
 However, this is not always desireable, as keeping the value alive may block resources unnecessarily or not reflect the behavior of ephemeral values correctly.
 For these cases, `HostAccess.SCOPED` can be used, which changes the default behavior for all callbacks, such that values that are passed as callback parameters are only valid for the duration of the callback.
@@ -670,9 +671,10 @@ If multiple languages are selected, then `libpolyglot`, the library containing a
 If a matching library is not available, creation of the engine will fail.
 
 Only one language library can be loaded during GraalVM's lifetime.
-This means that the first isolated engine that is created sets the default for the remainder of the execution: if an isolated engine with solely Javascript was created first, only Javascript will be available in isolated languages.
+This means that the first isolated engine that is created sets the default for the remainder of the execution: if an isolated engine with solely JavaScript was created first, only JavaScript will be available in isolated engines.
 
-### Passing Native Image Runtime Options
+### Setting the Heap Size
+
 Engines running in an isolate can make use of [native image runtime options](../native-image/HostedvsRuntimeOptions.md) by passing `--engine.IsolateOption.<option>` to the engine builder.
 For example, this can be used to limit the maximum heap memory used by an engine by setting the maximum heap size for the isolate via `--engine.IsolateOption.MaxHeapSize=128m`:
 
@@ -697,6 +699,17 @@ public class PolyglotIsolateMaxHeap {
 }
 ```
 Exceeding the maximum heap size will automatically close the context and raise a `PolyglotException`.
+
+### Ensuring Host Callback Stack Headroom
+
+With Polyglot Isolates, the experimental `--engine.HostCallStackHeadRoom` option can require a minimum stack size that is guaranteed when performing a host callback.
+If the available stack size drops below the specified threshold, the host callback fails.
+
+### Memory Protection
+
+In Linux environments that support Memory Protection Keys, the experimental `--engine.MemoryProtection=true` option can be used to isolate the heaps of Polyglot Isolates at the hardware level.
+If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
+GraalVM will only enable access to the engine's heap when executing code of the Polyglot Isolate.
 
 ## Dependency Setup
 

@@ -1090,15 +1090,11 @@ public final class DebuggerSession implements Closeable {
         return newReturnValue;
     }
 
-    @SuppressWarnings("deprecation")
     private static void clearFrame(RootNode root, MaterializedFrame frame) {
         FrameDescriptor descriptor = frame.getFrameDescriptor();
         if (root.getFrameDescriptor() == descriptor) {
             // Clear only those frames that correspond to the current root
             Object value = descriptor.getDefaultValue();
-            for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
-                frame.setObject(slot, value);
-            }
             for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {
                 frame.setObject(slot, value);
             }

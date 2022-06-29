@@ -58,9 +58,13 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
         super(bb, converter);
     }
 
+    private PointsToAnalysis getAnalysis() {
+        return ((PointsToAnalysis) bb);
+    }
+
     @Override
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
-
+        PointsToAnalysis pta = getAnalysis();
         MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
         if (!methodFlow.flowsGraphCreated()) {
             return StaticAnalysisResults.NO_RESULTS;
@@ -79,12 +83,12 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                  */
                 continue;
             }
-            if (methodFlow.isSaturated(bb, parameter)) {
+            if (methodFlow.isSaturated(pta, parameter)) {
                 /* The parameter type flow is saturated, it's type state doesn't matter. */
                 continue;
             }
 
-            TypeState paramTypeState = methodFlow.foldTypeFlow(bb, parameter);
+            TypeState paramTypeState = methodFlow.foldTypeFlow(pta, parameter);
             JavaTypeProfile paramProfile = makeTypeProfile(paramTypeState);
             if (paramProfile != null) {
                 ensureSize(paramProfiles, i);
@@ -96,7 +100,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
             parameterTypeProfiles = paramProfiles.toArray(new JavaTypeProfile[paramProfiles.size()]);
         }
 
-        JavaTypeProfile resultTypeProfile = makeTypeProfile(methodFlow.foldTypeFlow(bb, originalFlows.getReturnFlow()));
+        JavaTypeProfile resultTypeProfile = makeTypeProfile(methodFlow.foldTypeFlow(pta, originalFlows.getReturnFlow()));
 
         ArrayList<BytecodeEntry> entries = new ArrayList<>(method.getCodeSize());
 
@@ -106,7 +110,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                 int bci = (int) instanceOfCursor.getKey();
                 InstanceOfTypeFlow originalInstanceOf = instanceOfCursor.getValue();
 
-                if (methodFlow.isSaturated(bb, originalInstanceOf)) {
+                if (methodFlow.isSaturated(pta, originalInstanceOf)) {
                     /*
                      * If the instance flow is saturated its exact type state doesn't matter. This
                      * instanceof cannot be optimized.
@@ -115,8 +119,8 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                 }
 
                 /* Fold the instanceof flows. */
-                TypeState instanceOfTypeState = methodFlow.foldTypeFlow(bb, originalInstanceOf);
-                originalInstanceOf.setState(bb, instanceOfTypeState);
+                TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pta, originalInstanceOf);
+                originalInstanceOf.setState(pta, instanceOfTypeState);
 
                 JavaTypeProfile typeProfile = makeTypeProfile(instanceOfTypeState);
                 if (typeProfile != null) {
@@ -135,17 +139,17 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
 
                 TypeState invokeTypeState = null;
                 /* If the receiver flow is saturated its exact type state doesn't matter. */
-                if (originalInvoke.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(bb, originalInvoke.getReceiver())) {
-                    invokeTypeState = methodFlow.foldTypeFlow(bb, originalInvoke.getReceiver());
-                    originalInvoke.setState(bb, invokeTypeState);
+                if (originalInvoke.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(pta, originalInvoke.getReceiver())) {
+                    invokeTypeState = methodFlow.foldTypeFlow(pta, originalInvoke.getReceiver());
+                    originalInvoke.setState(pta, invokeTypeState);
                 }
 
                 TypeFlow<?> originalReturn = originalInvoke.getActualReturn();
                 TypeState returnTypeState = null;
                 /* If the return flow is saturated its exact type state doesn't matter. */
-                if (originalReturn != null && !methodFlow.isSaturated(bb, originalReturn)) {
-                    returnTypeState = methodFlow.foldTypeFlow(bb, originalReturn);
-                    originalReturn.setState(bb, returnTypeState);
+                if (originalReturn != null && !methodFlow.isSaturated(pta, originalReturn)) {
+                    returnTypeState = methodFlow.foldTypeFlow(pta, originalReturn);
+                    originalReturn.setState(pta, returnTypeState);
                 }
 
                 JavaTypeProfile typeProfile = makeTypeProfile(invokeTypeState);
@@ -160,7 +164,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
             }
         }
 
-        if (PointstoOptions.PrintSynchronizedAnalysis.getValue(bb.getOptions())) {
+        if (PointstoOptions.PrintSynchronizedAnalysis.getValue(pta.getOptions())) {
             originalFlows.getMiscFlows().stream()
                             .filter(flow -> flow instanceof MonitorEnterTypeFlow)
                             .map(flow -> (MonitorEnterTypeFlow) flow)
@@ -168,8 +172,8 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                             .sorted(Comparator.comparingInt(m2 -> m2.getState().typesCount()))
                             .forEach(monitorEnter -> {
                                 TypeState monitorEntryState = monitorEnter.getState();
-                                String typesString = TypeStateUtils.closeToAllInstantiated(bb, monitorEntryState) ? "close to all instantiated"
-                                                : StreamSupport.stream(monitorEntryState.types(bb).spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
+                                String typesString = TypeStateUtils.closeToAllInstantiated(pta, monitorEntryState) ? "close to all instantiated"
+                                                : StreamSupport.stream(monitorEntryState.types(pta).spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
                                 StringBuilder strb = new StringBuilder();
                                 strb.append("Location: ");
                                 String methodName = method.format("%h.%n(%p)");

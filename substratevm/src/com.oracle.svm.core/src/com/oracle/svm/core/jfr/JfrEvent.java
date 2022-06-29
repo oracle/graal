@@ -58,6 +58,7 @@ public enum JfrEvent {
     JavaMonitorEnter("jdk.JavaMonitorEnter"),
     JavaMonitorWait("jdk.JavaMonitorWait");
 
+
     private final long id;
 
     @Platforms(Platform.HOSTED_ONLY.class)

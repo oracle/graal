@@ -216,7 +216,7 @@ public final class JfrNativeEventWriter {
         if (isolateThread.isNull()) {
             putLong(data, 0L);
         } else {
-            long threadId = SubstrateJVM.get().getThreadId(isolateThread);
+            long threadId = SubstrateJVM.getThreadId(isolateThread);
             putLong(data, threadId);
         }
     }

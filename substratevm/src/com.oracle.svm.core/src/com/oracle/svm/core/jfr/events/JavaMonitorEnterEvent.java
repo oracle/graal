@@ -26,6 +26,7 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -38,14 +39,14 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import org.graalvm.compiler.word.Word;
 
 public class JavaMonitorEnterEvent {
-
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(Object obj, org.graalvm.nativeimage.IsolateThread previousOwner, long startTicks) {
-        emit(obj, com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(previousOwner), startTicks);
+    public static void emit(Object obj, long previousOwnerTid, long startTicks) {
+        if (HasJfrSupport.get()) {
+            emit0(obj, previousOwnerTid, startTicks);
+        }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(Object obj, long previousOwner, long startTicks) {
+    public static void emit0(Object obj, long previousOwnerTid, long startTicks) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.JavaMonitorEnter)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -56,7 +57,8 @@ public class JavaMonitorEnterEvent {
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorEnter, 0));
             JfrNativeEventWriter.putClass(data, obj.getClass());
-            JfrNativeEventWriter.putLong(data, previousOwner);
+
+            JfrNativeEventWriter.putLong(data, previousOwnerTid);
             JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
 

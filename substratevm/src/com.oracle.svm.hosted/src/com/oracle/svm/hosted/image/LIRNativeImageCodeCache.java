@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,6 +93,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         return codeCacheSize;
     }
 
+    @Override
+    public int getCodeAreaSize() {
+        return getCodeCacheSize();
+    }
+
     private void setCodeCacheSize(int size) {
         assert codeCacheSize == 0 && size > 0;
         codeCacheSize = size;
@@ -147,7 +152,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @SuppressWarnings("try")
     @Override
-    public void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
             // Assign initial location to all methods.

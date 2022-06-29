@@ -60,8 +60,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <ul>
  * <li>Dynamic parameters bound in cached initializers. At AOT preparation time no dynamic
  * parameters are available, therefore the the caches not be initialized. Values read from the node
- * instance or from a {@link CachedLanguage} of the {@link RootNode#getLanguage(Class) root
- * language} are supported.
+ * instance are supported.
  * <li>If a Truffle library is used that is automatically dispatched or where the expression
  * initializer is bound to a dynamic parameter value.
  * <li>If a cached node is created that does not itself support {@link GenerateAOT}.

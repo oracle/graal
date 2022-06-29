@@ -38,8 +38,16 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * An example of using <code>AOTDebugCacheTestEngineConfig</code>.
+ * 
+ * <pre>
+ * mx -d --dy /graal-enterprise unittest --sulong-config=AOTDebugCache -Dsulongtest.testAOTImage="mx" \
+ * -Dsulongtest.testAOTArgs="--dy /graal-enterprise --jvm lli-mul --multi-context-runs=2 --use-debug-cache --engine.TraceTransferToInterpreter" \
+ * SulongSuite
+ * </pre>
+ */
 public class AOTDebugCacheTestEngineConfig extends NativeTestEngineConfig {
 
     @Override
@@ -50,13 +58,6 @@ public class AOTDebugCacheTestEngineConfig extends NativeTestEngineConfig {
     @Override
     public int getPriority() {
         return 100;
-    }
-
-    @Override
-    public Map<String, String> getContextOptions(String testName) {
-        Map<String, String> contextOptions = super.getContextOptions(testName);
-        contextOptions.put("engine.TraceTransferToInterpreter", "true");
-        return contextOptions;
     }
 
     @Override

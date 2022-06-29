@@ -67,10 +67,10 @@ import jdk.internal.misc.Unsafe;
  * Implementation of synchronized-related operations.
  *
  * Most objects used in synchronization operations have a dedicated memory in the object to store a
- * {@link ReentrantLock}. The offset of this memory slot is not fixed, but stored separately for
- * each class, see {@link #getMonitorOffset}. The monitor is implemented with a
- * {@link ReentrantLock}. The first synchronization operation on an object lazily initializes the
- * memory slot with a new {@link ReentrantLock}.
+ * {@link JavaMonitor}. The offset of this memory slot is not fixed, but stored separately for each
+ * class, see {@link #getMonitorOffset}. The monitor is implemented with a {@link JavaMonitor}. The
+ * first synchronization operation on an object lazily initializes the memory slot with a new
+ * {@link JavaMonitor}.
  *
  * There are a few exceptions: Some classes {@link String} and {@link DynamicHub} never have a
  * monitor slot because we want instances in the image heap to be immutable. Arrays never have a
@@ -293,7 +293,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorExit(Object obj) {
-        ReentrantLock lockObject = getOrCreateMonitor(obj, true);
+        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
         lockObject.unlock();
     }
 
@@ -355,13 +355,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     @Override
     public boolean isLockedByCurrentThread(Object obj) {
-        ReentrantLock lockObject = getOrCreateMonitor(obj, false);
+        JavaMonitor lockObject = getOrCreateMonitor(obj, false);
         return lockObject != null && lockObject.isHeldByCurrentThread();
     }
 
     @Override
     public boolean isLockedByAnyThread(Object obj) {
-        ReentrantLock lockObject = getOrCreateMonitor(obj, false);
+        JavaMonitor lockObject = getOrCreateMonitor(obj, false);
         return lockObject != null && lockObject.isLocked();
     }
 
@@ -461,7 +461,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
         assert obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
-                    "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
+                        "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
 
         /*
          * Lock the monitor map and maybe add a monitor for this object. This serialization might be
@@ -485,35 +485,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     protected static JavaMonitor newMonitorLock() {
         JavaMonitor newMonitor = new JavaMonitor();
-        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(newMonitor, Target_java_util_concurrent_locks_ReentrantLock.class);
-        Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
-        sync.objectMonitorCondition = SubstrateUtil.cast(MONITOR_WITHOUT_CONDITION, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class);
         assert isMonitorLock(newMonitor);
         return newMonitor;
     }
 
-    protected static boolean isMonitorLock(ReentrantLock lock) {
+    protected static boolean isMonitorLock(JavaMonitor lock) {
         return lock != null && isMonitorLockSynchronizer(SubstrateUtil.cast(lock, Target_java_util_concurrent_locks_ReentrantLock.class).sync);
-    }
-
-    /**
-     * Creates a new {@link ReentrantLock} that is locked by the provided thread. This requires
-     * patching of internal state, since there is no public API in {@link ReentrantLock} to do that
-     * (for a good reason, because it is a highly unusual operation).
-     */
-    protected static ReentrantLock newLockedMonitorForThread(Thread thread, int recursionDepth) {
-        ReentrantLock result = newMonitorLock();
-        for (int i = 0; i < recursionDepth; i++) {
-            result.lock();
-        }
-
-        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(result, Target_java_util_concurrent_locks_ReentrantLock.class);
-        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
-
-        assert sync.exclusiveOwnerThread == Thread.currentThread() : "Must be locked by current thread";
-        sync.exclusiveOwnerThread = thread;
-
-        return result;
     }
 
     protected static boolean isMonitorLockSynchronizer(Object obj) {
@@ -528,7 +505,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return getOrCreateMonitor(obj, true);
     }
 
-    protected ConditionObject getOrCreateCondition(ReentrantLock monitorLock, boolean createIfNotExisting) {
+    protected ConditionObject getOrCreateCondition(JavaMonitor monitorLock, boolean createIfNotExisting) {
         assert isMonitorLock(monitorLock);
         Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(monitorLock, Target_java_util_concurrent_locks_ReentrantLock.class);
         Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);

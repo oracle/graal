@@ -210,7 +210,6 @@ public final class EventContext {
      *
      * @since 0.12
      */
-    @SuppressWarnings("deprecation")
     public Node getInstrumentedNode() {
         WrapperNode wrapper = probeNode.findWrapper();
         return wrapper != null ? wrapper.getDelegateNode() : null;

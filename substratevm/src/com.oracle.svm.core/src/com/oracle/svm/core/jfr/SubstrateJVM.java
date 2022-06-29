@@ -261,15 +261,21 @@ public class SubstrateJVM {
     }
 
     /** See {@link JVM#getThreadId}. */
-    public long getThreadId(Thread thread) {
-        return thread.getId();
+    public static long getThreadId(Thread thread) {
+        if (HasJfrSupport.get()) {
+            return thread.getId();
+        }
+        return 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadId(IsolateThread isolateThread) {
-        long threadId = threadLocal.getTraceId(isolateThread);
-        VMError.guarantee(threadId > 0);
-        return threadId;
+    public static long getThreadId(IsolateThread isolateThread) {
+        if (HasJfrSupport.get()) {
+            long threadId = get().threadLocal.getTraceId(isolateThread);
+            VMError.guarantee(threadId > 0);
+            return threadId;
+        }
+        return 0;
     }
 
     /** See {@link JVM#storeMetadataDescriptor}. */

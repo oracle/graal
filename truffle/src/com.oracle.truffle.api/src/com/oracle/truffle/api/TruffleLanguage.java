@@ -2751,14 +2751,14 @@ public abstract class TruffleLanguage<C> {
 
         private abstract static class TruffleFileFactory<P> implements BiFunction<P, FileSystemContext, TruffleFile> {
 
-            static final TruffleFileFactory<String> PATH = new TruffleFileFactory<String>() {
+            static final TruffleFileFactory<String> PATH = new TruffleFileFactory<>() {
                 @Override
                 Path parsePath(String path, FileSystemContext fileSystemContext) {
                     return fileSystemContext.fileSystem.parsePath(path);
                 }
             };
 
-            static final TruffleFileFactory<URI> URI = new TruffleFileFactory<URI>() {
+            static final TruffleFileFactory<URI> URI = new TruffleFileFactory<>() {
                 @Override
                 public Path parsePath(URI uri, FileSystemContext fileSystemContext) {
                     return fileSystemContext.fileSystem.parsePath(uri);
@@ -3473,13 +3473,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 19.0
-         * @deprecated in 21.3, use {@link #get(Node)} instead.
-         */
-        @Deprecated(since = "21.3")
-        public abstract L get();
-
-        /**
          * Returns the current language instance associated with the current thread. An enclosing
          * node should be provided as parameter if available, otherwise <code>null</code> may be
          * provided. This method is designed to be called safely from compiled code paths. In order
@@ -3516,7 +3509,7 @@ public abstract class TruffleLanguage<C> {
          */
         public static <T extends TruffleLanguage<?>> LanguageReference<T> create(Class<T> languageClass) {
             Objects.requireNonNull(languageClass);
-            return LanguageAccessor.ENGINE.createLanguageReference(null, languageClass);
+            return LanguageAccessor.ENGINE.createLanguageReference(languageClass);
         }
 
     }
@@ -3598,14 +3591,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 0.25
-         * @deprecated in 21.3, use {@link #get(Node)} instead.
-         */
-        @SuppressWarnings("unchecked")
-        @Deprecated(since = "21.3")
-        public abstract C get();
-
-        /**
          * Returns the current language context associated with the current thread. An enclosing
          * node should be provided as parameter if available, otherwise <code>null</code> may be
          * provided. This method is designed to be called safely from compiled code paths. In order
@@ -3641,7 +3626,7 @@ public abstract class TruffleLanguage<C> {
          */
         public static <T extends TruffleLanguage<C>, C> ContextReference<C> create(Class<T> languageClass) {
             Objects.requireNonNull(languageClass);
-            return LanguageAccessor.ENGINE.createContextReference(null, languageClass);
+            return LanguageAccessor.ENGINE.createContextReference(languageClass);
         }
     }
 
