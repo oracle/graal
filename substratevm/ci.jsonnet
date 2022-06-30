@@ -63,6 +63,7 @@
 
   local linux_amd64_jdk11 = common.linux_amd64   + common.labsjdk11,
   local linux_amd64_jdk17 = common.linux_amd64   + common.labsjdk17,
+  local linux_amd64_jdk19 = common.linux_amd64   + common.labsjdk19,
   local darwin_jdk17      = common.darwin_amd64  + common.labsjdk17,
   local windows_jdk17     = common.windows_amd64 + common.labsjdk17 + common.devkits["windows-jdk17"],
 
@@ -73,6 +74,14 @@
     linux_amd64_jdk11 + gate("build-ce", "build,helloworld,test,nativeimagehelp,muslcbuild,debuginfotest") + maven + svm_unittest + t("35:00") + musl_toolchain + gdb("10.2"),
     linux_amd64_jdk11 + gate("modules-basic", "build,hellomodule,test") + maven + svm_unittest + t("30:00"),
     linux_amd64_jdk17 + gate("style-fullbuild", "style,fullbuild,helloworld,test,svmjunit,debuginfotest") + common.eclipse + common.jdt + maven + svm_unittest + t("50:00") + mx_build_exploded + gdb("10.2"),
+    linux_amd64_jdk19 + gate("build-ce", "build") + {
+      run: [
+        # cannot yet use mx gate --tag build due to compile errors in /compiler
+        ["mx", "build"],
+        # cannot yet use mx gate --tag hello world due to missing JFR support in JDK 19
+        ["mx", "helloworld"],
+      ]
+    } + maven + svm_unittest + t("35:00"),
     windows_jdk17     + gate("basics", "build,helloworld,test,svmjunit") + svm_unittest + t("1:30:00"),
     windows_jdk17     + gate("basics-quickbuild", "build,helloworld_quickbuild,test_quickbuild,svmjunit_quickbuild") + svm_unittest + t("1:30:00"),
   ],
