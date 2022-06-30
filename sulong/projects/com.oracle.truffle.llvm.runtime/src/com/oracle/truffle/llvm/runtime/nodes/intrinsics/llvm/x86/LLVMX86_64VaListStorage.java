@@ -672,18 +672,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
         regSaveAreaNativePtr = stackAllocationNode.executeWithTarget(X86_64BitVarArgs.FP_LIMIT, frame);
-        if (stackAllocationNode.isAOT()) {
-            // The native overflow areas must be allocated behind the TL, as the alloc size is not a
-            // constant, which leads
-            // to deopts in LLVMNativeStackAccess.
-            allocateNativeOverflowAreaSlowPath(stackAllocationNode, frame);
-        } else {
-            this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
-        }
-    }
-
-    @TruffleBoundary
-    private void allocateNativeOverflowAreaSlowPath(StackAllocationNode stackAllocationNode, Frame frame) {
         this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
     }
 

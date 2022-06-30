@@ -31,6 +31,16 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
+import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
+import com.oracle.graal.reachability.MethodSummaryProvider;
+import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -40,24 +50,18 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
@@ -71,7 +75,6 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class HostedConfiguration {
 
@@ -165,6 +168,10 @@ public class HostedConfiguration {
         return new SubstrateMetaAccessExtensionProvider();
     }
 
+    public MethodSummaryProvider createMethodSummaryProvider(AnalysisUniverse universe, AnalysisMetaAccess aMetaAccess) {
+        return new SimpleInMemoryMethodSummaryProvider(universe, aMetaAccess);
+    }
+
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
                     @SuppressWarnings("unused") Map<AnalysisField, HostedField> universeFields,
                     ArrayList<HostedField> rawFields,
@@ -189,15 +196,14 @@ public class HostedConfiguration {
 
     public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
         if (bb instanceof PointsToAnalysis) {
-            PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
+            PointsToAnalysis pta = (PointsToAnalysis) bb;
             if (SubstrateOptions.parseOnce()) {
-                return new SubstrateStrengthenGraphs(pointsToAnalysis, universe);
+                return new SubstrateStrengthenGraphs(pta, universe);
             } else {
-                return new StaticAnalysisResultsBuilder(pointsToAnalysis, universe);
+                return new StaticAnalysisResultsBuilder(pta, universe);
             }
         } else {
-            /*- A custom result builder for Reachability analysis will probably have to be created */
-            throw VMError.shouldNotReachHere("Unsupported analysis type: " + bb.getClass());
+            return new DefaultResultsBuilder(bb, universe);
         }
     }
 
@@ -220,8 +226,7 @@ public class HostedConfiguration {
 
     /** Process the types that the analysis found as needing synchronization. */
     protected void processedSynchronizedTypes(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
-        TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-        for (AnalysisType type : allSynchronizedTypeState.types(bb)) {
+        for (AnalysisType type : bb.getAllSynchronizedTypes()) {
             maybeSetMonitorField(hUniverse, immutableTypes, type);
         }
     }

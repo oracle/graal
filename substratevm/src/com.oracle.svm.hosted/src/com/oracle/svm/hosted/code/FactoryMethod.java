@@ -79,20 +79,7 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
                     ReflectionUtil.lookupMethod(FactoryMethod.class, "annotationHolder").getAnnotation(NeverInlineTrivial.class));
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass.isInstance(INLINE_ANNOTATION)) {
-            return annotationClass.cast(INLINE_ANNOTATION);
-        }
-        return null;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return new Annotation[]{INLINE_ANNOTATION};
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
+    public Annotation[] getInjectedAnnotations() {
         return new Annotation[]{INLINE_ANNOTATION};
     }
 

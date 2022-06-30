@@ -241,7 +241,7 @@ final class DebugConfigImpl implements DebugConfig {
     @Override
     public RuntimeException interceptException(DebugContext debug, Throwable e) {
         if (e instanceof BailoutException) {
-            final boolean causedByCompilerAssert = e instanceof CausableByCompilerAssert && ((CausableByCompilerAssert) e).isCausedByCompilerAssert();
+            boolean causedByCompilerAssert = e instanceof CausableByCompilerAssert && ((CausableByCompilerAssert) e).isCausedByCompilerAssert();
             if (!DebugOptions.InterceptBailout.getValue(options) && !causedByCompilerAssert) {
                 return null;
             }

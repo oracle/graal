@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,10 +53,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.PropertyMap;
 
 @SuppressWarnings("deprecation")
 public class PropertyMapTest {
+
+    final Shape rootShape = Shape.newBuilder().build();
 
     @Test
     public void testPropertyMap() {
@@ -69,12 +72,11 @@ public class PropertyMapTest {
         int[] shuffledSequence = randomSequence.clone();
         shuffle(shuffledSequence, rnd);
 
-        com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
         // fill the map
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation(layout, id), 0);
+            Property value = Property.create(key, newLocation(id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
             assertEqualsOrdered(referenceMap, map);
@@ -85,7 +87,7 @@ public class PropertyMapTest {
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation(layout, id), 0);
+            Property value = Property.create(key, newLocation(id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             assertSame(initial, map);
         }
@@ -95,7 +97,7 @@ public class PropertyMapTest {
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation(layout, (double) id), 0);
+            Property value = Property.create(key, newLocation((double) id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
         }
@@ -103,7 +105,7 @@ public class PropertyMapTest {
         for (int i = size - 1; i >= 0; i--) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation(layout, (double) id), 0);
+            Property value = Property.create(key, newLocation((double) id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
         }
@@ -113,7 +115,7 @@ public class PropertyMapTest {
         for (int i = 0; i < size; i++) {
             int id = shuffledSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation(layout, (long) id), 0);
+            Property value = Property.create(key, newLocation((long) id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
         }
@@ -144,8 +146,8 @@ public class PropertyMapTest {
     }
 
     @SuppressWarnings("deprecation")
-    private static Location newLocation(com.oracle.truffle.api.object.Layout layout, Object id) {
-        return layout.createAllocator().locationForValue(id);
+    private Location newLocation(Object id) {
+        return rootShape.allocator().locationForValue(id);
     }
 
     void assertEqualsOrdered(Map<Object, Property> referenceMap, PropertyMap map) {

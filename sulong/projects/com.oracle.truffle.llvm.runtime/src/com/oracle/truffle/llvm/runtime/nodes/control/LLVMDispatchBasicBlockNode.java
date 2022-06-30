@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -105,6 +106,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
                     TruffleSafepoint.poll(this);
                     counters.backEdgeCounter++;
                     if (CompilerDirectives.inInterpreter() && osrMode == SulongEngineOption.OSRMode.BYTECODE && BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        ensureAllFrameSlotsInitialized(frame);
                         returnValue = BytecodeOSRNode.tryOSR(this, basicBlockIndex, counters, null, frame);
                         if (returnValue != null) {
                             break outer;
@@ -266,6 +268,37 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
         }
         assert returnValue != null;
         return returnValue;
+    }
+
+    private static void ensureAllFrameSlotsInitialized(VirtualFrame frame) {
+        FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
+        for (int i = 0; i < frameDescriptor.getNumberOfSlots(); i++) {
+            if (frame.getTag(i) == 0 && frameDescriptor.getSlotKind(i).tag != 0) {
+                switch (frameDescriptor.getSlotKind(i)) {
+                    case Object:
+                        frame.setObject(i, null);
+                        break;
+                    case Long:
+                        frame.setLong(i, 0L);
+                        break;
+                    case Int:
+                        frame.setInt(i, 0);
+                        break;
+                    case Double:
+                        frame.setDouble(i, 0d);
+                        break;
+                    case Float:
+                        frame.setFloat(i, 0f);
+                        break;
+                    case Boolean:
+                        frame.setBoolean(i, false);
+                        break;
+                    case Byte:
+                        frame.setByte(i, (byte) 0);
+                        break;
+                }
+            }
+        }
     }
 
     /**

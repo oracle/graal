@@ -1173,14 +1173,14 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public <T extends TruffleLanguage<C>, C> ContextReference<C> createContextReference(Node node, Class<T> languageClass) {
-            return PolyglotFastThreadLocals.createContextReference(node, languageClass);
+        public <T extends TruffleLanguage<C>, C> ContextReference<C> createContextReference(Class<T> languageClass) {
+            return PolyglotFastThreadLocals.createContextReference(languageClass);
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T extends TruffleLanguage<?>> LanguageReference<T> createLanguageReference(Node node, Class<T> targetLanguageClass) {
-            return (TruffleLanguage.LanguageReference<T>) PolyglotFastThreadLocals.createLanguageReference(node, targetLanguageClass);
+        public <T extends TruffleLanguage<?>> LanguageReference<T> createLanguageReference(Class<T> targetLanguageClass) {
+            return (TruffleLanguage.LanguageReference<T>) PolyglotFastThreadLocals.createLanguageReference(targetLanguageClass);
         }
 
         @Override

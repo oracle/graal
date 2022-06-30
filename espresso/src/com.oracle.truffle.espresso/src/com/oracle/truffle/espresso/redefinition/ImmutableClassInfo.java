@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,8 @@ public final class ImmutableClassInfo extends ClassInfo {
     private final ArrayList<ImmutableClassInfo> innerClasses;
 
     ImmutableClassInfo(ObjectKlass klass, Symbol<Symbol.Name> originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint,
-                    String enclosingMethodFingerprint, ArrayList<ImmutableClassInfo> inners, byte[] bytes) {
+                    String enclosingMethodFingerprint, ArrayList<ImmutableClassInfo> inners, byte[] bytes, boolean isEnumSwitchmaphelper, boolean isInnerTestKlass) {
+        super(isEnumSwitchmaphelper, isInnerTestKlass);
         this.klass = new WeakReference<>(klass);
         this.name = originalName;
         this.classLoader = classLoader;

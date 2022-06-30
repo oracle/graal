@@ -526,4 +526,10 @@ public class RubyTests extends RegexTestBase {
         test("()*", "", "", 0, true, 0, 0, 0, 0);
         test("(a|)*", "", "a", 0, true, 0, 1, 1, 1);
     }
+
+    @Test
+    public void gr39214() {
+        // Compiling a Regexp with a backreference inside an atomic group should not crash.
+        test("()(?>\\1)", "", "", 0, true, 0, 0, 0, 0);
+    }
 }

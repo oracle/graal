@@ -13,10 +13,14 @@ local repo_config = import '../../repo-configuration.libsonnet';
     timelimit: '1:30:00',
   },
 
-  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_17 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm.custom_vm_linux + self.vm_bench_common + {
+  vm_bench_js_linux_amd64(bench_suite=null, custom_env=null): vm.vm_java_17 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm.custom_vm_linux + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
     config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    setup+: [
+    setup+: (
+      if (custom_env != null) then [
+        ['set-export', 'VM_ENV', custom_env]
+      ] else []
+    ) + [
       vm_common.mx_vm_common + ['build'],
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], '../../js-benchmarks'],
     ],
@@ -29,7 +33,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
       ] else [],
   },
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + {
     base_cmd:: ['mx', '--env', env],
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
     interpreter_bench_cmd:: self.bench_cmd + ['polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
@@ -220,7 +224,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(false) + vm.vm_java_11 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java11-linux-amd64' },
     vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(false) + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java17-linux-amd64' },
 
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64() + {
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64(custom_env='$VM_ENV-js') + {
       # Override `self.vm_bench_js_linux_amd64.run`
       run: [
         vm_common.mx_vm_common + ['benchmark', '--results-file', self.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}-java17', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],

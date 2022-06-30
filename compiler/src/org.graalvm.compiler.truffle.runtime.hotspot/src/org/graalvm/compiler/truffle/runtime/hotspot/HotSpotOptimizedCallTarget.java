@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * A HotSpot specific {@link OptimizedCallTarget} whose machine code (if any) is represented by an
  * associated {@link InstalledCode}.
  */
-public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements OptimizedAssumptionDependency {
+public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements OptimizedAssumptionDependency {
 
     /**
      * Initial value for {@link #installedCode}.

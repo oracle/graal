@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
@@ -144,6 +145,8 @@ public abstract class NativeImageCodeCache {
 
     public abstract int getCodeCacheSize();
 
+    public abstract int getCodeAreaSize();
+
     public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
         return orderedCompilations.get(0);
     }
@@ -166,7 +169,7 @@ public abstract class NativeImageCodeCache {
         return compilations.get(method);
     }
 
-    public abstract void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool);
+    public abstract void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool);
 
     public void layoutConstants() {
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
@@ -273,13 +276,13 @@ public abstract class NativeImageCodeCache {
             if (object instanceof Field) {
                 HostedField hostedField = hMetaAccess.lookupJavaField((Field) object);
                 if (!includedFields.contains(hostedField)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, object, configurationFields.contains(object));
+                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, object, configurationFields.contains(object));
                     includedFields.add(hostedField);
                 }
             } else if (object instanceof Executable) {
                 HostedMethod hostedMethod = hMetaAccess.lookupJavaMethod((Executable) object);
                 if (!includedMethods.contains(hostedMethod)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, object, configurationExecutables.contains(object));
+                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, object, configurationExecutables.contains(object));
                     includedMethods.add(hostedMethod);
                 }
             }
@@ -654,7 +657,7 @@ public abstract class NativeImageCodeCache {
 
         void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod, Object accessor);
 
-        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, AccessibleObject object, boolean registered);
+        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, WrappedElement hostedElement, AccessibleObject object, boolean registered);
 
         void addHidingFieldMetadata(AnalysisField analysisField, HostedType declType, String name, HostedType type, int modifiers);
 

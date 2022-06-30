@@ -45,7 +45,6 @@ import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -73,7 +72,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
-
     private static final AtomicIntegerFieldUpdater<AnalysisMethod> isVirtualRootMethodUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisMethod.class, "isVirtualRootMethod");
 
@@ -573,21 +571,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return GuardedAnnotationAccess.getAnnotations(wrapped);
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return GuardedAnnotationAccess.getDeclaredAnnotations(wrapped);
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return GuardedAnnotationAccess.getAnnotation(wrapped, annotationClass);
-    }
-
-    @Override
     public Annotation[][] getParameterAnnotations() {
         return wrapped.getParameterAnnotations();
     }
@@ -676,7 +659,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             Object curState = parsedGraphCacheState.get();
 
             /*-
-             * This implements a state machine that ensures parsing is atomic. States: 
+             * This implements a state machine that ensures parsing is atomic. States:
              * 1) unparsed: represented by the String "unparsed".
              * 2) parsing: represented by a locked ReentrantLock object that other threads can wait on.
              * 3) parsed: represented by the ParsedGraph with the parsing result

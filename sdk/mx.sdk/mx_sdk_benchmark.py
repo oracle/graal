@@ -210,6 +210,14 @@ class NativeImageBenchmarkMixin(object):
         """
         return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
 
+    def extra_agentlib_options(self, benchmark, args, image_run_args):
+        """Returns additional native-image-agent options.
+
+        The returned options are added to the agentlib:native-image-agent option list.
+        The config-output-dir is configured by the benchmark runner and cannot be overridden.
+        """
+        return []
+
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the profiling run.
 

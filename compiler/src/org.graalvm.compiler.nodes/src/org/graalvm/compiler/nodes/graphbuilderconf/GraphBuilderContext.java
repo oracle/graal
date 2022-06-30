@@ -104,6 +104,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         throw GraalError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
+    default ValueNode[] popArguments(int argSize) {
+        throw GraalError.unimplemented();
+    }
+
     /**
      * Adds a node and all its inputs to the graph. If the node is in the graph, returns
      * immediately. If the node is a {@link StateSplit} with a null

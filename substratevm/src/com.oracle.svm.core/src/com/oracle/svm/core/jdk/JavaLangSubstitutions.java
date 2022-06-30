@@ -724,6 +724,10 @@ public final class JavaLangSubstitutions {
                 return Target_java_lang_StringUTF16.getChar(value, index);
             }
         }
+
+        public static byte coder(String string) {
+            return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
+        }
     }
 
     public static final class ClassValueSupport {

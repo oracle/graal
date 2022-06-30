@@ -109,7 +109,6 @@ public class FrameDescriptorTest extends PartialEvaluationTest {
     private static void assertEmptyFrameDescriptor(FrameDescriptor fd, Object info) {
         Assert.assertEquals(0, fd.getNumberOfSlots());
         Assert.assertEquals(0, fd.getNumberOfAuxiliarySlots());
-        Assert.assertEquals(0, fd.getSize());
         Assert.assertEquals(null, fd.getDefaultValue());
         Assert.assertTrue(info == fd.getInfo());
     }

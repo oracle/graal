@@ -72,6 +72,7 @@ import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
@@ -161,17 +162,26 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
-        return performSpeculativeGuardMovement(context, graph, loops, null);
+        return performSpeculativeGuardMovement(context, graph, loops, null, false);
+    }
+
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, boolean ignoreFrequency) {
+        return performSpeculativeGuardMovement(context, graph, loops, null, ignoreFrequency);
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess) {
-        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess);
+        return performSpeculativeGuardMovement(context, graph, loops, toProcess, false);
+    }
+
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess, boolean ignoreFrequency) {
+        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess, ignoreFrequency);
         spec.run();
         return spec.iterate;
     }
 
     private static class SpeculativeGuardMovement implements Runnable {
 
+        private final boolean ignoreProfiles;
         private final LoopsData loops;
         private final NodeMap<Block> earliestCache;
         private final StructuredGraph graph;
@@ -180,13 +190,15 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         boolean iterate;
         private final NodeBitMap toProcess;
 
-        SpeculativeGuardMovement(LoopsData loops, NodeMap<Block> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess) {
+        SpeculativeGuardMovement(LoopsData loops, NodeMap<Block> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess,
+                        boolean ignoreProfiles) {
             this.loops = loops;
             this.earliestCache = earliestCache;
             this.graph = graph;
             this.profilingInfo = profilingInfo;
             this.speculationLog = speculationLog;
             this.toProcess = toProcess;
+            this.ignoreProfiles = ignoreProfiles;
         }
 
         @Override
@@ -486,7 +498,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                         loopFreqThreshold++;
                     }
                 }
-                if (ProfileSource.isTrusted(loopEx.localFrequencySource()) &&
+                if (!ignoreProfiles && ProfileSource.isTrusted(loopEx.localFrequencySource()) &&
                                 loopEx.localLoopFrequency() < loopFreqThreshold) {
                     debug.log("shouldOptimizeCompare(%s):loop frequency too low.", guard);
                     // loop frequency is too low -- the complexity introduced by hoisting this guard
@@ -520,7 +532,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
              * the loop, thus w still want to try hoisting the guard.
              */
             if (!isInverted(iv.getLoop()) && !AbstractControlFlowGraph.dominates(guardAnchorBlock, iv.getLoop().loop().getHeader())) {
-                if (!shouldHoistBasedOnFrequency(guardAnchorBlock, ivLoop.getHeader().getDominator())) {
+                if (!ignoreProfiles && !shouldHoistBasedOnFrequency(guardAnchorBlock, ivLoop.getHeader().getDominator())) {
                     debug.log("hoisting is not beneficial based on fequency", guard);
                     return false;
                 }
@@ -631,7 +643,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                         break;
                     } else {
                         double relativeFrequency = candidateAnchor.getRelativeFrequency();
-                        if (relativeFrequency <= minFrequency) {
+                        if (ignoreProfiles || SchedulePhase.Instance.compareRelativeFrequencies(relativeFrequency, minFrequency) <= 0) {
                             debug.log("earliestBlockForGuard(%s) hoisting above %s", guard, loopBegin);
                             outerMostExitedLoop = loopBegin;
                             newAnchorEarliest = candidateAnchor;

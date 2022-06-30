@@ -50,16 +50,9 @@ public interface TruffleInliningData {
 
     /**
      * To be used from the compiler side. Sets how many calls in total are in the related
-     * compilation unit. Includes both calls that were inlined and calls that were not (ie. remained
-     * calls after inlining).
+     * compilation unit, and how many of those were inlined.
      */
-    void setCallCount(int count);
-
-    /**
-     * To be used from the compiler side. Sets how many calls in total were inlined into the
-     * compilation unit.
-     */
-    void setInlinedCallCount(int count);
+    void setCallCounts(int total, int inlined);
 
     /**
      * @return How many calls were inlined.

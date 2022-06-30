@@ -51,6 +51,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.debug.GraalError;
@@ -307,13 +308,11 @@ public class AArch64Move {
 
         @Def({REG}) protected AllocatableValue result;
 
-        protected final int dstBitSize;
-        protected final ExtendKind extend;
+        protected final MemoryExtendKind extend;
 
-        ExtendableLoadOp(LIRInstructionClass<? extends ExtendableLoadOp> c, AArch64Kind kind, int dstBitSize, ExtendKind extend, AllocatableValue result, AArch64AddressValue address,
+        ExtendableLoadOp(LIRInstructionClass<? extends ExtendableLoadOp> c, AArch64Kind kind, MemoryExtendKind extend, AllocatableValue result, AArch64AddressValue address,
                         LIRFrameState state) {
             super(c, kind, address, state);
-            this.dstBitSize = dstBitSize;
             this.extend = extend;
             this.result = result;
         }
@@ -322,12 +321,8 @@ public class AArch64Move {
     public static final class LoadOp extends ExtendableLoadOp {
         public static final LIRInstructionClass<LoadOp> TYPE = LIRInstructionClass.create(LoadOp.class);
 
-        public LoadOp(AArch64Kind accessKind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
-            this(accessKind, accessKind.getSizeInBytes() * Byte.SIZE, ExtendKind.NONE, result, address, state);
-        }
-
-        public LoadOp(AArch64Kind accessKind, int dstBitSize, ExtendKind extend, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
-            super(TYPE, accessKind, dstBitSize, extend, result, address, state);
+        public LoadOp(AArch64Kind accessKind, MemoryExtendKind extendKind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
+            super(TYPE, accessKind, extendKind, result, address, state);
         }
 
         @Override
@@ -336,30 +331,42 @@ public class AArch64Move {
             Register dst = asRegister(result);
 
             int srcBitSize = accessKind.getSizeInBytes() * Byte.SIZE;
+            int dstBitSize;
+            if (extend.isNotExtended()) {
+                dstBitSize = srcBitSize;
+            } else {
+                assert accessKind.isInteger();
+                dstBitSize = extend.getExtendedBitSize();
+                assert dstBitSize >= srcBitSize;
+            }
             int memPosition = masm.position();
             boolean tryMerge = mergingAllowed(crb, memPosition);
             if (accessKind.isInteger()) {
                 switch (extend) {
-                    case NONE:
-                        assert dstBitSize == srcBitSize;
+                    case DEFAULT:
                         masm.ldr(srcBitSize, dst, address, tryMerge);
                         break;
-                    case ZERO_EXTEND:
-                        assert dstBitSize >= srcBitSize;
+                    case ZERO_16:
+                    case ZERO_32:
+                    case ZERO_64:
                         // ldr zeros out remaining bits
                         masm.ldr(srcBitSize, dst, address, tryMerge);
                         break;
-                    case SIGN_EXTEND:
-                        assert dstBitSize >= srcBitSize;
-                        // ldrs will sign extend value to required length
-                        masm.ldrs(dstBitSize, srcBitSize, dst, address);
+                    case SIGN_16:
+                    case SIGN_32:
+                    case SIGN_64:
+                        /*
+                         * ldrs will sign extend value to required length. Note ldrs must be extend
+                         * to at least 32 bits
+                         */
+                        masm.ldrs(Integer.max(dstBitSize, 32), srcBitSize, dst, address);
                         break;
                     default:
                         throw GraalError.shouldNotReachHere();
                 }
             } else {
-                assert extend == ExtendKind.NONE;
-                assert srcBitSize == dstBitSize && dstBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+                // floating point or vector access
+                assert srcBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
                 masm.fldr(srcBitSize, dst, address, tryMerge);
             }
             return memPosition;
@@ -369,13 +376,19 @@ public class AArch64Move {
     public static final class LoadAcquireOp extends ExtendableLoadOp {
         public static final LIRInstructionClass<LoadAcquireOp> TYPE = LIRInstructionClass.create(LoadAcquireOp.class);
 
-        public LoadAcquireOp(AArch64Kind accessKind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
-            super(TYPE, accessKind, accessKind.getSizeInBytes() * Byte.SIZE, ExtendKind.NONE, result, address, state);
+        public LoadAcquireOp(AArch64Kind accessKind, MemoryExtendKind extendKind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
+            super(TYPE, accessKind, extendKind, result, address, state);
         }
 
         @Override
         protected int emitMemAccess(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             int srcBitSize = accessKind.getSizeInBytes() * Byte.SIZE;
+            if (extend.isExtended()) {
+                assert accessKind.isInteger();
+                assert extend.isZeroExtend();
+                assert extend.getExtendedBitSize() >= srcBitSize;
+            }
+
             Register dst = asRegister(result);
 
             try (ScratchRegister scratch1 = masm.getScratchRegister()) {
@@ -390,12 +403,10 @@ public class AArch64Move {
                 }
                 int memPosition = masm.position();
                 if (accessKind.isInteger()) {
-                    assert extend == ExtendKind.NONE;
-                    assert dstBitSize == srcBitSize;
                     masm.ldar(srcBitSize, dst, addrReg);
                 } else {
-                    assert extend == ExtendKind.NONE;
-                    assert srcBitSize == dstBitSize && dstBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+                    // floating point access
+                    assert srcBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
                     try (ScratchRegister scratch2 = masm.getScratchRegister()) {
                         Register temp = scratch2.getRegister();
                         masm.ldar(srcBitSize, temp, addrReg);

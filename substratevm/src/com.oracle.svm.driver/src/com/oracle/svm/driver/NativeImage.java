@@ -185,6 +185,7 @@ public class NativeImage {
         }
     }
 
+    final CmdLineOptionHandler cmdLineOptionHandler;
     final DefaultOptionHandler defaultOptionHandler;
     final APIOptionHandler apiOptionHandler;
 
@@ -236,7 +237,6 @@ public class NativeImage {
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageModulePath = new LinkedHashSet<>();
     private final ArrayList<String> customJavaArgs = new ArrayList<>();
-    private final ArrayList<String> customImageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
     private final ArrayList<OptionHandler<? extends NativeImage>> optionHandlers = new ArrayList<>();
 
@@ -577,7 +577,7 @@ public class NativeImage {
                 Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
                 String imageNameValue = properties.get("ImageName");
                 if (imageNameValue != null) {
-                    addCustomImageBuilderArgs(injectHostedOptionOrigin(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString()));
+                    addPlainImageBuilderArg(injectHostedOptionOrigin(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString()));
                 }
                 forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
                 forEachPropertyValue(properties.get("Args"), args, resolver);
@@ -719,6 +719,8 @@ public class NativeImage {
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry();
 
+        cmdLineOptionHandler = new CmdLineOptionHandler(this);
+
         /* Default handler needs to be first */
         defaultOptionHandler = new DefaultOptionHandler(this);
         registerOptionHandler(defaultOptionHandler);
@@ -772,7 +774,9 @@ public class NativeImage {
         /* Prevent JVM that runs the image builder to steal focus */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
-        addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
+        if (!NativeImage.IS_AOT) {
+            addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
+        }
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
 
@@ -1043,7 +1047,7 @@ public class NativeImage {
 
             if (!jarOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
-                boolean explicitMainClass = getHostedOptionFinalArgumentValue(customImageBuilderArgs, oHClass) != null;
+                boolean explicitMainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass) != null;
                 String mainClassModule = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHModule);
 
                 boolean hasMainClassModule = mainClassModule != null && !mainClassModule.isEmpty();
@@ -1062,7 +1066,7 @@ public class NativeImage {
 
                 if (extraImageArgs.isEmpty()) {
                     /* No explicit image name, define image name by other means */
-                    if (getHostedOptionFinalArgumentValue(customImageBuilderArgs, oHName) == null) {
+                    if (getHostedOptionFinalArgumentValue(imageBuilderArgs, oHName) == null) {
                         /* Also no explicit image name given as customImageBuilderArgs */
                         if (explicitMainClass) {
                             imageBuilderArgs.add(oH(SubstrateOptions.Name, "main-class lower case as image name") + mainClass.toLowerCase());
@@ -1071,7 +1075,7 @@ public class NativeImage {
                                 imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase());
                             } else {
                                 /* Although very unlikely, report missing image-name if needed. */
-                                throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                                throw showError("Missing image-name. Use -o <imagename> to provide one.");
                             }
                         }
                     }
@@ -1474,23 +1478,34 @@ public class NativeImage {
         }
 
         List<String> apply(boolean strict) {
-            List<String> leftoverArgs = new ArrayList<>();
+
+            ArgumentQueue queue = new ArgumentQueue(args.argumentOrigin);
             while (!args.isEmpty()) {
+                int numArgs = args.size();
+                if (cmdLineOptionHandler.consume(args)) {
+                    assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + cmdLineOptionHandler.getClass().getName();
+                } else {
+                    queue.add(args.poll());
+                }
+            }
+
+            List<String> leftoverArgs = new ArrayList<>();
+            while (!queue.isEmpty()) {
                 boolean consumed = false;
                 for (int index = optionHandlers.size() - 1; index >= 0; --index) {
                     OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
-                    int numArgs = args.size();
-                    if (handler.consume(args)) {
-                        assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
+                    int numArgs = queue.size();
+                    if (handler.consume(queue)) {
+                        assert queue.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
                         consumed = true;
                         break;
                     }
                 }
                 if (!consumed) {
                     if (strict) {
-                        showError("Property 'Args' contains invalid entry '" + args.peek() + "'");
+                        showError("Property 'Args' contains invalid entry '" + queue.peek() + "'");
                     } else {
-                        leftoverArgs.add(args.poll());
+                        leftoverArgs.add(queue.poll());
                     }
                 }
             }
@@ -1589,11 +1604,6 @@ public class NativeImage {
         customJavaArgs.add(javaArg);
     }
 
-    void addCustomImageBuilderArgs(String plainArg) {
-        addPlainImageBuilderArg(plainArg);
-        customImageBuilderArgs.add(plainArg);
-    }
-
     void setVerbose(boolean val) {
         verbose = val;
     }
@@ -1631,7 +1641,7 @@ public class NativeImage {
     }
 
     boolean useDebugAttach() {
-        return defaultOptionHandler.useDebugAttach;
+        return cmdLineOptionHandler.useDebugAttach;
     }
 
     protected void setDryRun(boolean val) {

@@ -24,17 +24,15 @@
  */
 package org.graalvm.compiler.truffle.test.nodes;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-@SuppressWarnings("deprecation")
 public class LoadLocalTestNode extends AbstractTestNode {
 
-    private final com.oracle.truffle.api.frame.FrameSlot slot;
+    private final int slot;
 
-    public LoadLocalTestNode(String name, FrameDescriptor frameDescriptor) {
-        slot = frameDescriptor.findOrAddFrameSlot(name);
+    public LoadLocalTestNode(int index) {
+        slot = index;
     }
 
     @Override

@@ -145,7 +145,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
                 event.setCompiledCodeAddress(target.getCodeAddress());
             }
 
-            int calls = 0;
+            int calls;
             int inlinedCalls;
             if (inliningDecision == null) {
                 TraceCompilationListener.CallCountVisitor visitor = new TraceCompilationListener.CallCountVisitor();

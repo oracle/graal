@@ -580,7 +580,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         Block previousCurrentBlock = currentBlock;
                         currentBlock = currentBlock.getDominator();
                         if (previousCurrentBlock.isLoopHeader()) {
-                            if (currentBlock.getRelativeFrequency() < latestBlock.getRelativeFrequency() ||
+                            if (compareRelativeFrequencies(currentBlock.getRelativeFrequency(), latestBlock.getRelativeFrequency()) <= 0 ||
                                             ((StructuredGraph) currentNode.graph()).isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
                                 // Only assign new latest block if frequency is actually lower or if
                                 // loop proxies would be required otherwise.
@@ -601,6 +601,18 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
 
             selectLatestBlock(currentNode, earliestBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
+        }
+
+        public static int compareRelativeFrequencies(double f1, double f2) {
+            double delta = 0.01D;
+            double res = f1 - f2;
+            if (res > delta) {
+                return 1;
+            }
+            if (res < -delta) {
+                return -1;
+            }
+            return 0;
         }
 
         protected static boolean isImplicitNullOpportunity(Node currentNode, Block block, boolean supportsImplicitNullChecks) {

@@ -27,10 +27,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -68,8 +72,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 
 public final class ClassRedefinition {
 
@@ -272,7 +274,13 @@ public final class ClassRedefinition {
                         // inject it under the existing JDWP ID
                         classRegistry.onInnerClassRemoved(type);
                         ObjectKlass newKlass = classRegistry.defineKlass(type, classInfo.getBytes());
+                        assert newKlass != loadedKlass && newKlass == classRegistry.findLoadedKlass(type);
+
                         packet.info.setKlass(newKlass);
+                    } else if (classInfo.isNewInnerTestKlass()) {
+                        // New inner test classes cannot be loaded because they'll
+                        // have a versioned name on disk, so let's define them directly
+                        classRegistry.defineKlass(type, classInfo.getBytes());
                     }
                     return 0;
                 default:
@@ -289,6 +297,10 @@ public final class ClassRedefinition {
     // changes
     private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass)
                     throws RedefintionNotSupportedException {
+        if (oldKlass.getSuperKlass() == oldKlass.getMeta().java_lang_Enum) {
+            detectInvalidEnumConstantChanges(newParserKlass, oldKlass);
+        }
+
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
@@ -475,6 +487,36 @@ public final class ClassRedefinition {
         collectedChanges.addSuperInterfaces(newSuperInterfaces);
 
         return result;
+    }
+
+    private static void detectInvalidEnumConstantChanges(ParserKlass newParserKlass, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
+        // detect invalid enum constant changes
+        // currently, we only allow appending new enum constants
+        Field[] oldEnumFields = oldKlass.getDeclaredFields();
+        LinkedList<Symbol<Symbol.Name>> oldEnumConstants = new LinkedList<>();
+        for (Field oldEnumField : oldEnumFields) {
+            if (oldEnumField.getType() == oldKlass.getType()) {
+                oldEnumConstants.addLast(oldEnumField.getName());
+            }
+        }
+        LinkedList<Symbol<Symbol.Name>> newEnumConstants = new LinkedList<>();
+        ParserField[] newEnumFields = newParserKlass.getFields();
+        for (ParserField newEnumField : newEnumFields) {
+            if (newEnumField.getType() == oldKlass.getType()) {
+                newEnumConstants.addLast(newEnumField.getName());
+            }
+        }
+        // we don't currently allow removing enum constants
+        if (oldEnumConstants.size() > newEnumConstants.size()) {
+            throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
+        }
+
+        // compare ordered lists, we don't allow reordering enum constants
+        for (int i = 0; i < oldEnumConstants.size(); i++) {
+            if (oldEnumConstants.get(i) != newEnumConstants.get(i)) {
+                throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
+            }
+        }
     }
 
     private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefintionNotSupportedException {

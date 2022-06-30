@@ -36,6 +36,7 @@ import java.util.Locale;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
+import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
@@ -99,8 +100,8 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     public static final String LIBSULONG_FILENAME = NativeContextExtension.getNativeLibrary("sulong");
     public static final String LIBSULONGXX_FILENAME = NativeContextExtension.getNativeLibrary("sulong++");
 
-    protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
-        super(cls, loadCxxLibraries);
+    protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries, InlineAssemblyParserBase inlineAssemblyParser) {
+        super(cls, loadCxxLibraries, inlineAssemblyParser);
     }
 
     @Override

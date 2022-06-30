@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -39,7 +40,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider {
+public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
 
     private final ResolvedJavaType original;
     private final ResolvedJavaType annotated;
@@ -237,18 +238,8 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return annotated.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return annotated.getDeclaredAnnotations();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return annotated.getAnnotation(annotationClass);
+    public AnnotatedElement getAnnotationRoot() {
+        return annotated;
     }
 
     @Override

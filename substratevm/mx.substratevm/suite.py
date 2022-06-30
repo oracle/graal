@@ -2,7 +2,7 @@
 suite = {
     "mxversion": "6.0.1",
     "name": "substratevm",
-    "version" : "22.2.0",
+    "version" : "22.3.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -407,13 +407,28 @@ suite = {
             "workingSets": "SVM",
         },
 
+
+        "com.oracle.graal.reachability": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.graal.pointsto",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "11+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
                 "com.oracle.svm.core",
-                "com.oracle.graal.pointsto",
+                "com.oracle.graal.reachability"
             ],
             "requires" : [
                 "java.desktop",
@@ -439,7 +454,8 @@ suite = {
                     "sun.text.spi",
                     "jdk.internal.reflect",
                     "sun.util.cldr",
-                    "sun.util.locale"
+                    "sun.util.locale",
+                    "sun.invoke.util",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",

@@ -88,7 +88,7 @@ public final class SingleImplementor {
                 state = currentState;
             }
             // whoever executed the CAS successfully is responsible for invalidating the assumption
-            state.hasValue().invalidate();
+            state.hasValue().invalidate("Single implementor invalidated");
         }
     }
 

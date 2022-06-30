@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## Version 22.3.0
+* (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
+* (GR-39390) Red Hat added support for the JFR event `JavaMonitorEnter`.
+
 ## Version 22.2.0
 * (GR-20653) Re-enable the usage of all CPU features for JIT compilation on AMD64.
 * (GR-38413) Add support for `-XX:+ExitOnOutOfMemoryError`.
@@ -9,6 +13,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-38965) Heap dumps are now supported in Community Edition. 
 * (GR-38951) Add `-XX:+DumpHeapAndExit` option to dump the initial heap of a native executable.
 * (GR-37582) Run image-builder on module-path per default. Opt-out with env setting `USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false`.
+* (GR-38660) Expose -H:Name=<outfile> as API option -o <outfile>
+* (GR-39043) Make certain native-image options command-line only and ensure they get processed before other options (--exclude-config --configurations-path --version --help --help-extra --dry-run --debug-attach --expert-options --expert-options-all --expert-options-detail --verbose-server --server-*)
 
 ## Version 22.1.0
 * (GR-36568) Add "Quick build" mode, enabled through option `-Ob`, for quicker native image builds.

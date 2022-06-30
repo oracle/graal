@@ -559,20 +559,11 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
-        if (stackAllocationNode.isAOT()) {
-            allocateNativeOverflowAreaSlowPath(stackAllocationNode, frame);
-        } else {
-            this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
-        }
+        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
         this.gpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.GP_LIMIT, frame);
         gpSaveAreaNativePtr = gpSaveAreaNativePtr.increment(Aarch64BitVarArgs.GP_LIMIT);
         this.fpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.FP_LIMIT, frame);
         fpSaveAreaNativePtr = fpSaveAreaNativePtr.increment(Aarch64BitVarArgs.FP_LIMIT);
-    }
-
-    @TruffleBoundary
-    private void allocateNativeOverflowAreaSlowPath(StackAllocationNode stackAllocationNode, Frame frame) {
-        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
     }
 
     private static void initNativeVAList(LLVMI32OffsetStoreNode gpOffsetStore, LLVMI32OffsetStoreNode fpOffsetStore, LLVMPointerOffsetStoreNode overflowArgAreaStore,

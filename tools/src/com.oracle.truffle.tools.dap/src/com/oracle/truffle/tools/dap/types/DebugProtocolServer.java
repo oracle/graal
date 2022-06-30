@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -399,7 +400,7 @@ public class DebugProtocolServer {
                         if (server.getLogger().isLoggable(Level.FINER)) {
                             String format = "[Trace - %s] Received request '%s - (%d)'\nArgs: %s";
                             server.getLogger().log(Level.FINER,
-                                            String.format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments())));
+                                            format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments())));
                         }
                         processRequest(request);
                         break;
@@ -407,14 +408,14 @@ public class DebugProtocolServer {
                         final Response response = new Response(message.jsonData);
                         if (server.getLogger().isLoggable(Level.FINER)) {
                             String format = "[Trace - %s] Received response '(%d)'\nResult: %s";
-                            server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody())));
+                            server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody())));
                         }
                         processResponse(response);
                         break;
                     default:
                         sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create().setError(
                                         Message.create(1014, "Unrecognized message type: {_type}").setVariables(Collections.singletonMap("_type", messageType))),
-                                        message.getSeq(), false, null, sequenceNum.getAndIncrement()).setMessage(String.format("Unrecognized message type: `%s`", messageType)));
+                                        message.getSeq(), false, null, sequenceNum.getAndIncrement()).setMessage(format("Unrecognized message type: `%s`", messageType)));
                 }
             } catch (Exception e) {
                 server.getLogger().log(Level.SEVERE, "Error while processing an incomming message: " + e.getMessage());
@@ -631,7 +632,7 @@ public class DebugProtocolServer {
                     default:
                         sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create().setError(
                                         Message.create(1014, "Unrecognized command: {_cmd}").setVariables(Collections.singletonMap("_cmd", command))),
-                                        seq, false, command, sequenceNum.getAndIncrement()).setMessage(String.format("Unrecognized command: `%s`", command)));
+                                        seq, false, command, sequenceNum.getAndIncrement()).setMessage(format("Unrecognized command: `%s`", command)));
                 }
                 if (future != null) {
                     pendingReceivedRequests.put(seq, future);
@@ -646,7 +647,7 @@ public class DebugProtocolServer {
                             server.getLogger().log(Level.SEVERE, msg, throwable);
                             sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create().setError(
                                             Message.create(1104, "Internal Error: {_err}").setVariables(Collections.singletonMap("_err", msg))),
-                                            seq, false, command, sequenceNum.getAndIncrement()).setMessage(String.format("Internal Error: `%s`", msg)));
+                                            seq, false, command, sequenceNum.getAndIncrement()).setMessage(format("Internal Error: `%s`", msg)));
                         }
                         return null;
                     }).thenApply((obj) -> {
@@ -662,7 +663,7 @@ public class DebugProtocolServer {
                 server.getLogger().log(Level.SEVERE, msg, e);
                 sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create().setError(
                                 Message.create(1104, "Internal Error: {_err}").setVariables(Collections.singletonMap("_err", msg))),
-                                seq, false, command, sequenceNum.getAndIncrement()).setMessage(String.format("Internal Error: `%s`", msg)));
+                                seq, false, command, sequenceNum.getAndIncrement()).setMessage(format("Internal Error: `%s`", msg)));
             }
         }
 
@@ -676,7 +677,7 @@ public class DebugProtocolServer {
                             future.complete(new RunInTerminalResponse(response.jsonData));
                             break;
                         default:
-                            future.completeExceptionally(new RuntimeException(String.format("Unrecognized command: `%s`", command)));
+                            future.completeExceptionally(new RuntimeException(format("Unrecognized command: `%s`", command)));
                     }
                 } catch (Exception e) {
                     server.getLogger().log(Level.SEVERE, e.getMessage(), e);
@@ -689,7 +690,7 @@ public class DebugProtocolServer {
             CompletableFuture<Response> future = new CompletableFuture<>();
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending request '%s - (%d)'\nArgs: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments())));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments())));
             }
             writeMessage(getJSONData(request).toString());
             pendingSentRequests.put(request.getSeq(), future);
@@ -699,7 +700,7 @@ public class DebugProtocolServer {
         private void sendResponse(Response response) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending response '(%d)'\nResult: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody())));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody())));
             }
             writeMessage(getJSONData(response).toString());
         }
@@ -707,7 +708,7 @@ public class DebugProtocolServer {
         private void sendErrorResponse(ErrorResponse response) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending error response '(%d)'\nError: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody().getError())));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody().getError())));
             }
             writeMessage(getJSONData(response).toString());
 
@@ -716,7 +717,7 @@ public class DebugProtocolServer {
         private void sendEvent(Event event) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending event '%s'\nBody: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), event.getType(), getJSONData(event.getBody())));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), event.getType(), getJSONData(event.getBody())));
             }
             writeMessage(getJSONData(event).toString());
         }
@@ -733,7 +734,7 @@ public class DebugProtocolServer {
 
         private static void writeMessageBytes(OutputStream out, byte[] messageBytes) throws IOException {
             int contentLength = messageBytes.length;
-            String header = String.format("Content-Length: %d\r\n\r\n", contentLength);
+            String header = format("Content-Length: %d\r\n\r\n", contentLength);
             byte[] headerBytes = header.getBytes(StandardCharsets.US_ASCII);
             synchronized (out) {
                 out.write(headerBytes);
@@ -797,5 +798,9 @@ public class DebugProtocolServer {
         void log(Level level, String msg);
 
         void log(Level level, String msg, Throwable thrown);
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.ENGLISH, format, args);
     }
 }

@@ -55,4 +55,9 @@ public final class DestroyVMNode extends RootNode {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
+
+    @Override
+    public String getName() {
+        return EVAL_NAME;
+    }
 }

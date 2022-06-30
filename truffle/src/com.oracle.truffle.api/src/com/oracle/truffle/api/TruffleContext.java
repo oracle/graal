@@ -88,7 +88,7 @@ public final class TruffleContext implements AutoCloseable {
     static {
         boolean assertions = false;
         assert (assertions = true) == true;
-        CONTEXT_ASSERT_STACK = assertions ? new ThreadLocal<List<Object>>() {
+        CONTEXT_ASSERT_STACK = assertions ? new ThreadLocal<>() {
             @Override
             protected List<Object> initialValue() {
                 return new ArrayList<>();
@@ -149,15 +149,6 @@ public final class TruffleContext implements AutoCloseable {
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
-    }
-
-    /**
-     * @since 0.27
-     * @deprecated use {@link #enter(Node)} instead and pass in the node context is possible.
-     */
-    @Deprecated(since = "20.3")
-    public Object enter() {
-        return enter(null);
     }
 
     /**
@@ -386,16 +377,6 @@ public final class TruffleContext implements AutoCloseable {
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
-    }
-
-    /**
-     * @since 0.27
-     * @deprecated use {@link #leave(Node, Object)} instead and pass in the node context if
-     *             possible.
-     */
-    @Deprecated(since = "20.3")
-    public void leave(Object prev) {
-        leave(null, prev);
     }
 
     /**
@@ -689,7 +670,7 @@ public final class TruffleContext implements AutoCloseable {
          * about to reach the outer context, or when some operation on the new context is attempted
          * while the context is already cancelled. However, the runnable will only be executed if
          * the outer context is not cancelled.
-         * 
+         *
          * The purpose of the runnable is to allow throwing a custom guest exception before the
          * cancel exception reaches the outer context, so that the outer context can properly handle
          * the exception. In case the runnable does not throw any exception, an internal error is
@@ -734,7 +715,7 @@ public final class TruffleContext implements AutoCloseable {
          * close exception reaches the outer context, so that the outer context can properly handle
          * the exception. In case the runnable does not throw any exception, an internal error is
          * thrown (should not be caught).
-         * 
+         *
          * @since 22.1
          */
         public Builder onClosed(Runnable r) {

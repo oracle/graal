@@ -26,6 +26,8 @@ package org.graalvm.polyglot.nativeapi;
 
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 class PolyglotNativeAPIError extends RuntimeException {
 
     private static final long serialVersionUID = 4984829371239646821L;
@@ -37,6 +39,7 @@ class PolyglotNativeAPIError extends RuntimeException {
         this.code = code;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     PolyglotStatus getCode() {
         return code;
     }

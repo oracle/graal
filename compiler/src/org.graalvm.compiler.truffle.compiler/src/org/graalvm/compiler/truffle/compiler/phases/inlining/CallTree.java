@@ -123,10 +123,7 @@ public final class CallTree extends Graph {
 
     public void updateTracingInfo(TruffleInliningData inliningPlan) {
         final int inlinedWithoutRoot = inlined - 1;
-        if (tracingCallCounts()) {
-            inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
-            inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
-        }
+        inliningPlan.setCallCounts(inlinedWithoutRoot + frontierSize, inlinedWithoutRoot);
         if (loggingInlinedTargets()) {
             root.collectInlinedTargets(inliningPlan);
         }
@@ -134,13 +131,6 @@ public final class CallTree extends Graph {
 
     private boolean loggingInlinedTargets() {
         return context.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || context.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
-                        context.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
-    }
-
-    private boolean tracingCallCounts() {
-        return context.options.get(PolyglotCompilerOptions.TraceCompilation) ||
-                        context.options.get(PolyglotCompilerOptions.TraceCompilationDetails) ||
-                        context.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
                         context.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 }

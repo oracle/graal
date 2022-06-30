@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,13 +41,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
+
     public static final String LIBCXXABI_PREFIX = "libc++abi.";
     public static final String LIBCXX_PREFIX = "libc++.";
     protected final boolean loadCxxLibraries;
+    private final InlineAssemblyParserBase inlineAssemblyParser;
 
-    public PlatformCapabilityBase(Class<S> cls, boolean loadCxxLibraries) {
+    public PlatformCapabilityBase(Class<S> cls, boolean loadCxxLibraries, InlineAssemblyParserBase inlineAssemblyParser) {
         super(cls);
         this.loadCxxLibraries = loadCxxLibraries;
+        this.inlineAssemblyParser = inlineAssemblyParser;
     }
 
     @Override
@@ -107,5 +111,10 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
             return newDeps;
         }
         return dependencies;
+    }
+
+    @Override
+    public InlineAssemblyParserBase getInlineAssemblyParser() {
+        return inlineAssemblyParser;
     }
 }

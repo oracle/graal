@@ -3777,6 +3777,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return frameState.pop(slotKind);
     }
 
+    @Override
+    public ValueNode[] popArguments(int argSize) {
+        return frameState.popArguments(argSize);
+    }
+
     /**
      * Gets the graph being processed by this builder.
      */

@@ -614,7 +614,7 @@ graal_unit_test_runs = [
 ]
 
 _registers = {
-    'amd64': 'rbx,r11,r10,r14,xmm3,xmm11,xmm14',
+    'amd64': 'rbx,r11,r10,r14,xmm3,xmm2,xmm11,xmm14,k1?',
     'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
 }
 if mx.get_arch() not in _registers:
@@ -984,8 +984,8 @@ def collate_metrics(args):
                 writer.writerow([n] + [str(v) for v in series] + [units[n]])
         mx.log('Collated metrics into ' + collated_filename)
 
-def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True, command_mapper_hooks=None):
-    graaljdk = get_graaljdk()
+def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None):
+    graaljdk = jdk or get_graaljdk()
     vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
     _check_bootstrap_config(args)

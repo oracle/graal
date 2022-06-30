@@ -43,7 +43,7 @@ package com.oracle.truffle.api.staticobject;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
+import org.graalvm.nativeimage.ImageInfo;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -92,7 +92,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class StaticShape<T> {
     enum StorageStrategy {
         ARRAY_BASED,
-        FIELD_BASED
+        FIELD_BASED,
+        POD_BASED
     }
 
     static final Unsafe UNSAFE = getUnsafe();
@@ -510,14 +511,19 @@ public abstract class StaticShape<T> {
             String strategy = SomAccessor.ENGINE.getStaticObjectStorageStrategy(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language));
             switch (strategy) {
                 case "DEFAULT":
-                    return TruffleOptions.AOT ? StorageStrategy.ARRAY_BASED : StorageStrategy.FIELD_BASED;
+                    if (ImageInfo.inImageCode()) {
+                        return StorageStrategy.ARRAY_BASED;
+                    } else {
+                        return StorageStrategy.FIELD_BASED;
+                    }
+                case "FIELD_BASED":
+                    if (ImageInfo.inImageCode()) {
+                        return StorageStrategy.POD_BASED;
+                    } else {
+                        return StorageStrategy.FIELD_BASED;
+                    }
                 case "ARRAY_BASED":
                     return StorageStrategy.ARRAY_BASED;
-                case "FIELD_BASED":
-                    if (TruffleOptions.AOT) {
-                        throw new IllegalArgumentException("The field-based storage strategy is not yet supported on Native Image");
-                    }
-                    return StorageStrategy.FIELD_BASED;
                 default:
                     throw new IllegalArgumentException("Should not reach here. Unexpected storage strategy: " + strategy);
             }

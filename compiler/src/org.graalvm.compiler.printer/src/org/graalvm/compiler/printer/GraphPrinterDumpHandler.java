@@ -120,7 +120,7 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private int nextDumpId() {
-        int depth = previousInlineContext.size();
+        int depth = previousInlineContext.size() - 1;
         if (dumpIds.length < depth + 1) {
             dumpIds = Arrays.copyOf(dumpIds, depth + 1);
         }

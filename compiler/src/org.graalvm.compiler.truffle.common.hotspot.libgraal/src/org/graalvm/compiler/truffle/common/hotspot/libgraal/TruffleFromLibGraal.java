@@ -121,8 +121,7 @@ public @interface TruffleFromLibGraal {
         OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class),
         OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
         RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
-        SetCallCount(void.class, Object.class, int.class),
-        SetInlinedCallCount(void.class, Object.class, int.class);
+        SetCallCounts(void.class, Object.class, int.class, int.class);
         // @formatter:on
 
         private final String signature;

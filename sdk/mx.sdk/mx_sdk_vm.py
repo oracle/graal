@@ -55,6 +55,7 @@ from os.path import join, exists, isfile, isdir, dirname, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
 from binascii import b2a_hex
 from collections import OrderedDict
+from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
@@ -80,6 +81,7 @@ def _with_metaclass(meta, *bases):
     return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {})  # pylint: disable=unused-variable
 
 
+_suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
 _vm_configs = []
@@ -976,44 +978,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
 
         # Create src.zip in new JDK image
         _copy_src_zip(jdk.home, dst_jdk_dir, modules, lambda jmd: not use_upgrade_module_path and with_source(jmd.dist))
-
-        mx.logv('[Copying static libraries]')
-        lib_directory = join(jdk.home, 'lib', 'static')
-        if exists(lib_directory):
-            dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
-            try:
-                mx.copytree(lib_directory, dst_lib_directory)
-            except shutil.Error as e:
-                # On AArch64, there can be a problem in the copystat part
-                # of copytree which occurs after file and directory copying
-                # has successfully completed. Since the metadata doesn't
-                # matter in this case, just ensure that the content was copied.
-                for root, _, lib_files in os.walk(lib_directory):
-                    relative_root = os.path.relpath(root, dst_lib_directory)
-                    for lib in lib_files:
-                        src_lib_path = join(root, lib)
-                        dst_lib_path = join(dst_lib_directory, relative_root, lib)
-                        if not exists(dst_lib_path):
-                            mx.abort('Error copying static libraries: {} missing in {}{}Original copytree error: {}'.format(
-                                join(relative_root, lib), dst_lib_directory, os.linesep, e))
-                        src_lib_hash = mx.sha1OfFile(src_lib_path)
-                        dst_lib_hash = mx.sha1OfFile(dst_lib_path)
-                        if src_lib_hash != dst_lib_hash:
-                            mx.abort('Error copying static libraries: {} (hash={}) and {} (hash={}) differ{}Original copytree error: {}'.format(
-                                src_lib_path, src_lib_hash,
-                                dst_lib_path, dst_lib_hash,
-                                os.linesep, e))
-        # Allow older JDK versions to work
-        else:
-            lib_prefix = mx.add_lib_prefix('')
-            lib_suffix = mx.add_static_lib_suffix('')
-            lib_directory = join(jdk.home, 'lib')
-            dst_lib_directory = join(dst_jdk_dir, 'lib')
-            for f in os.listdir(lib_directory):
-                if f.startswith(lib_prefix) and f.endswith(lib_suffix):
-                    lib_path = join(lib_directory, f)
-                    if isfile(lib_path):
-                        shutil.copy2(lib_path, dst_lib_directory)
     finally:
         if not mx.get_opts().verbose:
             # Preserve build directory so that javac command can be re-executed
@@ -1059,41 +1023,57 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
-def verify_graalvm_configs(suites=None):
+@mx.command(_suite, 'verify-graalvm-configs')
+def _verify_graalvm_configs(args):
+    parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
+    parser.add_argument('--suites', help='comma-separated list of suites')
+    parser.add_argument('--from', dest='start_from', help='start verification from the indicated env file')
+    args = parser.parse_args(args)
+    suites = args.suites if args.suites is None else args.suites.split(',')
+    verify_graalvm_configs(suites=suites, start_from=args.start_from)
+
+
+def verify_graalvm_configs(suites=None, start_from=None):
     """
     Check the consistency of registered GraalVM configs.
     :param suites: optionally restrict the check to the configs registered by this list of suites.
     :type suites: list[str] or None
+    :type start_from: str
     """
     import mx_sdk_vm_impl
     child_env = os.environ.copy()
     for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
         if env_var in child_env:
             del child_env[env_var]
+    started = start_from is None
     for dist_name, _, components, suite, env_file in _vm_configs:
         if env_file is not False and (suites is None or suite.name in suites):
             _env_file = env_file or dist_name
+            started = started or _env_file == start_from
+
             graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
-            mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(_env_file, suite.name, graalvm_dist_name))
-            out = mx.LinesOutputCapture()
-            err = mx.LinesOutputCapture()
-            retcode = mx.run_mx(['--quiet', '--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=err, env=child_env, nonZeroIsFatal=False)
-            if retcode != 0:
-                mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output:\n{}\nError:\n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines), '\n'.join(err.lines)))
-            if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
-                out2 = mx.LinesOutputCapture()
-                retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env=child_env, nonZeroIsFatal=False)
-                if retcode2 or len(out2.lines) != 1:
-                    got_components = '<error>'
-                    diff = ''
-                else:
-                    got_components = out2.lines[0]  # example string: "['bpolyglot', 'cmp']"
-                    got_components_set = set(got_components[1:-1].replace('\'', '').split(', '))
-                    components_set = set(components)
-                    added = list(got_components_set - components_set)
-                    removed = list(components_set - got_components_set)
-                    diff = ('Added:\n{}\n'.format(added) if added else '') + ('Removed:\n{}\n'.format(removed) if removed else '')
-                mx.abort("""\
+            mx.log("{}Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format('' if started else '[SKIPPED] ', _env_file, suite.name, graalvm_dist_name))
+
+            if started:
+                out = mx.LinesOutputCapture()
+                err = mx.LinesOutputCapture()
+                retcode = mx.run_mx(['--quiet', '--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=err, env=child_env, nonZeroIsFatal=False)
+                if retcode != 0:
+                    mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output:\n{}\nError:\n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines), '\n'.join(err.lines)))
+                if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
+                    out2 = mx.LinesOutputCapture()
+                    retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env=child_env, nonZeroIsFatal=False)
+                    if retcode2 or len(out2.lines) != 1:
+                        got_components = '<error>'
+                        diff = ''
+                    else:
+                        got_components = out2.lines[0]  # example string: "['bpolyglot', 'cmp']"
+                        got_components_set = set(got_components[1:-1].replace('\'', '').split(', '))
+                        components_set = set(components)
+                        added = list(got_components_set - components_set)
+                        removed = list(components_set - got_components_set)
+                        diff = ('Added:\n{}\n'.format(added) if added else '') + ('Removed:\n{}\n'.format(removed) if removed else '')
+                    mx.abort("""\
 Unexpected GraalVM dist name for env file '{}' in suite '{}'.
 Expected dist name: '{}'
 Actual dist name: '{}'.

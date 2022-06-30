@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.guarantee;
 import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
@@ -575,13 +576,19 @@ public final class GraalFeature implements Feature {
 
         for (MethodCallTargetNode targetNode : callTargets) {
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
-            PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
-            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getInvokes().get(targetNode.invoke().bci());
+            ResolvedJavaMethod callerMethod = targetNode.invoke().stateAfter().getMethod();
+            Collection<AnalysisMethod> allImplementationMethods;
+            if (callerMethod instanceof PointsToAnalysisMethod) {
+                PointsToAnalysisMethod pointToCalledMethod = (PointsToAnalysisMethod) callerMethod;
+                InvokeTypeFlow invokeFlow = pointToCalledMethod.getTypeFlow().getInvokes().get(targetNode.invoke().bci());
 
-            if (invokeFlow == null) {
-                continue;
+                if (invokeFlow == null) {
+                    continue;
+                }
+                allImplementationMethods = invokeFlow.getCallees();
+            } else {
+                allImplementationMethods = Arrays.asList(method.getImplementations());
             }
-            Collection<AnalysisMethod> allImplementationMethods = invokeFlow.getCallees();
 
             /*
              * Eventually we want to remove all invokes that are unreachable, i.e., have no

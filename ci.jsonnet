@@ -35,7 +35,7 @@ local vm = import 'vm/ci_includes/vm.jsonnet';
 # for a PR that only touches *.md files, the docs, are config files for GitHub
 local add_excludes_guard(build) = build + {
   guard+: {
-    excludes+: ["**.md", "docs/**", ".github/**"]
+    excludes+: ["**.md", "docs/**", ".devcontainer/**", ".github/**"]
   }
 };
 

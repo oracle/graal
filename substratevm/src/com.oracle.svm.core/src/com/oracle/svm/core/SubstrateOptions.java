@@ -93,6 +93,7 @@ public class SubstrateOptions {
     @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
     public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
 
+    @APIOption(name = "-o", valueSeparator = APIOption.WHITESPACE_SEPARATOR)//
     @Option(help = "Name of the output file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
 
@@ -393,9 +394,6 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
-    @Option(help = "Use new build output style", type = OptionType.User, deprecated = true, deprecationMessage = "The old build output style will be removed in a future release.")//
-    public static final HostedOptionKey<Boolean> BuildOutputUseNewStyle = new HostedOptionKey<>(true);
-
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 

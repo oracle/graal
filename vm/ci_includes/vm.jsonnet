@@ -48,6 +48,8 @@ local jdks = common_json.jdks;
 
   check_graalvm_base_build: [],
 
+  check_graalvm_complete_build: [],
+
   vm_setup:: {
     short_name:: 'ce',
     setup+: [

@@ -66,10 +66,9 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -531,7 +530,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void methodBeforeTypeFlowCreationHook(PointsToAnalysis bb, AnalysisMethod method, StructuredGraph graph) {
+    public void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (method.isEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
             ValueNode receiver = graph.start().stateAfter().localAt(0);
             if (receiver != null && receiver.hasUsages()) {
@@ -602,7 +601,7 @@ public class SVMHost extends HostVM {
      * call chain is the class initializer. But this does not fit well into the current approach
      * where each method has a `Safety` flag.
      */
-    private void checkClassInitializerSideEffect(PointsToAnalysis bb, AnalysisMethod method, Node n) {
+    private void checkClassInitializerSideEffect(BigBang bb, AnalysisMethod method, Node n) {
         if (n instanceof AccessFieldNode) {
             ResolvedJavaField field = ((AccessFieldNode) n).field();
             if (field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {
