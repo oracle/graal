@@ -212,10 +212,8 @@ public class ParserState {
      */
     public byte[] popAll(byte[] expectedValueTypes) {
         byte[] popped = new byte[expectedValueTypes.length];
-        int j = 0;
         for (int i = expectedValueTypes.length - 1; i >= 0; i--) {
-            popped[j] = popChecked(expectedValueTypes[i]);
-            j++;
+            popped[i] = popChecked(expectedValueTypes[i]);
         }
         return popped;
     }

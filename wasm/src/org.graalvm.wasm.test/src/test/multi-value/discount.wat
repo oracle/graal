@@ -38,14 +38,29 @@
 ;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ;; SOFTWARE.
 ;;
+
 (module
-    (type (;0;) (func (param i32 i32) (result i32)))
-    (func (export "_main") (result i32)
-        i32.const 1
-        i32.const 2
-        (block (type 0)
-            i32.add
-        )
-        return
-    )
+  (type (;0;) (func (result i32)))
+  (type (;1;) (func (param i32) (result i32)))
+  (type (;2;) (func (param i32)))
+  (func (export "_main") (type 1) (param $code i32) (result i32)
+    local.get $code
+    i32.const 400
+    i32.ne
+    block (type 2)  ;; label = @1
+      br_if 0 (;@1;)
+      i32.const 5
+      return
+    end
+    local.get $code
+    i32.const 500
+    i32.ne
+    block (type 2)  ;; label = @1
+      br_if 0 (;@1;)
+      i32.const 10
+      return
+    end
+    i32.const 15
+    return
+  )
 )

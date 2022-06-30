@@ -432,7 +432,7 @@ public class BinaryParser extends BinaryStreamParser {
         return results;
     }
 
-    private byte[] encapsulateResultType(int type) {
+    private static byte[] encapsulateResultType(int type) {
         switch (type) {
             case VOID_TYPE:
                 return WasmType.VOID_TYPE_ARRAY;

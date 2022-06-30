@@ -514,8 +514,8 @@ public class ValidationSuite extends WasmFileSuite {
                                         "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 09 01 07 00 41 01 04 40 0B 0B",
                                         null),
 
-                        // If - no return value in true branch
-                        binaryCase("If - true branch missing return value",
+                        // If - no result value in true branch
+                        binaryCase("If - true branch missing result value",
                                         "Expected result types [i32], but got [].",
                                         // (module
                                         // (func
@@ -529,9 +529,9 @@ public class ValidationSuite extends WasmFileSuite {
                                         "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0D 01 0B 00 41 01 04 7F 05 41 00 0B 1A 0B",
                                         Failure.Type.INVALID),
 
-                        // If - return type with missing else
-                        binaryCase("If - return type without else branch",
-                                        "Expected else branch. If with result value requires then and else branch.",
+                        // If - result type with missing else
+                        binaryCase("If - result type without else branch",
+                                        "Expected else branch. If with incompatible param and result types requires else branch.",
                                         // (module
                                         // (func
                                         // i32.const 1
@@ -761,7 +761,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.INVALID),
 
                         // Branch table with different target function signature
-                        binaryCase("Br_table - different target return types (i32 - void)",
+                        binaryCase("Br_table - different target result types (i32 - void)",
                                         "Inconsistent label types. Expected [], but got [i32].",
                                         // (module
                                         // (func (result i32)
@@ -773,7 +773,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         // )
                                         "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7F 03 02 01 00 0A 0D 01 0B 00 02 40 41 00 0E 01 01 00 0B 0B",
                                         Failure.Type.INVALID),
-                        binaryCase("Br_table - different target return types (i32 - f32)",
+                        binaryCase("Br_table - different target result types (i32 - f32)",
                                         "Inconsistent label types. Expected [f32], but got [i32].",
                                         // (module
                                         // (func (result i32)
@@ -812,7 +812,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.INVALID),
 
                         // Return with incorrect type
-                        binaryCase("Return - incorrect return type",
+                        binaryCase("Return - incorrect result type",
                                         "Expected result types [f32], but got [i32].",
                                         // (module
                                         // (func (result f32)
@@ -947,7 +947,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 07 01 05 00 06 00 1A 0B",
                                         Failure.Type.MALFORMED),
 
-                        binaryCase("Invalid return type",
+                        binaryCase("Invalid result type",
                                         "Invalid value type: 0x20",
                                         // (module
                                         // (func (result 0x20)
@@ -972,7 +972,7 @@ public class ValidationSuite extends WasmFileSuite {
     @Override
     @Test
     public void test() throws IOException {
-        final Context context = Context.newBuilder(WasmLanguage.ID).build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.MultiValue", "false").build();
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
         try {
             context.eval(source).getMember("_main").execute();

@@ -4,8 +4,9 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 
 ## Version 22.3.0
 
-* Implemented the [Multi-Value](https://github.com/WebAssembly/multi-value) proposal. It is available behind the
-  experimental option `--wasm.MultiValue`.
+* Implemented the [Multi-Value](https://github.com/WebAssembly/multi-value) proposal. It can be disabled with the
+  option `--wasm.MultiValue=false`.
+* Sign-Extension-Ops and Saturating-Float-To-Int conversions are now enabled by default.
 
 ## Version 22.1.0
 
