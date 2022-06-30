@@ -9,6 +9,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.Pointer;
 
 import java.util.stream.IntStream;
 
@@ -51,8 +52,8 @@ public class ParallelGCImpl extends ParallelGC {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
-    public static void queue(Object obj) {
-        QUEUE.put(obj);
+    public static void queue(Pointer ptr) {
+        QUEUE.put(ptr);
     }
 
     public static void waitForIdle() {

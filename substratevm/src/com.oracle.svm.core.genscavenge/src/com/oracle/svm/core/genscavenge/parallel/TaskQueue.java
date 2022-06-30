@@ -3,22 +3,18 @@ package com.oracle.svm.core.genscavenge.parallel;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import org.graalvm.word.Pointer;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 
 public class TaskQueue {
     private static final int SIZE = 1024; ///handle overflow
-
-    private static class TaskData {
-        private Object object;///no need to wrap
-    }
 
     final Stats stats;
 
     private final VMMutex mutex;
     private final VMCondition cond;
-    private final TaskData[] data;
+    private final Pointer[] data; /// move out of heap?
     private final AtomicInteger idleCount;
     private int getIndex;
     private int putIndex;
@@ -26,7 +22,7 @@ public class TaskQueue {
     public TaskQueue(String name) {
         mutex = new VMMutex(name + "-queue");
         cond = new VMCondition(mutex);
-        data = IntStream.range(0, SIZE).mapToObj(n -> new TaskData()).toArray(TaskData[]::new);
+        data = new Pointer[SIZE];
         idleCount = new AtomicInteger(0);
         stats = new Stats();
     }
@@ -43,15 +39,14 @@ public class TaskQueue {
         return next(putIndex) != getIndex;
     }
 
-    public void put(Object object) {
+    public void put(Pointer ptr) {
         try {
             mutex.lock();
             while (!canPut()) {
                 Log.log().string("PP cannot put task\n");
                 cond.block();
             }
-            TaskData item = data[putIndex];
-            item.object = object;
+            data[putIndex] = ptr;
         } finally {
             putIndex = next(putIndex);
             stats.noteTask(putIndex, getIndex);
@@ -61,7 +56,7 @@ public class TaskQueue {
     }
 
     public void consume(Consumer consumer) {
-        Object obj;
+        Pointer ptr;
         idleCount.incrementAndGet();
         mutex.lock();
         try {
@@ -69,23 +64,21 @@ public class TaskQueue {
                 Log.log().string("PP cannot get task\n");
                 cond.block();
             }
-            TaskData item = data[getIndex];
-            obj = item.object;
+            ptr = data[getIndex];
         } finally {
             getIndex = next(getIndex);
             mutex.unlock();
             idleCount.decrementAndGet();
             cond.broadcast();
         }
-        consumer.accept(obj);
+        consumer.accept(ptr.toObject());
     }
 
     // Non MT safe. Only call when no workers are running
     public void drain(Consumer consumer) {
         idleCount.decrementAndGet();
         while (canGet()) {
-            TaskData item = data[getIndex];
-            Object obj = item.object;
+            Object obj = data[getIndex].toObject();
             consumer.accept(obj);
             getIndex = next(getIndex);
         }

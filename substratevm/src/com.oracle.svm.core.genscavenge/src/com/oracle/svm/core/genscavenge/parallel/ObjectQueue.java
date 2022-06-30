@@ -8,7 +8,7 @@ import org.graalvm.word.WordFactory;
 
 import java.util.function.BiConsumer;
 
-public class ObjectQueue {
+public class ObjectQueue {///rm
     private final VMMutex mutex;
     private final VMCondition cond;
     private final Object[] item;

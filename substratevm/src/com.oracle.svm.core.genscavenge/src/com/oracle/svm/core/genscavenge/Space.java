@@ -399,7 +399,7 @@ public final class Space {
             RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
         }
         if (ParallelGCImpl.isEnabled()) {
-            ParallelGCImpl.queue(copy);
+            ParallelGCImpl.queue(copyMemory);
         }
         return copy;
     }
