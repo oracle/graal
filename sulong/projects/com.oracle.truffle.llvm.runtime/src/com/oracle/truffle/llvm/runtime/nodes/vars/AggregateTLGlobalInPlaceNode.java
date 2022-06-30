@@ -46,8 +46,10 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
     @Child private LLVMAllocateNode allocTLSection;
     private final BitcodeID bitcodeID;
     private final int globalContainersSize;
+    private final long allocationSize;
 
-    public AggregateTLGlobalInPlaceNode(LLVMLanguage llvmLanguage, AggregateLiteralInPlaceNode inPlaceNode, LLVMAllocateNode allocTLSection, BitcodeID bitcodeID, int globalContainersSize) {
+    public AggregateTLGlobalInPlaceNode(LLVMLanguage llvmLanguage, AggregateLiteralInPlaceNode inPlaceNode, LLVMAllocateNode allocTLSection, BitcodeID bitcodeID, int globalContainersSize,
+                    long allocationSize) {
         super(llvmLanguage);
         this.contextThreadLocal = llvmLanguage.contextThreadLocal;
         this.inPlaceNode = inPlaceNode;
@@ -55,6 +57,7 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
         this.bitcodeID = bitcodeID;
         // The size of the global container is one larger, as the counter starts at 1.
         this.globalContainersSize = globalContainersSize + 1;
+        this.allocationSize = allocationSize;
     }
 
     @Override
@@ -67,8 +70,14 @@ public class AggregateTLGlobalInPlaceNode extends RootNode {
 
     public void executeWithThread(VirtualFrame frame, Thread thread) {
         LLVMPointer tlgBase = allocOrNull(allocTLSection);
-        // The base section for the thread local globals are initialized to the context thread local
-        contextThreadLocal.get(thread).addSection(tlgBase, bitcodeID);
+
+        if (tlgBase != null) {
+            assert allocationSize > 0;
+            // The base section for the thread local globals are initialized to the context thread
+            // local
+            contextThreadLocal.get(thread).addSection(tlgBase, allocationSize, bitcodeID);
+        }
+
         // The global containers for the thread local globals are initialized to the context thread
         // local.
         LLVMGlobalContainer[] globalContainers = new LLVMGlobalContainer[globalContainersSize];

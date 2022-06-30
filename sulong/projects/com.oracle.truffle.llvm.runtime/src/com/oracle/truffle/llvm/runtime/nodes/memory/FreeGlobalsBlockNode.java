@@ -37,23 +37,22 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemorySizedOpNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
-public abstract class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
+public abstract class FreeGlobalsBlockNode extends LLVMMemorySizedOpNode {
 
-    public FreeReadOnlyGlobalsBlockNode() {
+    public FreeGlobalsBlockNode() {
     }
 
     @Specialization(limit = "1")
     @GenerateAOT.Exclude
-    public void doDefault(LLVMPointer ptr,
-                    @Bind("getContext(ptr).getFreeReadOnlyGlobalsBlockFunction()") Object freeGlobalsBlock,
+    public void doDefault(LLVMPointer ptr, long size,
+                    @Bind("getContext(ptr, size).getFreeGlobalsBlockFunction()") Object freeGlobalsBlock,
                     @CachedLibrary("freeGlobalsBlock") InteropLibrary interop) {
         try {
-            interop.execute(freeGlobalsBlock, ptr);
+            interop.execute(freeGlobalsBlock, ptr, size);
         } catch (InteropException ex) {
             assert false; // should never happen, but probably also safe to ignore
         }
@@ -61,9 +60,9 @@ public abstract class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements L
 
     /**
      * Workaround to make the DSL understand that the context value is dynamic here. Used in
-     * {@link #doDefault(LLVMPointer, Object, InteropLibrary)}.
+     * {@link #doDefault(LLVMPointer, long, Object, InteropLibrary)}.
      */
-    final LLVMContext getContext(@SuppressWarnings("unused") LLVMPointer dynamicValue) {
+    final LLVMContext getContext(@SuppressWarnings("unused") LLVMPointer dynamicValue, @SuppressWarnings("unused") long size) {
         return getContext();
     }
 }
