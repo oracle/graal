@@ -26,19 +26,24 @@ package com.oracle.svm.jni.access;
 
 import java.lang.reflect.Modifier;
 
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.jni.hosted.JNIJavaCallMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallVariantWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallVariantWrapperMethod.CallVariant;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
@@ -53,6 +58,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Information on a method that can be looked up and called via JNI.
  */
 public final class JNIAccessibleMethod extends JNIAccessibleMember {
+    public static final int STATICALLY_BOUND_METHOD = -1;
+    public static final int VTABLE_OFFSET_NOT_YET_COMPUTED = -2;
+    public static final int NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE = -1;
 
     static ResolvedJavaField getCallVariantWrapperField(MetaAccessProvider metaAccess, CallVariant variant, boolean nonVirtual) {
         StringBuilder name = new StringBuilder(32);
@@ -74,7 +82,9 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
 
     @Platforms(HOSTED_ONLY.class) private final JNIAccessibleMethodDescriptor descriptor;
     private final int modifiers;
-    private CodePointer javaCall;
+    private int vtableOffset = VTABLE_OFFSET_NOT_YET_COMPUTED;
+    private CodePointer nonvirtualTarget;
+    private PointerBase newObjectTarget; // for constructors
     private CodePointer callWrapper;
     @SuppressWarnings("unused") private CFunctionPointer varargsWrapper;
     @SuppressWarnings("unused") private CFunctionPointer arrayWrapper;
@@ -82,7 +92,8 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     @SuppressWarnings("unused") private CFunctionPointer varargsNonvirtualWrapper;
     @SuppressWarnings("unused") private CFunctionPointer arrayNonvirtualWrapper;
     @SuppressWarnings("unused") private CFunctionPointer valistNonvirtualWrapper;
-    @Platforms(HOSTED_ONLY.class) private final JNIJavaCallMethod javaCallMethod;
+    @Platforms(HOSTED_ONLY.class) private final ResolvedJavaMethod targetMethod;
+    @Platforms(HOSTED_ONLY.class) private final ResolvedJavaMethod newObjectTargetMethod;
     @Platforms(HOSTED_ONLY.class) private final JNIJavaCallWrapperMethod callWrapperMethod;
     @Platforms(HOSTED_ONLY.class) private final JNIJavaCallVariantWrapperMethod varargsWrapperMethod;
     @Platforms(HOSTED_ONLY.class) private final JNIJavaCallVariantWrapperMethod arrayWrapperMethod;
@@ -92,9 +103,9 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     @Platforms(HOSTED_ONLY.class) private final JNIJavaCallVariantWrapperMethod valistNonvirtualWrapperMethod;
 
     JNIAccessibleMethod(JNIAccessibleMethodDescriptor descriptor,
-                    int modifiers,
                     JNIAccessibleClass declaringClass,
-                    JNIJavaCallMethod javaCallMethod,
+                    ResolvedJavaMethod targetMethod,
+                    ResolvedJavaMethod newObjectTargetMethod,
                     JNIJavaCallWrapperMethod callWrapperMethod,
                     JNIJavaCallVariantWrapperMethod varargsWrapper,
                     JNIJavaCallVariantWrapperMethod arrayWrapper,
@@ -103,13 +114,14 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
                     JNIJavaCallVariantWrapperMethod arrayNonvirtualWrapper,
                     JNIJavaCallVariantWrapperMethod valistNonvirtualWrapper) {
         super(declaringClass);
-        assert javaCallMethod != null && callWrapperMethod != null && varargsWrapper != null && arrayWrapper != null && valistWrapper != null;
-        assert (Modifier.isStatic(modifiers) || Modifier.isAbstract(modifiers)) //
+        assert callWrapperMethod != null && varargsWrapper != null && arrayWrapper != null && valistWrapper != null;
+        assert (targetMethod.isStatic() || targetMethod.isAbstract()) //
                         ? (varargsNonvirtualWrapper == null && arrayNonvirtualWrapper == null && valistNonvirtualWrapper == null)
                         : (varargsNonvirtualWrapper != null & arrayNonvirtualWrapper != null && valistNonvirtualWrapper != null);
         this.descriptor = descriptor;
-        this.modifiers = modifiers;
-        this.javaCallMethod = javaCallMethod;
+        this.modifiers = targetMethod.getModifiers();
+        this.targetMethod = targetMethod;
+        this.newObjectTargetMethod = newObjectTargetMethod;
         this.callWrapperMethod = callWrapperMethod;
         this.varargsWrapperMethod = varargsWrapper;
         this.arrayWrapperMethod = arrayWrapper;
@@ -120,15 +132,28 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
-    public CodePointer getJavaCallAddress() {
-        return javaCall;
-    }
-
-    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
     @Uninterruptible(reason = "Allow inlining from call wrappers, which are uninterruptible.", mayBeInlined = true)
     public CodePointer getCallWrapperAddress() {
         return callWrapper;
+    }
+
+    @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
+    public CodePointer getJavaCallAddress(Object instance, boolean nonVirtual) {
+        if (!nonVirtual) {
+            assert vtableOffset != JNIAccessibleMethod.VTABLE_OFFSET_NOT_YET_COMPUTED;
+            if (vtableOffset != JNIAccessibleMethod.STATICALLY_BOUND_METHOD) {
+                return BarrieredAccess.readWord(instance.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
+            }
+        }
+        return nonvirtualTarget;
+    }
+
+    public PointerBase getNewObjectAddress() {
+        return newObjectTarget;
+    }
+
+    public Class<?> getDeclaringClassObject() {
+        return getDeclaringClass().getClassObject();
     }
 
     boolean isPublic() {
@@ -143,7 +168,19 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     void finishBeforeCompilation(CompilationAccessImpl access) {
         HostedUniverse hUniverse = access.getUniverse();
         AnalysisUniverse aUniverse = access.getUniverse().getBigBang().getUniverse();
-        javaCall = new MethodPointer(hUniverse.lookup(aUniverse.lookup(javaCallMethod)));
+        HostedMethod hTarget = hUniverse.lookup(aUniverse.lookup(targetMethod));
+        if (hTarget.canBeStaticallyBound()) {
+            vtableOffset = STATICALLY_BOUND_METHOD;
+        } else {
+            vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex());
+        }
+        nonvirtualTarget = new MethodPointer(hTarget);
+        if (newObjectTargetMethod != null) {
+            newObjectTarget = new MethodPointer(hUniverse.lookup(aUniverse.lookup(newObjectTargetMethod)));
+        } else if (targetMethod.isConstructor()) {
+            assert targetMethod.getDeclaringClass().isAbstract();
+            newObjectTarget = WordFactory.signed(NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE);
+        }
         callWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(callWrapperMethod)));
         varargsWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(varargsWrapperMethod)));
         arrayWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(arrayWrapperMethod)));

@@ -153,24 +153,42 @@ public class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("getFieldOffsetFromId", fieldId);
     }
 
-    public InvokeWithExceptionNode getJavaCallWrapperAddressFromMethodId(ValueNode methodId) {
-        return invokeJNIMethodMethod(methodId, "getCallWrapperAddress");
+    public InvokeWithExceptionNode getNewObjectAddress(ValueNode methodId) {
+        return invokeJNIMethodObjectMethod("getNewObjectAddress", methodId);
     }
 
-    public InvokeWithExceptionNode getJavaCallAddressFromMethodId(ValueNode methodId) {
-        return invokeJNIMethodMethod(methodId, "getJavaCallAddress");
+    /** We trust our stored class object to be non-null. */
+    public ValueNode getDeclaringClassForMethod(ValueNode methodId) {
+        InvokeWithExceptionNode declaringClass = invokeJNIMethodObjectMethod("getDeclaringClassObject", methodId);
+        return createPiNode(declaringClass, ObjectStamp.pointerNonNull(declaringClass.stamp(NodeView.DEFAULT)));
+    }
+
+    public InvokeWithExceptionNode getJavaCallAddress(ValueNode methodId, ValueNode instance, ValueNode nonVirtual) {
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, "getJavaCallAddress", Object.class, boolean.class),
+                        InvokeKind.Special, getFrameState(), bci(), getUncheckedMethodObject(methodId), instance, nonVirtual);
+    }
+
+    public InvokeWithExceptionNode getJavaCallWrapperAddressFromMethodId(ValueNode methodId) {
+        return invokeJNIMethodObjectMethod("getCallWrapperAddress", methodId);
+    }
+
+    public InvokeWithExceptionNode isStaticMethod(ValueNode methodId) {
+        return invokeJNIMethodObjectMethod("isStatic", methodId);
     }
 
     /**
-     * Used in native-to-Java call wrappers where the method ID has already been used to dispatch
+     * Used in native-to-Java call wrappers where the method ID has already been used to dispatch,
      * and we would have crashed if something is wrong, so we can avoid null and type checks.
      */
-    private InvokeWithExceptionNode invokeJNIMethodMethod(ValueNode methodId, String name) {
+    private PiNode getUncheckedMethodObject(ValueNode methodId) {
         InvokeWithExceptionNode methodObj = createInvokeWithExceptionAndUnwind(
                         findMethod(JNIReflectionDictionary.class, "getObjectFromMethodID", JNIMethodId.class), InvokeKind.Static, getFrameState(), bci(), methodId);
         ObjectStamp stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(getMetaAccess().lookupJavaType(JNIAccessibleMethod.class)));
-        PiNode pi = createPiNode(methodObj, stamp);
-        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, name), InvokeKind.Special, getFrameState(), bci(), pi);
+        return createPiNode(methodObj, stamp);
+    }
+
+    private InvokeWithExceptionNode invokeJNIMethodObjectMethod(String name, ValueNode methodId) {
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, name), InvokeKind.Special, getFrameState(), bci(), getUncheckedMethodObject(methodId));
     }
 
     public InvokeWithExceptionNode getStaticPrimitiveFieldsArray() {
@@ -209,5 +227,9 @@ public class JNIGraphKit extends HostedGraphKit {
     public FixedWithNextNode setPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
         assert elementKind.isPrimitive();
         return createStaticInvokeRetainException("setPrimitiveArrayRegion", createObject(elementKind), array, start, count, buffer);
+    }
+
+    public ConstantNode createWord(long value) {
+        return ConstantNode.forIntegerKind(wordTypes.getWordKind(), value, graph);
     }
 }

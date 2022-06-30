@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,14 +64,15 @@ import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallTrampolines;
 import com.oracle.svm.jni.hosted.JNICallSignature;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
-import com.oracle.svm.jni.hosted.JNIJavaCallMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallVariantWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallVariantWrapperMethod.CallVariant;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
@@ -130,6 +132,12 @@ public class JNIAccessFeature implements Feature {
     }
 
     @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        // Ensure that KnownOffsets is fully initialized before we access it
+        return List.of(KnownOffsetsFeature.class);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
 
@@ -178,8 +186,8 @@ public class JNIAccessFeature implements Feature {
         if (!ImageSingletons.contains(JNIFieldAccessorMethod.Factory.class)) {
             ImageSingletons.add(JNIFieldAccessorMethod.Factory.class, new JNIFieldAccessorMethod.Factory());
         }
-        if (!ImageSingletons.contains(JNIJavaCallMethod.Factory.class)) {
-            ImageSingletons.add(JNIJavaCallMethod.Factory.class, new JNIJavaCallMethod.Factory());
+        if (!ImageSingletons.contains(JNIJavaCallWrapperMethod.Factory.class)) {
+            ImageSingletons.add(JNIJavaCallWrapperMethod.Factory.class, new JNIJavaCallWrapperMethod.Factory());
         }
 
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
@@ -302,14 +310,25 @@ public class JNIAccessFeature implements Feature {
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
         jniClass.addMethodIfAbsent(descriptor, d -> {
             AnalysisUniverse universe = access.getUniverse();
-            ResolvedJavaMethod targetMethod = universe.getOriginalMetaAccess().lookupJavaMethod(method);
+            MetaAccessProvider originalMetaAccess = universe.getOriginalMetaAccess();
+            ResolvedJavaMethod targetMethod = originalMetaAccess.lookupJavaMethod(method);
 
-            WordTypes wordTypes = access.getBigBang().getProviders().getWordTypes();
-            JNIJavaCallMethod javaCallMethod = ImageSingletons.lookup(JNIJavaCallMethod.Factory.class).create(targetMethod, universe, wordTypes);
-            access.registerAsRoot(universe.lookup(javaCallMethod), true);
+            JNIJavaCallWrapperMethod.Factory factory = ImageSingletons.lookup(JNIJavaCallWrapperMethod.Factory.class);
+            AnalysisMethod aTargetMethod = universe.lookup(targetMethod);
+            if (!targetMethod.isConstructor() || factory.canInvokeConstructorOnObject(targetMethod, originalMetaAccess)) {
+                access.registerAsRoot(aTargetMethod, false);
+            } // else: function pointers will be an error stub
 
-            JNIJavaCallWrapperMethod callWrapperMethod = javaCallWrapperMethods.computeIfAbsent(javaCallMethod.getSignature(),
-                            signature -> new JNIJavaCallWrapperMethod(signature, universe.getOriginalMetaAccess(), wordTypes));
+            ResolvedJavaMethod newObjectMethod = null;
+            if (targetMethod.isConstructor() && !targetMethod.getDeclaringClass().isAbstract()) {
+                var aFactoryMethod = (AnalysisMethod) FactoryMethodSupport.singleton().lookup(access.getMetaAccess(), aTargetMethod, false);
+                access.registerAsRoot(aFactoryMethod, true);
+                newObjectMethod = aFactoryMethod.getWrapped();
+            }
+
+            JNICallSignature compatibleSignature = JNIJavaCallWrapperMethod.getGeneralizedSignatureForTarget(targetMethod, originalMetaAccess);
+            JNIJavaCallWrapperMethod callWrapperMethod = javaCallWrapperMethods.computeIfAbsent(compatibleSignature,
+                            signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getProviders().getWordTypes()));
             access.registerAsRoot(universe.lookup(callWrapperMethod), true);
 
             JNIJavaCallVariantWrapperGroup variantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), false);
@@ -317,7 +336,7 @@ public class JNIAccessFeature implements Feature {
             if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isAbstract(method.getModifiers())) {
                 nonvirtualVariantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), true);
             }
-            return new JNIAccessibleMethod(d, method.getModifiers(), jniClass, javaCallMethod, callWrapperMethod,
+            return new JNIAccessibleMethod(d, jniClass, targetMethod, newObjectMethod, callWrapperMethod,
                             variantWrappers.varargs, variantWrappers.array, variantWrappers.valist,
                             nonvirtualVariantWrappers.varargs, nonvirtualVariantWrappers.array, nonvirtualVariantWrappers.valist);
         });

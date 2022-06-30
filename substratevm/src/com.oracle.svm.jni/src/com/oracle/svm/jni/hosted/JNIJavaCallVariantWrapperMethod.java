@@ -50,8 +50,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
+import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -61,6 +62,7 @@ import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.jni.JNIJavaCallVariantWrappers;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -135,12 +137,12 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
 
-        Signature invokeSignature = callWrapperSignature;
-        if (metaAccess.getWrapped() instanceof UniverseMetaAccess) {
-            invokeSignature = ((UniverseMetaAccess) metaAccess.getWrapped()).getUniverse().lookup(
-                            invokeSignature, (WrappedJavaType) ((WrappedJavaMethod) method).getWrapped().getDeclaringClass());
+        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((metaAccess instanceof AnalysisMetaAccess) ? metaAccess : metaAccess.getWrapped());
+        Signature invokeSignature = aMetaAccess.getUniverse().lookup(callWrapperSignature, aMetaAccess.getUniverse().lookup(getDeclaringClass()));
+        if (metaAccess instanceof HostedMetaAccess) {
+            // signature might not exist in the hosted universe because it does not match any method
+            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, (WrappedJavaType) method.getDeclaringClass());
         }
-        invokeSignature = metaAccess.getUniverse().lookup(invokeSignature, (WrappedJavaType) method.getDeclaringClass());
 
         JavaKind wordKind = providers.getWordTypes().getWordKind();
         int slotIndex = 0;
@@ -163,12 +165,18 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         args.add(kit.createInt(nonVirtual ? 1 : 0));
         args.addAll(loadArguments(kit, providers, invokeSignature, args.size(), slotIndex));
 
+        ValueNode formerPendingException = kit.getAndClearPendingException();
+
         StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), invokeSignature.getReturnType(null), false);
         CallTargetNode callTarget = new IndirectCallTargetNode(callAddress, args.toArray(ValueNode[]::new), returnStamp, invokeSignature.toParameterTypes(null),
                         null, SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static);
 
         int invokeBci = kit.bci();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(callTarget, kit.getFrameState(), invokeBci);
+        kit.noExceptionPart();
+        kit.setPendingException(formerPendingException);
+        kit.exceptionPart();
+        kit.setPendingException(kit.exceptionObject());
         AbstractMergeNode invokeMerge = kit.endInvokeWithException();
 
         ValueNode returnValue = null;
@@ -216,7 +224,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
             }
             for (int i = firstParamIndex; i < count; i++) {
                 JavaKind kind = invokeSignature.getParameterKind(i);
-                assert kind == kind.getStackKind() : "other conversions and bit masking must happen in JNIJavaCallMethod";
+                assert kind == kind.getStackKind() : "sub-int conversions and bit masking must happen in JNIJavaCallWrapperMethod";
                 JavaKind readKind = kind;
                 if (kind == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     readKind = JavaKind.Double;
@@ -243,7 +251,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         } else if (callVariant == CallVariant.VARARGS) {
             for (int i = firstParamIndex; i < count; i++) {
                 JavaKind kind = invokeSignature.getParameterKind(i);
-                assert kind == kind.getStackKind() : "other conversions and bit masking must happen in JNIJavaCallMethod";
+                assert kind == kind.getStackKind() : "sub-int conversions and bit masking must happen in JNIJavaCallWrapperMethod";
                 JavaKind loadKind = kind;
                 if (loadKind == JavaKind.Float) {
                     loadKind = JavaKind.Double; // C varargs promote float to double (C99 6.5.2.2-6)
@@ -262,7 +270,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
                 if (kind.isObject()) {
                     kind = wordKind;
                 }
-                assert kind == kind.getStackKind() : "other conversions and bit masking must happen in JNIJavaCallMethod";
+                assert kind == kind.getStackKind() : "sub-int conversions and bit masking must happen in JNIJavaCallWrapperMethod";
                 ValueNode value = kit.append(new VaListNextArgNode(kind, valist));
                 args.add(value);
             }

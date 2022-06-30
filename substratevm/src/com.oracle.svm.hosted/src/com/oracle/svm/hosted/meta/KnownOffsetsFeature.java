@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.thread.VMThreadMTFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
-final class KnownOffsetsFeature implements Feature {
+public final class KnownOffsetsFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
