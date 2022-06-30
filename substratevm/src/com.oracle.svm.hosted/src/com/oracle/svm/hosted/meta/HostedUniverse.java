@@ -311,14 +311,15 @@ public class HostedUniverse implements Universe {
         return result;
     }
 
-    public synchronized HostedMethod createDeoptTarget(HostedMethod method) {
-        if (method.compilationInfo.getDeoptTargetMethod() == null) {
-            HostedMethod deoptTarget = HostedMethod.create(this, method.getWrapped(), method.getDeclaringClass(),
-                            method.getSignature(), method.getConstantPool(), method.getExceptionHandlers(), method);
-            assert method.staticAnalysisResults != null;
-            deoptTarget.staticAnalysisResults = method.staticAnalysisResults;
+    public synchronized HostedMethod createDeoptTarget(HostedMethod deoptOrigin) {
+        assert !deoptOrigin.isDeoptTarget();
+        if (deoptOrigin.compilationInfo.getDeoptTargetMethod() == null) {
+            HostedMethod deoptTarget = HostedMethod.create(this, deoptOrigin.getWrapped(), deoptOrigin.getDeclaringClass(),
+                            deoptOrigin.getSignature(), deoptOrigin.getConstantPool(), deoptOrigin.getExceptionHandlers(), deoptOrigin);
+            assert deoptOrigin.staticAnalysisResults != null;
+            deoptTarget.staticAnalysisResults = deoptOrigin.staticAnalysisResults;
         }
-        return method.compilationInfo.getDeoptTargetMethod();
+        return deoptOrigin.compilationInfo.getDeoptTargetMethod();
     }
 
     public boolean contains(JavaType type) {
