@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
@@ -57,10 +58,11 @@ import jdk.vm.ci.meta.Value;
 public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AArch64ArrayEqualsOp.class);
 
-    private final JavaKind kind;
+    private final JavaKind kind1;
     private final int array1BaseOffset;
     private final int array2BaseOffset;
-    private final int arrayIndexScale;
+    private final int arrayIndexScale1;
+    private final boolean isSameEncoding;
 
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value array1Value;
@@ -78,11 +80,13 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Temp({REG}) protected AllocatableValue vectorTemp3;
     @Temp({REG}) protected AllocatableValue vectorTemp4;
 
-    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value offset1, Value array2, Value offset2,
-                    Value length) {
+    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value offset1, Value array2,
+                    Value offset2, Value length) {
         super(TYPE);
 
-        assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
+        assert !kind1.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
+        assert !kind2.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
+        assert kind1 == kind2 || (kind1 == JavaKind.Char && kind2 == JavaKind.Byte) : "Comparison of " + kind1 + " to " + kind2 + " is not supported";
 
         assert result.getPlatformKind() == AArch64Kind.DWORD;
         assert array1.getPlatformKind() == AArch64Kind.QWORD && array1.getPlatformKind() == array2.getPlatformKind();
@@ -90,8 +94,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         assert offset2 == null || offset2.getPlatformKind() == AArch64Kind.QWORD;
         assert length.getPlatformKind() == AArch64Kind.DWORD;
 
-        this.kind = kind;
-
+        this.kind1 = kind1;
+        isSameEncoding = kind1 == kind2;
         /*
          * The arrays are expected to have the same kind and thus the same index scale. For
          * primitive arrays, this will mean the same array base offset as well; but if we compare a
@@ -99,7 +103,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
          */
         this.array1BaseOffset = array1BaseOffset;
         this.array2BaseOffset = array2BaseOffset;
-        this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
+        this.arrayIndexScale1 = tool.getProviders().getMetaAccess().getArrayIndexScale(kind1);
 
         this.resultValue = result;
         this.array1Value = array1;
@@ -108,7 +112,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         this.offset2Value = offset2 == null ? Value.ILLEGAL : offset2;
         this.lengthValue = length;
 
-        // Allocate some temporaries.
+        /* Allocate some temporaries. */
         LIRKind archWordKind = LIRKind.value(tool.target().arch.getWordKind());
         this.temp1 = tool.newVariable(archWordKind);
         this.temp2 = tool.newVariable(archWordKind);
@@ -125,24 +129,33 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Register byteArrayLength = asRegister(temp1);
+        Register array1 = asRegister(temp2);
+        Register array2 = asRegister(temp3);
 
+        // Load array base addresses.
+        loadArrayStart(masm, array1, array2);
         try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
             Label breakLabel = new Label();
             Label scalarCompare = new Label();
+
             Register hasMismatch = sc1.getRegister();
             Register scratch = sc2.getRegister();
 
             // Get array length in bytes and store as a 64-bit value.
-            int shiftAmt = NumUtil.log2Ceil(arrayIndexScale);
+            int shiftAmt = NumUtil.log2Ceil(arrayIndexScale1);
             masm.mov(32, byteArrayLength, asRegister(lengthValue));
             masm.lsl(64, byteArrayLength, byteArrayLength, shiftAmt);
-            masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale);
+            masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale1);
             masm.branchConditionally(ConditionFlag.LE, scalarCompare);
 
-            emitSIMDCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
+            emitSIMDCompare(masm, array1, array2, byteArrayLength, hasMismatch, scratch, breakLabel);
 
             masm.bind(scalarCompare);
-            emitScalarCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
+            if (isSameEncoding) {
+                emitScalarCompare(masm, array1, array2, byteArrayLength, hasMismatch, scratch, breakLabel);
+            } else {
+                emitScalarCompareMixedEncodings(masm, array1, array2, byteArrayLength, hasMismatch, scratch, breakLabel);
+            }
 
             // Return: hasMismatch is non-zero iff the arrays differ
             masm.bind(breakLabel);
@@ -170,16 +183,24 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         }
     }
 
-    private void emitScalarCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label breakLabel) {
-        Register array1 = asRegister(temp2);
-        Register array2 = asRegister(temp3);
+    private void emitScalarCompare(AArch64MacroAssembler masm, Register array1, Register array2, Register byteArrayLength, Register hasMismatch, Register scratch, Label breakLabel) {
 
-        // Load array base addresses.
-        loadArrayStart(masm, array1, array2);
         masm.mov(64, scratch, byteArrayLength); // copy
-
         emit8ByteCompare(masm, scratch, array1, array2, byteArrayLength, breakLabel, hasMismatch);
         emitTailCompares(masm, scratch, array1, array2, breakLabel, hasMismatch);
+    }
+
+    private static void emitScalarCompareMixedEncodings(AArch64MacroAssembler masm, Register array1, Register array2, Register byteArrayLength, Register hasMismatchOrData2, Register currData1,
+                    Label breakLabel) {
+        Label loop = new Label();
+
+        masm.bind(loop);
+        masm.ldr(16, currData1, AArch64Address.createImmediateAddress(16, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array1, 2));
+        masm.ldr(8, hasMismatchOrData2, AArch64Address.createImmediateAddress(8, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array2, 1));
+        masm.eor(32, hasMismatchOrData2, currData1, hasMismatchOrData2);
+        masm.cbnz(32, hasMismatchOrData2, breakLabel);
+        masm.subs(64, byteArrayLength, byteArrayLength, 2);
+        masm.branchConditionally(ConditionFlag.GT, loop);
     }
 
     /**
@@ -241,7 +262,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
 
         Register temp = asRegister(temp4);
 
-        if (kind.getByteCount() <= 4) {
+        if (kind1.getByteCount() <= 4) {
             // Compare trailing 4 bytes, if any.
             masm.ands(32, zr, result, 4);
             masm.branchConditionally(ConditionFlag.EQ, compare2Bytes);
@@ -250,7 +271,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             masm.eor(32, rscratch1, temp, rscratch1);
             masm.cbnz(32, rscratch1, breakLabel);
 
-            if (kind.getByteCount() <= 2) {
+            if (kind1.getByteCount() <= 2) {
                 // Compare trailing 2 bytes, if any.
                 masm.bind(compare2Bytes);
                 masm.ands(32, zr, result, 2);
@@ -261,7 +282,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
                 masm.cbnz(32, rscratch1, breakLabel);
 
                 // The one-byte tail compare is only required for boolean and byte arrays.
-                if (kind.getByteCount() <= 1) {
+                if (kind1.getByteCount() <= 1) {
                     // Compare trailing byte, if any.
                     masm.bind(compare1Byte);
                     masm.ands(32, zr, result, 1);
@@ -304,9 +325,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
      *  5. Repeat the process until the end of the arrays.
      * @formatter:on
      */
-    private void emitSIMDCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label endLabel) {
-        Register array1Address = asRegister(temp2);
-        Register array2Address = asRegister(temp3);
+    private void emitSIMDCompare(AArch64MacroAssembler masm, Register array1, Register array2, Register byteArrayLength, Register hasMismatch, Register scratch, Label endLabel) {
         Register refAddress1 = asRegister(temp4);
         Register endOfArray1 = scratch;
 
@@ -315,18 +334,21 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         Register array2Part1RegV = asRegister(vectorTemp3);
         Register array2Part2RegV = asRegister(vectorTemp4);
 
+        final int chunkSize1 = 32;
+        final int chunkSize2 = isSameEncoding ? chunkSize1 : chunkSize1 / 2;
+
         Label compareByChunkHead = new Label();
         Label compareByChunkTail = new Label();
         Label processTail = new Label();
 
-        /* 1. Set 'array1Address' and 'array2Address' to point to start of arrays. */
-        loadArrayStart(masm, array1Address, array2Address);
+        masm.mov(64, hasMismatch, zr);
+        /* 1. Method arguments 'array1' and 'array2' point to start of arrays. */
         /*
          * 2.1 Set endOfArray1 pointing to byte next to the last valid element in array1 and
          * 'refAddress1' pointing to the beginning of the last chunk.
          */
-        masm.add(64, endOfArray1, array1Address, byteArrayLength);
-        masm.sub(64, refAddress1, endOfArray1, 32);
+        masm.add(64, endOfArray1, array1, byteArrayLength);
+        masm.sub(64, refAddress1, endOfArray1, chunkSize1);
 
         /*
          * **********************************
@@ -337,8 +359,16 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
          */
 
         /* 2.2 Read a 32-byte chunk from source and target array each in two SIMD registers. */
-        masm.fldp(128, array1Part1RegV, array1Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array1Address, 32));
-        masm.fldp(128, array2Part1RegV, array2Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array2Address, 32));
+        masm.fldp(128, array1Part1RegV, array1Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array1, chunkSize1));
+        if (isSameEncoding) {
+            masm.fldp(128, array2Part1RegV, array2Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array2, chunkSize2));
+        } else {
+            /* 2.3. Inflate the second chunk if comparing mixed encoding */
+            masm.fldr(128, array2Part1RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array2, chunkSize2));
+            masm.neon.uxtl2VV(AArch64ASIMDAssembler.ElementSize.Byte, array2Part2RegV, array2Part1RegV);
+            masm.neon.uxtlVV(AArch64ASIMDAssembler.ElementSize.Byte, array2Part1RegV, array2Part1RegV);
+        }
+
         /* 3. Compare arrays in the 32-byte chunk */
         masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part1RegV, array1Part1RegV, array2Part1RegV);
         masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part2RegV, array1Part2RegV, array2Part2RegV);
@@ -357,13 +387,17 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         /*
          * Extra first loop iteration step: align array1 to a 32-byte boundary.
          *
-         * Determine how much to subtract from array2Address to match aligned array1Address. Using
-         * the result register as a temporary.
+         * Determine how much to subtract from array2 to match aligned array1. Using the result
+         * register as a temporary.
          */
         Register array1Alignment = asRegister(resultValue);
-        masm.and(64, array1Alignment, array1Address, 31);
-        masm.sub(64, array2Address, array2Address, array1Alignment);
-        masm.bic(64, array1Address, array1Address, 31);
+        masm.and(64, array1Alignment, array1, 31);
+        if (isSameEncoding) {
+            masm.sub(64, array2, array2, array1Alignment);
+        } else {
+            masm.sub(64, array2, array2, array1Alignment, AArch64Assembler.ShiftType.LSR, 1);
+        }
+        masm.bic(64, array1, array1, 31);
 
         /*
          * ********************************
@@ -375,13 +409,20 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
 
         masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(compareByChunkHead);
-        masm.cmp(64, refAddress1, array1Address);
+        masm.cmp(64, refAddress1, array1);
         masm.branchConditionally(ConditionFlag.LO, processTail);
         masm.bind(compareByChunkTail);
 
         /* 2.2 Read a 32-byte chunk from source and target array each in two SIMD registers. */
-        masm.fldp(128, array1Part1RegV, array1Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array1Address, 32));
-        masm.fldp(128, array2Part1RegV, array2Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array2Address, 32));
+        masm.fldp(128, array1Part1RegV, array1Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array1, chunkSize1));
+        if (isSameEncoding) {
+            masm.fldp(128, array2Part1RegV, array2Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array2, chunkSize2));
+        } else {
+            /* 2.3. Inflate the second chunk if comparing mixed encoding */
+            masm.fldr(128, array2Part1RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array2, chunkSize2));
+            masm.neon.uxtl2VV(AArch64ASIMDAssembler.ElementSize.Byte, array2Part2RegV, array2Part1RegV);
+            masm.neon.uxtlVV(AArch64ASIMDAssembler.ElementSize.Byte, array2Part1RegV, array2Part1RegV);
+        }
         /* 3. Compare arrays in the 32-byte chunk */
         masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part1RegV, array1Part1RegV, array2Part1RegV);
         masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part2RegV, array1Part2RegV, array2Part2RegV);
@@ -400,17 +441,27 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
 
         masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(processTail);
-        masm.cmp(64, array1Address, endOfArray1);
+        masm.cmp(64, array1, endOfArray1);
         masm.branchConditionally(ConditionFlag.HS, endLabel);
-        /* Adjust array1Address and array2Address to access last 32 bytes. */
-        masm.mov(64, array1Address, refAddress1);
-        if (!offset2Value.equals(Value.ILLEGAL)) {
-            masm.add(64, array2Address, asRegister(array2Value), asRegister(offset2Value));
-            masm.add(64, array2Address, array2Address, array2BaseOffset - 32);
+        /* Adjust array1 and array2 to access last 32 bytes. */
+        masm.sub(64, array1, endOfArray1, chunkSize1);
+        if (offset2Value.equals(Value.ILLEGAL)) {
+            masm.add(64, array2, asRegister(array2Value), array2BaseOffset - chunkSize2);
         } else {
-            masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset - 32);
+            masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
+            masm.sub(64, array2, array2, chunkSize2);
         }
-        masm.add(64, array2Address, array2Address, byteArrayLength);
+        if (isSameEncoding) {
+            masm.add(64, array2, array2, byteArrayLength);
+        } else {
+            masm.add(64, array2, array2, byteArrayLength, AArch64Assembler.ShiftType.LSR, 1);
+        }
+        /*
+         * Move back the 'endOfArray1' by 32-bytes because at the end of 'compareByChunkTail', the
+         * 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the 'compareByChunkHead'
+         * would never be using 'array1' >= 'endOfArray1' condition.
+         */
+        masm.mov(64, endOfArray1, array1);
         masm.jmp(compareByChunkTail);
     }
 }
