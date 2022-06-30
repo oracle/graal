@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.vars;
 
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -36,20 +38,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalPointer;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-
-import java.nio.ByteOrder;
 
 public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
@@ -110,18 +107,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
             if (isThreadLocal) {
                 LLVMPointer pointer = getContext().getSymbol(descriptors[i], exception);
                 LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
-                int tlsOffset = threadLocalPointer.getOffset();
-                BitcodeID bitcodeID = descriptors[i].getBitcodeID(exception);
-                if (tlsOffset < 0) {
-                    LLVMGlobalContainer container = LLVMLanguage.get(this).contextThreadLocal.get(thread).getGlobalContainer(Math.abs(tlsOffset), bitcodeID);
-                    address = LLVMManagedPointer.create(container);
-                } else {
-                    LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get(thread).getSection(bitcodeID);
-                    if (base == null) {
-                        continue;
-                    }
-                    address = base.increment(tlsOffset);
-                }
+                address = threadLocalPointer.resolveWithThreadContext(getLanguage().contextThreadLocal.get(thread), exception);
             } else {
                 address = context.getSymbol(descriptors[i], exception);
             }
@@ -146,18 +132,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
             if (isThreadLocal) {
                 LLVMPointer pointer = getContext().getSymbol(descriptors[i], exception);
                 LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
-                int tlsOffset = threadLocalPointer.getOffset();
-                BitcodeID bitcodeID = descriptors[i].getBitcodeID(exception);
-                if (tlsOffset < 0) {
-                    LLVMGlobalContainer container = LLVMLanguage.get(this).contextThreadLocal.get(thread).getGlobalContainer(Math.abs(tlsOffset), bitcodeID);
-                    address = LLVMManagedPointer.create(container);
-                } else {
-                    LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get(thread).getSection(bitcodeID);
-                    if (base == null) {
-                        continue;
-                    }
-                    address = base.increment(tlsOffset);
-                }
+                address = threadLocalPointer.resolveWithThreadContext(getLanguage().contextThreadLocal.get(thread), exception);
             } else {
                 address = context.getSymbol(descriptors[i], exception);
             }

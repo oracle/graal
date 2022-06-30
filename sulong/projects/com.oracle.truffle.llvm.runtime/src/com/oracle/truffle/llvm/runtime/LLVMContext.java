@@ -830,18 +830,7 @@ public final class LLVMContext {
         LLVMPointer target = getSymbol(symbol, exception);
         if (symbol.isThreadLocalSymbol()) {
             LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(target).getObject();
-            int offset = pointer.getOffset();
-            BitcodeID bitcodeID = pointer.getSymbol().getBitcodeID(exception);
-            if (offset < 0) {
-                LLVMGlobalContainer container = language.contextThreadLocal.get().getGlobalContainer(Math.abs(offset), bitcodeID);
-                return LLVMManagedPointer.create(container);
-            } else {
-                LLVMPointer base = language.contextThreadLocal.get().getSection(bitcodeID);
-                if (base == null) {
-                    throw new LLVMIllegalSymbolIndexException("Section base for thread local global is null");
-                }
-                return base.increment(offset);
-            }
+            return pointer.resolve(language, exception);
         }
         return target;
     }
