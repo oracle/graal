@@ -67,7 +67,7 @@ public class TStringConstructorTests extends TStringTestBase {
     public void testFromCodePointInvalid() throws Exception {
         forAllEncodingsAndInvalidCodePoints((TruffleString.Encoding encoding, int codepoint) -> {
             if (!(isUTF(encoding) && codepoint <= 0xffff && Character.isSurrogate((char) codepoint))) {
-                expectIllegalArgumentException(() -> fromCodePointUncached(codepoint, encoding));
+                Assert.assertNull(fromCodePointUncached(codepoint, encoding));
             }
         });
     }

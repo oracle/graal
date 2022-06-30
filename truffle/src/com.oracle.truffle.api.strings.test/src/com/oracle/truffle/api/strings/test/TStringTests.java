@@ -71,7 +71,7 @@ public class TStringTests {
     }
 
     @Test
-    public void testASCII() throws TruffleString.InvalidCodePointException {
+    public void testASCII() {
         String s = "asdf";
         TruffleString ts = fjs(s);
         Assert.assertEquals(s, ts.toString());
@@ -81,7 +81,7 @@ public class TStringTests {
             char c = s.charAt(i);
             int iBytes = i << 1;
             int lengthBytes = s.length() << 1;
-            TruffleString cs = TruffleString.FromCodePointNode.getUncached().executeChecked(c, TruffleString.Encoding.UTF_16, true);
+            TruffleString cs = TruffleString.FromCodePointNode.getUncached().execute(c, TruffleString.Encoding.UTF_16, TruffleString.ErrorHandling.BEST_EFFORT);
             Assert.assertEquals(c, ts.readCharUTF16Uncached(i));
             Assert.assertEquals(c, ts.codePointAtIndexUncached(i, TruffleString.Encoding.UTF_16));
             Assert.assertEquals(c, ts.codePointAtByteIndexUncached(iBytes, TruffleString.Encoding.UTF_16));

@@ -301,7 +301,6 @@ innr public abstract static ToJavaStringNode
 innr public final static !enum CodeRange
 innr public final static !enum Encoding
 innr public final static !enum ErrorHandling
-innr public final static InvalidCodePointException
 innr public final static NumberFormatException
 innr public final static WithMask
 meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUncached(byte[],com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -311,6 +310,8 @@ meth public static com.oracle.truffle.api.strings.TruffleString fromCharArrayUTF
 meth public static com.oracle.truffle.api.strings.TruffleString fromCharArrayUTF16Uncached(char[],int,int)
 meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
+meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[])
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[],int,int)
 meth public static com.oracle.truffle.api.strings.TruffleString fromJavaStringUncached(java.lang.String,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -638,9 +639,8 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract com.oracle.truffle.api.strings.TruffleString executeChecked(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean) throws com.oracle.truffle.api.strings.TruffleString$InvalidCodePointException
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public final com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode create()
@@ -732,12 +732,6 @@ meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleS
 meth public static com.oracle.truffle.api.strings.TruffleString$IntIndexOfAnyIntUTF32Node create()
 meth public static com.oracle.truffle.api.strings.TruffleString$IntIndexOfAnyIntUTF32Node getUncached()
 supr com.oracle.truffle.api.nodes.Node
-
-CLSS public final static com.oracle.truffle.api.strings.TruffleString$InvalidCodePointException
- outer com.oracle.truffle.api.strings.TruffleString
-meth public java.lang.Throwable fillInStackTrace()
-supr java.lang.Exception
-hfds serialVersionUID
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$IsValidNode
  outer com.oracle.truffle.api.strings.TruffleString
