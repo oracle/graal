@@ -50,10 +50,10 @@ public class JavaMonitor extends ReentrantLock {
     private long latestJfrTid;
 
     private long getNotifierTid() {
-        assert isHeldByCurrentThread(); // make sure we hold the lock
+        assert isHeldByCurrentThread();
         long curr = Thread.currentThread().getId();
         Waiter target = null;
-        // no guarantee on the order in which the waiters reacquire the lock.
+        // No guarantee on the order in which the waiters reacquire the lock.
         // Must compare TIDs. Can be expensive if many waiters and lock acquisition order is opposite wait order.
         for (Waiter waiter : waiters) {
             if (waiter.getWaiterTid() == curr) {
@@ -61,19 +61,16 @@ public class JavaMonitor extends ReentrantLock {
                 break;
             }
         }
-        // always remove waiters from queue when they resume
         assert waiters.remove(target);
         finishedWaiters--;
 
-        return target.getNotifierTid(); // could be unnotified
+        return target.getNotifierTid(); // notified if TID > 0
     }
 
     public void setNotifier(boolean notifyAll) {
-        // make sure we hold the lock
         assert isHeldByCurrentThread();
 
-        // If there are extra notifications, there will be no waiters to respond to
-        // them, so don't record them.
+        // If there are extra notifications, there will be no waiters to respond to them, so don't record them.
         if (finishedWaiters == waiters.size()) {
             return;
         }
@@ -87,7 +84,7 @@ public class JavaMonitor extends ReentrantLock {
         while (notifications > 0 && finishedWaiters < waiters.size()) {
             Waiter waiter = waiters.get(finishedWaiters);
 
-            // only add NotifierTid in queue if the thread is still waiting.
+            // Only add NotifierTid to queue if the thread is still waiting.
             // waitingThreads collection is not guaranteed to be in any order.
             if (waitingThreads.contains(waiter.getThread())) {
                 waiter.setNotifierTid(curr);
@@ -99,8 +96,8 @@ public class JavaMonitor extends ReentrantLock {
         }
     }
 
-    public void doWait(Object obj, long timeoutMillis, Condition condition) throws InterruptedException {
-        this.condition = condition;
+    public void doWait(Object obj, long timeoutMillis, Condition c) throws InterruptedException {
+        this.condition = c;
         waiters.addLast(new Waiter());
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         try {
