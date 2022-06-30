@@ -182,12 +182,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             Unsafe.getUnsafe().ensureClassInitialized(clazz);
             return InitKind.BUILD_TIME;
         } catch (NoClassDefFoundError ex) {
-            if (allowErrors) {
-                return InitKind.RUN_TIME;
-            } else if (!LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
-                System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
-                                ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time. " +
-                                instructionsToInitializeAtRuntime(clazz));
+            if (allowErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
                 return InitKind.RUN_TIME;
             } else {
                 return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
