@@ -374,18 +374,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          */
         JavaMonitor lock = ensureLocked(obj);
         Condition condition = getOrCreateCondition(lock, true);
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
-        lock.addWaiter();
-        if (timeoutMillis == 0L) {
-            condition.await();
-            JavaMonitorWaitEvent.emit(startTicks, obj, lock.getNotifierTid(), timeoutMillis, false);
-        } else {
-            if (condition.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
-                JavaMonitorWaitEvent.emit(startTicks, obj, lock.getNotifierTid(), timeoutMillis, false);
-            } else {
-                JavaMonitorWaitEvent.emit(startTicks, obj, 0, timeoutMillis, true);
-            }
-        }
+        lock.doWait(obj, timeoutMillis, condition);
     }
 
     @Override
