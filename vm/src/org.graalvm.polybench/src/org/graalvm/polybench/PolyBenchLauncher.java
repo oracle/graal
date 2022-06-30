@@ -483,6 +483,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, true, config.warmupIterations);
                 log("");
 
+                System.gc();
+
                 log("::: Running :::");
                 config.metric.reset();
                 repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, false, config.iterations);
