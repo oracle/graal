@@ -437,8 +437,9 @@ public final class GCImpl implements GC {
                 } else {
                     timers.logAfterCollection(verboseGCLog);
                 }
-                verboseGCLog.newline().string("  task queue max size: ")
-                        .unsigned(ParallelGCImpl.getStats().getMaxSize()).newline();
+                TaskQueue.Stats stats = ParallelGCImpl.getStats();
+                verboseGCLog.newline().string("  tasks: ").unsigned(stats.getCount())
+                        .string(", max size: ").unsigned(stats.getMaxSize()).newline();
                 verboseGCLog.string("]");
                 verboseGCLog.string("]").newline();
             }

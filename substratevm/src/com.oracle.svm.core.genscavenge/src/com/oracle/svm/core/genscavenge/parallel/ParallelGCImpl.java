@@ -53,13 +53,14 @@ public class ParallelGCImpl extends ParallelGC {
 
     public static void queue(Object obj) {
         QUEUE.put(obj);
-        if (WORKERS_COUNT <= 0) { // execute synchronously
-            QUEUE.consume(PROMOTE_TASK);
-        }
     }
 
     public static void waitForIdle() {
-        QUEUE.waitUntilIdle(WORKERS_COUNT);
+        if (WORKERS_COUNT > 0) {
+            QUEUE.waitUntilIdle(WORKERS_COUNT);
+        } else {
+            QUEUE.drain(PROMOTE_TASK); // execute synchronously
+        }
     }
 
     public static boolean isEnabled() {

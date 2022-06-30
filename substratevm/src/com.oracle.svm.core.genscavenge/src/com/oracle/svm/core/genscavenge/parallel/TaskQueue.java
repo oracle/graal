@@ -4,6 +4,7 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 public class TaskQueue {
@@ -13,19 +14,20 @@ public class TaskQueue {
         private Object object;///no need to wrap
     }
 
-    public final Stats stats;
+    final Stats stats;
 
     private final VMMutex mutex;
     private final VMCondition cond;
     private final TaskData[] data;
+    private final AtomicInteger idleCount;
     private int getIndex;
     private int putIndex;
-    private volatile int idleCount;
 
     public TaskQueue(String name) {
         mutex = new VMMutex(name + "-queue");
         cond = new VMCondition(mutex);
         data = IntStream.range(0, SIZE).mapToObj(n -> new TaskData()).toArray(TaskData[]::new);
+        idleCount = new AtomicInteger(0);
         stats = new Stats();
     }
 
@@ -52,7 +54,7 @@ public class TaskQueue {
             item.object = object;
         } finally {
             putIndex = next(putIndex);
-            stats.noteSize(putIndex, getIndex);
+            stats.noteTask(putIndex, getIndex);
             mutex.unlock();
             cond.broadcast();
         }
@@ -60,9 +62,9 @@ public class TaskQueue {
 
     public void consume(Consumer consumer) {
         Object obj;
+        idleCount.incrementAndGet();
+        mutex.lock();
         try {
-            mutex.lock();
-            idleCount++;
             while (!canGet()) {
                 Log.log().string("PP cannot get task\n");
                 cond.block();
@@ -71,15 +73,27 @@ public class TaskQueue {
             obj = item.object;
         } finally {
             getIndex = next(getIndex);
-            stats.noteSize(putIndex, getIndex);
-            idleCount--;
             mutex.unlock();
+            idleCount.decrementAndGet();
             cond.broadcast();
         }
         consumer.accept(obj);
     }
 
+    // Non MT safe. Only call when no workers are running
+    public void drain(Consumer consumer) {
+        idleCount.decrementAndGet();
+        while (canGet()) {
+            TaskData item = data[getIndex];
+            Object obj = item.object;
+            consumer.accept(obj);
+            getIndex = next(getIndex);
+        }
+        idleCount.incrementAndGet();
+    }
+
     public void waitUntilIdle(int expectedIdleCount) {
+        Log log = Log.log().string("PP waitForIdle ").unsigned(idleCount.get()).newline();
         try {
             mutex.lock();
             while (canGet()) {
@@ -88,17 +102,19 @@ public class TaskQueue {
         } finally {
             mutex.unlock();
         }
-        while (idleCount < expectedIdleCount);///signal?
+        while (idleCount.get() < expectedIdleCount);///signal?
+        log.string("PP waitForIdle over").newline();
     }
 
     public interface Consumer {
         void accept(Object object); ///j.u.f.Consumer
     }
 
+    // Non MT safe, needs locking
     public static class Stats {
-        private int maxSize;
+        private int count, maxSize;
 
-        public void noteSize(int putIndex, int getIndex) {
+        void noteTask(int putIndex, int getIndex) {
             int size = putIndex - getIndex;
             if (size < 0) {
                 size += SIZE;
@@ -106,6 +122,11 @@ public class TaskQueue {
             if (size > maxSize) {
                 maxSize = size;
             }
+            count++;
+        }
+
+        public int getCount() {
+            return count;
         }
 
         public int getMaxSize() {
@@ -113,7 +134,7 @@ public class TaskQueue {
         }
 
         public void reset() {
-            maxSize = 0;
+            count = maxSize = 0;
         }
     }
 }
