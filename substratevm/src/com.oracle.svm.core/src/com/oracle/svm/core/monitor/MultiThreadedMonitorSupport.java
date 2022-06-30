@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject;
@@ -59,7 +58,6 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 
 import jdk.internal.misc.Unsafe;
 
@@ -369,8 +367,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Override
     protected void doWait(Object obj, long timeoutMillis) throws InterruptedException {
         /*
-         * Ensure that the current thread holds the lock. Required by the specification of
-         * Object.wait, and also required for our implementation.
+         * Ensure that the current thread holds the lock. Required by the specification
+         * of Object.wait, and also required for our implementation.
          */
         JavaMonitor lock = ensureLocked(obj);
         Condition condition = getOrCreateCondition(lock, true);

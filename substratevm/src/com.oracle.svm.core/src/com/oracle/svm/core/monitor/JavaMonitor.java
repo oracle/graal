@@ -38,6 +38,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
+import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 
 public class JavaMonitor extends ReentrantLock {
     private static final long serialVersionUID = 3921577070627519721L;
@@ -49,11 +50,12 @@ public class JavaMonitor extends ReentrantLock {
     private long latestJfrTid;
 
     private long getNotifierTid() {
-        assert isHeldByCurrentThread(); //make sure we hold the lock
+        assert isHeldByCurrentThread(); // make sure we hold the lock
         long curr = Thread.currentThread().getId();
         Waiter target = null;
 
-        //no guarantee on the order in which the waiters reacquire the lock. Must compare TIDs. Can be expensive.
+        // no guarantee on the order in which the waiters reacquire the lock. Must
+        // compare TIDs. Can be expensive.
         for (Waiter waiter : waiters) {
             if (waiter.getWaiterTid() == curr) {
                 target = waiter;
@@ -63,14 +65,15 @@ public class JavaMonitor extends ReentrantLock {
         assert waiters.remove(target);
         finishedWaiters--;
 
-        return target.getNotifierTid(); //could be unnotified
+        return target.getNotifierTid(); // could be unnotified
     }
 
     public void setNotifier(boolean notifyAll) {
-        //make sure we hold the lock
+        // make sure we hold the lock
         assert isHeldByCurrentThread();
 
-        //If there are extra notifications, there will be no waiters to respond to them, so don't record them.
+        // If there are extra notifications, there will be no waiters to respond to
+        // them, so don't record them.
         if (finishedWaiters == waiters.size()) {
             return;
         }
@@ -84,42 +87,42 @@ public class JavaMonitor extends ReentrantLock {
         while (notifications > 0 && finishedWaiters < waiters.size()) {
             Waiter waiter = waiters.get(finishedWaiters);
 
-            //only add NotifierTid in queue if the thread is still waiting.
+            // only add NotifierTid in queue if the thread is still waiting.
             Collection<Thread> waitingThreads = this.getWaitingThreads(condition);
-            //waitingThreads collection is not guaranteed to be in any order.
-			if (waitingThreads.contains(waiter.getThread())) {
+            // waitingThreads collection is not guaranteed to be in any order.
+            if (waitingThreads.contains(waiter.getThread())) {
                 waiter.setNotifierTid(curr);
                 notifications--;
-			} else if (notifyAll) {
+            } else if (notifyAll) {
                 notifications--;
-			}
-			finishedWaiters++;
+            }
+            finishedWaiters++;
         }
     }
 
-	public void doWait(Object obj, long timeoutMillis, Condition condition) throws InterruptedException {
+    public void doWait(Object obj, long timeoutMillis, Condition condition) throws InterruptedException {
         this.condition = condition;
         waiters.addLast(new Waiter());
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         try {
             if (timeoutMillis == 0L) {
                 condition.await();
-                com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent.emit(startTicks, obj, getNotifierTid(), timeoutMillis, false);
+                JavaMonitorWaitEvent.emit(startTicks, obj, getNotifierTid(), timeoutMillis, false);
             } else {
                 if (condition.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
-                    com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent.emit(startTicks, obj, getNotifierTid(), timeoutMillis, false);
+                    JavaMonitorWaitEvent.emit(startTicks, obj, getNotifierTid(), timeoutMillis, false);
                 } else {
-                    //remove waiter from queue and check it wasn't notified
+                    // remove waiter from queue and check it wasn't notified
                     assert getNotifierTid() < 0;
-                    com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent.emit(startTicks, obj, 0, timeoutMillis, true);
+                    JavaMonitorWaitEvent.emit(startTicks, obj, 0, timeoutMillis, true);
                 }
             }
         } catch (InterruptedException e) {
             // Similar to hotspot, we should not emit event if interrupted
             getNotifierTid();
-            throw e; //pass it back up in case it needs to be handled elsewhere
+            throw e; // pass it back up in case it needs to be handled elsewhere
         }
-	}
+    }
 
     public JavaMonitor() {
         Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(this, Target_java_util_concurrent_locks_ReentrantLock.class);
@@ -159,30 +162,28 @@ public class JavaMonitor extends ReentrantLock {
         latestJfrTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
     }
 
-	class Waiter {
+    class Waiter {
         private Thread thread;
-		private long notifierTid = -1;
+        private long notifierTid = -1;
 
-		public Waiter() {
+        Waiter() {
             this.thread = Thread.currentThread();
-		}
+        }
 
-        public Thread getThread(){ return thread;}
-
-		public boolean getIsNotified() {
-			return notifierTid >= 0;
-		}
+        public Thread getThread() {
+            return thread;
+        }
 
         public long getNotifierTid() {
             return notifierTid;
         }
 
-		public long getWaiterTid() {
-			return thread.getId();
-		}
+        public long getWaiterTid() {
+            return thread.getId();
+        }
 
         public void setNotifierTid(long notifierTid) {
             this.notifierTid = notifierTid;
         }
-	}
+    }
 }
