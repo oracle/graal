@@ -53,12 +53,12 @@ public class JavaMonitor extends ReentrantLock {
         assert isHeldByCurrentThread(); // make sure we hold the lock
         long curr = Thread.currentThread().getId();
         Waiter target = null;
-
-        // no guarantee on the order in which the waiters reacquire the lock. Must
-        // compare TIDs. Can be expensive.
+        // no guarantee on the order in which the waiters reacquire the lock.
+        // Must compare TIDs. Can be expensive if many waiters and lock acquisition order is opposite wait order.
         for (Waiter waiter : waiters) {
             if (waiter.getWaiterTid() == curr) {
                 target = waiter;
+                break;
             }
         }
         // always remove waiters from queue when they resume
@@ -83,12 +83,11 @@ public class JavaMonitor extends ReentrantLock {
         if (notifyAll) {
             notifications = waiters.size() - finishedWaiters;
         }
-
+        Collection<Thread> waitingThreads = this.getWaitingThreads(condition);
         while (notifications > 0 && finishedWaiters < waiters.size()) {
             Waiter waiter = waiters.get(finishedWaiters);
 
             // only add NotifierTid in queue if the thread is still waiting.
-            Collection<Thread> waitingThreads = this.getWaitingThreads(condition);
             // waitingThreads collection is not guaranteed to be in any order.
             if (waitingThreads.contains(waiter.getThread())) {
                 waiter.setNotifierTid(curr);
