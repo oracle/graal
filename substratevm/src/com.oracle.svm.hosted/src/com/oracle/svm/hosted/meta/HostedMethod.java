@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider {
+public final class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider {
 
     public static final String METHOD_NAME_COLLISION_SUFFIX = "*";
     public static final String METHOD_NAME_DEOPT_SUFFIX = "**";
@@ -77,8 +77,8 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     private final Signature signature;
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
-    protected StaticAnalysisResults staticAnalysisResults;
-    protected int vtableIndex = -1;
+    StaticAnalysisResults staticAnalysisResults;
+    int vtableIndex = -1;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -92,7 +92,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
      * All concrete methods that can actually be called when calling this method. This includes all
      * overridden methods in subclasses, as well as this method if it is non-abstract.
      */
-    protected HostedMethod[] implementations;
+    HostedMethod[] implementations;
 
     public final CompilationInfo compilationInfo;
     private final LocalVariableTable localVariableTable;
@@ -123,26 +123,26 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     }
 
     private static LocalVariableTable createLocalVariableTable(HostedUniverse universe, AnalysisMethod wrapped) {
-        LocalVariableTable newLocalVariableTable = null;
-        if (wrapped.getLocalVariableTable() != null) {
-            try {
-                Local[] origLocals = wrapped.getLocalVariableTable().getLocals();
-                Local[] newLocals = new Local[origLocals.length];
-                for (int i = 0; i < newLocals.length; ++i) {
-                    Local origLocal = origLocals[i];
-                    JavaType origType = origLocal.getType();
-                    if (!universe.contains(origType)) {
-                        throw new UnsupportedFeatureException("No HostedType for given AnalysisType");
-                    }
-                    HostedType newType = universe.lookup(origType);
-                    newLocals[i] = new Local(origLocal.getName(), newType, origLocal.getStartBCI(), origLocal.getEndBCI(), origLocal.getSlot());
-                }
-                newLocalVariableTable = new LocalVariableTable(newLocals);
-            } catch (UnsupportedFeatureException e) {
-                newLocalVariableTable = null;
-            }
+        LocalVariableTable lvt = wrapped.getLocalVariableTable();
+        if (lvt == null) {
+            return null;
         }
-        return newLocalVariableTable;
+        try {
+            Local[] origLocals = lvt.getLocals();
+            Local[] newLocals = new Local[origLocals.length];
+            for (int i = 0; i < newLocals.length; ++i) {
+                Local origLocal = origLocals[i];
+                JavaType origType = origLocal.getType();
+                if (!universe.contains(origType)) {
+                    throw new UnsupportedFeatureException("No HostedType for given AnalysisType");
+                }
+                HostedType newType = universe.lookup(origType);
+                newLocals[i] = new Local(origLocal.getName(), newType, origLocal.getStartBCI(), origLocal.getEndBCI(), origLocal.getSlot());
+            }
+            return new LocalVariableTable(newLocals);
+        } catch (UnsupportedFeatureException e) {
+            return null;
+        }
     }
 
     private HostedMethod(AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool,
