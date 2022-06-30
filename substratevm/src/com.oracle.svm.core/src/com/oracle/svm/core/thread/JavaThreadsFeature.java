@@ -130,6 +130,7 @@ class JavaThreadsFeature implements Feature {
         JavaThreads.threadInitNumber.set(maxAutonumber);
     }
 
+    @SuppressWarnings("deprecation")
     static long threadId(Thread thread) {
         return thread == PlatformThreads.singleton().mainThread ? 1 : thread.getId();
     }

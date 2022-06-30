@@ -255,6 +255,7 @@ public class SubstrateJVM {
     }
 
     /** See {@link JVM#getThreadId}. */
+    @SuppressWarnings("deprecation")
     public static long getThreadId(Thread thread) {
         if (HasJfrSupport.get()) {
             return thread.getId();

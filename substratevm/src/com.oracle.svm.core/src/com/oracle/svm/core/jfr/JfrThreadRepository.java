@@ -96,6 +96,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @SuppressWarnings("deprecation")
     private void registerThread0(Thread thread) {
         assert SubstrateJVM.isRecording();
         JfrThreadEpochData epochData = getEpochData(false);

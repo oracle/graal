@@ -330,7 +330,7 @@ public final class Target_java_lang_Thread {
         this.contextClassLoader = Thread.currentThread().getContextClassLoader();
     }
 
-    @SuppressWarnings("hiding")
+    @SuppressWarnings({"hiding", "deprecation"})
     @Substitute
     private void start0() {
         if (!SubstrateOptions.MultiThreaded.getValue()) {

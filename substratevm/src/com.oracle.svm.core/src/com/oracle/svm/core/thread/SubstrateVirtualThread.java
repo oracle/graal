@@ -566,6 +566,7 @@ final class SubstrateVirtualThread extends Thread {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("VirtualThread[#");
@@ -601,6 +602,7 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public int hashCode() {
         return (int) getId();
     }
