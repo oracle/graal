@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v1.json",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json",
   "type": "object",
   "default": {},
   "title": "Schema for the JSON build output of GraalVM Native Image",

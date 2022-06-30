@@ -631,7 +631,7 @@ public class ProgressReporter {
         });
         if (jsonHelper != null && wasSuccessfulBuild) {
             Path jsonMetric = jsonHelper.printToFile();
-            pathToTypes.computeIfAbsent(jsonMetric, p -> new ArrayList<>()).add("raw");
+            pathToTypes.computeIfAbsent(jsonMetric, p -> new ArrayList<>()).add("json");
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             Path buildStatisticsPath = reportImageBuildStatistics(imageName, generator.getBigbang());
