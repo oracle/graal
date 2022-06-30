@@ -106,10 +106,10 @@ public class JavaMonitor extends ReentrantLock {
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         try {
             if (timeoutMillis == 0L) {
-                condition.await();
+                this.condition.await();
                 JavaMonitorWaitEvent.emit(startTicks, obj, getNotifierTid(), timeoutMillis, false);
             } else {
-                if (condition.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                if (this.condition.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
                     JavaMonitorWaitEvent.emit(startTicks, obj, getNotifierTid(), timeoutMillis, false);
                 } else {
                     // remove waiter from queue and check it wasn't notified
