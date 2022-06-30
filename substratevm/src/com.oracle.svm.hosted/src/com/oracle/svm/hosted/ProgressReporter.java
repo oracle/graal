@@ -348,6 +348,7 @@ public class ProgressReporter {
         l().a(actualVsTotalFormat, reachableMethods, reachableMethods / (double) totalMethods * 100, totalMethods)
                         .a(" methods ").doclink("reachable", "#glossary-reachability").println();
         if (numRuntimeCompiledMethods >= 0) {
+            recordJsonMetric(ImageDetailKey.RUNTIME_COMPILED_METHODS_COUNT, numRuntimeCompiledMethods);
             l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
                             .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
         }
@@ -533,7 +534,8 @@ public class ProgressReporter {
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
                 remainingBytes -= resourcesByteLength;
             }
-            if (graphEncodingByteLength > 0) {
+            if (graphEncodingByteLength >= 0) {
+                recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
                 remainingBytes -= graphEncodingByteLength;
             }

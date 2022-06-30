@@ -279,6 +279,27 @@
               "title": "The number of bytes used for debug info"
             }
           }
+        },
+        "runtime_compiled_methods": {
+          "type": "object",
+          "default": {},
+          "title": "Statistics on runtime compiled methods (optional)",
+          "required": [
+            "count",
+            "graph_encoding_bytes"
+          ],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "default": 0,
+              "title": "Number of runtime compiled methods"
+            },
+            "graph_encoding_bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for graph encodings bytes"
+            }
+          }
         }
       },
       "examples": [
@@ -494,6 +515,10 @@
             "count": 134,
             "bytes": 10200
           }
+        },
+        "runtime_compiled_methods": {
+          "count": 12744,
+          "graph_encoding_bytes": 1440000
         }
       },
       "resource_usage": {

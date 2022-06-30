@@ -162,7 +162,9 @@ class ProgressReporterJsonHelper {
         IMAGE_HEAP_SIZE("image_heap", null, "bytes"),
         DEBUG_INFO_SIZE("debug_info", null, "bytes"),
         IMAGE_HEAP_RESOURCE_COUNT("image_heap", "resources", "count"),
-        RESOURCE_SIZE_BYTES("image_heap", "resources", "bytes");
+        RESOURCE_SIZE_BYTES("image_heap", "resources", "bytes"),
+        RUNTIME_COMPILED_METHODS_COUNT("runtime_compiled_methods", null, "count"),
+        GRAPH_ENCODING_SIZE("runtime_compiled_methods", null, "graph_encoding_bytes");
 
         private String bucket;
         private String key;
