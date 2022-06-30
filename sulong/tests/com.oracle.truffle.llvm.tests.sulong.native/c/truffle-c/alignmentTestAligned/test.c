@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
+#include <stdint.h>
 
 int main() {
     if (__alignof__(char) != 1) {
@@ -69,7 +70,10 @@ int main() {
     if (__alignof__(unsigned int) != 4) {
         abort();
     }
-    if (__alignof__(long) != 8) {
+    if (__alignof__(int64_t) != 8) {
+        abort();
+    }
+    if (__alignof__(uint64_t) != 8) {
         abort();
     }
     if (__alignof__(float) != 4) {
