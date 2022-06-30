@@ -1265,6 +1265,7 @@ def polybenchmark_rules(benchmark, metric_name, mode):
             mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmark,
                 "metric.name": "context-eval-time",
+                "metric.better": "lower",
                 "metric.value": ("<delta>", float),
                 "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
@@ -1276,6 +1277,7 @@ def polybenchmark_rules(benchmark, metric_name, mode):
             mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmark,
                 "metric.name": "context-init-time",
+                "metric.better": "lower",
                 "metric.value": ("<delta>", float),
                 "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
