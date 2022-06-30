@@ -474,6 +474,12 @@ public final class Block extends AbstractBlockBase<Block> {
         }
 
         next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
+
+        // Remove the current block from the blocks of the loops it belongs to
+        for (Loop<Block> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {
+            GraalError.guarantee(currLoop.getBlocks().contains(this), "block not contained in a loop it is referencing");
+            currLoop.getBlocks().remove(this);
+        }
     }
 
     protected void setPostDominator(Block postdominator) {
