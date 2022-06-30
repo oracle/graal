@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
@@ -114,7 +114,7 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
             /*
              * To allow register new resource bundle classes during analysis phase
              */
-            ConfigurableClassInitialization classInitializationSupport = (ConfigurableClassInitialization) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             classInitializationSupport.setConfigurationSealed(false);
 
             ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
