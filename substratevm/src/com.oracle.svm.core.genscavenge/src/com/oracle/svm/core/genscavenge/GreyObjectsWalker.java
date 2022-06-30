@@ -126,7 +126,6 @@ final class GreyObjectsWalker {
             UnalignedHeapChunk.UnalignedHeader lastChunk;
             do {
                 lastChunk = uChunk;
-                Log.log().string("PP walk unaligned in chunk ").zhex(uChunk).newline();
                 if (!UnalignedHeapChunk.walkObjectsInline(uChunk, visitor)) {
                     throw VMError.shouldNotReachHere();
                 }

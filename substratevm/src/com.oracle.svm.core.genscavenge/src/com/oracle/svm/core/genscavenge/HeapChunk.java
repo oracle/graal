@@ -282,8 +282,6 @@ public final class HeapChunk {
 
     @AlwaysInline("GC performance")
     public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
-        /// beware: this is called for both aligned and unaligned objects. Make sure both types are
-        /// put on the task queue. Currently only aligned ones are.
         Pointer offset = startOffset;
         Pointer top = getTopPointer(that);
         while (offset.belowThan(top)) {

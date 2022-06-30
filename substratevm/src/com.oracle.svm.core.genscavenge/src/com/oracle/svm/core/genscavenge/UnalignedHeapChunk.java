@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.log.Log;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -146,6 +147,7 @@ public final class UnalignedHeapChunk {
 
     @AlwaysInline("GC performance")
     public static boolean walkObjectsInline(UnalignedHeader that, ObjectVisitor visitor) {
+        Log.log().string("UA walk unaligned in chunk ").zhex(that).newline();
         return HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
     }
 

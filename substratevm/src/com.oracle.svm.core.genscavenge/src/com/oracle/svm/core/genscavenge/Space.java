@@ -33,6 +33,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -178,12 +179,12 @@ public final class Space {
                 result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
             }
             if (result.isNonNull()) {
-                Log.log().string("    alloc fast ").zhex(result).newline();
+//                Log.log().string("    alloc fast ").zhex(result).newline();
                 return result;
             }
             /* Slow-path: try allocating a new chunk for the requested memory. */
             result = allocateInNewChunk(objectSize);
-            Log.log().string("    alloc slow ").zhex(result).newline();
+//            Log.log().string("    alloc slow ").zhex(result).newline();
             return result;
         } finally {
             mutex.unlock();
@@ -425,8 +426,15 @@ public final class Space {
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
+        Log.log().string("UA promote chunk ").zhex(chunk).newline();
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
+
+        if (ParallelGCImpl.isEnabled()) {
+            if (!UnalignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
+                throw VMError.shouldNotReachHere();
+            }
+        }
 
         if (this.isOldSpace()) {
             if (originalSpace.isYoungSpace()) {
