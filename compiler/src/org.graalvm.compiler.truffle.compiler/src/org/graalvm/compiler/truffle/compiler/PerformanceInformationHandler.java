@@ -45,7 +45,6 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -208,30 +207,21 @@ public final class PerformanceInformationHandler implements Closeable {
         if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             for (Loop<Block> loop : cfg.getLoops()) {
-                // check if any loop exit contains a trusted profile
-                boolean containsNaturalExit = false;
-                boolean containsTrustedProfile = false;
+                // check if all loop exit contain trusted profiles
                 List<Block> loopBlocks = loop.getBlocks();
-                outer: for (Block exit : loop.getLoopExits()) {
+                for (Block exit : loop.getLoopExits()) {
                     Block exitDom = exit.getDominator();
                     if (!(exitDom.getEndNode() instanceof ControlSplitNode) && !loopBlocks.contains(exitDom)) {
                         // potential computation before loop exit
                         exitDom = exitDom.getDominator();
                     }
-                    while (loop.getBlocks().contains(exitDom) && exitDom.getEndNode() instanceof IfNode) {
-                        containsNaturalExit = true;
-                        if (ProfileSource.isTrusted(((IfNode) exitDom.getEndNode()).getProfileData().getProfileSource())) {
-                            containsTrustedProfile = true;
-                            break outer;
+                    if (loopBlocks.contains(exitDom) && exitDom.getEndNode() instanceof ControlSplitNode) {
+                        ControlSplitNode split = (ControlSplitNode) exitDom.getEndNode();
+                        if (!ProfileSource.isTrusted(split.getProfileData().getProfileSource())) {
+                            logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, target, Arrays.asList(loop.getHeader().getBeginNode()),
+                                            String.format("Missing loop profile for %s at loop %s.", split, loop.getHeader().getBeginNode()), null);
                         }
-                        exitDom = exitDom.getDominator();
                     }
-                }
-                if (containsNaturalExit && !containsTrustedProfile) {
-                    logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, target, Arrays.asList(loop.getHeader().getBeginNode()),
-                                    String.format("Missing loop profile for %s.", loop),
-                                    null);
-                    warnings.add(loop.getHeader().getBeginNode());
                 }
             }
         }

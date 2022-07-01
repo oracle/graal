@@ -1661,6 +1661,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         foundIf = (IfNode) node;
                         prev = falsePrev;
                         viaFalseEnd = true;
+                        break;
                     } else {
                         // found different if nodes, abort
                         return;
