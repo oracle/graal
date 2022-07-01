@@ -24,8 +24,13 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,12 +59,26 @@ import com.oracle.truffle.api.nodes.Node;
  */
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.
-    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, Integer.MAX_VALUE);
+    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, Integer.MAX_VALUE, 0);
     // Must be a power of 2 (polling uses bit masks). OSRCompilationThreshold is a multiple of this
     // interval.
     public static final int OSR_POLL_INTERVAL = 1024;
 
+    private static final Object PLACEHOLDER = new Object();
+
     private final BytecodeOSRNode osrNode;
+
+    private final AtomicReference<Object> currentlyCompiling = new AtomicReference<>();
+    private final TargetCounters compilationReAttempts = new TargetCounters();
+
+    private OptimizedCallTarget getCurrentlyCompiling() {
+        Object value = currentlyCompiling.get();
+        if (value == null || value == PLACEHOLDER) {
+            return null;
+        }
+        assert value instanceof OptimizedCallTarget;
+        return (OptimizedCallTarget) value;
+    }
 
     // Lazily initialized state. Most nodes with back-edges will not trigger compilation, so we
     // defer initialization of some fields until they're actually used.
@@ -134,11 +153,13 @@ public final class BytecodeOSRMetadata {
     }
 
     private final int osrThreshold;
+    private final int maxCompilationReAttempts;
     private int backEdgeCount;
 
-    BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold) {
+    BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold, int maxCompilationReAttempts) {
         this.osrNode = osrNode;
         this.osrThreshold = osrThreshold;
+        this.maxCompilationReAttempts = maxCompilationReAttempts;
         this.backEdgeCount = 0;
     }
 
@@ -202,12 +223,31 @@ public final class BytecodeOSRMetadata {
     }
 
     private void requestOSRCompilation(int target, OptimizedCallTarget callTarget, FrameWithoutBoxing frame) {
+        OptimizedCallTarget previousCompilation = getCurrentlyCompiling();
+        if (previousCompilation != null && previousCompilation.isSubmittedForCompilation()) {
+            // Completed compilation of the previously scheduled compilation. Clear the reference.
+            currentlyCompiling.compareAndSet(previousCompilation, null);
+        }
+        if (!currentlyCompiling.compareAndSet(null, PLACEHOLDER)) {
+            // Prevent multiple OSR compilations of the same method at different entry points.
+            return;
+        }
+        compilationReAttempts.inc(target);
+        if (compilationReAttempts.total() >= maxCompilationReAttempts) {
+            markCompilationFailed();
+            if (callTarget.getOptionValue(PolyglotCompilerOptions.ThrowOnMaxOSRCompilationReAttemptsReached)) {
+                throw new AssertionError("Max OSR compilation re-attempts reached for " + osrNode);
+            }
+            return;
+        }
         osrNode.prepareOSR(target);
         updateFrameSlots(frame, getEntryCacheFromCallTarget(callTarget));
         callTarget.compile(true);
         if (callTarget.isCompilationFailed()) {
             markCompilationFailed();
         }
+        boolean submitted = currentlyCompiling.compareAndSet(PLACEHOLDER, previousCompilation);
+        assert submitted;
     }
 
     private static OsrEntryDescription getEntryCacheFromCallTarget(OptimizedCallTarget callTarget) {
@@ -400,6 +440,25 @@ public final class BytecodeOSRMetadata {
 
     public int getBackEdgeCount() {
         return backEdgeCount;
+    }
+
+    /**
+     * Counts re-attempts at compilations. Represents an approximation of the number of
+     * deoptimizations in OSR a given method goes through.
+     */
+    private static final class TargetCounters {
+        private final Set<Integer> knownTargets = new HashSet<>(1);
+        private int total = 0;
+
+        public void inc(int target) {
+            if (!knownTargets.add(target)) {
+                total++;
+            }
+        }
+
+        public int total() {
+            return total;
+        }
     }
 
     /**

@@ -452,6 +452,12 @@ public final class PolyglotCompilerOptions {
     // Note: default value is a multiple of the bytecode OSR polling interval.
     public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(100352);
 
+    @Option(help = "Number of compilation re-attempts before bailing out of OSR compilation for a given method (default 30). This number is an approximation of the acceptable number of deopts.", usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> OSRMaxCompilationReAttempts = new OptionKey<>(30);
+
+    @Option(help = "Whether an exception is thrown when the maximum number of OSR compilation attempts is reached for a given method (default 'false'). This should only be set to 'true' in testing environments.", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> ThrowOnMaxOSRCompilationReAttemptsReached = new OptionKey<>(false);
+
     @Option(help = "Enable partial compilation for BlockNode (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> PartialBlockCompilation = new OptionKey<>(true);
 

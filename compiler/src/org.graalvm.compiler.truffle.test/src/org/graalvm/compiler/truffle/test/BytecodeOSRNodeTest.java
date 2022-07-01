@@ -71,7 +71,10 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         // Use a multiple of the poll interval, so OSR triggers immediately when it hits the
         // threshold.
         osrThreshold = 10 * BytecodeOSRMetadata.OSR_POLL_INTERVAL;
-        setupContext("engine.MultiTier", "false", "engine.OSR", "true", "engine.OSRCompilationThreshold", String.valueOf(osrThreshold));
+        setupContext("engine.MultiTier", "false",
+                        "engine.OSR", "true",
+                        "engine.OSRCompilationThreshold", String.valueOf(osrThreshold),
+                        "engine.ThrowOnMaxOSRCompilationReAttemptsReached", "true");
     }
 
     /*
@@ -397,6 +400,18 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         RootNode rootNode = new Program(new FrameTransferringNodeWithUninitializedSlots(frameBuilder, defaultValue), frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
+    }
+
+    /*
+     * Test that there is no recursive OSR, by checking that a second OSR call is made in .
+     */
+    @Test
+    public void testRecursiveDeoptHandling() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        DeoptingBytecodeOSRTestNode osrNode = new DeoptingBytecodeOSRTestNode();
+        RootNode rootNode = new Program(osrNode, frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        target.call();
     }
 
     // Bytecode programs
@@ -1324,6 +1339,47 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
             }
+        }
+    }
+
+    public static class DeoptingBytecodeOSRTestNode extends BytecodeOSRTestNode {
+        private static final Object RETURN_VALUE = new Object();
+        private static final Object FAIL_VALUE = new Object();
+
+        @Override
+        Object execute(VirtualFrame frame) {
+            try {
+                doExecute(frame);
+            } catch (AssertionError e) {
+                if (e.getMessage().contains("Max OSR compilation re-attempts reached")) {
+                    return RETURN_VALUE;
+                }
+            }
+            return FAIL_VALUE;
+        }
+
+        Object doExecute(VirtualFrame frame) {
+            while (true) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                    Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
+                    if (result != null) {
+                        return result;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            return doExecute(osrFrame);
+        }
+
+        @Override
+        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+            super.restoreParentFrame(osrFrame, parentFrame);
         }
     }
 

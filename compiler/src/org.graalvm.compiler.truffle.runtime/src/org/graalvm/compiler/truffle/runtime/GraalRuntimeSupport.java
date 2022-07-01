@@ -132,7 +132,9 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             if (metadata == null) {
                 OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
                 if (callTarget.engine.compilation && callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                    metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                    metadata = new BytecodeOSRMetadata(osrNode,
+                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold),
+                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRMaxCompilationReAttempts));
                 } else {
                     metadata = BytecodeOSRMetadata.DISABLED;
                 }
