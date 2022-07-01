@@ -456,7 +456,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
-        assert obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
+        assert JavaVersionUtil.JAVA_SPEC > 19 ||
+                        obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
                         "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
 
