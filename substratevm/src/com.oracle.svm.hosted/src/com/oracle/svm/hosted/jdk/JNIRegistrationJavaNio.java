@@ -113,8 +113,8 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Featu
         a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.Net", "initIDs"));
 
         /*
-         * Starting with support for JDK 17, all of the Buffer classes require MemorySegmentProxy
-         * which is accessed via reflection.
+         * In JDK 17, all of the Buffer classes require MemorySegmentProxy which is accessed via
+         * reflection.
          */
         if (JavaVersionUtil.JAVA_SPEC == 17) {
             RuntimeReflection.register(clazz(a, "jdk.internal.access.foreign.MemorySegmentProxy"));
