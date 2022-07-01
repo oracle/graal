@@ -62,7 +62,7 @@ import sun.reflect.annotation.AnnotationParser;
  * avoid initializing classes that should be initialized at run-time, since looking up annotations
  * through the JDK's {@link AnnotationParser} initializes the class of every annotation on the
  * queried element.
- * 
+ *
  * When queried, the extracter looks for the root of the provided element, which can be a
  * {@link Field}, {@link Method}, {@link Constructor} or {@link Class} object, as well as a record
  * component on JDK 17. It then looks into the byte arrays representing annotations in the root
@@ -70,7 +70,7 @@ import sun.reflect.annotation.AnnotationParser;
  * annotation on demand in an {@link AnnotationValue} or {@link TypeAnnotationValue} object or any
  * subclass of {@link AnnotationMemberValue}. The actual annotation can then be created using the
  * {@link AnnotationMemberValue#get(Class)} method.
- * 
+ *
  * The {@link SubstrateAnnotationExtracter} is tightly coupled with {@link GuardedAnnotationAccess},
  * which provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
  * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} should
@@ -228,7 +228,8 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     }
 
     public AnnotationValue[][] getParameterAnnotationData(AnnotatedElement element) {
-        return getParameterAnnotationDataFromRoot((Executable) getRoot(element));
+        AnnotatedElement root = getRoot(element);
+        return root != null ? getParameterAnnotationDataFromRoot((Executable) root) : NO_PARAMETER_ANNOTATIONS;
     }
 
     private AnnotationValue[][] getParameterAnnotationDataFromRoot(Executable rootElement) {
@@ -256,7 +257,8 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     }
 
     public TypeAnnotationValue[] getTypeAnnotationData(AnnotatedElement element) {
-        return getTypeAnnotationDataFromRoot(getRoot(element));
+        AnnotatedElement root = getRoot(element);
+        return root != null ? getTypeAnnotationDataFromRoot(root) : NO_TYPE_ANNOTATIONS;
     }
 
     private TypeAnnotationValue[] getTypeAnnotationDataFromRoot(AnnotatedElement rootElement) {
@@ -276,7 +278,8 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     }
 
     public AnnotationMemberValue getAnnotationDefaultData(AnnotatedElement element) {
-        return getAnnotationDefaultDataFromRoot((Method) getRoot(element));
+        AnnotatedElement root = getRoot(element);
+        return root != null ? getAnnotationDefaultDataFromRoot((Method) root) : null;
     }
 
     private AnnotationMemberValue getAnnotationDefaultDataFromRoot(Method accessorMethod) {
