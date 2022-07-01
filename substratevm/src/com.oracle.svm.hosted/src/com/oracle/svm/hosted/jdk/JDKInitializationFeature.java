@@ -115,7 +115,7 @@ public class JDKInitializationFeature implements Feature {
         /* Security services */
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.auth", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.security.jgss", "Core JDK classes are initialized at build time for better performance");
+        rci.initializeAtBuildTime("com.sun.security.jgss", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.cert.internal.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.ntlm", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
