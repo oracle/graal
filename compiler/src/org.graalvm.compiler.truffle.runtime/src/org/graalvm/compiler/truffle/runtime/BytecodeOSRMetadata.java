@@ -64,20 +64,32 @@ public final class BytecodeOSRMetadata {
     // interval.
     public static final int OSR_POLL_INTERVAL = 1024;
 
-    private static final Object PLACEHOLDER = new Object();
-
     private final BytecodeOSRNode osrNode;
 
+    /*
+     * When set in #currentlyCompiling, indicates a callTarget is in the process of being submitted
+     * for compilation.
+     */
+    private static final Object PLACEHOLDER = new Object();
+    /*
+     * When set in #currentlyCompiling, prevents any further submission of compilations.
+     */
+    private static final Object DISABLE = new Object();
+
+    /*
+     * Stores the latest call target submitted for compilation, or #DISABLE if compilation is
+     * disabled for this method. All writes should be made through compareAndSet, the exception
+     * being setting the #DISABLE value.
+     */
     private final AtomicReference<Object> currentlyCompiling = new AtomicReference<>();
-    private final TargetCounters compilationReAttempts = new TargetCounters();
+    private final ReAttemptsCounter compilationReAttempts = new ReAttemptsCounter();
 
     private OptimizedCallTarget getCurrentlyCompiling() {
         Object value = currentlyCompiling.get();
-        if (value == null || value == PLACEHOLDER) {
-            return null;
+        if (value instanceof OptimizedCallTarget) {
+            return (OptimizedCallTarget) value;
         }
-        assert value instanceof OptimizedCallTarget;
-        return (OptimizedCallTarget) value;
+        return null;
     }
 
     // Lazily initialized state. Most nodes with back-edges will not trigger compilation, so we
@@ -104,8 +116,8 @@ public final class BytecodeOSRMetadata {
 
         private void doClear() {
             compilationMap.clear();
-            // Support for deprecated frame transfer: GR-38296
-            clear();
+            // We might be disabling OSR while doing an OSR call. Keep around the data necessary to
+            // transfer from and restore the parent frame.
         }
     }
 
@@ -155,15 +167,22 @@ public final class BytecodeOSRMetadata {
     private final int osrThreshold;
     private final int maxCompilationReAttempts;
     private int backEdgeCount;
+    private boolean isDisabled = false;
 
     BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold, int maxCompilationReAttempts) {
         this.osrNode = osrNode;
         this.osrThreshold = osrThreshold;
         this.maxCompilationReAttempts = maxCompilationReAttempts;
         this.backEdgeCount = 0;
+        if (osrNode == null) {
+            isDisabled = true;
+        }
     }
 
     Object tryOSR(int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+        if (isDisabled()) {
+            return null;
+        }
         LazyState state = getLazyState();
         assert state.frameDescriptor == null || state.frameDescriptor == parentFrame.getFrameDescriptor();
         OptimizedCallTarget callTarget = state.compilationMap.get(target);
@@ -186,6 +205,11 @@ public final class BytecodeOSRMetadata {
         }
         // Case 2: code is compiled and valid
         if (callTarget.isValid()) {
+            /*
+             * Note: though unlikely, it is still possible to call into an OSR compiled method at
+             * this point, even if disabled. This is OK, as we leave enough information around to
+             * work with.
+             */
             if (beforeTransfer != null) {
                 beforeTransfer.run();
             }
@@ -193,7 +217,7 @@ public final class BytecodeOSRMetadata {
         }
         // Case 3: code is invalid; either give up or reschedule compilation
         if (callTarget.isCompilationFailed()) {
-            markCompilationFailed();
+            markOSRDisabled();
         } else {
             requestOSRCompilation(target, callTarget, (FrameWithoutBoxing) parentFrame);
         }
@@ -210,6 +234,13 @@ public final class BytecodeOSRMetadata {
         int newBackEdgeCount = ++backEdgeCount; // Omit overflow check; OSR should trigger long
                                                 // before overflow happens
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
+    }
+
+    /**
+     * Returns whether OSR compilation is disabled for the current unit.
+     */
+    public boolean isDisabled() {
+        return isDisabled;
     }
 
     /**
@@ -234,20 +265,34 @@ public final class BytecodeOSRMetadata {
         }
         compilationReAttempts.inc(target);
         if (compilationReAttempts.total() >= maxCompilationReAttempts) {
-            markCompilationFailed();
+            /*
+             * Methods that gets OSR re-compiled too often bailout of OSR compilation. This has two
+             * main advantages:
+             * 
+             * - Deopt loops do not clog the compiler queue indefinitely
+             * 
+             * - Mitigates possibilities of Stack Overflows arising from to deopt loops in OSR.
+             */
+            markOSRDisabled();
             if (callTarget.getOptionValue(PolyglotCompilerOptions.ThrowOnMaxOSRCompilationReAttemptsReached)) {
                 throw new AssertionError("Max OSR compilation re-attempts reached for " + osrNode);
             }
             return;
         }
-        osrNode.prepareOSR(target);
-        updateFrameSlots(frame, getEntryCacheFromCallTarget(callTarget));
-        callTarget.compile(true);
+        try {
+            osrNode.prepareOSR(target);
+            updateFrameSlots(frame, getEntryCacheFromCallTarget(callTarget));
+            callTarget.compile(true);
+        } catch (Throwable e) {
+            markOSRDisabled();
+            throw e;
+        }
         if (callTarget.isCompilationFailed()) {
-            markCompilationFailed();
+            markOSRDisabled();
+            return;
         }
         boolean submitted = currentlyCompiling.compareAndSet(PLACEHOLDER, previousCompilation);
-        assert submitted;
+        assert submitted || currentlyCompiling.get() == DISABLE;
     }
 
     private static OsrEntryDescription getEntryCacheFromCallTarget(OptimizedCallTarget callTarget) {
@@ -415,7 +460,7 @@ public final class BytecodeOSRMetadata {
             ((Node) osrNode).atomic(() -> {
                 for (OptimizedCallTarget callTarget : state.compilationMap.values()) {
                     if (callTarget.isCompilationFailed()) {
-                        markCompilationFailed();
+                        markOSRDisabled();
                     }
                     callTarget.nodeReplaced(oldNode, newNode, reason);
                 }
@@ -423,13 +468,17 @@ public final class BytecodeOSRMetadata {
         }
     }
 
-    private void markCompilationFailed() {
+    private void markOSRDisabled() {
         ((Node) osrNode).atomic(() -> {
-            osrNode.setOSRMetadata(DISABLED);
+            // Prevent new compilations from scheduling ASAP
+            currentlyCompiling.set(DISABLE);
+
+            isDisabled = true;
             LazyState state = lazyState;
             if (state != null) {
                 state.doClear();
             }
+            compilationReAttempts.clear();
         });
     }
 
@@ -446,7 +495,7 @@ public final class BytecodeOSRMetadata {
      * Counts re-attempts at compilations. Represents an approximation of the number of
      * deoptimizations in OSR a given method goes through.
      */
-    private static final class TargetCounters {
+    private static final class ReAttemptsCounter {
         private final Set<Integer> knownTargets = new HashSet<>(1);
         private int total = 0;
 
@@ -458,6 +507,10 @@ public final class BytecodeOSRMetadata {
 
         public int total() {
             return total;
+        }
+
+        public void clear() {
+            knownTargets.clear();
         }
     }
 

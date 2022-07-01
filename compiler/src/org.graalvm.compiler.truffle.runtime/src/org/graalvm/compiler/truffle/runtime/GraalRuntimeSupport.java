@@ -116,9 +116,9 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             osrMetadata = initializeBytecodeOSRMetadata(osrNode);
         }
 
-        // metadata can be set to DISABLED during initialization (above) or dynamically after
+        // metadata can be disabled during initialization (above) or dynamically after
         // failed compilation.
-        if (osrMetadata == BytecodeOSRMetadata.DISABLED) {
+        if (osrMetadata.isDisabled()) {
             return false;
         } else {
             return osrMetadata.incrementAndPoll();

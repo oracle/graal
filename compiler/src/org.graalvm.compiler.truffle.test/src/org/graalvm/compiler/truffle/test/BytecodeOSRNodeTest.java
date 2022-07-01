@@ -173,7 +173,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
             Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
             // Compilation should be disabled after a compilation failure.
-            Assert.assertEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+            Assert.assertTrue(osrNode.getGraalOSRMetadata().isDisabled());
         });
     }
 
