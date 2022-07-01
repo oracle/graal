@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -569,17 +570,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     /**
      * Iterates all super types for this type, where a super type is defined as any type that is
      * assignable from this type, feeding each of them to the consumer.
-     * 
+     *
      * For a class B extends A, the array type A[] is not a superclass of the array type B[]. So
      * there is no strict need to make A[] reachable when B[] is reachable. But it turns out that
      * this is puzzling for users, and there are frameworks that instantiate such arrays
      * programmatically using Array.newInstance(). To reduce the amount of manual configuration that
      * is necessary, we mark all array types of the elemental supertypes and superinterfaces also as
      * reachable.
-     * 
+     *
      * Moreover, even if B extends A doesn't imply that B[] extends A[] it does imply that
      * A[].isAssignableFrom(B[]).
-     * 
+     *
      * NOTE: This method doesn't guarantee that a super type will only be processed once. For
      * example when java.lang.Class is processed its interface java.lang.reflect.AnnotatedElement is
      * reachable directly, but also through java.lang.GenericDeclaration, so it will be processed
@@ -1096,6 +1097,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisField[] getStaticFields() {
         registerAsReachable();
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
+    }
+
+    @Override
+    public AnnotatedElement getAnnotationRoot() {
+        return wrapped;
     }
 
     @Override
