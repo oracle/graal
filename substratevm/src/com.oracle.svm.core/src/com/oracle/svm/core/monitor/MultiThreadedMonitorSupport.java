@@ -116,11 +116,14 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             /*
              * The com.oracle.svm.core.WeakIdentityHashMap used to model the
              * com.oracle.svm.core.monitor.MultiThreadedMonitorSupport#additionalMonitors map uses
-             * java.lang.ref.ReferenceQueue internally. The ReferenceQueue uses the inner static
-             * class Lock for all its locking needs.
+             * java.lang.ref.ReferenceQueue internally.
              */
             HashSet<Class<?>> monitorTypes = new HashSet<>();
             if (JavaVersionUtil.JAVA_SPEC <= 17) {
+                /*
+                 * Until JDK 17, the ReferenceQueue uses the inner static class Lock for all its
+                 * locking needs.
+                 */
                 monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
             }
             /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
