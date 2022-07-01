@@ -171,7 +171,6 @@ public abstract class PlatformThreads {
         mainGroupThreadsArray[0] = mainThread;
     }
 
-    @SuppressWarnings("deprecation")
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static long getThreadAllocatedBytes(long javaThreadId) {
         // Accessing the value for the current thread is fast.
@@ -197,7 +196,6 @@ public abstract class PlatformThreads {
         }
     }
 
-    @SuppressWarnings("deprecation")
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
         VMThreads.lockThreadMutexInNativeCode();

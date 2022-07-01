@@ -132,7 +132,6 @@ class DumpAllStacks implements SignalHandler {
             log.flush();
         }
 
-        @SuppressWarnings("deprecation")
         private static void dumpStack(Log log, IsolateThread vmThread) {
             Thread javaThread = PlatformThreads.fromVMThread(vmThread);
             if (javaThread != null) {
