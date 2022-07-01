@@ -160,7 +160,7 @@ public class AllocExternalSymbolNode extends LLVMNode {
         if (resultSymbol == null) {
             return null;
         }
-        LLVMPointer pointer = context.getSymbolResolved(LLVMAlias.resolveAlias(resultSymbol), BranchProfile.getUncached());
+        LLVMPointer pointer = context.getSymbol(LLVMAlias.resolveAlias(resultSymbol), BranchProfile.getUncached());
         context.registerSymbol(symbol, pointer);
         return pointer;
     }
