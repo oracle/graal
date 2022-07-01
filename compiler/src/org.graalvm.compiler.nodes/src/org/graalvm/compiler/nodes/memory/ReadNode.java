@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -72,24 +74,44 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess, SingleMemoryKill {
+public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess, SingleMemoryKill, ExtendableMemoryAccess {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
+
+    private final Stamp accessStamp;
+    public final MemoryExtendKind extendKind;
 
     public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
         this(TYPE, address, location, stamp, null, barrierType, false, null);
     }
 
-    protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
+    protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean usedAsNullCheck,
                     FrameState stateBefore) {
-        super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
-        this.lastLocationAccess = null;
+        this(c, address, location, stamp, MemoryExtendKind.DEFAULT, guard, barrierType, usedAsNullCheck, stateBefore, null);
+    }
+
+    private static Stamp generateStamp(Stamp stamp, MemoryExtendKind extendKind) {
+        if (extendKind.isNotExtended()) {
+            return stamp;
+        } else {
+            return extendKind.stampFor((IntegerStamp) stamp);
+        }
+    }
+
+    protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp accessStamp, MemoryExtendKind extendKind, GuardingNode guard,
+                    BarrierType barrierType, boolean usedAsNullCheck,
+                    FrameState stateBefore, MemoryKill lastLocationAccess) {
+        super(c, address, location, generateStamp(accessStamp, extendKind), guard, barrierType, usedAsNullCheck, stateBefore);
+
+        this.lastLocationAccess = lastLocationAccess;
+        this.accessStamp = accessStamp;
+        this.extendKind = extendKind;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
-        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this), extendKind));
     }
 
     @Override
@@ -98,7 +120,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             // Read without usages or guard can be safely removed.
             return null;
         }
-        if (!getUsedAsNullCheck()) {
+        if (!getUsedAsNullCheck() && !extendsAccess()) {
             return canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
         } else {
             // if this read is a null check, then replacing it with the value is incorrect for
@@ -231,11 +253,44 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     @Override
     public Stamp getAccessStamp(NodeView view) {
-        return stamp(view);
+        if (!extendsAccess()) {
+            return stamp(view);
+        } else {
+            return accessStamp;
+        }
     }
 
     @Override
     public MemoryOrderMode getMemoryOrder() {
         return MemoryOrderMode.PLAIN;
+    }
+
+    @Override
+    public MemoryExtendKind getExtendKind() {
+        return extendKind;
+    }
+
+    @Override
+    public boolean isCompatibleWithExtend() {
+        return getAccessStamp(NodeView.DEFAULT) instanceof IntegerStamp && !extendsAccess();
+    }
+
+    @Override
+    public boolean isCompatibleWithExtend(MemoryExtendKind newExtendKind) {
+        if (isCompatibleWithExtend()) {
+            return getAccessBits() <= newExtendKind.getExtendedBitSize();
+        }
+        return false;
+    }
+
+    @Override
+    public int getAccessBits() {
+        return ((PrimitiveStamp) getAccessStamp(NodeView.DEFAULT)).getBits();
+    }
+
+    @Override
+    public FixedWithNextNode copyWithExtendKind(MemoryExtendKind newExtendKind) {
+        assert isCompatibleWithExtend(newExtendKind);
+        return new ReadNode(TYPE, address, location, stamp(NodeView.DEFAULT), newExtendKind, guard, barrierType, usedAsNullCheck, stateBefore, lastLocationAccess);
     }
 }

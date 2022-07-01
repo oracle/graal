@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <stdint.h>
+
 class someClass {};
 
 int foo(int a) {
@@ -44,7 +46,7 @@ int main() {
     } catch (const char *msg) {
         printf("%s\n", msg);
         return 1;
-    } catch (long value) {
+    } catch (int64_t value) {
         return 2;
     } catch (int *value) {
         return 3;

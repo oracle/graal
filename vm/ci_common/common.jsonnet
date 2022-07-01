@@ -444,7 +444,7 @@ local devkits = common_json.devkits;
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
     ],
     logs+: ['*/graal-compiler.log'],
-    timelimit: '55:00',
+    timelimit: '1:00:00',
   },
 
   # -ea assertions are enough to keep execution time reasonable

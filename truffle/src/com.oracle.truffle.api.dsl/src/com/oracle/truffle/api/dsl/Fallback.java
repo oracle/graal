@@ -87,8 +87,8 @@ import java.lang.annotation.Target;
  * {@link Fallback} for specializations that are significantly important for peak performance.
  * </p>
  *
- * Fallback annotated methods support {@link Cached}, {@link Bind}, {@link CachedContext},
- * {@link CachedLanguage} and dispatched {@link com.oracle.truffle.api.library.CachedLibrary}.
+ * Fallback annotated methods support {@link Cached}, {@link Bind} and dispatched
+ * {@link com.oracle.truffle.api.library.CachedLibrary}.
  *
  * @see Specialization
  * @see NodeChild

@@ -34,6 +34,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
 import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
@@ -67,6 +69,16 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
          * While AMD64 supports non-temporal stores, these are not used by Graal for Java code.
          */
         return true;
+    }
+
+    @Override
+    default boolean narrowsUseCastValue() {
+        return false;
+    }
+
+    @Override
+    default boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind) {
+        return false;
     }
 
     /**

@@ -261,7 +261,7 @@ public final class LLVMX86_64_WinVaListStorage implements TruffleObject {
         realArguments = realArgs;
         numberOfExplicitArguments = numOfExpArgs;
         argsArea = new WinArgsArea(realArgs, numOfExpArgs);
-        assert numOfExpArgs < realArgs.length;
+        assert numOfExpArgs <= realArgs.length;
 
         nativeAreaPointer = stackAllocationNode.executeWithTarget((realArgs.length - numOfExpArgs) * Long.BYTES, frame);
 

@@ -355,9 +355,7 @@ public class GradualInstrumentationTest {
          * via parents.
          */
         listener2.clearEnteredNodes();
-        for (WeakReference<Node> retiredStatementNodeWeakReference : retiredStatementNodes) {
-            GCUtils.assertGc("Retired node is was not collected!", retiredStatementNodeWeakReference);
-        }
+        GCUtils.assertGc("Retired node is was not collected!", retiredStatementNodes);
         binding.dispose();
         context.eval(source);
         for (Node enteredNode : enteredMaterializedStatementNodes) {

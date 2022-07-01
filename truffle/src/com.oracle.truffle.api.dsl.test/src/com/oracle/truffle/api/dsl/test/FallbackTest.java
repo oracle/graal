@@ -50,10 +50,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -64,7 +62,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.test.AOTSupportTest.TestLanguage;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback1Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
@@ -87,7 +84,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class FallbackTest extends AbstractPolyglotTest {
 
@@ -711,19 +707,8 @@ public class FallbackTest extends AbstractPolyglotTest {
         protected String f0(Object arg0,
                         @Cached CachedNode node,
                         @CachedLibrary(limit = "3") InteropLibrary lib,
-                        @com.oracle.truffle.api.dsl.CachedLanguage ProxyLanguage lang,
-                        @com.oracle.truffle.api.dsl.CachedContext(ProxyLanguage.class) ProxyLanguage.LanguageContext context,
-                        @Bind("context.getEnv()") Env bind) {
+                        @Bind("arg0") Object arg0Bound) {
             lib.fitsInLong(arg0);
-            if (lang == null) {
-                throw CompilerDirectives.shouldNotReachHere();
-            }
-            if (context == null) {
-                throw CompilerDirectives.shouldNotReachHere();
-            }
-            if (bind == null) {
-                throw CompilerDirectives.shouldNotReachHere();
-            }
             return node.execute(arg0);
         }
 
@@ -743,9 +728,7 @@ public class FallbackTest extends AbstractPolyglotTest {
         protected String f0(Object arg0,
                         @Cached CachedNode node,
                         @CachedLibrary(limit = "3") InteropLibrary lib,
-                        @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang,
-                        @com.oracle.truffle.api.dsl.CachedContext(TestLanguage.class) Env context,
-                        @Bind("context") Env env) {
+                        @Bind("arg0") Object arg0Bound) {
             lib.fitsInLong(arg0);
             return node.execute(arg0);
         }

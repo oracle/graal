@@ -72,7 +72,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
-
     private static final AtomicIntegerFieldUpdater<AnalysisMethod> isVirtualRootMethodUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisMethod.class, "isVirtualRootMethod");
 
@@ -660,7 +659,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             Object curState = parsedGraphCacheState.get();
 
             /*-
-             * This implements a state machine that ensures parsing is atomic. States: 
+             * This implements a state machine that ensures parsing is atomic. States:
              * 1) unparsed: represented by the String "unparsed".
              * 2) parsing: represented by a locked ReentrantLock object that other threads can wait on.
              * 3) parsed: represented by the ParsedGraph with the parsing result

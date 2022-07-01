@@ -136,7 +136,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getThreadId}. */
     @Substitute
     public long getThreadId(Thread t) {
-        return SubstrateJVM.get().getThreadId(t);
+        return SubstrateJVM.getThreadId(t);
     }
 
     /** See {@link JVM#getTicksFrequency}. */

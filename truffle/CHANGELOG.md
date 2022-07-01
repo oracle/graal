@@ -2,6 +2,20 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 22.3.0
+
+* GR-39219 Removed several deprecated APIs:
+    * Removed deprecated `FrameSlot` API. The API was deprecated in 22.0.
+    * Removed deprecated `CompilerOptions` API. The API was deprecated in 22.1.
+    * Removed deprecated `TruffleRuntime.createCallTarget` and `RootNode.setCallTarget` API. The API was deprecated in 22.0.
+    * Removed deprecated `TruffleContext.enter` and `TruffleContext.leave` API. The API was deprecated in 20.3.
+    * Removed deprecated `MemoryFence` API. The API was deprecated in 22.1.
+    * Removed deprecated `TruffleRuntime.getCallerFrame` and `TruffleRuntime.getCurrentFrame` API. The API was deprecated in 22.1.
+    * Removed deprecated `@CachedContext` and `@CachedLibrary` API. The API was deprecated in 21.3.
+    * Removed deprecated `get()` method from `LanguageContext` and `ContextReference` API. The API was deprecated in 21.3.
+    * Removed deprecated equality `ValueProfile` . The API was deprecated in 21.2.
+    * Removed deprecated `UnionAssumption`, `AlwaysValidAssumption` and `NeverValidAssumption`. The API was deprecated in 22.1.
+    
 ## Version 22.2.0
 
 * GR-33829 Added support on libgraal for caching encoded graphs across Truffle compilations to speedup partial evaluation. The cache is enabled by default and can be enabled/disabled with the `--engine.EncodedGraphCache` option.

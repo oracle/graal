@@ -24,18 +24,15 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
@@ -55,7 +52,6 @@ import com.oracle.truffle.api.nodes.Node;
  * it is published; the non-final + non-volatile fields (e.g., the back edge counter) may not be,
  * but we tolerate this inaccuracy in order to avoid volatile accesses in the hot path.
  */
-@SuppressWarnings("deprecation")
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.
     public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, Integer.MAX_VALUE);
@@ -73,16 +69,12 @@ public final class BytecodeOSRMetadata {
 
         private final Map<Integer, OptimizedCallTarget> compilationMap;
         @CompilationFinal private FrameDescriptor frameDescriptor;
-        @CompilationFinal private Assumption frameVersion;
-        @CompilationFinal(dimensions = 1) private com.oracle.truffle.api.frame.FrameSlot[] frameSlots;
 
         LazyState() {
             this.compilationMap = new ConcurrentHashMap<>();
             // We set these fields in updateFrameSlots using a concrete frame just before
             // compilation, when the frame is (hopefully) stable.
             this.frameDescriptor = null;
-            this.frameVersion = null;
-            this.frameSlots = null;
         }
 
         private void push(int target, OptimizedCallTarget callTarget, OsrEntryDescription entry) {
@@ -123,23 +115,16 @@ public final class BytecodeOSRMetadata {
         CompilerAsserts.neverPartOfCompilation();
         LazyState state = getLazyState();
         ((Node) osrNode).atomic(() -> {
-            if (!Assumption.isValidAssumption(state.frameVersion)) {
+            if (state.frameDescriptor == null) {
                 FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
                 state.frameDescriptor = frameDescriptor;
-                // If we get the frame slots before the assumption, the slots may be updated in
-                // between, and we might obtain the new (valid) assumption, despite our slots
-                // actually being stale. Get the assumption first to avoid this race.
-                state.frameVersion = frameDescriptor.getVersion();
-                state.frameSlots = frameDescriptor.getSlots().toArray(new com.oracle.truffle.api.frame.FrameSlot[0]);
             }
             if (osrEntry != null) {
                 // The concrete frame can have different tags from the descriptor (e.g., when a slot
                 // is uninitialized), so we use the frame's tags to avoid deoptimizing during
                 // transfer.
-                byte[] tags = frame.getTags();
                 // The tags array lazily grows when new slots are initialized, so it could be
                 // smaller than the number of slots. Copy it into an array with the correct size.
-                osrEntry.frameTags = Arrays.copyOf(tags, state.frameSlots.length);
                 osrEntry.indexedFrameTags = new byte[state.frameDescriptor.getNumberOfSlots()];
                 for (int i = 0; i < osrEntry.indexedFrameTags.length; i++) {
                     osrEntry.indexedFrameTags[i] = frame.getTag(i);
@@ -253,16 +238,8 @@ public final class BytecodeOSRMetadata {
         OsrEntryDescription description = (OsrEntryDescription) targetMetadata;
         CompilerAsserts.partialEvaluationConstant(description);
 
-        // The frame version could have changed; if so, deoptimize and update the slots+tags.
-        if (!state.frameVersion.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            updateFrameSlots(source, description);
-        }
-
-        // Transfer legacy frame slots
-        transferLoop(state.frameSlots.length, source, target, description.frameTags, state.frameSlots, FrameSlotTransfer.legacySlotTransfer);
         // Transfer indexed frame slots
-        transferLoop(description.indexedFrameTags.length, source, target, description.indexedFrameTags, null, FrameSlotTransfer.indexedTransfer);
+        transferLoop(description.indexedFrameTags.length, source, target, description.indexedFrameTags);
         // transfer auxiliary slots
         transferAuxiliarySlots(source, target, state);
     }
@@ -293,24 +270,8 @@ public final class BytecodeOSRMetadata {
 
         // We can't reasonably have constant expected tags for parent frame restoration.
 
-        // The frame version could have changed; if so, deoptimize.
-        if (!state.frameVersion.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            updateFrameSlots(source, null);
-        }
-
-        // transfer legacy frame slots
-        int length = state.frameSlots.length;
-        if (length != source.getTags().length) {
-            // A legacy slot has been added while we were OSR-executing. Invalidate so next
-            // compilation may have constant for loop explosion.
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            length = source.getTags().length;
-        }
-
-        transferLoop(length, source, target, null, state.frameSlots, FrameSlotTransfer.legacySlotTransfer);
         // transfer indexed frame slots
-        transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, null, null, FrameSlotTransfer.indexedTransfer);
+        transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, null);
         // transfer auxiliary slots
         transferAuxiliarySlots(source, target, state);
     }
@@ -336,19 +297,15 @@ public final class BytecodeOSRMetadata {
      * @param expectedTags The array of tags the source is expected to have, or null if no previous
      *            knowledge of tags was collected. If compilation constant, frame slot accesses may
      *            be simplified.
-     * @param frameSlotArray An array of legacy frame slots, if applicable, or null.
-     * @param transfer Either {@link FrameSlotTransfer#legacySlotTransfer} or
-     *            {@link FrameSlotTransfer#indexedTransfer}
      */
     @ExplodeLoop
     private static void transferLoop(
                     int length,
                     FrameWithoutBoxing source, FrameWithoutBoxing target,
-                    byte[] expectedTags,
-                    FrameSlot[] frameSlotArray, FrameSlotTransfer transfer) {
+                    byte[] expectedTags) {
         int i = 0;
         while (i < length) {
-            byte actualTag = transfer.getTag(source, i, frameSlotArray);
+            byte actualTag = source.getTag(i);
             byte expectedTag = expectedTags == null ? actualTag : expectedTags[i];
 
             boolean incompatibleTags = expectedTag != actualTag;
@@ -359,7 +316,7 @@ public final class BytecodeOSRMetadata {
                 continue; // try again with updated tags.
             }
 
-            transfer.transfer(source, target, i, expectedTag, frameSlotArray);
+            transferIndexedFrameSlot(source, target, i, expectedTag);
             i++;
         }
     }
@@ -369,38 +326,6 @@ public final class BytecodeOSRMetadata {
         for (int auxSlot = 0; auxSlot < state.frameDescriptor.getNumberOfAuxiliarySlots(); auxSlot++) {
             target.setAuxiliarySlot(auxSlot, source.getAuxiliarySlot(auxSlot));
         }
-    }
-
-    private abstract static class FrameSlotTransfer {
-        private static final FrameSlotTransfer indexedTransfer = new FrameSlotTransfer() {
-            @Override
-            public void transfer(FrameWithoutBoxing source, FrameWithoutBoxing target, int slot, byte expectedTag, com.oracle.truffle.api.frame.FrameSlot[] frameSlotArray) {
-                transferIndexedFrameSlot(source, target, slot, expectedTag);
-            }
-
-            @Override
-            public byte getTag(FrameWithoutBoxing frame, int slot, FrameSlot[] frameSlotArray) {
-                return frame.getTag(slot);
-            }
-        };
-
-        private static final FrameSlotTransfer legacySlotTransfer = new FrameSlotTransfer() {
-            @Override
-            public void transfer(FrameWithoutBoxing source, FrameWithoutBoxing target, int slot, byte expectedTag, com.oracle.truffle.api.frame.FrameSlot[] frameSlotArray) {
-                com.oracle.truffle.api.frame.FrameSlot frameSlot = frameSlotArray[slot];
-                transferFrameSlot(source, target, frameSlot, expectedTag);
-            }
-
-            @Override
-            public byte getTag(FrameWithoutBoxing frame, int slot, FrameSlot[] frameSlotArray) {
-                com.oracle.truffle.api.frame.FrameSlot frameSlot = frameSlotArray[slot];
-                return frame.getTag(frameSlot);
-            }
-        };
-
-        public abstract void transfer(FrameWithoutBoxing source, FrameWithoutBoxing target, int slot, byte expectedTag, com.oracle.truffle.api.frame.FrameSlot[] frameSlotArray);
-
-        public abstract byte getTag(FrameWithoutBoxing frame, int slot, com.oracle.truffle.api.frame.FrameSlot[] frameSlotArray);
     }
 
     private static void transferIndexedFrameSlot(FrameWithoutBoxing source, FrameWithoutBoxing target, int slot, byte expectedTag) {
@@ -432,42 +357,6 @@ public final class BytecodeOSRMetadata {
                     // copy both.
                     target.setObjectStatic(slot, source.getObjectStatic(slot));
                     target.setLongStatic(slot, source.getLongStatic(slot));
-                    break;
-                case FrameWithoutBoxing.ILLEGAL_TAG:
-                    target.clear(slot);
-                    break;
-            }
-        } catch (FrameSlotTypeException e) {
-            // Should be impossible
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError("Cannot transfer source frame.");
-        }
-    }
-
-    private static void transferFrameSlot(FrameWithoutBoxing source, FrameWithoutBoxing target, com.oracle.truffle.api.frame.FrameSlot slot, byte expectedTag) {
-        assert expectedTag != FrameWithoutBoxing.STATIC_TAG;
-        try {
-            switch (expectedTag) {
-                case FrameWithoutBoxing.BOOLEAN_TAG:
-                    target.setBoolean(slot, source.getBoolean(slot));
-                    break;
-                case FrameWithoutBoxing.BYTE_TAG:
-                    target.setByte(slot, source.getByte(slot));
-                    break;
-                case FrameWithoutBoxing.DOUBLE_TAG:
-                    target.setDouble(slot, source.getDouble(slot));
-                    break;
-                case FrameWithoutBoxing.FLOAT_TAG:
-                    target.setFloat(slot, source.getFloat(slot));
-                    break;
-                case FrameWithoutBoxing.INT_TAG:
-                    target.setInt(slot, source.getInt(slot));
-                    break;
-                case FrameWithoutBoxing.LONG_TAG:
-                    target.setLong(slot, source.getLong(slot));
-                    break;
-                case FrameWithoutBoxing.OBJECT_TAG:
-                    target.setObject(slot, source.getObject(slot));
                     break;
                 case FrameWithoutBoxing.ILLEGAL_TAG:
                     target.clear(slot);
@@ -517,7 +406,6 @@ public final class BytecodeOSRMetadata {
      * Describes the observed state of the Frame on an OSR entry point.
      */
     static final class OsrEntryDescription {
-        @CompilationFinal(dimensions = 1) private byte[] frameTags;
         @CompilationFinal(dimensions = 1) private byte[] indexedFrameTags;
     }
 

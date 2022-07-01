@@ -31,11 +31,15 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -46,7 +50,12 @@ public class OrderedReadNode extends ReadNode {
     private final MemoryOrderMode memoryOrder;
 
     public OrderedReadNode(AddressNode address, Stamp stamp, BarrierType barrierType, MemoryOrderMode memoryOrder) {
-        super(TYPE, address, LocationIdentity.any(), stamp, null, barrierType, false, null);
+        this(address, stamp, MemoryExtendKind.DEFAULT, null, barrierType, memoryOrder, false, null, null);
+    }
+
+    protected OrderedReadNode(AddressNode address, Stamp accessStamp, MemoryExtendKind extendKind, GuardingNode guard, BarrierType barrierType, MemoryOrderMode memoryOrder, boolean usedAsNullCheck,
+                    FrameState stateBefore, MemoryKill lastLocationAccess) {
+        super(TYPE, address, LocationIdentity.any(), accessStamp, extendKind, guard, barrierType, usedAsNullCheck, stateBefore, lastLocationAccess);
         // Node is expected to have ordering requirements
         assert MemoryOrderMode.ordersMemoryAccesses(memoryOrder);
         this.memoryOrder = memoryOrder;
@@ -55,7 +64,7 @@ public class OrderedReadNode extends ReadNode {
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
-        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitOrderedLoad(readKind, gen.operand(address), gen.state(this), memoryOrder));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitOrderedLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, extendKind));
     }
 
     @SuppressWarnings("try")
@@ -72,5 +81,12 @@ public class OrderedReadNode extends ReadNode {
     @Override
     public MemoryOrderMode getMemoryOrder() {
         return memoryOrder;
+    }
+
+    @Override
+    public FixedWithNextNode copyWithExtendKind(MemoryExtendKind newExtendKind) {
+        assert isCompatibleWithExtend(newExtendKind);
+        OrderedReadNode newRead = new OrderedReadNode(address, stamp(NodeView.DEFAULT), newExtendKind, guard, barrierType, memoryOrder, usedAsNullCheck, stateBefore, lastLocationAccess);
+        return newRead;
     }
 }

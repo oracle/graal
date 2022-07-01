@@ -147,8 +147,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexDo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexDoubleMulNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFloatDivNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFloatMulNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadKeyIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadIntrinsicsFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadKeyIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
@@ -359,6 +359,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         registerManagedAllocationIntrinsics();
         registerThreadIntrinsics();
         registerDynamicLibraryIntrinsics();
+
+        registerWindowsIntrinsics();
     }
 
     protected static LLVMExpressionNode[] argumentsArray(List<LLVMExpressionNode> arguments, int startIndex, int arity) {
@@ -515,6 +517,10 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     private static void registerRustIntrinsics() {
         add("std::process::exit", (args, nodeFactory) -> LLVMExitNodeGen.create(args.get(1)));
         add("core::panicking::panic", (args, nodeFactory) -> LLVMPanicNodeGen.create(args.get(1)));
+    }
+
+    private static void registerWindowsIntrinsics() {
+        add("ExitProcess", (args, nodeFactory) -> LLVMExitNodeGen.create(args.get(1)));
     }
 
     private static void registerMathFunctionIntrinsics() {

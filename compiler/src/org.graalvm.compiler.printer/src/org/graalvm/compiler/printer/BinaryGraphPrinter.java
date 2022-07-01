@@ -268,6 +268,7 @@ public class BinaryGraphPrinter implements
                 // check if cfg is up to date
                 if (info.cfg.getLocalLoopFrequencyData().containsKey((LoopBeginNode) node)) {
                     props.put("localLoopFrequency", info.cfg.localLoopFrequency((LoopBeginNode) node));
+                    props.put("localLoopFrequencySource", info.cfg.localLoopFrequencySource((LoopBeginNode) node));
                 }
             }
         }
