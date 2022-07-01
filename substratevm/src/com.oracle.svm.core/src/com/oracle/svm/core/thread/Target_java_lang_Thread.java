@@ -333,8 +333,6 @@ public final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
 
-        // FIXME: checkCharacteristics(characteristics);
-
         // TODO: derive from characteristics bitset
         boolean inheritThreadLocals = false;
         /* Initialize the rest of the Thread object, ignoring `characteristics`. */
