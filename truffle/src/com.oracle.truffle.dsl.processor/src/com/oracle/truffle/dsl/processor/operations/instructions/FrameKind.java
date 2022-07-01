@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -108,6 +109,25 @@ public enum FrameKind {
             default:
                 throw new UnsupportedOperationException();
 
+        }
+    }
+
+    public static FrameKind valueOfPrimitive(TypeKind typeKind) {
+        switch (typeKind) {
+            case BOOLEAN:
+                return BOOLEAN;
+            case BYTE:
+                return BYTE;
+            case DOUBLE:
+                return DOUBLE;
+            case FLOAT:
+                return FLOAT;
+            case INT:
+                return INT;
+            case LONG:
+                return LONG;
+            default:
+                throw new UnsupportedOperationException();
         }
     }
 }

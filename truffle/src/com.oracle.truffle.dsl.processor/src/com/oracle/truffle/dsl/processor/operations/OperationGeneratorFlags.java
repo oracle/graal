@@ -38,64 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation;
+package com.oracle.truffle.dsl.processor.operations;
 
-import java.util.ArrayList;
+public class OperationGeneratorFlags {
 
-public class OperationsConstantPool {
+    public static final boolean LOG_LOCAL_STORES = false;
+    public static final boolean LOG_LOCAL_STORES_SPEC = false;
+    public static final boolean LOG_LOCAL_LOADS = LOG_LOCAL_STORES;
+    public static final boolean LOG_LOCAL_LOADS_SPEC = LOG_LOCAL_STORES_SPEC;
 
-    private ArrayList<Object> values = new ArrayList<>();
-    private boolean frozen = false;
-    private Object[] frozenValues = null;
+    public static final boolean LOG_EXECUTE_AND_SPECIALIZE_CALLS = false;
+    public static final boolean LOG_STACK_READS = false;
 
-    public synchronized int add(Object o) {
-        if (frozen) {
-            throw new IllegalStateException("constant pool already frozen");
-        }
-        int idx = values.indexOf(o);
-        if (idx == -1) {
-            idx = values.size();
-            values.add(o);
-        }
-        return idx;
-    }
-
-    public synchronized int reserve() {
-        return reserve(1);
-    }
-
-    public synchronized int reserve(int count) {
-        if (frozen) {
-            throw new IllegalStateException("constant pool already frozen");
-        }
-        int idx = values.size();
-        for (int i = 0; i < count; i++) {
-            values.add(null);
-        }
-        return idx;
-    }
-
-    public synchronized void reset() {
-        this.frozen = false;
-        this.values = new ArrayList<>();
-        this.frozenValues = null;
-    }
-
-    public void setValue(int offset, Object value) {
-        values.set(offset, value);
-    }
-
-    public synchronized void freeze() {
-        frozen = true;
-    }
-
-    public synchronized Object[] getValues() {
-        freeze();
-        if (frozenValues == null) {
-            frozenValues = values.toArray();
-            values = null;
-        }
-        return frozenValues;
-    }
+    public static final boolean FLAG_NODE_AST_PRINTING = false;
+    public static final boolean ENABLE_INSTRUMENTATION = false;
+    public static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = false;
 
 }

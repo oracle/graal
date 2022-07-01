@@ -48,6 +48,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
@@ -55,10 +56,6 @@ public class LoadLocalInstruction extends Instruction {
 
     private final OperationsContext ctx;
     private final FrameKind kind;
-
-    static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = false;
-    private static final boolean LOG_LOCAL_LOADS = false;
-    private static final boolean LOG_LOCAL_LOADS_SPEC = false;
 
     public LoadLocalInstruction(OperationsContext ctx, int id, FrameKind kind) {
         super("load.local." + (kind == null ? "uninit" : kind.getTypeName().toLowerCase()), id, 1);
@@ -75,13 +72,13 @@ public class LoadLocalInstruction extends Instruction {
         b.tree(createLocalIndex(vars, 0));
         b.end();
 
-        if (INTERPRETER_ONLY_BOXING_ELIMINATION) {
+        if (OperationGeneratorFlags.INTERPRETER_ONLY_BOXING_ELIMINATION) {
             b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock(); // {
         }
 
         if (kind == null) {
-            if (LOG_LOCAL_LOADS) {
-                b.statement("System.out.printf(\" local load  %2d : %s [uninit]%n\", localIdx, frame.getValue(localIdx))");
+            if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
+                b.statement("System.out.printf(\" local load  %2d : %s [uninit]%n\", localIdx, $frame.getValue(localIdx))");
             }
             createCopyAsObject(vars, b);
         } else if (kind == FrameKind.OBJECT) {
@@ -95,8 +92,8 @@ public class LoadLocalInstruction extends Instruction {
             // {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
-            if (LOG_LOCAL_LOADS || LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.out.printf(\" local load  %2d : %s [init object]%n\", localIdx, frame.getValue(localIdx))");
+            if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
+                b.statement("System.out.printf(\" local load  %2d : %s [init object]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createSetSlotKind(vars, b, "FrameSlotKind.Object");
@@ -104,8 +101,8 @@ public class LoadLocalInstruction extends Instruction {
             // }
             b.end();
 
-            if (LOG_LOCAL_LOADS) {
-                b.statement("System.out.printf(\" local load  %2d : %s [generic]%n\", localIdx, frame.getValue(localIdx))");
+            if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
+                b.statement("System.out.printf(\" local load  %2d : %s [generic]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createCopyObject(vars, b);
@@ -126,13 +123,13 @@ public class LoadLocalInstruction extends Instruction {
             // {
             b.string("localType == ").staticReference(StoreLocalInstruction.FrameSlotKind, "Illegal");
             b.string(" && ");
-            b.string("(localValue = frame.getObject(localIdx))").instanceOf(ElementUtils.boxType(kind.getType()));
+            b.string("(localValue = $frame.getObject(localIdx))").instanceOf(ElementUtils.boxType(kind.getType()));
             // }
             b.end().startBlock();
             // {
 
-            if (LOG_LOCAL_LOADS || LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.out.printf(\" local load  %2d : %s [init " + kind + "]%n\", localIdx, frame.getValue(localIdx))");
+            if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
+                b.statement("System.out.printf(\" local load  %2d : %s [init " + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createSetSlotKind(vars, b, "FrameSlotKind." + kind.getFrameName());
@@ -141,26 +138,30 @@ public class LoadLocalInstruction extends Instruction {
             b.string("localIdx");
             b.startGroup().cast(kind.getType()).string("localValue").end();
             b.end(2);
+
+            createCopyPrimitive(vars, b);
             // }
             b.end().startElseBlock();
             // {
 
-            if (LOG_LOCAL_LOADS || LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.out.printf(\" local load  %2d : %s [" + kind + " -> generic]%n\", localIdx, frame.getValue(localIdx))");
+            if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
+                b.statement("System.out.printf(\" local load  %2d : %s [" + kind + " -> generic]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createSetSlotKind(vars, b, "FrameSlotKind.Object");
             b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
-            // }
-            b.end();
-            // }
-            b.end();
+            createCopyObject(vars, b);
 
-            if (LOG_LOCAL_LOADS) {
-                b.statement("System.out.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, frame.getValue(localIdx))");
+            b.end(); // }
+            b.end().startElseBlock(); // } else {
+
+            if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
+                b.statement("System.out.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createCopyPrimitive(vars, b);
+            b.end(); // }
+
         }
         b.startStatement().variable(vars.sp).string("++").end();
 
@@ -177,15 +178,17 @@ public class LoadLocalInstruction extends Instruction {
         }
     }
 
+    private static final boolean USE_SPEC_FRAME_COPY = true;
+
     private static void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "copyObject");
+        b.startStatement().startCall(vars.frame, USE_SPEC_FRAME_COPY ? "copyObject" : "copy");
         b.string("localIdx");
         b.variable(vars.sp);
         b.end(2);
     }
 
     private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "copyPrimitive");
+        b.startStatement().startCall(vars.frame, USE_SPEC_FRAME_COPY ? "copyPrimitive" : "copy");
         b.string("localIdx");
         b.variable(vars.sp);
         b.end(2);

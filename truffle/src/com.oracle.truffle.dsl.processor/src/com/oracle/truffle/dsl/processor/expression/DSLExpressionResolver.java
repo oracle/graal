@@ -68,6 +68,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.parser.NodeParser.ParseMode;
 
 public class DSLExpressionResolver implements DSLExpressionVisitor {
 
@@ -85,16 +86,18 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
 
     private final List<? extends Element> unprocessedElements;
     private boolean processed;
+    private final ParseMode parseMode;
 
-    private DSLExpressionResolver(ProcessorContext context, TypeElement accessType, DSLExpressionResolver parent, List<? extends Element> lookupElements) {
+    private DSLExpressionResolver(ProcessorContext context, TypeElement accessType, DSLExpressionResolver parent, List<? extends Element> lookupElements, ParseMode parseMode) {
         this.context = context;
         this.parent = parent;
         this.accessType = accessType;
         this.unprocessedElements = new ArrayList<>(lookupElements);
+        this.parseMode = parseMode;
     }
 
-    public DSLExpressionResolver(ProcessorContext context, TypeElement accessType, List<? extends Element> lookupElements) {
-        this(context, accessType, null, lookupElements);
+    public DSLExpressionResolver(ProcessorContext context, TypeElement accessType, List<? extends Element> lookupElements, ParseMode parseMode) {
+        this(context, accessType, null, lookupElements, parseMode);
     }
 
     public TypeElement getAccessType() {
@@ -132,7 +135,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     }
 
     public DSLExpressionResolver copy(List<? extends Element> prefixElements) {
-        return new DSLExpressionResolver(context, accessType, this, prefixElements);
+        return new DSLExpressionResolver(context, accessType, this, prefixElements, parseMode);
     }
 
     private static String getMethodName(ExecutableElement method) {
@@ -229,6 +232,10 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     private VariableElement resolveVariable(Variable variable) {
         final String name = variable.getName();
 
+        if (parseMode == ParseMode.OPERATION && "this".equals(name)) {
+            return new CodeVariableElement(ProcessorContext.getInstance().getTypes().OperationNode, "$this");
+        }
+
         switch (name) {
             case "null":
                 return new CodeVariableElement(new CodeTypeMirror(TypeKind.NULL), "null");
@@ -279,7 +286,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     }
                 }
             }
-            resolver = new DSLExpressionResolver(context, this.accessType, elements);
+            resolver = new DSLExpressionResolver(context, this.accessType, elements, parseMode);
         }
 
         ExecutableElement resolvedMethod = resolver.resolveCall(call);
@@ -323,7 +330,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
             } else if (type.getKind() == TypeKind.ARRAY) {
                 elements.add(new CodeVariableElement(context.getType(int.class), "length"));
             }
-            resolver = new DSLExpressionResolver(context, this.accessType, elements);
+            resolver = new DSLExpressionResolver(context, this.accessType, elements, parseMode);
         }
 
         VariableElement var = resolver.resolveVariable(variable);

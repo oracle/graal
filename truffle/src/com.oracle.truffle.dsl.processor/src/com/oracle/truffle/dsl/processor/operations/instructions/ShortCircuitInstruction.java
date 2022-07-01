@@ -68,10 +68,14 @@ public class ShortCircuitInstruction extends CustomInstruction {
             b.string("!");
         }
 
-        b.startCall("this", executeMethod);
+        b.startStaticCall(executeMethod);
         b.variable(vars.frame);
+        b.string("$this");
+        b.variable(vars.bc);
         b.variable(vars.bci);
         b.variable(vars.sp);
+        b.variable(vars.consts);
+        b.variable(vars.children);
         b.end(2).startBlock();
         // {
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();

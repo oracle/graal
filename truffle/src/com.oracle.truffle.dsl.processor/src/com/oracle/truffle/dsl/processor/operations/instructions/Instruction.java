@@ -64,8 +64,8 @@ public abstract class Instruction {
         public CodeVariableElement nextBci;
         public CodeVariableElement frame;
         public CodeVariableElement sp;
-        public CodeVariableElement returnValue;
         public CodeVariableElement consts;
+        public CodeVariableElement children;
         public CodeVariableElement[] inputs;
         public CodeVariableElement[] results;
 
@@ -413,7 +413,7 @@ public abstract class Instruction {
 
         if (!constants.isEmpty()) {
             b.startAssign("int constantsStart");
-            b.startCall(vars.consts, "reserve").string("" + constants.size()).end();
+            b.startCall(vars.consts, "size").end();
             b.end();
 
             b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getConstantsOffset() + "] = (short) constantsStart").end();
@@ -428,19 +428,22 @@ public abstract class Instruction {
                     initCode = args.constants[i];
                 }
 
-                if (initCode != null) {
-                    b.startStatement().startCall(vars.consts, "setValue");
-                    b.string("constantsStart + " + i);
-                    b.tree(initCode);
-                    b.end(2);
+                if (initCode == null) {
+                    initCode = CodeTreeBuilder.singleString("null");
                 }
+
+                b.startStatement().startCall(vars.consts, "add");
+                b.tree(initCode);
+                b.end(2);
             }
         }
 
         if (!children.isEmpty()) {
             b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getChildrenOffset() + "] = (short) ");
-            b.startCall("createChildNodes").string("" + children.size()).end();
+            b.string("numChildNodes");
             b.end();
+
+            b.statement("numChildNodes += " + children.size());
         }
 
         for (int i = 0; i < locals.size(); i++) {
@@ -478,11 +481,10 @@ public abstract class Instruction {
         }
 
         for (int i = 0; i < branchTargets.size(); i++) {
-            b.startStatement().startCall("putBranchTarget");
-            b.variable(vars.bc);
+            b.startStatement().startCall("labelFills", "add").startNew("LabelFill");
             b.startGroup().variable(vars.bci).string(" + " + getBranchTargetsOffset() + " + " + i).end();
             b.tree(args.branchTargets[i]);
-            b.end(2);
+            b.end(3);
         }
 
         // todo: condition profiles

@@ -1816,7 +1816,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 child.addError("Node type '%s' is invalid or not a subclass of Node.", getQualifiedName(nodeType));
             } else {
                 if (child.isImplicit() || child.isAllowUncached()) {
-                    DSLExpressionResolver resolver = new DSLExpressionResolver(context, node.getTemplateType(), Collections.emptyList());
+                    DSLExpressionResolver resolver = new DSLExpressionResolver(context, node.getTemplateType(), Collections.emptyList(), mode);
                     resolver = importStatics(resolver, node.getNodeType());
                     if (NodeCodeGenerator.isSpecializedNode(nodeType)) {
                         List<CodeExecutableElement> executables = parseNodeFactoryMethods(nodeType);
@@ -2198,7 +2198,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (mode == ParseMode.OPERATION) {
             globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
         }
-        DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers);
+        DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers, mode);
 
         // the number of specializations might grow while expressions are initialized.
         List<SpecializationData> specializations = node.getSpecializations();

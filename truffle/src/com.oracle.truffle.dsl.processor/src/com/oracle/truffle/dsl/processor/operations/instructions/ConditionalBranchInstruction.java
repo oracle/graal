@@ -80,11 +80,11 @@ public class ConditionalBranchInstruction extends Instruction {
 
         // TODO: we should do (un)boxing elim here (but only if booleans are boxing elim'd)
         TypeSystemData data = ctx.getData().getTypeSystem();
-        CodeTree conditionCode = TypeSystemCodeGenerator.cast(data, new CodeTypeMirror(TypeKind.BOOLEAN), CodeTreeBuilder.singleString("frame.getObject(sp - 1)"));
+        CodeTree conditionCode = TypeSystemCodeGenerator.cast(data, new CodeTypeMirror(TypeKind.BOOLEAN), CodeTreeBuilder.singleString("$frame.getObject($sp - 1)"));
 
         b.declaration("boolean", "cond", conditionCode);
 
-        b.statement("sp -= 1");
+        b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
 
         // b.startIf().startCall("profile", "profile").string("cond").end(2);
         b.startIf().string("cond").end();

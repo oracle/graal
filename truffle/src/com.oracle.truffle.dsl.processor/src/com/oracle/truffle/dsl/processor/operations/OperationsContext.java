@@ -47,6 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.lang.model.type.TypeMirror;
+
 import com.oracle.truffle.dsl.processor.operations.Operation.ShortCircuitOperation;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
@@ -89,6 +91,8 @@ public class OperationsContext {
     private final OperationsData data;
 
     private final Set<String> operationNames = new HashSet<>();
+    public TypeMirror labelType;
+    public TypeMirror exceptionType;
 
     public OperationsContext(OperationsData data) {
         this.data = data;
@@ -128,12 +132,14 @@ public class OperationsContext {
         createLoadStoreLocal();
         createReturn();
 
+        add(new Operation.Source(this, operationId++));
+        add(new Operation.SourceSection(this, operationId++));
+
         add(new Operation.InstrumentTag(this, operationId++,
                         add(new InstrumentationEnterInstruction(instructionId++)),
                         add(new InstrumentationExitInstruction(instructionId++)),
                         add(new InstrumentationExitInstruction(instructionId++, true)),
                         add(new InstrumentationLeaveInstruction(instructionId++))));
-
     }
 
     private void createLoadStoreLocal() {

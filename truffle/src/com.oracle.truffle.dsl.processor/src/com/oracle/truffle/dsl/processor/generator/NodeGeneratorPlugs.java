@@ -123,4 +123,8 @@ public interface NodeGeneratorPlugs {
     StaticConstants createConstants();
 
     ReportPolymorphismAction createReportPolymorhoismAction(ReportPolymorphismAction original);
+
+    CodeTree createGetLock();
+
+    CodeTree createSuperInsert(CodeTree value);
 }

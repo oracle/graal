@@ -77,6 +77,7 @@ public class TruffleTypes {
 
     // Truffle API
     public static final String Assumption_Name = "com.oracle.truffle.api.Assumption";
+    public static final String BytecodeOSRNode_Name = "com.oracle.truffle.api.nodes.BytecodeOSRNode";
     public static final String CompilerAsserts_Name = "com.oracle.truffle.api.CompilerAsserts";
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
@@ -85,6 +86,8 @@ public class TruffleTypes {
     public static final String EncapsulatingNodeReference_Name = "com.oracle.truffle.api.nodes.EncapsulatingNodeReference";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
+    public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
+    public static final String FrameSlotKind_Name = "com.oracle.truffle.api.frame.FrameSlotKind";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
@@ -98,6 +101,7 @@ public class TruffleTypes {
     public static final String Option_Group_Name = "com.oracle.truffle.api.Option.Group";
     public static final String Option_Name = "com.oracle.truffle.api.Option";
     public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
+    public static final String RootNode_Name = "com.oracle.truffle.api.nodes.RootNode";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
     public static final String Source_Name = "com.oracle.truffle.api.source.Source";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
@@ -112,6 +116,7 @@ public class TruffleTypes {
     public static final String HostLanguage_Name = "com.oracle.truffle.polyglot.HostLanguage";
 
     public final DeclaredType Assumption = c.getDeclaredType(Assumption_Name);
+    public final DeclaredType BytecodeOSRNode = c.getDeclaredType(BytecodeOSRNode_Name);
     public final DeclaredType CompilerAsserts = c.getDeclaredType(CompilerAsserts_Name);
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
@@ -120,6 +125,8 @@ public class TruffleTypes {
     public final DeclaredType EncapsulatingNodeReference = c.getDeclaredType(EncapsulatingNodeReference_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
+    public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
+    public final DeclaredType FrameSlotKind = c.getDeclaredType(FrameSlotKind_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
@@ -131,6 +138,7 @@ public class TruffleTypes {
     public final DeclaredType NodeInterface = c.getDeclaredType(NodeInterface_Name);
     public final DeclaredType NodeUtil = c.getDeclaredType(NodeUtil_Name);
     public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
+    public final DeclaredType RootNode = c.getDeclaredTypeOptional(RootNode_Name);
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
     public final DeclaredType Source = c.getDeclaredType(Source_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
@@ -228,9 +236,6 @@ public class TruffleTypes {
     public final DeclaredType UnsupportedSpecializationException = c.getDeclaredType(UnsupportedSpecializationException_Name);
 
     // Operation DSL API
-    public static final String BuilderExceptionHandler_Name = "com.oracle.truffle.api.operation.BuilderExceptionHandler";
-    public static final String BuilderOperationData_Name = "com.oracle.truffle.api.operation.BuilderOperationData";
-    public static final String BuilderOperationLabel_Name = "com.oracle.truffle.api.operation.BuilderOperationLabel";
     public static final String BuilderSourceInfo_Name = "com.oracle.truffle.api.operation.BuilderSourceInfo";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
     public static final String GenerateOperations_Metadata_Name = "com.oracle.truffle.api.operation.GenerateOperations.Metadata";
@@ -253,9 +258,6 @@ public class TruffleTypes {
     public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.operation.ShortCircuitOperation";
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
 
-    public final DeclaredType BuilderExceptionHandler = c.getDeclaredTypeOptional(BuilderExceptionHandler_Name);
-    public final DeclaredType BuilderOperationData = c.getDeclaredTypeOptional(BuilderOperationData_Name);
-    public final DeclaredType BuilderOperationLabel = c.getDeclaredTypeOptional(BuilderOperationLabel_Name);
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
     public final DeclaredType GenerateOperations_Metadata = c.getDeclaredTypeOptional(GenerateOperations_Metadata_Name);

@@ -60,11 +60,7 @@ public class ReturnInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startAssign(vars.returnValue).startCall(vars.frame, "getObject");
-        b.startGroup().variable(vars.sp).string(" - 1").end();
-        b.end(2);
-
-        b.statement("break loop");
+        b.startReturn().string("((").variable(vars.sp).string(" - 1) << 16) | 0xffff").end();
 
         return b.build();
     }

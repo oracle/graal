@@ -53,6 +53,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.BoxingEliminationBehaviour;
@@ -62,9 +63,6 @@ public class StoreLocalInstruction extends Instruction {
     private final OperationsContext context;
 
     static final DeclaredType FrameSlotKind = ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.frame.FrameSlotKind");
-
-    private static final boolean LOG_LOCAL_STORES = false;
-    private static final boolean LOG_LOCAL_STORES_SPEC = false;
 
     public StoreLocalInstruction(OperationsContext context, int id, FrameKind kind) {
         super("store.local." + (kind == null ? "uninit" : kind.getTypeName().toLowerCase()), id, 0);
@@ -78,11 +76,11 @@ public class StoreLocalInstruction extends Instruction {
     public static CodeExecutableElement createStoreLocalInitialization(OperationsContext context) {
         ProcessorContext ctx = ProcessorContext.getInstance();
 
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), new CodeTypeMirror(TypeKind.INT), "storeLocalInitialization");
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), ctx.getType(int.class), "storeLocalInitialization");
         method.addParameter(new CodeVariableElement(ctx.getTypes().VirtualFrame, "frame"));
-        method.addParameter(new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "localIdx"));
-        method.addParameter(new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "localTag"));
-        method.addParameter(new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "sourceSlot"));
+        method.addParameter(new CodeVariableElement(ctx.getType(int.class), "localIdx"));
+        method.addParameter(new CodeVariableElement(ctx.getType(int.class), "localTag"));
+        method.addParameter(new CodeVariableElement(ctx.getType(int.class), "sourceSlot"));
 
         CodeTreeBuilder b = method.createBuilder();
 
@@ -94,7 +92,7 @@ public class StoreLocalInstruction extends Instruction {
             }
             b.startIf();
             // {
-            b.string("localTag == FRAME_TYPE_" + kind);
+            b.string("localTag == " + kind.ordinal() + " /* " + kind + " */");
             b.string(" && ");
             b.string("value instanceof " + kind.getTypeNameBoxed());
             // }
@@ -105,7 +103,7 @@ public class StoreLocalInstruction extends Instruction {
             b.startGroup().cast(kind.getType()).string("value").end();
             b.end(2);
 
-            b.startReturn().string("FRAME_TYPE_" + kind).end();
+            b.startReturn().string(kind.ordinal() + " /* " + kind + " */").end();
             // }
             b.end();
         }
@@ -115,7 +113,7 @@ public class StoreLocalInstruction extends Instruction {
         b.string("value");
         b.end(2);
 
-        b.startReturn().string("FRAME_TYPE_OBJECT").end();
+        b.startReturn().string("0 /* OBJECT */").end();
 
         return method;
     }
@@ -137,8 +135,8 @@ public class StoreLocalInstruction extends Instruction {
 
             b.startIf().string("localTag == ").staticReference(FrameSlotKind, "Illegal").end().startBlock();
             // {
-            if (LOG_LOCAL_STORES) {
-                b.statement("System.out.printf(\" local store %2d : %s [uninit]%n\", localIdx, frame.getValue(sourceSlot))");
+            if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
+                b.statement("System.out.printf(\" local store %2d : %s [uninit]%n\", localIdx, $frame.getValue(sourceSlot))");
             }
             b.startAssert().startCall(vars.frame, "isObject").string("sourceSlot").end(2);
             createCopyObject(vars, b);
@@ -154,8 +152,8 @@ public class StoreLocalInstruction extends Instruction {
             b.string("sourceSlot");
             b.end(2);
 
-            if (LOG_LOCAL_STORES || LOG_LOCAL_STORES_SPEC) {
-                b.statement("System.out.printf(\" local store %2d : %s [init -> %s]%n\", localIdx, frame.getValue(sourceSlot), FrameSlotKind.fromTag((byte) resultTag))");
+            if (OperationGeneratorFlags.LOG_LOCAL_STORES || OperationGeneratorFlags.LOG_LOCAL_STORES_SPEC) {
+                b.statement("System.out.printf(\" local store %2d : %s [init -> %s]%n\", localIdx, $frame.getValue(sourceSlot), FrameSlotKind.fromTag((byte) resultTag))");
             }
 
             b.startStatement().startCall("setResultBoxedImpl");
@@ -169,8 +167,8 @@ public class StoreLocalInstruction extends Instruction {
             // }
             b.end();
         } else if (kind == FrameKind.OBJECT) {
-            if (LOG_LOCAL_STORES) {
-                b.statement("System.out.printf(\" local store %2d : %s [generic]%n\", localIdx, frame.getValue(sourceSlot))");
+            if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
+                b.statement("System.out.printf(\" local store %2d : %s [generic]%n\", localIdx, $frame.getValue(sourceSlot))");
             }
 
             b.startStatement().startCall(vars.frame, "setObject");
@@ -184,7 +182,7 @@ public class StoreLocalInstruction extends Instruction {
             b.string("sourceSlot");
             b.end(2).startBlock(); // {
             b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, context.storeLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
-            createSetChildBoxing(vars, b, "FRAME_TYPE_OBJECT");
+            createSetChildBoxing(vars, b, "0 /* OBJECT */");
             b.end(); // }
         }
 
@@ -193,15 +191,17 @@ public class StoreLocalInstruction extends Instruction {
         return b.build();
     }
 
+    private static final boolean USE_SPEC_FRAME_COPY = true;
+
     private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "copyPrimitive");
+        b.startStatement().startCall(vars.frame, USE_SPEC_FRAME_COPY ? "copyPrimitive" : "copy");
         b.string("sourceSlot");
         b.string("localIdx");
         b.end(2);
     }
 
     private static void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "copyObject");
+        b.startStatement().startCall(vars.frame, USE_SPEC_FRAME_COPY ? "copyObject" : "copy");
         b.string("sourceSlot");
         b.string("localIdx");
         b.end(2);

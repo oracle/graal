@@ -81,12 +81,9 @@ import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruc
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
-    private final CodeVariableElement fldBc;
-    private final CodeVariableElement fldChildren;
     private final Set<String> innerTypeNames;
     private final Set<String> methodNames;
     private final boolean isVariadic;
-    private final CodeVariableElement fldConsts;
     private final CustomInstruction cinstr;
     private final StaticConstants staticConstants;
 
@@ -107,22 +104,14 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     {
         context = ProcessorContext.getInstance();
         types = context.getTypes();
-        dummyVariables.bc = new CodeVariableElement(context.getType(short[].class), "bc");
-        dummyVariables.bci = new CodeVariableElement(context.getType(int.class), "$bci");
-        dummyVariables.frame = new CodeVariableElement(types.Frame, "$frame");
+        OperationsBytecodeCodeGenerator.populateVariables(dummyVariables);
     }
 
-    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, CodeVariableElement fldBc, CodeVariableElement fldChildren,
-                    Set<String> innerTypeNames,
-                    Set<String> methodNames, boolean isVariadic, CodeVariableElement fldConsts, CustomInstruction cinstr,
-                    StaticConstants staticConstants) {
+    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, Set<String> innerTypeNames, Set<String> methodNames, boolean isVariadic, CustomInstruction cinstr, StaticConstants staticConstants) {
         this.m = m;
-        this.fldBc = fldBc;
-        this.fldChildren = fldChildren;
         this.innerTypeNames = innerTypeNames;
         this.methodNames = methodNames;
         this.isVariadic = isVariadic;
-        this.fldConsts = fldConsts;
         this.cinstr = cinstr;
         this.staticConstants = staticConstants;
 
@@ -201,8 +190,13 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (!isBoundary) {
             builder.string("$frame");
         }
+
+        builder.string("$this");
+        builder.string("$bc");
         builder.string("$bci");
         builder.string("$sp");
+        builder.string("$consts");
+        builder.string("$children");
 
         for (int i = 0; i < m.getNumTosSlots(); i++) {
             builder.string("$tos_" + i);
@@ -264,9 +258,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         VariableElement targetField;
         if (isChild) {
-            targetField = fldChildren;
+            targetField = dummyVariables.children;
         } else {
-            targetField = fldConsts;
+            targetField = dummyVariables.consts;
         }
 
         b.variable(targetField).string("[");
@@ -444,9 +438,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary, CodeTree[] bindings) {
-        if (inBoundary || regularReturn()) {
-            return false;
-        }
 
         // if (m.isTracing()) {
         // b.startStatement().startCall("tracer", "traceSpecialization");
@@ -462,7 +453,17 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         // b.end(2);
         // }
 
-        createPushResult(frameState, b, specializationCall, specialization.getMethod().getReturnType());
+        if (inBoundary || regularReturn()) {
+            if (ElementUtils.isVoid(specialization.getMethod().getReturnType())) {
+                b.statement(specializationCall);
+                b.returnStatement();
+            } else {
+                b.startReturn().tree(specializationCall).end();
+            }
+        } else {
+            createPushResult(frameState, b, specializationCall, specialization.getMethod().getReturnType());
+        }
+
         return true;
     }
 
@@ -470,7 +471,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return isVariadic || data.isShortCircuit();
     }
 
-    private static final boolean DO_LOG_ENS_CALLS = false;
     private int ensCall = 0;
 
     @Override
@@ -480,11 +480,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
 
             // unquicken call parent EAS
-            builder.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.getOrig().opcodeIdField));
+            builder.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, qinstr.getOrig().opcodeIdField));
             easName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
         }
 
-        if (DO_LOG_ENS_CALLS) {
+        if (OperationGeneratorFlags.LOG_EXECUTE_AND_SPECIALIZE_CALLS) {
             builder.statement("System.out.printf(\" [!!] calling E&S @ %04x : " + cinstr.name + " " + (ensCall++) + " \", $bci)");
             builder.startStatement().startCall("System.out.println").startCall("java.util.Arrays.asList");
             frameState.addReferencesTo(builder);
@@ -512,8 +512,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     @Override
     public void createCallBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, CodeExecutableElement boundaryMethod, Consumer<CodeTreeBuilder> addArguments) {
         if (regularReturn()) {
-            builder.startReturn().startCall("this", boundaryMethod);
-            builder.string("$bci");
+            builder.startReturn().startCall(boundaryMethod.getSimpleName().toString());
+            addNodeCallParameters(builder, true, false);
             addArguments.accept(builder);
             builder.end(2);
             return;
@@ -521,9 +521,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         CodeTreeBuilder callBuilder = builder.create();
 
-        callBuilder.startCall("this", boundaryMethod);
-        callBuilder.string("$bci");
-        callBuilder.string("$sp");
+        callBuilder.startCall(boundaryMethod.getSimpleName().toString());
+        addNodeCallParameters(callBuilder, true, false);
         addArguments.accept(callBuilder);
         callBuilder.end();
 
@@ -589,7 +588,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     @Override
     public void createSpecialize(FrameState frameState, SpecializationData specialization, CodeTreeBuilder b) {
 
-        if (DO_LOG_ENS_CALLS) {
+        if (OperationGeneratorFlags.LOG_EXECUTE_AND_SPECIALIZE_CALLS) {
             b.statement("System.out.println(\" [!!] finished E&S - " + specialization.getId() + " \")");
         }
 
@@ -606,7 +605,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                         b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
                         b.end().startBlock();
                         // {
-                        b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.opcodeIdField));
+                        b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, qinstr.opcodeIdField));
                         // }
                         b.end();
                     }
@@ -617,7 +616,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 }
 
                 // quicken to generic
-                b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", cinstr.opcodeIdField));
+                b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, cinstr.opcodeIdField));
 
                 if (elseIf) {
                     b.end();
@@ -761,10 +760,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         b.declaration("boolean[]", "result", "new boolean[" + specializationStates.size() + "]");
 
         for (int i = 0; i < specializationStates.size(); i++) {
-            SpecializationData data = (SpecializationData) specializationStates.get(i);
+            SpecializationData specData = (SpecializationData) specializationStates.get(i);
             b.startAssign("result[" + i + "]");
-            b.tree(multiState.createContains(frame, new Object[]{data}));
-            Set<SpecializationData> excludedBy = data.getExcludedBy();
+            b.tree(multiState.createContains(frame, new Object[]{specData}));
+            Set<SpecializationData> excludedBy = specData.getExcludedBy();
 
             if (!excludedBy.isEmpty()) {
                 b.string(" && ");
@@ -830,5 +829,15 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     public StaticConstants createConstants() {
         return staticConstants;
+    }
+
+    @Override
+    public CodeTree createGetLock() {
+        return CodeTreeBuilder.singleString("$this.getLockAccessor()");
+    }
+
+    @Override
+    public CodeTree createSuperInsert(CodeTree value) {
+        return CodeTreeBuilder.createBuilder().startCall("$this.insertAccessor").tree(value).end().build();
     }
 }

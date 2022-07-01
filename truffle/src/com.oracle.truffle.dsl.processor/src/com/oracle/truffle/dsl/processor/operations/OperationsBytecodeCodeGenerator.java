@@ -50,23 +50,21 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
@@ -78,6 +76,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstru
 public class OperationsBytecodeCodeGenerator {
 
     private static final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
+    private static final Set<Modifier> MOD_PRIVATE_STATIC = Set.of(Modifier.PRIVATE, Modifier.STATIC);
     private static final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
     static final Object MARKER_CHILD = new Object();
@@ -94,9 +93,16 @@ public class OperationsBytecodeCodeGenerator {
     private final CodeTypeElement typBuilderImpl;
     private final OperationsData m;
     private final boolean withInstrumentation;
+    private final CodeTypeElement baseClass;
+    private final CodeTypeElement opNodeImpl;
+    private final CodeTypeElement typExceptionHandler;
 
-    public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, OperationsData m, boolean withInstrumentation) {
+    public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, CodeTypeElement baseClass, CodeTypeElement opNodeImpl, CodeTypeElement typExceptionHandler, OperationsData m,
+                    boolean withInstrumentation) {
         this.typBuilderImpl = typBuilderImpl;
+        this.baseClass = baseClass;
+        this.opNodeImpl = opNodeImpl;
+        this.typExceptionHandler = typExceptionHandler;
         this.m = m;
         this.withInstrumentation = withInstrumentation;
     }
@@ -108,57 +114,32 @@ public class OperationsBytecodeCodeGenerator {
     public CodeTypeElement createBuilderBytecodeNode() {
         String namePrefix = withInstrumentation ? "Instrumentable" : "";
 
-        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", types.OperationBytecodeNode);
+        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", baseClass.asType());
 
-        CodeVariableElement fldBc = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(short.class)), "bc");
+        initializeInstructions(builderBytecodeNodeType);
 
-        CodeVariableElement fldConsts = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(Object.class)), "consts");
-
-        CodeVariableElement fldChildren = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.Node), "children");
-
-        CodeVariableElement fldHandlers = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.BuilderExceptionHandler), "handlers");
-
-        CodeVariableElement fldProbeNodes = null;
-        if (withInstrumentation) {
-            fldProbeNodes = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.OperationsInstrumentTreeNode), "instruments");
-        }
-
-        CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType);
-        builderBytecodeNodeType.add(ctor);
-
-        initializeInstructions(builderBytecodeNodeType, fldBc, fldConsts, fldChildren);
-
-        ExecutionVariables vars = new ExecutionVariables();
-        // vars.bytecodeNodeType = builderBytecodeNodeType;
-        vars.bc = fldBc;
-        vars.consts = fldConsts;
-        vars.probeNodes = fldProbeNodes;
-        // vars.handlers = fldHandlers;
-        // vars.tracer = fldTracer;
-
-        createBytecodeLoop(builderBytecodeNodeType, fldBc, fldHandlers, vars);
+        builderBytecodeNodeType.add(createBytecodeLoop(baseClass));
 
         if (m.isGenerateAOT()) {
-            createPrepareAot(builderBytecodeNodeType, vars);
+            builderBytecodeNodeType.add(createPrepareAot(baseClass));
+
+            builderBytecodeNodeType.add(new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(boolean.class), "isAdoptable")).getBuilder().statement("return true");
         }
 
-        createDumpCode(builderBytecodeNodeType, fldHandlers, vars);
+        builderBytecodeNodeType.add(createDumpCode(baseClass));
 
         return builderBytecodeNodeType;
     }
 
-    private void createPrepareAot(CodeTypeElement builderBytecodeNodeType, ExecutionVariables vars) {
-        builderBytecodeNodeType.getImplements().add(types.GenerateAOT_Provider);
-
-        CodeExecutableElement mPrepareForAot = GeneratorUtils.overrideImplement(types.GenerateAOT_Provider, "prepareForAOT");
-        builderBytecodeNodeType.add(mPrepareForAot);
-
-        mPrepareForAot.renameArguments("language", "root");
+    private CodeExecutableElement createPrepareAot(CodeTypeElement baseType) {
+        CodeExecutableElement mPrepareForAot = GeneratorUtils.overrideImplement(baseType, "prepareForAOT");
 
         CodeTreeBuilder b = mPrepareForAot.createBuilder();
 
-        vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
-        b.declaration("int", "bci", "0");
+        ExecutionVariables vars = new ExecutionVariables();
+        populateVariables(vars);
+
+        b.declaration("int", vars.bci.getName(), "0");
 
         b.startWhile().variable(vars.bci).string(" < ").variable(vars.bc).string(".length").end().startBlock();
 
@@ -177,33 +158,34 @@ public class OperationsBytecodeCodeGenerator {
         }));
 
         b.end();
+
+        return mPrepareForAot;
     }
 
-    private void createDumpCode(CodeTypeElement builderBytecodeNodeType, CodeVariableElement fldHandlers, ExecutionVariables vars) {
-        CodeExecutableElement mDump = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(String.class), "dump");
-        builderBytecodeNodeType.add(mDump);
+    private CodeExecutableElement createDumpCode(CodeTypeElement baseType) {
+        CodeExecutableElement mDump = GeneratorUtils.overrideImplement(baseType, "dump");
 
         CodeTreeBuilder b = mDump.getBuilder();
+        ExecutionVariables vars = new ExecutionVariables();
+        populateVariables(vars);
 
-        b.declaration("int", "bci", "0");
-        b.declaration("int", "instrIndex", "0");
+        CodeVariableElement varHandlers = new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers");
+
+        b.declaration("int", vars.bci.getName(), "0");
         b.declaration("StringBuilder", "sb", "new StringBuilder()");
 
-        vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
+        b.startWhile().string("$bci < $bc.length").end().startBlock(); // while {
 
-        b.startWhile().string("bci < bc.length").end();
-        b.startBlock(); // while block
-
-        b.statement("sb.append(String.format(\" [%04x]\", bci))");
+        b.statement("sb.append(String.format(\" [%04x]\", $bci))");
 
         b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars, withInstrumentation, op -> {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
             if (op == null) {
-                builder.statement("sb.append(String.format(\" unknown 0x%02x\", bc[bci++]))");
+                builder.statement("sb.append(String.format(\" unknown 0x%02x\", $bc[$bci++]))");
             } else {
                 builder.tree(op.createDumpCode(vars));
-                builder.startAssign("bci").string("bci + ").tree(op.createLength()).end();
+                builder.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
             }
 
             builder.statement("break");
@@ -212,12 +194,12 @@ public class OperationsBytecodeCodeGenerator {
 
         b.statement("sb.append(\"\\n\")");
 
-        b.end(); // while block
+        b.end(); // }
 
-        b.startFor().string("int i = 0; i < ").variable(fldHandlers).string(".length; i++").end();
+        b.startFor().string("int i = 0; i < ").variable(varHandlers).string(".length; i++").end();
         b.startBlock();
 
-        b.startStatement().string("sb.append(").variable(fldHandlers).string("[i] + \"\\n\")").end();
+        b.startStatement().string("sb.append(").variable(varHandlers).string("[i] + \"\\n\")").end();
 
         b.end();
 
@@ -239,29 +221,38 @@ public class OperationsBytecodeCodeGenerator {
         b.startReturn().string("sb.toString()").end();
 
         vars.bci = null;
+
+        return mDump;
     }
 
-    private void createBytecodeLoop(CodeTypeElement builderBytecodeNodeType, CodeVariableElement fldBc, CodeVariableElement fldHandlers, ExecutionVariables vars) {
-        CodeVariableElement argFrame = new CodeVariableElement(types.VirtualFrame, "frame");
-        CodeVariableElement argStartBci = new CodeVariableElement(context.getType(int.class), "startBci");
-        CodeVariableElement argStartSp = new CodeVariableElement(context.getType(int.class), "startSp");
-        CodeExecutableElement mContinueAt = new CodeExecutableElement(
-                        Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(Object.class), "continueAt",
-                        argFrame, argStartBci, argStartSp);
-        builderBytecodeNodeType.getEnclosedElements().add(0, mContinueAt);
+    static void populateVariables(ExecutionVariables vars) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        TruffleTypes types = context.getTypes();
 
+        vars.bc = new CodeVariableElement(context.getType(short[].class), "$bc");
+        vars.sp = new CodeVariableElement(context.getType(int.class), "$sp");
+        vars.bci = new CodeVariableElement(context.getType(int.class), "$bci");
+        vars.frame = new CodeVariableElement(types.Frame, "$frame");
+        vars.consts = new CodeVariableElement(context.getType(Object[].class), "$consts");
+        vars.children = new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "$children");
+    }
+
+    private CodeExecutableElement createBytecodeLoop(CodeTypeElement baseType) {
+        CodeExecutableElement mContinueAt = GeneratorUtils.overrideImplement(baseType, "continueAt");
         createExplodeLoop(mContinueAt);
+
+        ExecutionVariables vars = new ExecutionVariables();
+        populateVariables(vars);
 
         mContinueAt.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType("com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch")));
 
         CodeTreeBuilder b = mContinueAt.getBuilder();
 
-        CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");
-        CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
         CodeVariableElement varCurOpcode = new CodeVariableElement(context.getType(short.class), "curOpcode");
+        CodeVariableElement varHandlers = new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers");
 
-        b.declaration("int", varSp.getName(), CodeTreeBuilder.singleVariable(argStartSp));
-        b.declaration("int", varBci.getName(), CodeTreeBuilder.singleVariable(argStartBci));
+        b.declaration("int", vars.sp.getName(), CodeTreeBuilder.singleString("$startSp"));
+        b.declaration("int", vars.bci.getName(), CodeTreeBuilder.singleString("$startBci"));
         b.declaration("int", "loopCount", "0");
 
         CodeVariableElement varTracer;
@@ -277,31 +268,24 @@ public class OperationsBytecodeCodeGenerator {
             varTracer = null;
         }
 
-        CodeVariableElement varReturnValue = new CodeVariableElement(context.getType(Object.class), "returnValue");
-        b.statement("Object " + varReturnValue.getName() + " = null");
-
         b.string("loop: ");
         b.startWhile().string("true").end();
         b.startBlock();
         CodeVariableElement varNextBci = new CodeVariableElement(context.getType(int.class), "nextBci");
         b.statement("int nextBci");
 
-        vars.bci = varBci;
         vars.nextBci = varNextBci;
-        vars.frame = argFrame;
-        vars.sp = varSp;
-        vars.returnValue = varReturnValue;
         vars.tracer = varTracer;
 
-        b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(fldBc, varBci));
+        b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci));
 
         b.startTryBlock();
 
-        b.tree(GeneratorUtils.createPartialEvaluationConstant(varBci));
-        b.tree(GeneratorUtils.createPartialEvaluationConstant(varSp));
+        b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.bci));
+        b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.sp));
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
-        b.startIf().variable(varSp).string(" < maxLocals + VALUES_OFFSET").end();
+        b.startIf().variable(vars.sp).string(" < maxLocals").end();
         b.startBlock();
         b.tree(GeneratorUtils.createShouldNotReachHere("stack underflow"));
         b.end();
@@ -323,7 +307,7 @@ public class OperationsBytecodeCodeGenerator {
 
             if (m.isTracing()) {
                 b.startStatement().startCall(varTracer, "traceInstruction");
-                b.variable(varBci);
+                b.variable(vars.bci);
                 b.variable(op.opcodeIdField);
                 b.end(2);
             }
@@ -331,7 +315,7 @@ public class OperationsBytecodeCodeGenerator {
             b.tree(op.createExecuteCode(vars));
 
             if (!op.isBranchInstruction()) {
-                b.startAssign(varNextBci).variable(varBci).string(" + ").tree(op.createLength()).end();
+                b.startAssign(varNextBci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
                 b.statement("break");
             }
 
@@ -350,7 +334,7 @@ public class OperationsBytecodeCodeGenerator {
 
         b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
 
-        b.tree(GeneratorUtils.createPartialEvaluationConstant(varBci));
+        b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.bci));
 
         // if (m.isTracing()) {
         // b.startStatement().startCall(fldTracer, "traceException");
@@ -358,22 +342,22 @@ public class OperationsBytecodeCodeGenerator {
         // b.end(2);
         // }
 
-        b.startFor().string("int handlerIndex = " + fldHandlers.getName() + ".length - 1; handlerIndex >= 0; handlerIndex--").end();
+        b.startFor().string("int handlerIndex = " + varHandlers.getName() + ".length - 1; handlerIndex >= 0; handlerIndex--").end();
         b.startBlock();
 
         b.tree(GeneratorUtils.createPartialEvaluationConstant("handlerIndex"));
 
-        b.declaration(types.BuilderExceptionHandler, "handler", fldHandlers.getName() + "[handlerIndex]");
+        b.declaration(typExceptionHandler.asType(), "handler", varHandlers.getName() + "[handlerIndex]");
 
-        b.startIf().string("handler.startBci > bci || handler.endBci <= bci").end();
+        b.startIf().string("handler.startBci > $bci || handler.endBci <= $bci").end();
         b.statement("continue");
 
-        b.startAssign(varSp).string("handler.startStack + VALUES_OFFSET + maxLocals").end();
+        b.startAssign(vars.sp).string("handler.startStack + maxLocals").end();
         // todo: check exception type (?)
 
-        b.startStatement().startCall(argFrame, "setObject").string("VALUES_OFFSET + handler.exceptionIndex").string("ex").end(2);
+        b.startStatement().startCall(vars.frame, "setObject").string("handler.exceptionIndex").string("ex").end(2);
 
-        b.statement("bci = handler.handlerBci");
+        b.statement("$bci = handler.handlerBci");
         b.statement("continue loop");
 
         b.end(); // for (handlerIndex ...)
@@ -383,7 +367,7 @@ public class OperationsBytecodeCodeGenerator {
         b.end(); // catch block
 
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varNextBci));
-        b.statement("bci = nextBci");
+        b.statement("$bci = nextBci");
         b.end(); // while block
 
         if (m.isTracing()) {
@@ -392,14 +376,7 @@ public class OperationsBytecodeCodeGenerator {
             b.end(2);
         }
 
-        b.startReturn().string("returnValue").end();
-
-        vars.tracer = null;
-        vars.bci = null;
-        vars.nextBci = null;
-        vars.frame = null;
-        vars.sp = null;
-        vars.returnValue = null;
+        return mContinueAt;
     }
 
     private void createExplodeLoop(CodeExecutableElement mContinueAt) {
@@ -409,7 +386,7 @@ public class OperationsBytecodeCodeGenerator {
                         context.getDeclaredType("com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind"), "MERGE_EXPLODE")));
     }
 
-    private void initializeInstructions(CodeTypeElement builderBytecodeNodeType, CodeVariableElement fldBc, CodeVariableElement fldConsts, CodeVariableElement fldChildren) throws AssertionError {
+    private void initializeInstructions(CodeTypeElement builderBytecodeNodeType) throws AssertionError {
         StaticConstants staticConstants = new StaticConstants(true);
         for (Instruction instr : m.getInstructions()) {
             if (!(instr instanceof CustomInstruction)) {
@@ -427,12 +404,7 @@ public class OperationsBytecodeCodeGenerator {
 
             final SingleOperationData soData = cinstr.getData();
 
-            OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(
-                            m, fldBc, fldChildren,
-                            innerTypeNames,
-                            methodNames, isVariadic,
-                            fldConsts, cinstr,
-                            staticConstants);
+            OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(m, innerTypeNames, methodNames, isVariadic, cinstr, staticConstants);
             cinstr.setPlugs(plugs);
 
             NodeCodeGenerator generator = new NodeCodeGenerator();
@@ -507,13 +479,18 @@ public class OperationsBytecodeCodeGenerator {
                     }
                 }
 
-                exToCopy.getParameters().add(0, new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "$sp"));
-                exToCopy.getParameters().add(0, new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "$bci"));
+                exToCopy.getParameters().add(0, new CodeVariableElement(arrayOf(types.Node), "$children"));
+                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(Object[].class), "$consts"));
+                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$sp"));
+                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$bci"));
+                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(short[].class), "$bc"));
+                exToCopy.getParameters().add(0, new CodeVariableElement(opNodeImpl.asType(), "$this"));
                 if (!isBoundary) {
                     exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$frame"));
                 }
                 exToCopy.getModifiers().remove(Modifier.PUBLIC);
                 exToCopy.getModifiers().add(Modifier.PRIVATE);
+                exToCopy.getModifiers().add(Modifier.STATIC);
                 exToCopy.getAnnotationMirrors().removeIf(x -> x.getAnnotationType().equals(context.getType(Override.class)));
                 builderBytecodeNodeType.add(exToCopy);
 
@@ -550,5 +527,4 @@ public class OperationsBytecodeCodeGenerator {
     private static TypeMirror arrayOf(TypeMirror el) {
         return new ArrayCodeTypeMirror(el);
     }
-
 }

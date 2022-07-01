@@ -89,6 +89,26 @@ public final class LocalSetterRange {
 
     public static final LocalSetterRange EMPTY = new LocalSetterRange(0, 0);
 
+    public static LocalSetterRange create(int[] indices) {
+        CompilerAsserts.neverPartOfCompilation("use #get from compiled code");
+        if (indices.length == 0) {
+            return EMPTY;
+        } else {
+            assert checkContiguous(indices);
+            return create(indices[0], indices.length);
+        }
+    }
+
+    private static boolean checkContiguous(int[] indices) {
+        int start = indices[0];
+        for (int i = 1; i < indices.length; i++) {
+            if (start + i != indices[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static LocalSetterRange create(int start, int length) {
         CompilerAsserts.neverPartOfCompilation("use #get from compiled code");
         if (start < 0 || start > Short.MAX_VALUE) {

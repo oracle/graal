@@ -44,7 +44,6 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitBranchInstruction;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitInstruction;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitLabel;
-import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.getTypes;
 
 import java.util.List;
 
@@ -66,15 +65,15 @@ import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInst
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
 
-    public final OperationsContext builder;
+    public final OperationsContext context;
     public final String name;
     public final int id;
     public final int children;
 
     public CodeVariableElement idConstantField;
 
-    protected Operation(OperationsContext builder, String name, int id, int children) {
-        this.builder = builder;
+    protected Operation(OperationsContext context, String name, int id, int children) {
+        this.context = context;
         this.name = name;
         this.id = id;
         this.children = children;
@@ -82,6 +81,10 @@ public abstract class Operation {
 
     public final boolean isVariableChildren() {
         return children == VARIABLE_CHILDREN;
+    }
+
+    public String conditionedOn() {
+        return null;
     }
 
     public void setIdConstantField(CodeVariableElement idConstantField) {
@@ -168,10 +171,15 @@ public abstract class Operation {
             this.instruction = instruction;
         }
 
-        private static int moveArguments(BuilderVariables vars, int startIndex, CodeTree[] array) {
+        private static int moveArguments(BuilderVariables vars, int startIndex, CodeTree[] array, String castTarget) {
             int index = startIndex;
             for (int i = 0; i < array.length; i++) {
-                array[i] = CodeTreeBuilder.createBuilder().variable(vars.operationData).string(".arguments[" + index + "]").build();
+                CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+                if (castTarget != null) {
+                    b.string("(", castTarget, ") ");
+                }
+                b.variable(vars.operationData).string(".arguments[" + index + "]");
+                array[i] = b.build();
                 index++;
             }
 
@@ -198,10 +206,10 @@ public abstract class Operation {
                 }
             }
 
-            index = moveArguments(vars, index, args.locals);
-            index = moveArguments(vars, index, args.localRuns);
-            index = moveArguments(vars, index, args.arguments);
-            index = moveArguments(vars, index, args.branchTargets);
+            index = moveArguments(vars, index, args.locals, null);
+            index = moveArguments(vars, index, args.localRuns, null);
+            index = moveArguments(vars, index, args.arguments, null);
+            index = moveArguments(vars, index, args.branchTargets, "OperationLabelImpl");
 
             if (instruction.isVariadic()) {
                 args.variadicCount = CodeTreeBuilder.createBuilder().string("numChildren - " + instruction.numPopStatic()).build();
@@ -321,18 +329,18 @@ public abstract class Operation {
             // {
             b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
 
-            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
-            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+            CodeVariableElement varEndLabel = new CodeVariableElement(context.labelType, "endLabel");
+            b.declaration(context.labelType, varEndLabel.getName(), createCreateLabel());
 
             b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varEndLabel)));
 
-            b.tree(createEmitBranchInstruction(vars, builder.commonBranchFalse, varEndLabel));
+            b.tree(createEmitBranchInstruction(vars, context.commonBranchFalse, varEndLabel));
             // }
             b.end().startElseBlock();
             // {
             b.tree(createPopLastChildCode(vars));
 
-            b.tree(createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitLabel(vars, createGetAux(vars, 0, context.labelType)));
             // }
             b.end();
 
@@ -389,18 +397,18 @@ public abstract class Operation {
             // {
             b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
 
-            CodeVariableElement varElseLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "elseLabel");
-            b.declaration(getTypes().BuilderOperationLabel, varElseLabel.getName(), createCreateLabel());
+            CodeVariableElement varElseLabel = new CodeVariableElement(context.labelType, "elseLabel");
+            b.declaration(context.labelType, varElseLabel.getName(), createCreateLabel());
 
             b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varElseLabel)));
 
-            b.tree(createEmitBranchInstruction(vars, builder.commonBranchFalse, varElseLabel));
+            b.tree(createEmitBranchInstruction(vars, context.commonBranchFalse, varElseLabel));
             // }
             b.end();
             b.startElseIf().variable(vars.childIndex).string(" == 1").end();
             b.startBlock(); // {
             // {
-            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            CodeVariableElement varEndLabel = new CodeVariableElement(context.labelType, "endLabel");
 
             if (hasValue) {
                 b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
@@ -408,12 +416,12 @@ public abstract class Operation {
                 b.tree(createPopLastChildCode(vars));
             }
 
-            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+            b.declaration(context.labelType, varEndLabel.getName(), createCreateLabel());
 
             b.tree(createSetAux(vars, 1, CodeTreeBuilder.singleVariable(varEndLabel)));
 
-            b.tree(createEmitBranchInstruction(vars, builder.commonBranch, varEndLabel));
-            b.tree(createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitBranchInstruction(vars, context.commonBranch, varEndLabel));
+            b.tree(createEmitLabel(vars, createGetAux(vars, 0, context.labelType)));
             // }
             b.end().startElseBlock();
             // {
@@ -424,7 +432,7 @@ public abstract class Operation {
                 b.tree(createPopLastChildCode(vars));
             }
 
-            b.tree(createEmitLabel(vars, createGetAux(vars, 1, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitLabel(vars, createGetAux(vars, 1, context.labelType)));
             // }
             b.end();
 
@@ -454,8 +462,8 @@ public abstract class Operation {
         public CodeTree createBeginCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            CodeVariableElement varStartLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "startLabel");
-            b.declaration(getTypes().BuilderOperationLabel, varStartLabel.getName(), createCreateLabel());
+            CodeVariableElement varStartLabel = new CodeVariableElement(context.labelType, "startLabel");
+            b.declaration(context.labelType, varStartLabel.getName(), createCreateLabel());
 
             b.tree(createEmitLabel(vars, varStartLabel));
 
@@ -471,22 +479,22 @@ public abstract class Operation {
             b.startIf().variable(vars.childIndex).string(" == 0").end();
             b.startBlock();
             // {
-            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            CodeVariableElement varEndLabel = new CodeVariableElement(context.labelType, "endLabel");
 
             b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
-            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+            b.declaration(context.labelType, varEndLabel.getName(), createCreateLabel());
 
             b.tree(createSetAux(vars, AUX_END_LABEL, CodeTreeBuilder.singleVariable(varEndLabel)));
 
-            b.tree(createEmitBranchInstruction(vars, builder.commonBranchFalse, CodeTreeBuilder.singleVariable(varEndLabel)));
+            b.tree(createEmitBranchInstruction(vars, context.commonBranchFalse, CodeTreeBuilder.singleVariable(varEndLabel)));
             // }
             b.end().startElseBlock();
             // {
             b.tree(createPopLastChildCode(vars));
 
-            b.tree(createEmitBranchInstruction(vars, builder.commonBranch, createGetAux(vars, AUX_START_LABEL, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitBranchInstruction(vars, context.commonBranch, createGetAux(vars, AUX_START_LABEL, context.labelType)));
 
-            b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, context.labelType)));
             // }
 
             b.end();
@@ -553,17 +561,17 @@ public abstract class Operation {
         public CodeTree createBeginCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
-            b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
+            CodeVariableElement varBeh = new CodeVariableElement(context.exceptionType, "beh");
+            b.declaration(context.exceptionType, "beh", CodeTreeBuilder.createBuilder().startNew(context.exceptionType).end().build());
             b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
-            b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
+            b.startStatement().variable(varBeh).string(".startStack = curStack").end();
             b.startStatement().variable(varBeh).string(".exceptionIndex = getLocalIndex(").variable(vars.operationData).string(".arguments[0])").end();
-            b.startStatement().startCall("addExceptionHandler").variable(varBeh).end(2);
+            b.startStatement().startCall("exceptionHandlers.add").variable(varBeh).end(2);
 
             b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
 
-            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
-            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+            CodeVariableElement varEndLabel = new CodeVariableElement(context.labelType, "endLabel");
+            b.declaration(context.labelType, varEndLabel.getName(), createCreateLabel());
 
             b.tree(createSetAux(vars, AUX_END_LABEL, CodeTreeBuilder.singleVariable(varEndLabel)));
 
@@ -579,9 +587,9 @@ public abstract class Operation {
             b.startIf().variable(vars.childIndex).string(" == 0").end();
             b.startBlock();
 
-            b.startStatement().tree(createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler)).string(".endBci = ").variable(vars.bci).end();
+            b.startStatement().tree(createGetAux(vars, AUX_BEH, context.exceptionType)).string(".endBci = ").variable(vars.bci).end();
 
-            b.tree(createEmitBranchInstruction(vars, builder.commonBranch, createGetAux(vars, AUX_END_LABEL, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitBranchInstruction(vars, context.commonBranch, createGetAux(vars, AUX_END_LABEL, context.labelType)));
 
             b.end().startElseBlock();
 
@@ -597,8 +605,8 @@ public abstract class Operation {
             b.startIf().variable(vars.childIndex).string(" == 1").end();
             b.startBlock();
 
-            b.startStatement().startCall("setCurStack").startGroup().tree(createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler)).string(".startStack").end(3);
-            b.startStatement().tree(createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler)).string(".handlerBci = ").variable(vars.bci).end();
+            b.startAssign("curStack").startGroup().tree(createGetAux(vars, AUX_BEH, context.exceptionType)).string(".startStack").end(2);
+            b.startStatement().tree(createGetAux(vars, AUX_BEH, context.exceptionType)).string(".handlerBci = ").variable(vars.bci).end();
 
             b.end();
 
@@ -609,7 +617,7 @@ public abstract class Operation {
         public CodeTree createEndCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, getTypes().BuilderOperationLabel)));
+            b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, context.labelType)));
 
             return b.build();
         }
@@ -617,6 +625,65 @@ public abstract class Operation {
         @Override
         public List<TypeMirror> getBuilderArgumentTypes() {
             return List.of(ProcessorContext.getInstance().getTypes().OperationLocal);
+        }
+    }
+
+    public static class Source extends Block {
+
+        public static final String NAME = "Source";
+
+        public Source(OperationsContext builder, int id) {
+            super(builder, NAME, id);
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(ProcessorContext.getInstance().getTypes().Source);
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            return CodeTreeBuilder.createBuilder().statement("sourceBuilder.beginSource(bci, arg0)").build();
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            return CodeTreeBuilder.createBuilder().statement("sourceBuilder.endSource(bci)").build();
+        }
+
+        @Override
+        public String conditionedOn() {
+            return "withSource";
+        }
+    }
+
+    public static class SourceSection extends Block {
+
+        public static final String NAME = "SourceSection";
+
+        public SourceSection(OperationsContext builder, int id) {
+            super(builder, NAME, id);
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            ProcessorContext pc = ProcessorContext.getInstance();
+            return List.of(pc.getType(int.class), pc.getType(int.class));
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            return CodeTreeBuilder.createBuilder().statement("sourceBuilder.beginSourceSection(bci, arg0, arg1)").build();
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            return CodeTreeBuilder.createBuilder().statement("sourceBuilder.endSourceSection(bci)").build();
+        }
+
+        @Override
+        public String conditionedOn() {
+            return "withSource";
         }
     }
 
@@ -646,9 +713,13 @@ public abstract class Operation {
         }
 
         @Override
+        public String conditionedOn() {
+            return "withInstrumentation";
+        }
+
+        @Override
         public List<TypeMirror> getBuilderArgumentTypes() {
-            ProcessorContext context = ProcessorContext.getInstance();
-            return List.of(context.getType(Class.class));
+            return List.of(ProcessorContext.getInstance().getType(Class.class));
         }
 
         @Override
@@ -656,12 +727,13 @@ public abstract class Operation {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             CodeVariableElement varCurInstrumentId = new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "curInstrumentId");
-            CodeVariableElement varStartLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "startLabel");
-            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            CodeVariableElement varStartLabel = new CodeVariableElement(context.labelType, "startLabel");
+            CodeVariableElement varEndLabel = new CodeVariableElement(context.labelType, "endLabel");
 
-            b.declaration("int", varCurInstrumentId.getName(), "doBeginInstrumentation((Class) arg0)");
-            b.declaration(getTypes().BuilderOperationLabel, varStartLabel.getName(), createCreateLabel());
-            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+            // todo
+            b.declaration("int", varCurInstrumentId.getName(), "0");
+            b.declaration(context.labelType, varStartLabel.getName(), createCreateLabel());
+            b.declaration(context.labelType, varEndLabel.getName(), createCreateLabel());
 
             b.tree(createEmitLabel(vars, varStartLabel));
 
@@ -696,8 +768,8 @@ public abstract class Operation {
 
             // b.tree(createEmitInstruction(vars, leaveInstruction,
             // createGetAux(vars, AUX_ID, new CodeTypeMirror(TypeKind.INT)),
-            // createGetAux(vars, AUX_START_LABEL, getTypes().BuilderOperationLabel),
-            // createGetAux(vars, AUX_END_LABEL, getTypes().BuilderOperationLabel)));
+            // createGetAux(vars, AUX_START_LABEL, builder.labelType),
+            // createGetAux(vars, AUX_END_LABEL, builder.labelType)));
             // todo
 
             return b.build();
@@ -743,7 +815,16 @@ public abstract class Operation {
                 b.end(2);
             }
 
-            b.startStatement().variable(vars.operationData).string(".aux[" + AUX_CONTEXT + "] = ").startCall("doBeginFinallyTry").end(2);
+            b.statement("currentFinallyTry = new BuilderFinallyTryContext(currentFinallyTry, Arrays.copyOf(bc, bci), exceptionHandlers, labelFills, labels, curStack, maxStack)");
+
+            b.statement("bci = 0");
+            b.statement("exceptionHandlers = new ArrayList<>()");
+            b.statement("labelFills = new ArrayList<>()");
+            b.statement("labels = new ArrayList<>()");
+            b.statement("curStack = 0");
+            b.statement("maxStack = 0");
+
+            b.startStatement().variable(vars.operationData).string(".aux[" + AUX_CONTEXT + "] = currentFinallyTry").end(2);
 
             return b.build();
         }
@@ -756,20 +837,35 @@ public abstract class Operation {
 
             b.startIf().variable(vars.childIndex).string(" == 0").end().startBlock();
             // {
-            b.startStatement().startCall("doEndFinallyBlock").end(2);
+
+            b.statement("labelPass(currentFinallyTry)");
+
+            b.statement("currentFinallyTry.handlerBc = Arrays.copyOf(bc, bci)");
+            b.statement("currentFinallyTry.handlerHandlers = exceptionHandlers");
+            b.statement("currentFinallyTry.handlerMaxStack = maxStack");
+
+            b.statement("System.arraycopy(currentFinallyTry.bc, 0, bc, 0, currentFinallyTry.bc.length)");
+            b.statement("bci = currentFinallyTry.bc.length");
+            b.statement("exceptionHandlers = currentFinallyTry.exceptionHandlers");
+            b.statement("labelFills = currentFinallyTry.labelFills");
+            b.statement("labels = currentFinallyTry.labels");
+            b.statement("curStack = currentFinallyTry.curStack");
+            b.statement("maxStack = currentFinallyTry.maxStack");
+
+            b.statement("currentFinallyTry = currentFinallyTry.prev");
 
             if (!noExcept) {
-                CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
-                b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
+                CodeVariableElement varBeh = new CodeVariableElement(context.exceptionType, "beh");
+                b.declaration(context.exceptionType, "beh", CodeTreeBuilder.createBuilder().startNew(context.exceptionType).end().build());
 
                 b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
-                b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
+                b.startStatement().variable(varBeh).string(".startStack = curStack").end();
                 b.startStatement().variable(varBeh).string(".exceptionIndex = ");
                 b.startCall("getLocalIndex");
                 b.startGroup().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "]").end();
                 b.end();
                 b.end();
-                b.startStatement().startCall("addExceptionHandler").variable(varBeh).end(2);
+                b.startStatement().startCall("exceptionHandlers.add").variable(varBeh).end(2);
                 b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
             }
 
@@ -806,14 +902,14 @@ public abstract class Operation {
 
                 emitLeaveCode(vars, b);
 
-                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
-                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+                CodeVariableElement varEndLabel = new CodeVariableElement(context.labelType, "endLabel");
+                b.declaration(context.labelType, varEndLabel.getName(), createCreateLabel());
 
                 b.startBlock();
-                b.tree(OperationGeneratorUtils.createEmitBranchInstruction(vars, builder.commonBranch, varEndLabel));
+                b.tree(OperationGeneratorUtils.createEmitBranchInstruction(vars, context.commonBranch, varEndLabel));
                 b.end();
 
-                b.declaration(getTypes().BuilderExceptionHandler, "beh", createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler));
+                b.declaration(context.exceptionType, "beh", createGetAux(vars, AUX_BEH, context.exceptionType));
                 b.startAssign("beh.endBci").string("endBci").end();
                 b.startAssign("beh.handlerBci").variable(vars.bci).end();
 
@@ -821,7 +917,7 @@ public abstract class Operation {
 
                 b.startBlock();
                 CodeTree localIdx = CodeTreeBuilder.createBuilder().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "]").build();
-                b.tree(OperationGeneratorUtils.createEmitLocalInstruction(vars, builder.commonThrow, localIdx));
+                b.tree(OperationGeneratorUtils.createEmitLocalInstruction(vars, context.commonThrow, localIdx));
                 b.end();
 
                 b.tree(OperationGeneratorUtils.createEmitLabel(vars, varEndLabel));
@@ -889,7 +985,7 @@ public abstract class Operation {
 
             b.startIf().variable(vars.childIndex).string(" > 0").end().startBlock();
             // {
-            b.tree(OperationGeneratorUtils.createEmitBranchInstruction(vars, instruction, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            b.tree(OperationGeneratorUtils.createEmitBranchInstruction(vars, instruction, createGetAux(vars, 0, context.labelType)));
             // }
             b.end();
 
@@ -900,7 +996,7 @@ public abstract class Operation {
         public CodeTree createEndCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            b.tree(OperationGeneratorUtils.createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            b.tree(OperationGeneratorUtils.createEmitLabel(vars, createGetAux(vars, 0, context.labelType)));
 
             return b.build();
         }
@@ -920,7 +1016,7 @@ public abstract class Operation {
         b.startFor().string("int i = 0; i < ", vars.lastChildPushCount.getName(), "; i++").end();
         b.startBlock(); // {
 
-        b.tree(createEmitInstruction(vars, builder.commonPop, new EmitArguments()));
+        b.tree(createEmitInstruction(vars, context.commonPop, new EmitArguments()));
 
         b.end(); // }
         return b.build();

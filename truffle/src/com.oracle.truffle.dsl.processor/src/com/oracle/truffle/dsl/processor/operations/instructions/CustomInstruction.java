@@ -142,13 +142,13 @@ public class CustomInstruction extends Instruction {
                 String inputName = "input_" + inputIndex;
                 switch (kind) {
                     case STACK_VALUE:
-                        b.declaration("Object", inputName, "frame.getObject(sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
+                        b.declaration("Object", inputName, "$frame.getObject($sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
                     case VARIADIC:
                         b.declaration("Object[]", inputName, "new Object[numVariadics]");
                         b.startFor().string("int varIndex = 0; varIndex < numVariadics; varIndex++").end().startBlock();
-                        b.startStatement().string(inputName, "[varIndex] = frame.getObject(sp - numVariadics + varIndex)").end();
+                        b.startStatement().string(inputName, "[varIndex] = $frame.getObject($sp - numVariadics + varIndex)").end();
                         b.end();
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
@@ -166,10 +166,14 @@ public class CustomInstruction extends Instruction {
                 b.startStatement();
             }
 
-            b.startCall("this", executeMethod);
+            b.startStaticCall(executeMethod);
             b.variable(vars.frame);
+            b.string("$this");
+            b.variable(vars.bc);
             b.variable(vars.bci);
             b.variable(vars.sp);
+            b.variable(vars.consts);
+            b.variable(vars.children);
             b.trees(inputTrees);
             b.end(2);
 
@@ -177,17 +181,21 @@ public class CustomInstruction extends Instruction {
 
             if (numPushedValues > 0) {
                 b.startStatement().startCall(vars.frame, "setObject");
-                b.string("sp - 1");
+                b.string("$sp - 1");
                 b.string("result");
                 b.end(2);
             }
 
         } else {
             b.startStatement();
-            b.startCall("this", executeMethod);
+            b.startStaticCall(executeMethod);
             b.variable(vars.frame);
+            b.string("$this");
+            b.variable(vars.bc);
             b.variable(vars.bci);
             b.variable(vars.sp);
+            b.variable(vars.consts);
+            b.variable(vars.children);
             b.end(2);
 
             b.startAssign(vars.sp).variable(vars.sp).string(" - " + data.getMainProperties().numStackValues + " + " + numPushedValues).end();
@@ -199,11 +207,11 @@ public class CustomInstruction extends Instruction {
     @Override
     protected CodeTree createConstantInitCode(BuilderVariables vars, EmitArguments args, Object marker, int index) {
         if (marker.equals(MARKER_LOCAL_REFS)) {
-            return CodeTreeBuilder.createBuilder().startCall("createLocalSetterRange").tree(args.constants[index]).end().build();
+            return CodeTreeBuilder.createBuilder().startStaticCall(types.LocalSetterRange, "create").startCall("getLocalIndices").tree(args.constants[index]).end(2).build();
         }
 
         if (marker instanceof String && ((String) marker).startsWith(MARKER_LOCAL_REF_PREFIX)) {
-            return CodeTreeBuilder.createBuilder().startCall("createLocalSetter").tree(args.constants[index]).end().build();
+            return CodeTreeBuilder.createBuilder().startStaticCall(types.LocalSetter, "create").startCall("getLocalIndex").tree(args.constants[index]).end(2).build();
         }
 
         return super.createConstantInitCode(vars, args, marker, index);
@@ -266,7 +274,20 @@ public class CustomInstruction extends Instruction {
             return null;
         }
 
-        return CodeTreeBuilder.createBuilder().startStatement().startCall("this", prepareAOTMethod).string("null").variable(vars.bci).string("-1").tree(language).tree(root).end(2).build();
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startStatement().startStaticCall(prepareAOTMethod);
+        b.string("null");
+        b.string("$this");
+        b.string("$bc");
+        b.variable(vars.bci);
+        b.string("-1");
+        b.string("$consts");
+        b.string("$children");
+        b.tree(language);
+        b.tree(root);
+        b.end(2);
+
+        return b.build();
     }
 
     public void addQuickenedVariant(QuickenedInstruction quick) {

@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -92,7 +93,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 public final class SLOperationsVisitor extends SLBaseVisitor {
 
-    private static final boolean DO_LOG_NODE_CREATION = false;
+    private static final boolean DO_LOG_NODE_CREATION = true;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
         OperationNodes nodes = SLOperationsBuilder.create(OperationConfig.DEFAULT, builder -> {
@@ -128,10 +129,10 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
     @Override
     public Void visit(ParseTree tree) {
-        b.beginSourceSection(tree.getSourceInterval().a);
+        Interval sourceInterval = tree.getSourceInterval();
+        b.beginSourceSection(sourceInterval.a, sourceInterval.length());
         super.visit(tree);
-        b.endSourceSection(tree.getSourceInterval().length());
-
+        b.endSourceSection();
         return null;
     }
 

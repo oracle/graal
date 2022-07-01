@@ -77,7 +77,7 @@ public class BranchInstruction extends Instruction {
 
             if (SAFEPOINT_POLL) {
                 b.startStatement().startStaticCall(typeTruffleSafepoint, "poll");
-                b.string("this");
+                b.string("$this");
                 b.end(2);
             }
 
@@ -91,7 +91,7 @@ public class BranchInstruction extends Instruction {
                 b.end().startBlock(); // {
 
                 b.startStatement().startStaticCall(typeLoopNode, "reportLoopCount");
-                b.string("this");
+                b.string("$this");
                 b.string("" + REPORT_LOOP_STRIDE);
                 b.end(2);
 

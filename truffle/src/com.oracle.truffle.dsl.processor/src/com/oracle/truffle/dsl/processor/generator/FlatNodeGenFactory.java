@@ -665,7 +665,10 @@ public class FlatNodeGenFactory {
         }
 
         clazz.addOptional(createExecuteAndSpecialize());
-        final ReportPolymorphismAction reportPolymorphismAction = reportPolymorphismAction(node, reachableSpecializations);
+        ReportPolymorphismAction reportPolymorphismAction = reportPolymorphismAction(node, reachableSpecializations);
+        if (plugs != null) {
+            reportPolymorphismAction = plugs.createReportPolymorhoismAction(reportPolymorphismAction);
+        }
         if (reportPolymorphismAction.required()) {
             clazz.addOptional(createCheckForPolymorphicSpecialize(reportPolymorphismAction));
             if (requiresCacheCheck(reportPolymorphismAction)) {
@@ -825,9 +828,11 @@ public class FlatNodeGenFactory {
             }
         }
 
+        CodeTree getLockTree = plugs != null ? plugs.createGetLock() : CodeTreeBuilder.singleString("getLock()");
+
         builder.startAssert();
         builder.string("!isAdoptable() || ");
-        builder.string("(").cast(context.getType(ReentrantLock.class), CodeTreeBuilder.singleString("getLock()"));
+        builder.string("(").cast(context.getType(ReentrantLock.class), getLockTree);
         builder.string(").isHeldByCurrentThread()");
         builder.string(" : ").doubleQuote("During prepare AST lock must be held.");
         builder.end();
@@ -2151,8 +2156,15 @@ public class FlatNodeGenFactory {
             plugs.initializeFrameState(frameState, builder);
         }
 
+        CodeTree getLockTree;
+        if (plugs != null) {
+            getLockTree = plugs.createGetLock();
+        } else {
+            getLockTree = CodeTreeBuilder.singleString("getLock()");
+        }
+
         if (needsSpecializeLocking) {
-            builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+            builder.declaration(context.getType(Lock.class), "lock", getLockTree);
             builder.declaration(context.getType(boolean.class), "hasLock", "true");
             builder.statement("lock.lock()");
         }
@@ -2174,7 +2186,7 @@ public class FlatNodeGenFactory {
             if (plugs != null) {
                 resetName = plugs.transformNodeMethodName(resetName);
             }
-            builder.startStatement().startCall("this." + resetName);
+            builder.startStatement().startCall(resetName);
             if (plugs != null) {
                 plugs.addNodeCallParameters(builder, false, false);
             }
@@ -2198,7 +2210,7 @@ public class FlatNodeGenFactory {
 
         builder.tree(execution);
 
-        if (group.hasFallthrough()) {
+        if (group.hasFallthroughInSlowPath()) {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
 
@@ -2409,6 +2421,8 @@ public class FlatNodeGenFactory {
         ExecutableElement method = parent.findMethod();
         if (method != null && method.getModifiers().contains(STATIC)) {
             builder.string("null");
+        } else if (generatorMode == GeneratorMode.OPERATIONS) {
+            builder.string("$this");
         } else {
             builder.string("this");
         }
@@ -3733,6 +3747,8 @@ public class FlatNodeGenFactory {
         boolean useSpecializationClass = specialization != null && useSpecializationClass(specialization);
         boolean needsRewrites = needsRewrites();
 
+        String encapsulatingThis = generatorMode == GeneratorMode.OPERATIONS ? "$this" : "this";
+
         if (mode.isFastPath()) {
 
             BlockState ifCount = BlockState.NONE;
@@ -3806,7 +3822,7 @@ public class FlatNodeGenFactory {
             }
 
             if (pushEncapsulatingNode && libraryInGuard) {
-                GeneratorUtils.pushEncapsulatingNode(builder, "this");
+                GeneratorUtils.pushEncapsulatingNode(builder, encapsulatingThis);
                 builder.startTryBlock();
             }
 
@@ -3858,7 +3874,7 @@ public class FlatNodeGenFactory {
             }
 
             if (pushEncapsulatingNode && !libraryInGuard) {
-                GeneratorUtils.pushEncapsulatingNode(innerBuilder, "this");
+                GeneratorUtils.pushEncapsulatingNode(innerBuilder, encapsulatingThis);
                 innerBuilder.startTryBlock();
             }
 
@@ -3930,7 +3946,7 @@ public class FlatNodeGenFactory {
                 boolean pushBoundary = specialization.needsPushEncapsulatingNode();
                 if (pushBoundary) {
                     builder.startBlock();
-                    GeneratorUtils.pushEncapsulatingNode(builder, "this");
+                    GeneratorUtils.pushEncapsulatingNode(builder, encapsulatingThis);
                     builder.startTryBlock();
                 }
                 BlockState innerIfCount = BlockState.NONE;
@@ -4509,10 +4525,6 @@ public class FlatNodeGenFactory {
                 GeneratedTypeMirror type = new GeneratedTypeMirror("", typeName);
 
                 CodeTreeBuilder initBuilder = new CodeTreeBuilder(null);
-                boolean isNode = specializationClassIsNode(specialization);
-                if (isNode) {
-                    initBuilder.startCall("super", "insert");
-                }
                 initBuilder.startNew(typeName);
                 if (specialization.getMaximumNumberOfInstances() > 1) {
                     if (plugs != null) {
@@ -4523,11 +4535,16 @@ public class FlatNodeGenFactory {
                     }
                 }
                 initBuilder.end(); // new
-                if (isNode) {
-                    initBuilder.end();
-                }
 
                 CodeTree init = initBuilder.build();
+
+                if (specializationClassIsNode(specialization)) {
+                    if (plugs != null) {
+                        init = plugs.createSuperInsert(init);
+                    } else {
+                        init = CodeTreeBuilder.createBuilder().startCall("super", "insert").tree(init).end().build();
+                    }
+                }
 
                 CodeTreeBuilder builder = new CodeTreeBuilder(null);
                 builder.startStatement();
@@ -4660,7 +4677,8 @@ public class FlatNodeGenFactory {
 
         // slow path might be already already locked
         if (!frameState.getMode().isSlowPath()) {
-            builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+            CodeTree getLockTree = plugs != null ? plugs.createGetLock() : CodeTreeBuilder.singleString("getLock()");
+            builder.declaration(context.getType(Lock.class), "lock", getLockTree);
         }
 
         if (needsSpecializeLocking) {
@@ -4734,7 +4752,8 @@ public class FlatNodeGenFactory {
             }
 
             if (needsSpecializeLocking) {
-                builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+                CodeTree getLockTree = plugs != null ? plugs.createGetLock() : CodeTreeBuilder.singleString("getLock()");
+                builder.declaration(context.getType(Lock.class), "lock", getLockTree);
                 builder.statement("lock.lock()");
                 builder.startTryBlock();
             }
@@ -4765,7 +4784,11 @@ public class FlatNodeGenFactory {
                 builder.startIf().string("prev == null").end().startBlock();
                 builder.startStatement().tree(fieldRefWrite).string(" = ");
                 if (specializedIsNode) {
-                    builder.string("this.insert");
+                    if (generatorMode == GeneratorMode.OPERATIONS) {
+                        builder.string("$this.insertAccessor");
+                    } else {
+                        builder.string("this.insert");
+                    }
                 }
                 builder.string("(cur.next_)").end();
                 builder.end().startElseBlock();
@@ -5012,6 +5035,8 @@ public class FlatNodeGenFactory {
             String insertTarget;
             if (useSpecializationClass) {
                 insertTarget = createSpecializationLocalName(specialization);
+            } else if (generatorMode == GeneratorMode.OPERATIONS) {
+                insertTarget = "$this";
             } else {
                 insertTarget = "super";
             }
@@ -5027,7 +5052,11 @@ public class FlatNodeGenFactory {
                 builder = new CodeTreeBuilder(null);
                 String insertName;
                 if (cache.isAdopt()) {
-                    insertName = useSpecializationClass ? useInsertAccessor(specialization, isNodeInterfaceArray) : "insert";
+                    insertName = useSpecializationClass
+                                    ? useInsertAccessor(specialization, isNodeInterfaceArray)
+                                    : (generatorMode == GeneratorMode.OPERATIONS
+                                                    ? "insertAccessor"
+                                                    : "insert");
                 } else {
                     insertName = null;
                 }
@@ -5114,7 +5143,9 @@ public class FlatNodeGenFactory {
         CodeTree useValue;
         if ((ElementUtils.isAssignable(type, types.Node) || ElementUtils.isAssignable(type, new ArrayCodeTypeMirror(types.Node))) &&
                         (!cache.isAlwaysInitialized()) && cache.isAdopt()) {
-            useValue = builder.create().startCall("super.insert").tree(value).end().build();
+            useValue = plugs != null
+                            ? plugs.createSuperInsert(value)
+                            : CodeTreeBuilder.createBuilder().startCall("super.insert").tree(value).end().build();
         } else {
             useValue = value;
         }

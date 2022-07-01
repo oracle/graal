@@ -93,7 +93,7 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree createCreateLabel() {
-        return CodeTreeBuilder.createBuilder().cast(getTypes().BuilderOperationLabel).startCall("createLabel").end().build();
+        return CodeTreeBuilder.createBuilder().startCall("(OperationLabelImpl) createLabel").end().build();
     }
 
     @SuppressWarnings("unused")
@@ -228,7 +228,7 @@ public class OperationGeneratorUtils {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startStatement().startCall("doSetResultBoxed");
-        b.string("bc");
+        b.string("$bc");
         b.string("$bci");
         b.tree(bciOffset);
         b.tree(kind);
@@ -238,6 +238,6 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree toFrameTypeConstant(FrameKind kind) {
-        return CodeTreeBuilder.singleString("FRAME_TYPE_" + kind.getFrameName().toUpperCase());
+        return CodeTreeBuilder.singleString(kind.ordinal() + " /* " + kind + " */");
     }
 }
