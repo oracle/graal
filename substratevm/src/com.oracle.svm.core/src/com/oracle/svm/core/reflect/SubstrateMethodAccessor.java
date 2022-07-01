@@ -112,7 +112,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
 
     @Override
     public Object invoke(Object obj, Object[] args, Class<?> caller) {
-        // FIXME ignore caller
+        // Handle caller sensitive invokes (GR-39586)
         return invoke(obj, args);
     }
 
