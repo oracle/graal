@@ -570,7 +570,7 @@ final class SubstrateVirtualThread extends Thread {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("VirtualThread[#");
-        sb.append(getId());
+        sb.append(JavaThreads.getThreadId(this));
         String name = getName();
         if (!name.isEmpty() && !name.equals("<unnamed>")) {
             sb.append(",");
@@ -603,7 +603,7 @@ final class SubstrateVirtualThread extends Thread {
 
     @Override
     public int hashCode() {
-        return (int) getId();
+        return (int) JavaThreads.getThreadId(this);
     }
 
     @Override

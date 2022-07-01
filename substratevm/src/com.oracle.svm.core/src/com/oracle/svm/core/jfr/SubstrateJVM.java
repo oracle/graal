@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.VMError;
@@ -256,7 +257,7 @@ public class SubstrateJVM {
     /** See {@link JVM#getThreadId}. */
     public static long getThreadId(Thread thread) {
         if (HasJfrSupport.get()) {
-            return thread.getId();
+            return JavaThreads.getThreadId(thread);
         }
         return 0;
     }

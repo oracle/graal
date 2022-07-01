@@ -361,7 +361,7 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        parentThreadId = Thread.currentThread().getId();
+        parentThreadId = JavaThreads.getThreadId(Thread.currentThread());
         long stackSize = PlatformThreads.getRequestedStackSize(JavaThreads.fromTarget(this));
         try {
             PlatformThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);

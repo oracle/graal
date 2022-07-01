@@ -175,7 +175,7 @@ public abstract class PlatformThreads {
     public static long getThreadAllocatedBytes(long javaThreadId) {
         // Accessing the value for the current thread is fast.
         Thread curThread = PlatformThreads.currentThread.get();
-        if (curThread != null && curThread.getId() == javaThreadId) {
+        if (curThread != null && JavaThreads.getThreadId(curThread) == javaThreadId) {
             return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
         }
 
@@ -185,7 +185,7 @@ public abstract class PlatformThreads {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
                 Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
-                if (javaThread != null && javaThread.getId() == javaThreadId) {
+                if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
                     return Heap.getHeap().getThreadAllocatedMemory(isolateThread);
                 }
                 isolateThread = VMThreads.nextThread(isolateThread);
@@ -205,7 +205,7 @@ public abstract class PlatformThreads {
                 Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
                 if (javaThread != null) {
                     for (int i = 0; i < javaThreadIds.length; i++) {
-                        if (javaThread.getId() == javaThreadIds[i]) {
+                        if (JavaThreads.getThreadId(javaThread) == javaThreadIds[i]) {
                             result[i] = Heap.getHeap().getThreadAllocatedMemory(isolateThread);
                             break;
                         }
