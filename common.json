@@ -142,6 +142,7 @@
     }
   },
   "svm": {
+    "COMMENT.deps": "Please use svm_deps in common.jsonnet instead (the values below are without the repository-specific dependencies).",
     "deps": {
       "COMMENT.common": "graal/vm/ci_common/common.jsonnet hardcodes the properties of this object",
       "common": {

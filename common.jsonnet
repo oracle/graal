@@ -18,6 +18,8 @@
   jdt:: downloads.jdt,
   devkits:: common_json.devkits,
 
+  svm_deps:: common_json.svm.deps + repo_config.native_image.extra_deps,
+
   build_base:: {
     // holds location of CI resources that can easily be overwritten in an overlay
     ci_resources:: (import "ci-resources.libsonnet"),
