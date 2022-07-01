@@ -155,7 +155,8 @@ public final class PerformanceInformationHandler implements Closeable {
             if (stackTrace.isEmpty()) {
                 builder.append(String.format("  No stack trace available for %s.", locationGroup));
             } else {
-                builder.append(String.format("  Approximated stack trace for %s:", locationGroup));
+                builder.append(String.format("  Approximated stack trace for %s (append --vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+DebugNonSafepoints for more precise approximation):\n",
+                                locationGroup));
                 builder.append(stackTrace);
             }
         }
