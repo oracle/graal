@@ -200,7 +200,6 @@ class NativeImageVM(GraalVm):
         self.pgo_aot_inline = False
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
-        self.pgo_inline_explored = False
         self.is_gate = False
         self.is_quickbuild = False
         self.use_string_inlining = False
@@ -291,7 +290,6 @@ class NativeImageVM(GraalVm):
             elif inliner == "inline-explored":
                 mx.logv("'inline-explored' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 3
-                self.pgo_inline_explored = True
             else:
                 mx.abort("Unknown inliner configuration: {}".format(inliner))
 
@@ -747,10 +745,9 @@ class NativeImageVM(GraalVm):
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
-        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
+        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-        instrument_args += ['-H:+InlineAllExplored'] if self.pgo_inline_explored else []
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
@@ -761,7 +758,7 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
-        image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
+        image_run_cmd = [image_path, '-XX:ProfilingDumpFile=' + profile_path]
         image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
@@ -771,7 +768,7 @@ class NativeImageVM(GraalVm):
     def run_stage_image(self, config, stages):
         executable_name_args = ['-H:Name=' + config.final_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
-        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
+        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
