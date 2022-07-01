@@ -270,7 +270,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     static Thread currentCarrierThread() {
-        // FIXME support for VirtualThreads
+        // missing support for VirtualThreads (GR-39563)
         Thread thread = PlatformThreads.currentThread.get();
         assert thread != null : "Thread has not been set yet";
         return thread;
