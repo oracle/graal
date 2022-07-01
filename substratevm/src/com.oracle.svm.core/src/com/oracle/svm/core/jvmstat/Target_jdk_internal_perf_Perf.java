@@ -40,13 +40,13 @@ public final class Target_jdk_internal_perf_Perf {
     @Substitute
     @TargetElement(name = "attach", onlyWith = JDK17OrEarlier.class)
     public ByteBuffer attachJDK17(String user, int lvmid, int mode) {
-        return ImageSingletons.lookup(PerfDataSupport.class).attach(user, lvmid, mode);
+        return ImageSingletons.lookup(PerfDataSupport.class).attach(lvmid);
     }
 
     @Substitute
     @TargetElement(name = "attach", onlyWith = JDK19OrLater.class)
     public ByteBuffer attachJDK19(int lvmid) {
-        return ImageSingletons.lookup(PerfDataSupport.class).attach(null, lvmid, 0);
+        return ImageSingletons.lookup(PerfDataSupport.class).attach(lvmid);
     }
 
     @Substitute
