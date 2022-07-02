@@ -53,7 +53,7 @@ import com.oracle.svm.core.util.UserError;
  * Every node tracks a list of reasons for the set configuration. This list helps the users debug
  * conflicts in the configuration.
  */
-public class ClassInitializationConfiguration {
+final class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
     private static final int MAX_NUMBER_OF_REASONS = 10;
 

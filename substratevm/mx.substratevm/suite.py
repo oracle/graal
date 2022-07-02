@@ -1174,6 +1174,7 @@ suite = {
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
+                    "java.util.spi.ResourceBundleControlProvider",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [

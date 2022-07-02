@@ -90,20 +90,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * initialized anyway, the parsing is aborted using a
  * {@link ClassInitializerHasSideEffectsException} as soon as one of the tests fail.
  *
- * To make the analysis inter-procedural, {@link ConfigurableClassInitialization} is used when a
- * not-yet-initialized type is found. This can then lead to a recursive invocation of this early
+ * To make the analysis inter-procedural, {@link ProvenSafeClassInitializationSupport} is used when
+ * a not-yet-initialized type is found. This can then lead to a recursive invocation of this early
  * class initializer analysis. To avoid infinite recursion when class initializers have cyclic
  * dependencies, the analysis bails out when a cycle is detected. As with all analysis done by
- * {@link ConfigurableClassInitialization}, there is no synchronization between threads, so the same
- * class and the same dependencies can be concurrently analyzed by multiple threads.
+ * {@link ProvenSafeClassInitializationSupport}, there is no synchronization between threads, so the
+ * same class and the same dependencies can be concurrently analyzed by multiple threads.
  */
 final class EarlyClassInitializerAnalysis {
 
-    private final ConfigurableClassInitialization classInitializationSupport;
+    private final ProvenSafeClassInitializationSupport classInitializationSupport;
     private final Providers originalProviders;
     private final HighTierContext context;
 
-    EarlyClassInitializerAnalysis(ConfigurableClassInitialization classInitializationSupport) {
+    EarlyClassInitializerAnalysis(ProvenSafeClassInitializationSupport classInitializationSupport) {
         this.classInitializationSupport = classInitializationSupport;
 
         originalProviders = GraalAccess.getOriginalProviders();
@@ -204,7 +204,7 @@ final class EarlyClassInitializerAnalysis {
             if (!EnsureClassInitializedNode.needsRuntimeInitialization(clinitMethod.getDeclaringClass(), type)) {
                 return false;
             }
-            if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {
+            if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(ProvenSafeClassInitializationSupport.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {
                 assert type.isInitialized() : "Type must be initialized now";
                 return false;
             }

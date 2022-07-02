@@ -107,10 +107,12 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtRunTime("com.sun.naming.internal.ResourceManager$AppletParameter", "Initializes AWT");
         rci.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
+        rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
 
         /* XML-related */
         rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
 
         /* Security services */
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
@@ -133,6 +135,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("sun.security.internal.spec", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.jca", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.jgss", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("org.ietf.jgss.Oid", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("org.ietf.jgss.GSSException", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("org.ietf.jgss.GSSName", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.krb5", JDK_CLASS_REASON);
