@@ -72,6 +72,8 @@ public final class JavaThreads {
     static final AtomicLong threadSeqNumber = new AtomicLong();
     /** For Thread.nextThreadNum(). */
     static final AtomicInteger threadInitNumber = new AtomicInteger();
+    /** For Thread.ThreadNumbering.next() after JDK 19. */
+    static final AtomicInteger threadNumber = new AtomicInteger();
 
     private JavaThreads() {
     }
@@ -93,6 +95,14 @@ public final class JavaThreads {
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
         LoomSupport.CompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
+    }
+
+    public static Target_sun_nio_ch_Interruptible getBlocker(Thread thread) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            return toTarget(thread).nioBlocker;
+        } else {
+            return toTarget(thread).blocker;
+        }
     }
 
     /** Safe method to get a thread's internal state since {@link Thread#getState} is not final. */

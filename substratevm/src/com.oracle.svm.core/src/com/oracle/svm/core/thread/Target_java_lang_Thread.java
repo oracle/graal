@@ -153,6 +153,8 @@ public final class Target_java_lang_Thread {
 
     @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
     volatile Target_sun_nio_ch_Interruptible blocker;
+    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    volatile Target_sun_nio_ch_Interruptible nioBlocker;
 
     /** @see JavaThreads#setCurrentThreadLockHelper */
     @Inject @TargetElement(onlyWith = ContinuationsSupported.class) //
@@ -206,10 +208,10 @@ public final class Target_java_lang_Thread {
                         null, 0,
                         Thread.NORM_PRIORITY, asDaemon, ThreadStatus.RUNNABLE);
 
-        if (LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
-            tid = Target_java_lang_Thread_ThreadIdentifiers.next();
+        tid = nextThreadID();
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            interruptLock = new Object();
         } else {
-            tid = nextThreadID();
             blockerLock = new Object();
         }
         name = (withName != null) ? withName : ("System-" + nextThreadNum());
@@ -253,15 +255,6 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = ContinuationsNotSupported.class)
     static Thread currentThread() {
-        Thread thread = PlatformThreads.currentThread.get();
-        assert thread != null : "Thread has not been set yet";
-        return thread;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
-    private static Thread currentThread0() {
         Thread thread = PlatformThreads.currentThread.get();
         assert thread != null : "Thread has not been set yet";
         return thread;
@@ -346,22 +339,7 @@ public final class Target_java_lang_Thread {
         return "Thread-" + JavaThreads.threadInitNumber.incrementAndGet();
     }
 
-    /**
-     * This constructor is only called by `VirtualThread#VirtualThread(Executor, String, int,
-     * Runnable)`.
-     */
-    @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
-    private Target_java_lang_Thread(String name, int characteristics) {
-        /* Non-0 instance field initialization. */
-        this.interruptLock = new Object();
-
-        this.name = (name != null) ? name : "<unnamed>";
-        this.tid = Target_java_lang_Thread_ThreadIdentifiers.next();
-        this.contextClassLoader = Thread.currentThread().getContextClassLoader();
-    }
-
-    @SuppressWarnings("hiding")
+    @SuppressWarnings({"hiding", "deprecation"})
     @Substitute
     private void start0() {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -594,15 +572,9 @@ public final class Target_java_lang_Thread {
     private static native void clearInterruptEvent();
 
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
-    static Object[] scopedCache() {
-        throw VMError.unimplemented();
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
-    static void setScopedCache(Object[] cache) {
-        throw VMError.unimplemented();
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    boolean getAndClearInterrupt() {
+        return JavaThreads.getAndClearInterruptedFlag(JavaThreads.fromTarget(this));
     }
 
     @Alias @TargetElement(onlyWith = LoomJDK.class) //
@@ -615,6 +587,10 @@ public final class Target_java_lang_Thread {
     @Alias
     @TargetElement(onlyWith = LoomJDK.class)
     public static native Thread startVirtualThread(Runnable task);
+
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static native String genThreadName();
 
 }
 
@@ -655,6 +631,15 @@ final class Target_java_lang_Thread_ThreadIdentifiers {
     @Substitute//
     static long next() {
         return JavaThreads.threadSeqNumber.incrementAndGet();
+    }
+}
+
+@Substitute//
+@TargetClass(value = Thread.class, innerClass = "ThreadNumbering", onlyWith = JDK19OrLater.class)
+final class Target_java_lang_Thread_ThreadNumbering {
+    @Substitute//
+    static int next() {
+        return JavaThreads.threadNumber.incrementAndGet();
     }
 }
 

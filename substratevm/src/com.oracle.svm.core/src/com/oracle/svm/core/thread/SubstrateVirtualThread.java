@@ -433,10 +433,11 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     private Object interruptLock() {
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            throw VMError.unsupportedFeature("Loom is not yet supported on JDK 19");
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
+            return JavaThreads.toTarget(this).blockerLock;
+        } else {
+            return JavaThreads.toTarget(this).interruptLock;
         }
-        return JavaThreads.toTarget(this).blockerLock;
     }
 
     /** @see #releaseInterruptLockAndSwitchBack */
@@ -478,7 +479,7 @@ final class SubstrateVirtualThread extends Thread {
             Object token = switchToCarrierAndAcquireInterruptLock();
             try {
                 JavaThreads.writeInterruptedFlag(this, true);
-                Target_sun_nio_ch_Interruptible b = JavaThreads.toTarget(this).blocker;
+                Target_sun_nio_ch_Interruptible b = JavaThreads.getBlocker(this);
                 if (b != null) {
                     b.interrupt(this);
                 }
