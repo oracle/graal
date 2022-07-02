@@ -133,6 +133,7 @@ public class LocalizationSupport {
     /**
      * @return locale for given tag or null for invalid ones
      */
+    @SuppressWarnings("deprecation")
     public static Locale parseLocaleFromTag(String tag) {
         try {
             return new Locale.Builder().setLanguageTag(tag).build();

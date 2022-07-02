@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.Substitute;
+import java.util.function.Function;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = {HasJfrSupport.class, JDK17OrEarlier.class})
-public final class Target_jdk_jfr_internal_EventHandlerCreator {
-    @Substitute
-    @SuppressWarnings("static-method")
-    public Class<? extends Target_jdk_jfr_internal_handlers_EventHandler> makeEventHandlerClass() {
-        throw VMError.shouldNotReachHere();
+@Platforms(Platform.HOSTED_ONLY.class)
+public class Package_jdk_internal_vm_helper implements Function<TargetClass, String> {
+
+    @Override
+    public String apply(TargetClass annotation) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            return "jdk.internal.vm." + annotation.className();
+        } else {
+            return "java.lang." + annotation.className();
+        }
     }
 }

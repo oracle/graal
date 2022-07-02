@@ -30,17 +30,19 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
 @TargetClass(java.nio.charset.Charset.class)
 @SuppressWarnings({"unused"})
-final class Target_java_nio_charset_Charset {
+public final class Target_java_nio_charset_Charset {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static volatile Object[] cache1;
@@ -63,6 +65,10 @@ final class Target_java_nio_charset_Charset {
         }
         return Collections.unmodifiableSortedMap(result);
     }
+
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public static native Charset forName(String charsetName, Charset fallback);
 
     @Substitute
     private static Charset lookup2(String charsetName) {

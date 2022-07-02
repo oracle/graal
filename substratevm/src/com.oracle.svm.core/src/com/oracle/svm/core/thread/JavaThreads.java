@@ -30,12 +30,12 @@ import java.security.AccessController;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -96,6 +96,13 @@ public final class JavaThreads {
     /** Safe method to get a thread's internal state since {@link Thread#getState} is not final. */
     static Thread.State getThreadState(Thread thread) {
         return Target_jdk_internal_misc_VM.toThreadState(getThreadStatus(thread));
+    }
+
+    @SuppressWarnings("deprecation")
+    @AlwaysInline("handle Thread.getId deprecation")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getThreadId(Thread thread) {
+        return thread.getId();
     }
 
     /**
@@ -276,7 +283,7 @@ public final class JavaThreads {
         }
         LoomSupport.CompatibilityUtil.initThreadFields(tjlt, group, target, stackSize, priority, daemon, ThreadStatus.NEW);
 
-        if (!LoomSupport.isEnabled() && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(fromTarget(tjlt)))) {
+        if (!(LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(fromTarget(tjlt)))) {
             JavaThreads.toTarget(group).addUnstarted();
         }
 

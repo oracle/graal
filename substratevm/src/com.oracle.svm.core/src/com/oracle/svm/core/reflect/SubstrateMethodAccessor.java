@@ -49,8 +49,12 @@ import jdk.internal.reflect.MethodAccessor;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+interface MethodAccessorJDK19 {
+    Object invoke(Object obj, Object[] args, Class<?> caller);
+}
+
 @InternalVMMethod
-public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor {
+public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor, MethodAccessorJDK19 {
 
     public static final int STATICALLY_BOUND = -1;
     public static final int OFFSET_NOT_YET_COMPUTED = 0xdead0001;
@@ -104,6 +108,12 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
             target = directTarget;
         }
         return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
+    }
+
+    @Override
+    public Object invoke(Object obj, Object[] args, Class<?> caller) {
+        // Handle caller sensitive invokes (GR-39586)
+        return invoke(obj, args);
     }
 
     public Object invokeSpecial(Object obj, Object[] args) {

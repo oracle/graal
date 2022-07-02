@@ -39,7 +39,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.NotLoomJDK;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -48,14 +48,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @TargetClass(ThreadGroup.class)
 final class Target_java_lang_ThreadGroup {
 
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class, disableCaching = true)//
     private int nUnstartedThreads;
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
     private int nthreads;
 
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
     @InjectAccessors(ThreadGroupThreadsAccessor.class) //
     private Thread[] threads;
 
@@ -82,11 +82,11 @@ final class Target_java_lang_ThreadGroup {
     long injectedId;
 
     @Alias
-    @TargetElement(onlyWith = NotLoomJDK.class)//
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     native void addUnstarted();
 
     @Alias
-    @TargetElement(onlyWith = NotLoomJDK.class)//
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     native void add(Thread t);
 
     @AnnotateOriginal

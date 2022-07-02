@@ -257,6 +257,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             this.hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
         }
 
+        @SuppressWarnings("unlikely-arg-type")
         public void emit() {
             assert isRuntimeCompilationEnabled == DeoptimizationSupport.enabled() : "JIT compilation enabled after registering singleton?";
             if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
@@ -326,6 +327,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          * Emits a {@linkplain #emitRuntimeFeatureTest runtime feature check} if the {@code feature}
          * is not statically available.
          */
+        @SuppressWarnings("unlikely-arg-type")
         private void testFeature(CPUFeature feature, Label falseLabel) {
             if (!hostedCPUFeatures.contains(feature)) {
                 emitRuntimeFeatureTest(feature, falseLabel);
@@ -338,6 +340,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          * was {@linkplain #enterAvxRegion(CPUFeature) entered}, it must be
          * {@linkplain #leaveAvxRegion(CPUFeature) left} before calling this method.
          */
+        @SuppressWarnings("unlikely-arg-type")
         private void jumpToEndOrReturn(CPUFeature feature, Label end) throws StaticFeatureException {
             if (hostedCPUFeatures.contains(feature)) {
                 throw new StaticFeatureException();

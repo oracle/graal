@@ -39,6 +39,7 @@ import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.JavaLangThreadGroupSubstitutions;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -105,8 +106,8 @@ public final class JfrThreadRepository implements JfrConstantPool {
         }
 
         JfrVisited visitedThread = StackValue.get(JfrVisited.class);
-        visitedThread.setId(thread.getId());
-        visitedThread.setHash((int) thread.getId());
+        visitedThread.setId(JavaThreads.getThreadId(thread));
+        visitedThread.setHash((int) JavaThreads.getThreadId(thread));
         if (!epochData.visitedThreads.putIfAbsent(visitedThread)) {
             return;
         }
@@ -114,11 +115,11 @@ public final class JfrThreadRepository implements JfrConstantPool {
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, epochData.threadBuffer);
 
-        JfrNativeEventWriter.putLong(data, thread.getId()); // JFR trace id
+        JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // JFR trace id
         JfrNativeEventWriter.putString(data, thread.getName()); // Java or native thread name
-        JfrNativeEventWriter.putLong(data, thread.getId()); // OS thread id
+        JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // OS thread id
         JfrNativeEventWriter.putString(data, thread.getName()); // Java thread name
-        JfrNativeEventWriter.putLong(data, thread.getId()); // Java thread id
+        JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // Java thread id
 
         ThreadGroup threadGroup = thread.getThreadGroup();
         if (threadGroup != null) {

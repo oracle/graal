@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.lang.reflect.Field;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -33,7 +34,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
-import jdk.jfr.internal.EventWriter;
 
 /**
  * Used to access the Java event writer class, see {@link jdk.jfr.internal.EventWriter}.
@@ -41,38 +41,57 @@ import jdk.jfr.internal.EventWriter;
 public final class JfrEventWriterAccess {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    private static final Field startPosition = ReflectionUtil.lookupField(EventWriter.class, "startPosition");
-    private static final Field startPositionAddress = ReflectionUtil.lookupField(EventWriter.class, "startPositionAddress");
-    private static final Field currentPosition = ReflectionUtil.lookupField(EventWriter.class, "currentPosition");
-    private static final Field maxPosition = ReflectionUtil.lookupField(EventWriter.class, "maxPosition");
-    private static final Field valid = ReflectionUtil.lookupField(EventWriter.class, "valid");
+    private static final Field startPosition;
+    private static final Field startPositionAddress;
+    private static final Field currentPosition;
+    private static final Field maxPosition;
+    private static final Field valid;
+    static {
+        Class<?> declaringClass = getEventWriterClass();
+        startPosition = ReflectionUtil.lookupField(declaringClass, "startPosition");
+        startPositionAddress = ReflectionUtil.lookupField(declaringClass, "startPositionAddress");
+        currentPosition = ReflectionUtil.lookupField(declaringClass, "currentPosition");
+        maxPosition = ReflectionUtil.lookupField(declaringClass, "maxPosition");
+        valid = ReflectionUtil.lookupField(declaringClass, "valid");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static Class<?> getEventWriterClass() {
+        String className;
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            className = "jdk.jfr.internal.event.EventWriter";
+        } else {
+            className = "jdk.jfr.internal.EventWriter";
+        }
+        return ReflectionUtil.lookupClass(false, className);
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private JfrEventWriterAccess() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setStartPosition(EventWriter writer, long value) {
+    public static void setStartPosition(Target_jdk_jfr_internal_EventWriter writer, long value) {
         UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(startPosition), value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setStartPositionAddress(EventWriter writer, long value) {
+    public static void setStartPositionAddress(Target_jdk_jfr_internal_EventWriter writer, long value) {
         UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(startPositionAddress), value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setCurrentPosition(EventWriter writer, long value) {
+    public static void setCurrentPosition(Target_jdk_jfr_internal_EventWriter writer, long value) {
         UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(currentPosition), value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setMaxPosition(EventWriter writer, long value) {
+    public static void setMaxPosition(Target_jdk_jfr_internal_EventWriter writer, long value) {
         UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(maxPosition), value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setValid(EventWriter writer, boolean value) {
+    public static void setValid(Target_jdk_jfr_internal_EventWriter writer, boolean value) {
         UNSAFE.putBooleanVolatile(writer, UNSAFE.objectFieldOffset(valid), value);
     }
 }

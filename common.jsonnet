@@ -79,6 +79,7 @@
   # jdk_version is an hidden field that can be used to generate job names
   local jdk11 =          { jdk_version:: 11},
   local jdk17 =          { jdk_version:: 17},
+  local jdk19 =          { jdk_version:: 19},
 
   oraclejdk11::          jdk11 + { downloads+: { JAVA_HOME : jdks.oraclejdk11 }},
   oraclejdk17::          jdk17 + { downloads+: { JAVA_HOME : jdks.oraclejdk17 }},
@@ -95,9 +96,13 @@
   "labsjdk-ce-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
   "labsjdk-ee-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
 
+  "labsjdk-ce-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
+  "labsjdk-ee-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
+
   # Aliases to edition specific labsjdks
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
+  labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
   labsjdk11Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-11Debug"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
   labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],

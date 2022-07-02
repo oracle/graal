@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.util.VMError;
+import java.util.function.BooleanSupplier;
 
-@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = {HasJfrSupport.class, JDK17OrEarlier.class})
-public final class Target_jdk_jfr_internal_EventHandlerCreator {
-    @Substitute
-    @SuppressWarnings("static-method")
-    public Class<? extends Target_jdk_jfr_internal_handlers_EventHandler> makeEventHandlerClass() {
-        throw VMError.shouldNotReachHere();
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
+public class JDK19OrLater implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC >= 19;
     }
 }
