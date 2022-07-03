@@ -157,9 +157,9 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         r.register(new InvocationPlugin("loadThroughCompressedPatch", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                ValueNode compressed = b.add(HotSpotCompressionNode.compress(arg, runtime().getVMConfig().getOopEncoding()));
+                ValueNode compressed = b.add(HotSpotCompressionNode.compress(b.getGraph(), arg, runtime().getVMConfig().getOopEncoding()));
                 ValueNode patch = b.add(new LoadThroughPatchNode(compressed));
-                b.addPush(JavaKind.Object, HotSpotCompressionNode.uncompress(patch, runtime().getVMConfig().getOopEncoding()));
+                b.addPush(JavaKind.Object, HotSpotCompressionNode.uncompress(b.getGraph(), patch, runtime().getVMConfig().getOopEncoding()));
                 return true;
             }
         });
