@@ -52,6 +52,7 @@ public class FieldsScanner {
 
         private static final Unsafe UNSAFE = getUnsafe();
 
+        @SuppressWarnings("deprecation"/* JDK-8277863 */)
         @Override
         public long getOffset(Field field) {
             return UNSAFE.objectFieldOffset(field);

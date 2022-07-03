@@ -102,7 +102,7 @@ public final class TruffleStackTrace extends Exception {
 
         try {
             Field causeField = Throwable.class.getDeclaredField("cause");
-            causeFieldIndex = UNSAFE.objectFieldOffset(causeField);
+            causeFieldIndex = ArrayUtils.getObjectFieldOffset(causeField);
         } catch (NoSuchFieldException | SecurityException e) {
             throw new RuntimeException(e);
         }
