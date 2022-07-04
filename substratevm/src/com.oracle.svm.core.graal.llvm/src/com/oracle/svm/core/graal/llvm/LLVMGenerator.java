@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
-import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -83,7 +82,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
@@ -125,6 +123,8 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -186,7 +186,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.lirKindTool = new LLVMUtils.LLVMKindTool(builder);
         this.debugInfoPrinter = new DebugInfoPrinter(this, debugLevel);
 
-        this.functionName = SubstrateUtil.uniqueShortName(method);
+        this.functionName = ((HostedMethod) method).getUniqueShortName();
         this.isEntryPoint = isEntryPoint(method);
         this.modifiesSpecialRegisters = modifiesSpecialRegisters(graph);
 
@@ -291,7 +291,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     private static String getFunctionName(ResolvedJavaMethod method) {
-        return SubstrateUtil.uniqueShortName(method);
+        return ((HostedMethod) method).getUniqueShortName();
     }
 
     private static boolean isEntryPoint(ResolvedJavaMethod method) {
