@@ -81,9 +81,7 @@
     linux_amd64_jdk11 + gate("modules-basic", "build,hellomodule,test") + maven + svm_unittest + t("30:00"),
     linux_amd64_jdk17 + gate("style-fullbuild", "style,fullbuild,helloworld,test,svmjunit,debuginfotest") + common.eclipse + common.jdt + maven + jsonschema + svm_unittest + t("50:00") + mx_build_exploded + gdb("10.2"),
     linux_amd64_jdk19 + gate("build-ce", "build") + {
-      run: [
-        # cannot yet use mx gate --tag build due to compile errors in /compiler
-        ["mx", "build"],
+      run+: [
         # cannot yet use mx gate --tag hello world due to missing JFR support in JDK 19
         ["mx", "helloworld"],
       ]
