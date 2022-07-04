@@ -165,6 +165,14 @@ public final class Space {
         return log;
     }
 
+    void lock() {
+        mutex.lock();
+    }
+
+    void unlock() {
+        mutex.unlock();
+    }
+
     /**
      * Allocate memory from an AlignedHeapChunk in this Space.
      */
@@ -367,7 +375,7 @@ public final class Space {
 
         Object copy = copyAlignedObject(original);
         if (copy != null) {
-            ObjectHeaderImpl.installForwardingPointer(original, copy);
+            copy = ObjectHeaderImpl.installForwardingPointer(original, copy);
         }
         return copy;
     }

@@ -337,7 +337,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 //        assert !isPointerToForwardedObject(originalPtr);
         UnsignedWord curHeader = readHeaderFromPointer(originalPtr);
         if (isForwardedHeader(curHeader)) {
-            trace.string("PP reinstall for obj ").hex(originalPtr).newline();
+            trace.string("PP reinstall for obj ").zhex(originalPtr).newline();
             return getForwardedObject(originalPtr, curHeader);
         }
         UnsignedWord forwardHeader;
@@ -371,7 +371,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         }
         assert isPointerToForwardedObject(originalPtr);
         if (!installed) {
-            trace.string("PP collision for obj ").hex(originalPtr).newline();
+            trace.string("PP collision for obj ").zhex(originalPtr).newline();
             return getForwardedObject(originalPtr);
         }
         return copy;
