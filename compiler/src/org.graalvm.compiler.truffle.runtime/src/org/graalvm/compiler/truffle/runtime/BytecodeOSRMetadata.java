@@ -270,10 +270,10 @@ public final class BytecodeOSRMetadata {
             /*
              * Methods that gets OSR re-compiled too often bailout of OSR compilation. This has two
              * main advantages:
-             * 
+             *
              * - Deopt loops do not clog the compiler queue indefinitely
-             * 
-             * - Mitigates possibilities of Stack Overflows arising from to deopt loops in OSR.
+             *
+             * - Mitigates possibilities of Stack Overflows arising from deopt loops in OSR.
              */
             markOSRDisabled();
             if (callTarget.getOptionValue(PolyglotCompilerOptions.ThrowOnMaxOSRCompilationReAttemptsReached)) {
