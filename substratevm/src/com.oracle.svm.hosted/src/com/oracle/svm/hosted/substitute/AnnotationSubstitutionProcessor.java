@@ -786,10 +786,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (originalName.length() == 0) {
             originalName = annotatedMethod.getName();
         }
+
         try {
             if (annotatedMethod instanceof Method && !originalName.equals(TargetElement.CONSTRUCTOR_NAME)) {
                 Class<?>[] originalParams = interceptParameterTypes(annotatedMethod.getParameterTypes());
                 Method originalMethod = originalClass.getDeclaredMethod(originalName, originalParams);
+
                 guarantee(Modifier.isStatic(annotatedMethod.getModifiers()) == Modifier.isStatic(originalMethod.getModifiers()), "Static modifier mismatch: %s, %s", annotatedMethod, originalMethod);
                 return metaAccess.lookupJavaMethod(originalMethod);
 
