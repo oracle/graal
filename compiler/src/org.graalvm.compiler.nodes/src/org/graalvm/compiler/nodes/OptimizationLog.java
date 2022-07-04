@@ -410,7 +410,31 @@ public class OptimizationLog implements CompilationListener {
      * @return an optimization entry in the optimization log that can take more properties
      */
     public OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node) {
-        return report(optimizationClass, eventName, OptimizationLogUtil.findBCI(node));
+        boolean isCountEnabled = graph.getDebug().isCountEnabled();
+        boolean isLogEnabled = graph.getDebug().isLogEnabledForMethod();
+        boolean isDumpEnabled = graph.getDebug().isDumpEnabled(DebugContext.DETAILED_LEVEL);
+
+        if (!isCountEnabled && !isLogEnabled && !isDumpEnabled && !optimizationLogEnabled) {
+            return OPTIMIZATION_ENTRY_EMPTY;
+        }
+
+        int bci = OptimizationLogUtil.findBCI(node);
+        String optimizationName = getOptimizationName(optimizationClass);
+        if (isCountEnabled) {
+            DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
+        }
+        if (isLogEnabled) {
+            graph.getDebug().log("Performed %s %s at bci %i", optimizationName, eventName, bci);
+        }
+        if (isDumpEnabled) {
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, eventName);
+        }
+        if (optimizationLogEnabled) {
+            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, bci);
+            currentPhase.addChild(optimizationEntry);
+            return optimizationEntry;
+        }
+        return OPTIMIZATION_ENTRY_EMPTY;
     }
 
     /**
