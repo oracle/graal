@@ -593,6 +593,6 @@ public class HostedUniverse implements Universe {
      * consecutive. If the kind is the same, i.e., result == 0, we return 0 so that the sorting
      * keeps the order unchanged and therefore keeps the field order we get from the hosting VM.
      */
-    static final Comparator<HostedField> FIELD_COMPARATOR_RELAXED = Comparator.comparing(HostedField::getJavaKind);
+    static final Comparator<HostedField> FIELD_COMPARATOR_RELAXED = Comparator.comparing(HostedField::getJavaKind).reversed();
 
 }
