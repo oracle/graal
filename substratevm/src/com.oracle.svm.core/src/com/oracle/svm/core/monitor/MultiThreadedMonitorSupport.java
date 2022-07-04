@@ -596,7 +596,7 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer {
     @TargetElement(name = "enqueue", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     final native void enqueue(Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node node);
 }
-@com.oracle.svm.core.annotate.TargetClass(value = java.util.concurrent.locks.AbstractQueuedSynchronizer.class, innerClass = "Node")
+@TargetClass(value = java.util.concurrent.locks.AbstractQueuedSynchronizer.class, innerClass = "Node", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
 final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node {
     @Alias
     Thread waiter;
@@ -605,7 +605,7 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node {
     final native int getAndUnsetStatus(int v);
 }
 
-@com.oracle.svm.core.annotate.TargetClass(value = java.util.concurrent.locks.AbstractQueuedSynchronizer.class, innerClass = "ConditionNode")
+@TargetClass(value = java.util.concurrent.locks.AbstractQueuedSynchronizer.class, innerClass = "ConditionNode", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
 final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode {
 
     @Alias

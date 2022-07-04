@@ -30,7 +30,6 @@ import java.security.AccessController;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
 
 import org.graalvm.compiler.api.replacements.Fold;
