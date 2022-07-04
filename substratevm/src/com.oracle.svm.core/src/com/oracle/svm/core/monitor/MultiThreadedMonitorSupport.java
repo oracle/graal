@@ -579,10 +579,13 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
     /** Enclosing {@link AbstractQueuedSynchronizer} of this nested class. */
     @Alias Target_java_util_concurrent_locks_AbstractQueuedSynchronizer this$0;
 
-    @com.oracle.svm.core.annotate.Substitute
-    private void reportInterruptAfterWait(int interruptMode) {
-        //test
-    }
+    @Alias
+    public native final void signal();
+//    @com.oracle.svm.core.annotate.Delete
+//    private void reportInterruptAfterWait(int interruptMode) throws InterruptedException{
+//        //test
+//    }
+
 }
 
 @TargetClass(value = ReferenceQueue.class, innerClass = "Lock")
