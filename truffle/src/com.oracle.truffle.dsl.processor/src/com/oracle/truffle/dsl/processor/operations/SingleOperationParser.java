@@ -381,10 +381,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return true;
         } else if (ElementUtils.findAnnotationMirror(param, types.CachedLibrary) != null) {
             return true;
-        } else if (ElementUtils.findAnnotationMirror(param, types.CachedLanguage) != null) {
-            return true;
-        } else if (ElementUtils.findAnnotationMirror(param, types.CachedContext) != null) {
-            return true;
         } else if (ElementUtils.findAnnotationMirror(param, types.Bind) != null) {
             return true;
         }
