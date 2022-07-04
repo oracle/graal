@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -438,7 +440,9 @@ public class HostedUniverse implements Universe {
     }
 
     public Collection<HostedMethod> getMethods() {
-        return orderedMethods;
+        return orderedMethods.stream()
+                        .filter(Predicate.not(HostedMethod::isDeoptTarget))
+                        .collect(Collectors.toList());
     }
 
     public Inflation getBigBang() {
