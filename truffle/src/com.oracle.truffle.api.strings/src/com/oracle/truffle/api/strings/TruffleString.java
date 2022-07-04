@@ -1527,8 +1527,6 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Creates a new TruffleString from a given code point, with best-effort error handling.
-         * 
-         * @see TruffleString.FromCodePointNode#execute(int, Encoding, ErrorHandling)
          *
          * @since 22.1
          */
