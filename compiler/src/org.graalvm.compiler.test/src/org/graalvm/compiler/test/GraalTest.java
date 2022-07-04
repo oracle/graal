@@ -29,6 +29,7 @@ import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -68,6 +69,21 @@ import sun.misc.Unsafe;
  * Base class that contains common utility methods and classes useful in unit tests.
  */
 public class GraalTest {
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    public static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    public static Object getStaticFieldBase(Field field) {
+        return UNSAFE.staticFieldBase(field);
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    public static long getStaticFieldOffset(Field field) {
+        return UNSAFE.staticFieldOffset(field);
+    }
 
     public static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 

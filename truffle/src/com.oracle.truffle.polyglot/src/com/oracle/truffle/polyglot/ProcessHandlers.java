@@ -187,7 +187,9 @@ final class ProcessHandlers {
         @Override
         public Process destroyForcibly() {
             Process result = delegate.destroyForcibly();
-            assert result == delegate;
+            // In the case of a Truffle isolate, they do not have to be the same instance, but must
+            // represent the same OS process.
+            assert result.pid() == delegate.pid();
             return this;
         }
 

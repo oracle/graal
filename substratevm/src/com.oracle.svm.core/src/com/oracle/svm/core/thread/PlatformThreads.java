@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -174,7 +175,7 @@ public abstract class PlatformThreads {
     public static long getThreadAllocatedBytes(long javaThreadId) {
         // Accessing the value for the current thread is fast.
         Thread curThread = PlatformThreads.currentThread.get();
-        if (curThread != null && curThread.getId() == javaThreadId) {
+        if (curThread != null && JavaThreads.getThreadId(curThread) == javaThreadId) {
             return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
         }
 
@@ -184,7 +185,7 @@ public abstract class PlatformThreads {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
                 Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
-                if (javaThread != null && javaThread.getId() == javaThreadId) {
+                if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
                     return Heap.getHeap().getThreadAllocatedMemory(isolateThread);
                 }
                 isolateThread = VMThreads.nextThread(isolateThread);
@@ -204,7 +205,7 @@ public abstract class PlatformThreads {
                 Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
                 if (javaThread != null) {
                     for (int i = 0; i < javaThreadIds.length; i++) {
-                        if (javaThread.getId() == javaThreadIds[i]) {
+                        if (JavaThreads.getThreadId(javaThread) == javaThreadIds[i]) {
                             result[i] = Heap.getHeap().getThreadAllocatedMemory(isolateThread);
                             break;
                         }
@@ -418,8 +419,10 @@ public abstract class PlatformThreads {
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
             final ThreadGroup group = thread.getThreadGroup();
-            toTarget(group).addUnstarted();
-            toTarget(group).add(thread);
+            if (!(LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread))) {
+                toTarget(group).addUnstarted();
+                toTarget(group).add(thread);
+            }
 
             if (!thread.isDaemon()) {
                 nonDaemonThreads.incrementAndGet();
@@ -527,7 +530,8 @@ public abstract class PlatformThreads {
                     set.add(pool);
                 }
             } else {
-                Runnable target = toTarget(thread).target;
+                Target_java_lang_Thread tjlt = toTarget(thread);
+                Runnable target = JavaVersionUtil.JAVA_SPEC >= 19 ? tjlt.holder.task : tjlt.target;
                 if (Target_java_util_concurrent_ThreadPoolExecutor_Worker.class.isInstance(target)) {
                     ThreadPoolExecutor executor = SubstrateUtil.cast(target, Target_java_util_concurrent_ThreadPoolExecutor_Worker.class).executor;
                     if (executor != null && (executor.getClass() == ThreadPoolExecutor.class || executor.getClass() == ScheduledThreadPoolExecutor.class)) {

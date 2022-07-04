@@ -195,6 +195,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * Returns {@code true} if a call from run-time compiled code to AOT compiled code is an AVX-SSE
      * transition. For AOT compilations, this always returns {@code false}.
      */
+    @SuppressWarnings("unlikely-arg-type")
     public static boolean runtimeToAOTIsAvxSseTransition(TargetDescription target) {
         if (SubstrateUtil.HOSTED) {
             // hosted does not need to care about this

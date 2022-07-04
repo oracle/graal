@@ -72,7 +72,7 @@ public class IncrementDecrementMacroTest extends AssemblerTest {
             Register ret = registerConfig.getReturnRegister(JavaKind.Int);
             try {
                 Field f = LongField.class.getDeclaredField("x");
-                AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) UNSAFE.objectFieldOffset(f));
+                AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) getObjectFieldOffset(f));
                 asm.incrementq(arg, value);
                 asm.movq(ret, arg);
                 asm.ret(0);
@@ -109,7 +109,7 @@ public class IncrementDecrementMacroTest extends AssemblerTest {
             Register ret = registerConfig.getReturnRegister(JavaKind.Int);
             try {
                 Field f = LongField.class.getDeclaredField("x");
-                AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) UNSAFE.objectFieldOffset(f));
+                AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) getObjectFieldOffset(f));
                 asm.decrementq(arg, value);
                 asm.movq(ret, arg);
                 asm.ret(0);

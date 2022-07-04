@@ -34,7 +34,7 @@ public class Unsafe_compareAndSwap extends JTTTest {
     static final long valueOffset;
     static {
         try {
-            valueOffset = UNSAFE.objectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
+            valueOffset = getObjectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
         } catch (Exception ex) {
             throw new Error(ex);
         }

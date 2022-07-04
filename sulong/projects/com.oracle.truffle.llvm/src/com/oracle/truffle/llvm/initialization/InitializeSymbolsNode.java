@@ -192,6 +192,13 @@ public final class InitializeSymbolsNode extends LLVMNode {
                 throw new LLVMLinkerException(this, "Thread local global variable %s not found", pointer.toString());
             }
             context.initializeSymbol(symbol, llvmPointer);
+
+            if (symbol.isExported()) {
+                LLVMGlobal descriptor = fileScope.getGlobalVariable(symbol.getName());
+                List<LLVMSymbol> list = new ArrayList<>(1);
+                list.add(descriptor);
+                context.registerSymbolReverseMap(list, llvmPointer);
+            }
         }
     }
 

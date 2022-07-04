@@ -53,6 +53,7 @@ public class PEParserTest {
 
     static com.sun.management.ThreadMXBean threadMXBean;
 
+    @SuppressWarnings("deprecation")
     @TruffleBoundary
     static long getAllocatedBytes() {
         if (threadMXBean == null) {

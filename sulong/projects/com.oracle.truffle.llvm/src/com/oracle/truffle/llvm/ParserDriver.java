@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -491,9 +492,14 @@ final class ParserDriver {
         }
         for (GlobalVariable global : parserResult.getExternalGlobals()) {
             if (!fileScope.contains(global.getName())) {
-                fileScope.register(
-                                LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID(),
-                                                false, global.isExternalWeak()));
+                if (global.isThreadLocal()) {
+                    fileScope.register(LLVMThreadLocalSymbol.create(global.getName(), global.getSourceSymbol(), parserResult.getRuntime().getBitcodeID(),
+                                    global.getIndex(), global.isExported(), global.isExternalWeak()));
+                } else {
+                    fileScope.register(
+                                    LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID(),
+                                                    false, global.isExternalWeak()));
+                }
             }
         }
     }

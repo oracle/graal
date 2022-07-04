@@ -40,6 +40,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -233,7 +234,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
         @Override
         public synchronized void publish(LogRecord lr) {
-            allEvents.add(new LogEntry(Thread.currentThread().getId(), state, lr.getMessage()));
+            allEvents.add(new LogEntry(GraalServices.getCurrentThreadId(), state, lr.getMessage()));
             switch (state) {
                 case NEW:
                     return;

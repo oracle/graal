@@ -48,6 +48,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -55,7 +56,9 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -587,6 +590,134 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         // fix invalid identity hash code
         v1.identityHashCode = (r) -> 42;
         assertTrue(l0.isIdentical(v0, v1, l1));
+    }
+
+    @Test
+    public void testValidScopeUsage() throws Exception {
+        ScopeCached sc = new ScopeCached(5);
+        InteropLibrary iop = createLibrary(InteropLibrary.class, sc);
+        assertTrue(iop.hasMembers(sc));
+        Object members = iop.getMembers(sc);
+        assertNotNull(members);
+        assertTrue(iop.hasScopeParent(sc));
+        Object scParent = iop.getScopeParent(sc);
+        assertNotNull(scParent);
+        if (run == TestRun.CACHED) {
+            checkInvalidUsage(() -> iop.hasMembers(scParent));
+            checkInvalidUsage(() -> iop.getMembers(scParent));
+            checkInvalidUsage(() -> iop.hasScopeParent(scParent));
+            checkInvalidUsage(() -> iop.getScopeParent(scParent));
+        }
+    }
+
+    private static void checkInvalidUsage(Callable<Object> call) throws Exception {
+        boolean invalidUsage = false;
+        try {
+            call.call();
+        } catch (AssertionError err) {
+            assertTrue(err.getMessage(), err.getMessage().startsWith("Invalid library usage"));
+            invalidUsage = true;
+        }
+        assertTrue(invalidUsage);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class ScopeCached implements TruffleObject {
+
+        final long id;
+
+        ScopeCached(long id) {
+            this.id = id;
+        }
+
+        @ExportMessage
+        boolean accepts(@Cached(value = "this.id") long cachedId) {
+            return this.id == cachedId;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isScope() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean hasScopeParent() {
+            return this.id > 0;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getScopeParent() throws UnsupportedMessageException {
+            if (this.id > 0) {
+                return new ScopeCached(id - 1);
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new ScopeMembers(id);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "ScopeCached[" + id + "]";
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class ScopeMembers implements TruffleObject {
+
+            private final long len;
+
+            private ScopeMembers(long len) {
+                this.len = len;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            boolean hasArrayElements() {
+                return true;
+            }
+
+            @ExportMessage
+            Object readArrayElement(long index) throws InvalidArrayIndexException {
+                if (0 <= index && index < len) {
+                    return Long.toString(len - index);
+                } else {
+                    throw InvalidArrayIndexException.create(index);
+                }
+            }
+
+            @ExportMessage
+            long getArraySize() {
+                return len;
+            }
+
+            @ExportMessage
+            boolean isArrayElementReadable(long index) {
+                return 0 <= index && index < len;
+            }
+        }
     }
 
     static class Members implements TruffleObject {

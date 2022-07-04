@@ -38,6 +38,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
+@SuppressWarnings("serial")
 public class AnalysisError extends Error {
 
     private static final long serialVersionUID = -4489048906003856416L;

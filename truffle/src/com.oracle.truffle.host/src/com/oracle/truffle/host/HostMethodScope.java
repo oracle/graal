@@ -195,6 +195,7 @@ final class HostMethodScope {
 
     }
 
+    @SuppressWarnings("deprecation")
     @ExportLibrary(ReflectionLibrary.class)
     static final class ScopedObject implements TruffleObject {
 

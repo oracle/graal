@@ -151,10 +151,10 @@ final class Util_java_lang_invoke_MethodHandle {
                 byte refKind = memberName.getReferenceKind();
                 if (Modifier.isStatic(field.getModifiers())) {
                     if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic) {
-                        assert args == null || args.length == 0;
+                        assert (args == null || args.length == 0) && field.canAccess(null);
                         return field.get(null);
                     } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic) {
-                        assert args.length == 1;
+                        assert args.length == 1 && field.canAccess(null);
                         Object value = args[0];
                         field.set(null, value);
                         return null;
@@ -163,11 +163,11 @@ final class Util_java_lang_invoke_MethodHandle {
                     }
                 } else {
                     if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField) {
-                        assert args.length == 1;
+                        assert args.length == 1 && field.canAccess(args[0]);
                         Object receiver = args[0];
                         return field.get(receiver);
                     } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField) {
-                        assert args.length == 2;
+                        assert args.length == 2 && field.canAccess(args[0]);
                         Object receiver = args[0];
                         Object value = args[1];
                         field.set(receiver, value);
@@ -202,12 +202,16 @@ final class Util_java_lang_invoke_MethodHandle {
             executable.override = true;
             try {
                 if (memberName.isConstructor()) {
-                    return ((Constructor<?>) memberName.reflectAccess).newInstance(args);
+                    Constructor<?> constructor = (Constructor<?>) memberName.reflectAccess;
+                    assert constructor.canAccess(null);
+                    return constructor.newInstance(args);
                 } else {
                     Method method = (Method) memberName.reflectAccess;
                     if (Modifier.isStatic(method.getModifiers())) {
+                        assert method.canAccess(null);
                         return method.invoke(null, args);
                     } else {
+                        assert method.canAccess(args[0]);
                         Object receiver = args[0];
                         Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
                         if (memberName.getReferenceKind() == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial) {
