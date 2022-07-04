@@ -5,8 +5,6 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import org.graalvm.word.Pointer;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class TaskQueue {
     private static final int SIZE = 1024; ///handle overflow
 
@@ -15,7 +13,7 @@ public class TaskQueue {
     private final VMMutex mutex;
     private final VMCondition cond;
     private final Pointer[] data; /// move out of heap?
-    private final AtomicInteger idleCount;
+    private int idleCount;
     private int getIndex;
     private int putIndex;
 
@@ -23,7 +21,6 @@ public class TaskQueue {
         mutex = new VMMutex(name + "-queue");
         cond = new VMCondition(mutex);
         data = new Pointer[SIZE];
-        idleCount = new AtomicInteger(0);
         stats = new Stats();
     }
 
@@ -57,18 +54,18 @@ public class TaskQueue {
 
     public void consume(Consumer consumer) {
         Pointer ptr;
-        idleCount.incrementAndGet();
         mutex.lock();
         try {
             while (!canGet()) {
                 Log.log().string("PP cannot get task\n");
+                idleCount++;
                 cond.block();
+                idleCount--;
             }
             ptr = data[getIndex];
         } finally {
             getIndex = next(getIndex);
             mutex.unlock();
-            idleCount.decrementAndGet();
             cond.broadcast();
         }
         consumer.accept(ptr.toObject());
@@ -76,27 +73,29 @@ public class TaskQueue {
 
     // Non MT safe. Only call when no workers are running
     public void drain(Consumer consumer) {
-        idleCount.decrementAndGet();
         while (canGet()) {
             Object obj = data[getIndex].toObject();
             consumer.accept(obj);
             getIndex = next(getIndex);
         }
-        idleCount.incrementAndGet();
     }
 
     public void waitUntilIdle(int expectedIdleCount) {
-        Log log = Log.log().string("PP waitForIdle ").unsigned(idleCount.get()).newline();
-        try {
-            mutex.lock();
-            while (canGet()) {
-                cond.block();
+        Log log = Log.log().string("PP waitForIdle\n");
+        while (true) {
+            try {
+                mutex.lock();
+                while (canGet()) {
+                    cond.block();
+                }
+                if (idleCount >= expectedIdleCount) {
+                    log.string("PP waitForIdle over\n");
+                    return;
+                }
+            } finally {
+                mutex.unlock();
             }
-        } finally {
-            mutex.unlock();
         }
-        while (idleCount.get() < expectedIdleCount);///signal?
-        log.string("PP waitForIdle over").newline();
     }
 
     public interface Consumer {
