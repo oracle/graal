@@ -56,6 +56,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 
 import jdk.internal.misc.Unsafe;
 
@@ -370,13 +371,18 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          */
         JavaMonitor lock = ensureLocked(obj);
         Condition condition = getOrCreateCondition(lock, true);
+        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         if (timeoutMillis == 0L) {
             condition.await();
             com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(Thread.currentThread(), com.oracle.svm.core.thread.Target_java_lang_Thread.class);
-
-            System.out.println("notifier id is: "+ t.notifierTid);
+            JavaMonitorWaitEvent.emit(startTicks, obj, t.notifierTid, timeoutMillis, false);
         } else {
-            condition.await(timeoutMillis, TimeUnit.MILLISECONDS);
+            if (condition.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(Thread.currentThread(), com.oracle.svm.core.thread.Target_java_lang_Thread.class);
+                JavaMonitorWaitEvent.emit(startTicks, obj, t.notifierTid, timeoutMillis, false);
+            } else {
+                JavaMonitorWaitEvent.emit(startTicks, obj, 0, timeoutMillis, true);
+            }
         }
     }
 
@@ -603,28 +609,6 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
     @Alias
     private transient Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode lastWaiter;
 
-//    @Substitute
-//    public final void signal() {
-//        Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode first = this.firstWaiter;
-//        if (first != null) {
-//            System.out.println(Thread.currentThread().getId());
-//            Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node firstNode = SubstrateUtil.cast(first, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node.class);
-//            com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(firstNode.waiter, com.oracle.svm.core.thread.Target_java_lang_Thread.class);
-//            t.notifierTid = Thread.currentThread().getId();
-//            this.doSignal(first, false);
-//        }
-//    }
-//
-//    public final void signalAll() {
-//        Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode first = this.firstWaiter;
-//        if (first != null) {
-//            System.out.println(Thread.currentThread().getId());
-//            Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node firstNode = SubstrateUtil.cast(first, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node.class);
-//            com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(firstNode.waiter, com.oracle.svm.core.thread.Target_java_lang_Thread.class);
-//            t.notifierTid = Thread.currentThread().getId();
-//            this.doSignal(first, true);
-//        }
-//    }
     @Substitute
     private void doSignal(Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode first, boolean all) {
         while(true) {
@@ -640,7 +624,6 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
                         break label19;
                     }
 
-                    System.out.println(Thread.currentThread().getId());
                     com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(firstNode.waiter, com.oracle.svm.core.thread.Target_java_lang_Thread.class);
                     t.notifierTid = Thread.currentThread().getId();
 
