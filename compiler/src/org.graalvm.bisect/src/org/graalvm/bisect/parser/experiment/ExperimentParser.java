@@ -39,7 +39,7 @@ import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
-import org.graalvm.bisect.json.JSONParser;
+import org.graalvm.compiler.nodes.json.JSONParser;
 
 /**
  * Parses an experiment from its files.
