@@ -468,6 +468,29 @@ def svm_gate_body(args, tasks):
         if t:
             hellomodule([])
 
+    with Task('Validate JSON build output', tasks, tags=[mx_gate.Tags.style]) as t:
+        if t:
+            import json
+            try:
+                from jsonschema import validate as json_validate
+                from jsonschema.exceptions import ValidationError, SchemaError
+            except ImportError:
+                mx.abort('Unable to import jsonschema')
+            with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', 'build-output-schema-v0.9.0.json')) as f:
+                json_schema = json.load(f)
+            with tempfile.NamedTemporaryFile(prefix='build_json') as json_file:
+                helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={json_file.name}'])
+                try:
+                    with open(json_file.name) as f:
+                        json_output = json.load(f)
+                    json_validate(json_output, json_schema)
+                except IOError as e:
+                    mx.abort(f'Unable to load JSON build output: {e}')
+                except ValidationError as e:
+                    mx.abort(f'Unable to validate JSON build output against the schema: {e}')
+                except SchemaError as e:
+                    mx.abort(f'JSON schema not valid: {e}')
+
 
 def native_unittests_task(extra_build_args=None):
     if mx.is_windows():
