@@ -315,17 +315,6 @@ public abstract class ToEspressoNode extends EspressoNode {
         return getMeta().boxDouble(value);
     }
 
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isForeignException(klass)"})
-    Object doForeignException(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
-        if (!interop.isException(value)) {
-            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s", klass.getNameAsString()));
-        }
-        initCheck.execute(klass);
-        return StaticObject.createForeignException(klass.getMeta(), value, interop);
-    }
-
     @Specialization(guards = {
                     "!isStaticObject(value)",
                     "!interop.isNull(value)",
@@ -410,12 +399,6 @@ public abstract class ToEspressoNode extends EspressoNode {
             }
         }
         throw new ClassCastException("Unable to lookup meta object for foreign object: " + value.getClass());
-    }
-
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isAbstract()", "!klass.isInterface()"})
-    Object doForeignAbstract(Object value, ObjectKlass klass,
-                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
     @Fallback
