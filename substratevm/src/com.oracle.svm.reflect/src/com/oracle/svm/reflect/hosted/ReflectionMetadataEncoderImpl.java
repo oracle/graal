@@ -288,9 +288,13 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             }
             Set<Class<?>> reachablePermittedSubclasses = new HashSet<>();
             for (Class<?> permittedSubclass : permittedSubclasses) {
-                HostedType hostedType = ((HostedMetaAccess) metaAccess).optionalLookupJavaType(permittedSubclass).orElse(null);
-                if (hostedType != null && hostedType.getWrapped().isReachable()) {
-                    reachablePermittedSubclasses.add(permittedSubclass);
+                try {
+                    HostedType hostedType = ((HostedMetaAccess) metaAccess).optionalLookupJavaType(permittedSubclass).orElse(null);
+                    if (hostedType != null && hostedType.getWrapped().isReachable()) {
+                        reachablePermittedSubclasses.add(permittedSubclass);
+                    }
+                } catch (DeletedElementException dee) {
+                    // permitted subclass has been deleted -> ignore
                 }
             }
             return reachablePermittedSubclasses.toArray(new Class<?>[0]);

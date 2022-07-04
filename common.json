@@ -15,7 +15,17 @@
     "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.4+7-jvmci-22.2-b04-sulong", "platformspecific": true },
     "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.4+10-jvmci-22.2-b04", "platformspecific": true },
     "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.4+10-jvmci-22.2-b04-debug", "platformspecific": true },
-    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.4+10-jvmci-22.2-b04-sulong", "platformspecific": true }
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.4+10-jvmci-22.2-b04-sulong", "platformspecific": true },
+
+    "jdk-19-ea": {
+      "build_id": "jdk-19+28",
+      "name": "jpg-jdk",
+      "version": "19",
+      "extrabundles": [
+        "static_libs"
+      ],
+      "platformspecific": true
+    }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
@@ -142,6 +152,7 @@
     }
   },
   "svm": {
+    "COMMENT.deps": "Please use svm_deps in common.jsonnet instead (the values below are without the repository-specific dependencies).",
     "deps": {
       "COMMENT.common": "graal/vm/ci_common/common.jsonnet hardcodes the properties of this object",
       "common": {

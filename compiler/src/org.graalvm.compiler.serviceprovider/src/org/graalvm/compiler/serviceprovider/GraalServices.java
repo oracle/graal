@@ -363,7 +363,27 @@ public final class GraalServices {
      * current thread.
      */
     public static long getCurrentThreadAllocatedBytes() {
-        return getThreadAllocatedBytes(currentThread().getId());
+        return getThreadAllocatedBytes(getCurrentThreadId());
+    }
+
+    /**
+     * Gets the identifier of {@code thread}.
+     *
+     * This method abstracts over how the identifier is retrieved in the context of JDK-8284161.
+     */
+    @SuppressWarnings("deprecation" /* JDK-8284161 */)
+    public static long getThreadId(Thread thread) {
+        return thread.getId();
+    }
+
+    /**
+     * Gets the identifier of the current thread.
+     *
+     * This method abstracts over how the identifier is retrieved in the context of JDK-8284161.
+     */
+    @SuppressWarnings("deprecation" /* JDK-8284161 */)
+    public static long getCurrentThreadId() {
+        return getThreadId(currentThread());
     }
 
     /**

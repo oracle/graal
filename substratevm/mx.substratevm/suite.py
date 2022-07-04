@@ -230,6 +230,8 @@ suite = {
                     "jdk.jfr.events",
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
+                ],
+                "jdk.jfr@11..18": [
                     "jdk.jfr.internal.handlers",
                 ],
             },
@@ -1174,6 +1176,7 @@ suite = {
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
+                    "java.util.spi.ResourceBundleControlProvider",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [

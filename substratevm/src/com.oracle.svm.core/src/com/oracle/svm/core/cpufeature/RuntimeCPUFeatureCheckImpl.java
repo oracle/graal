@@ -326,6 +326,7 @@ public final class RuntimeCPUFeatureCheckImpl {
      * available at image build time.
      */
     @Fold
+    @SuppressWarnings("unlikely-arg-type")
     public static EnumSet<?> removeStaticFeatures(EnumSet<?> features) {
         EnumSet<?> copy = EnumSet.copyOf(features);
         EnumSet<?> featuresToBeRemoved = getStaticFeatures();

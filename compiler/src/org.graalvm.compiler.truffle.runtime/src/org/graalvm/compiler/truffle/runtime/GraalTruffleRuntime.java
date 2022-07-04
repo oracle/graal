@@ -413,7 +413,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 m.put(c.getName(), c);
             }
         }
-        if (JAVA_SPECIFICATION_VERSION >= 16) {
+        if (JAVA_SPECIFICATION_VERSION >= 16 && JAVA_SPECIFICATION_VERSION < 19) {
             String className = "jdk.internal.access.foreign.MemorySegmentProxy";
             try {
                 Class<?> c = Class.forName(className);

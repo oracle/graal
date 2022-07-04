@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
 
 int main() {
     // char
@@ -44,7 +45,7 @@ int main() {
         exit(6);
     }
     // %n
-    long val;
+    int64_t val;
     if (printf("asdfasdf %lnasdf\n", &val) != 14 || val != 9) {
         exit(9);
     }

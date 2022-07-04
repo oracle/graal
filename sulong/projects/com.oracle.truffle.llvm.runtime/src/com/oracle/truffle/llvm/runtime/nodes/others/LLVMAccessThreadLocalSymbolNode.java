@@ -61,7 +61,7 @@ public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMAccessSymbolNo
         LLVMPointer pointer = checkNull(getContext().getSymbol(symbol, exception), exception);
         LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
         int offset = threadLocalPointer.getOffset();
-        BitcodeID bitcodeID = symbol.getBitcodeID(exception);
+        BitcodeID bitcodeID = threadLocalPointer.getSymbol().getBitcodeID(exception);
         if (offset < 0) {
             LLVMGlobalContainer container = LLVMLanguage.get(this).contextThreadLocal.get().getGlobalContainer(Math.abs(offset), bitcodeID);
             return LLVMManagedPointer.create(container);
@@ -85,7 +85,7 @@ public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMAccessSymbolNo
         LLVMPointer pointer = checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
         LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
         int offset = threadLocalPointer.getOffset();
-        BitcodeID bitcodeID = symbol.getBitcodeID(exception);
+        BitcodeID bitcodeID = threadLocalPointer.getSymbol().getBitcodeID(exception);
         if (offset < 0) {
             LLVMGlobalContainer container = LLVMLanguage.get(this).contextThreadLocal.get().getGlobalContainer(Math.abs(offset), bitcodeID);
             return LLVMManagedPointer.create(container);
