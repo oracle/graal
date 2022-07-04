@@ -9,7 +9,7 @@
     "openjdk11":          {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+10-jvmci-20.3-b33", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.16+10-jvmci-20.3-b37", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.16+11-jvmci-20.3-b38", "platformspecific": true },
 
     "oraclejdk15":        {"name": "oraclejdk", "version": "15.0.1+6", "platformspecific": true },
     "labsjdk-ce-15":      {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b09", "platformspecific": true },
