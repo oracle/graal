@@ -51,52 +51,52 @@ public final class AMD64ArrayCopyWithConversionsStub extends SnippetStub {
     }
 
     @Snippet
-    private static void stubS1S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS1S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S1);
     }
 
     @Snippet
-    private static void stubS1S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS1S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S2);
     }
 
     @Snippet
-    private static void stubS1S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS1S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S4);
     }
 
     @Snippet
-    private static void stubS2S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS2S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S1);
     }
 
     @Snippet
-    private static void stubS2S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS2S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S2);
     }
 
     @Snippet
-    private static void stubS2S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS2S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S4);
     }
 
     @Snippet
-    private static void stubS4S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS4S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S1);
     }
 
     @Snippet
-    private static void stubS4S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS4S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S2);
     }
 
     @Snippet
-    private static void stubS4S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+    private static void arrayCopyWithConversionsS4S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S4);
     }
 
     @Snippet
-    private static void stubDynamicStrides(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int dynamicStrides) {
+    private static void arrayCopyWithConversionsDynamicStrides(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int dynamicStrides) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides);
     }
 }
