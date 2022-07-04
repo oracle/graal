@@ -30,12 +30,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.AbstractOwnableSynchronizer;
-import java.util.concurrent.locks.AbstractQueuedSynchronizer;
+import java.util.concurrent.locks.*;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -47,6 +43,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
@@ -375,6 +372,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         Condition condition = getOrCreateCondition(lock, true);
         if (timeoutMillis == 0L) {
             condition.await();
+            com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(Thread.currentThread(), com.oracle.svm.core.thread.Target_java_lang_Thread.class);
+
+            System.out.println("notifier id is: "+ t.notifierTid);
         } else {
             condition.await(timeoutMillis, TimeUnit.MILLISECONDS);
         }
@@ -566,12 +566,31 @@ final class Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport {
 final class Target_java_util_concurrent_locks_ReentrantLock {
     @Alias//
     Target_java_util_concurrent_locks_ReentrantLock_Sync sync;
+
 }
+
 
 @TargetClass(AbstractQueuedSynchronizer.class)
 final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer {
     @Alias //
     volatile int state;
+    @Alias
+    final native void enqueue(Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node node);
+}
+@com.oracle.svm.core.annotate.TargetClass(value = java.util.concurrent.locks.AbstractQueuedSynchronizer.class, innerClass = "Node")
+final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node {
+    @Alias
+    Thread waiter;
+    @Alias
+    final native int getAndUnsetStatus(int v);
+}
+
+@com.oracle.svm.core.annotate.TargetClass(value = java.util.concurrent.locks.AbstractQueuedSynchronizer.class, innerClass = "ConditionNode")
+final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode {
+
+    @Alias
+    Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode nextWaiter;
+
 }
 
 @TargetClass(value = ConditionObject.class)
@@ -580,13 +599,67 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
     @Alias Target_java_util_concurrent_locks_AbstractQueuedSynchronizer this$0;
 
     @Alias
-    public native final void signal();
-//    @com.oracle.svm.core.annotate.Delete
-//    private void reportInterruptAfterWait(int interruptMode) throws InterruptedException{
-//        //test
+    private transient Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode firstWaiter;
+    @Alias
+    private transient Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode lastWaiter;
+
+//    @Substitute
+//    public final void signal() {
+//        Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode first = this.firstWaiter;
+//        if (first != null) {
+//            System.out.println(Thread.currentThread().getId());
+//            Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node firstNode = SubstrateUtil.cast(first, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node.class);
+//            com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(firstNode.waiter, com.oracle.svm.core.thread.Target_java_lang_Thread.class);
+//            t.notifierTid = Thread.currentThread().getId();
+//            this.doSignal(first, false);
+//        }
 //    }
+//
+//    public final void signalAll() {
+//        Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode first = this.firstWaiter;
+//        if (first != null) {
+//            System.out.println(Thread.currentThread().getId());
+//            Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node firstNode = SubstrateUtil.cast(first, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node.class);
+//            com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(firstNode.waiter, com.oracle.svm.core.thread.Target_java_lang_Thread.class);
+//            t.notifierTid = Thread.currentThread().getId();
+//            this.doSignal(first, true);
+//        }
+//    }
+    @Substitute
+    private void doSignal(Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode first, boolean all) {
+        while(true) {
+            Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode next;
+            label19: {
+                if (first != null) {
+                    next = first.nextWaiter;
+                    if ((this.firstWaiter = next) == null) {
+                        this.lastWaiter = null;
+                    }
+                    Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node firstNode = SubstrateUtil.cast(first, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node.class);
+                    if ((firstNode.getAndUnsetStatus(2) & 2) == 0) {
+                        break label19;
+                    }
+
+                    System.out.println(Thread.currentThread().getId());
+                    com.oracle.svm.core.thread.Target_java_lang_Thread t = SubstrateUtil.cast(firstNode.waiter, com.oracle.svm.core.thread.Target_java_lang_Thread.class);
+                    t.notifierTid = Thread.currentThread().getId();
+
+                    this$0.enqueue(firstNode);
+                    if (all) {
+                        break label19;
+                    }
+                }
+
+                return;
+            }
+
+            first = next;
+        }
+    }
 
 }
+
+
 
 @TargetClass(value = ReferenceQueue.class, innerClass = "Lock")
 final class Target_java_lang_ref_ReferenceQueue_Lock {

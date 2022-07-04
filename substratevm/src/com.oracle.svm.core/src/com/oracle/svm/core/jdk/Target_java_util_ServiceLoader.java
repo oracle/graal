@@ -132,7 +132,7 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
             } catch (ServiceConfigurationError e) {
                 nextError = e;
             }
-        }
+            }
         return true;
     }
 }
