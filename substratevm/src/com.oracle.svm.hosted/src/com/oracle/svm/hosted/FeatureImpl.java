@@ -652,7 +652,7 @@ public class FeatureImpl {
             return compilations;
         }
 
-        public NativeImageCodeCache getcodeCache() {
+        public NativeImageCodeCache getCodeCache() {
             return codeCache;
         }
     }
