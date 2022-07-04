@@ -304,6 +304,20 @@ suite = {
         },
 
 
+        "com.oracle.svm.core.jdk19": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "requiresConcealed" : {
+                "java.base" : [
+                ],
+            },
+            "javaCompliance": "19+",
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
+
+
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
             "sourceDirs": [
@@ -1086,6 +1100,7 @@ suite = {
                 "com.oracle.svm.hosted.jdk17",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.jdk17",
+                "com.oracle.svm.core.jdk19",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.posix",

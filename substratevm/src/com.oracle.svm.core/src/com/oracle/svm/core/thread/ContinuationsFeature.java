@@ -49,7 +49,11 @@ public class ContinuationsFeature implements Feature {
         if (Continuation.isSupported()) {
             VirtualThreads impl;
             if (LoomSupport.isEnabled()) {
-                impl = new LoomVirtualThreads();
+                try {
+                    impl = (VirtualThreads) Class.forName("com.oracle.svm.core.jdk19.LoomVirtualThreads").getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw UserError.abort(e, "Error initializing LoomVirtualThreads");
+                }
             } else {
                 /*
                  * GR-37518: ForkJoinPool on 11 syncs on a String which doesn't have its own monitor
@@ -57,15 +61,15 @@ public class ContinuationsFeature implements Feature {
                  * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
                  */
                 UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 17, "Continuations (%s) are currently supported only on JDK 17 and later.",
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
+                        SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
 
                 impl = new SubstrateVirtualThreads();
             }
             ImageSingletons.add(VirtualThreads.class, impl);
         } else {
             UserError.guarantee(!SubstrateOptions.UseLoom.getValue(), "%s cannot be enabled without option %s.",
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"),
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
+                    SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"),
+                    SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }
 
@@ -77,7 +81,7 @@ public class ContinuationsFeature implements Feature {
             }
 
             access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
-                            ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
+                    ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
 
             if (LoomSupport.isEnabled()) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
@@ -90,8 +94,8 @@ public class ContinuationsFeature implements Feature {
     static void abortIfUnsupported() {
         if (!Continuation.isSupported()) {
             throw UserError.abort("Continuation support is used, but not enabled. Use options %s or %s.",
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"),
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"));
+                    SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"),
+                    SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"));
         }
     }
 }

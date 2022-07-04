@@ -47,6 +47,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -134,11 +135,12 @@ public class SubstrateOptions {
     @Option(help = "Support continuations (without requiring a Project Loom JDK)") //
     public static final HostedOptionKey<Boolean> SupportContinuations = new HostedOptionKey<>(false);
 
-    @Option(help = "Build with Project Loom JDK") //
+    @Option(help = "Support continuations via Virtual Threads") //
     public static final HostedOptionKey<Boolean> UseLoom = new HostedOptionKey<>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {
+                assert JavaVersionUtil.JAVA_SPEC >= 19;
                 SupportContinuations.update(values, true);
             }
         }

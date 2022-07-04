@@ -22,13 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.jdk19;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
+import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
+import com.oracle.svm.core.thread.VirtualThreads;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -49,7 +52,7 @@ final class LoomVirtualThreads implements VirtualThreads {
 
     @Override
     public ThreadFactory createFactory() {
-        throw VMError.unimplemented();
+        return Thread.ofVirtual().factory();
     }
 
     @Override
@@ -61,7 +64,7 @@ final class LoomVirtualThreads implements VirtualThreads {
     public void join(Thread thread, long millis) throws InterruptedException {
         if (thread.isAlive()) {
             long nanos = MILLISECONDS.toNanos(millis);
-            cast(thread).joinNanos(nanos);
+//            cast(thread).joinNanos(nanos);
         }
     }
 
