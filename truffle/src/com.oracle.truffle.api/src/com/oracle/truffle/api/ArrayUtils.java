@@ -58,15 +58,20 @@ public final class ArrayUtils {
     private ArrayUtils() {
     }
 
+    @SuppressWarnings("deprecation"/* JDK-8277863 */)
+    static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
+    }
+
     private static final sun.misc.Unsafe UNSAFE = getUnsafe();
     private static final long javaStringValueFieldOffset;
     private static final long javaStringCoderFieldOffset;
 
     static {
         Field valueField = getStringDeclaredField("value");
-        javaStringValueFieldOffset = UNSAFE.objectFieldOffset(valueField);
+        javaStringValueFieldOffset = getObjectFieldOffset(valueField);
         Field coderField = getStringDeclaredField("coder");
-        javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
+        javaStringCoderFieldOffset = getObjectFieldOffset(coderField);
     }
 
     private static Field getStringDeclaredField(String name) {

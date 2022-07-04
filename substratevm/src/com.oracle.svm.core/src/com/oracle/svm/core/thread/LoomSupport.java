@@ -27,6 +27,7 @@ package com.oracle.svm.core.thread;
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.IsolateThread;
@@ -105,19 +106,23 @@ public final class LoomSupport {
     }
 
     public static class CompatibilityUtil {
-        private static final Field FIELDHOLDER_STATUS_FIELD = (ImageInfo.inImageCode() && isEnabled()) ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus") : null;
-        private static final Field THREAD_STATUS_FIELD = (ImageInfo.inImageCode() && !isEnabled()) ? ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus") : null;
+        private static final Field FIELDHOLDER_STATUS_FIELD = (ImageInfo.inImageCode() && (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19))
+                        ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus")
+                        : null;
+        private static final Field THREAD_STATUS_FIELD = (ImageInfo.inImageCode() && !(isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19))
+                        ? ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus")
+                        : null;
 
         static long getStackSize(Target_java_lang_Thread tjlt) {
-            return isEnabled() ? tjlt.holder.stackSize : tjlt.stackSize;
+            return isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19 ? tjlt.holder.stackSize : tjlt.stackSize;
         }
 
         static int getThreadStatus(Target_java_lang_Thread tjlt) {
-            return isEnabled() ? tjlt.holder.threadStatus : tjlt.threadStatus;
+            return isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19 ? tjlt.holder.threadStatus : tjlt.threadStatus;
         }
 
         static void setThreadStatus(Target_java_lang_Thread tjlt, int threadStatus) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 tjlt.holder.threadStatus = threadStatus;
             } else {
                 tjlt.threadStatus = threadStatus;
@@ -125,7 +130,7 @@ public final class LoomSupport {
         }
 
         static boolean compareAndSetThreadStatus(Target_java_lang_Thread tjlt, int expectedStatus, int newStatus) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 return Unsafe.getUnsafe().compareAndSetInt(tjlt.holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
             } else {
                 return Unsafe.getUnsafe().compareAndSetInt(tjlt, Unsafe.getUnsafe().objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
@@ -133,7 +138,7 @@ public final class LoomSupport {
         }
 
         static int getPriority(Target_java_lang_Thread tjlt) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 return tjlt.holder.priority;
             } else {
                 return tjlt.priority;
@@ -141,7 +146,7 @@ public final class LoomSupport {
         }
 
         static void setPriority(Target_java_lang_Thread tjlt, int priority) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 tjlt.holder.priority = priority;
             } else {
                 tjlt.priority = priority;
@@ -149,7 +154,7 @@ public final class LoomSupport {
         }
 
         static void setStackSize(Target_java_lang_Thread tjlt, long stackSize) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 tjlt.holder.stackSize = stackSize;
             } else {
                 tjlt.stackSize = stackSize;
@@ -157,7 +162,7 @@ public final class LoomSupport {
         }
 
         static void setDaemon(Target_java_lang_Thread tjlt, boolean isDaemon) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 tjlt.holder.daemon = isDaemon;
             } else {
                 tjlt.daemon = isDaemon;
@@ -165,7 +170,7 @@ public final class LoomSupport {
         }
 
         static void setGroup(Target_java_lang_Thread tjlt, ThreadGroup group) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 tjlt.holder.group = group;
             } else {
                 tjlt.group = group;
@@ -173,7 +178,7 @@ public final class LoomSupport {
         }
 
         static void setTarget(Target_java_lang_Thread tjlt, Runnable target) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 tjlt.holder.task = target;
             } else {
                 tjlt.target = target;
@@ -181,7 +186,7 @@ public final class LoomSupport {
         }
 
         static void initThreadFields(Target_java_lang_Thread tjlt, ThreadGroup group, Runnable target, long stackSize, int priority, boolean daemon, int threadStatus) {
-            if (isEnabled()) {
+            if (isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
                 tjlt.holder = new Target_java_lang_Thread_FieldHolder(null, null, 0, 0, false);
             }
             setGroup(tjlt, group);

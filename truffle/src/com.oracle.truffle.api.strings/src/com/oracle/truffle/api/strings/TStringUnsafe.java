@@ -77,9 +77,14 @@ final class TStringUnsafe {
         Field valueField = getStringDeclaredField("value");
         Field coderField = getStringDeclaredField("coder");
         Field hashField = getStringDeclaredField("hash");
-        javaStringValueFieldOffset = UNSAFE.objectFieldOffset(valueField);
-        javaStringCoderFieldOffset = UNSAFE.objectFieldOffset(coderField);
-        javaStringHashFieldOffset = UNSAFE.objectFieldOffset(hashField);
+        javaStringValueFieldOffset = getObjectFieldOffset(valueField);
+        javaStringCoderFieldOffset = getObjectFieldOffset(coderField);
+        javaStringHashFieldOffset = getObjectFieldOffset(hashField);
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    private static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
     }
 
     @TruffleBoundary

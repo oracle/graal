@@ -253,10 +253,15 @@ public abstract class DynamicObject implements TruffleObject {
     static {
         UNSAFE = getUnsafe();
         try {
-            SHAPE_OFFSET = UNSAFE.objectFieldOffset(DynamicObject.class.getDeclaredField("shape"));
+            SHAPE_OFFSET = getObjectFieldOffset(DynamicObject.class.getDeclaredField("shape"));
         } catch (Exception e) {
             throw new IllegalStateException("Could not get 'shape' field offset", e);
         }
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    private static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
     }
 
     private static Unsafe getUnsafe() {

@@ -131,7 +131,7 @@ class JavaThreadsFeature implements Feature {
     }
 
     static long threadId(Thread thread) {
-        return thread == PlatformThreads.singleton().mainThread ? 1 : thread.getId();
+        return thread == PlatformThreads.singleton().mainThread ? 1 : JavaThreads.getThreadId(thread);
     }
 
     private static final String AUTONUMBER_PREFIX = "Thread-";

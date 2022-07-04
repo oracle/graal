@@ -84,7 +84,9 @@ class AccessControlContextReplacerFeature implements Feature {
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             allowContextIfExists("java.security.AccessController$AccHolder", "innocuousAcc");
-            allowContextIfExists("java.util.concurrent.ForkJoinPool$DefaultForkJoinWorkerThreadFactory", "ACC");
+            if (JavaVersionUtil.JAVA_SPEC < 19) {
+                allowContextIfExists("java.util.concurrent.ForkJoinPool$DefaultForkJoinWorkerThreadFactory", "ACC");
+            }
         }
         if (JavaVersionUtil.JAVA_SPEC < 17) {
             allowContextIfExists("java.util.concurrent.ForkJoinWorkerThread", "INNOCUOUS_ACC");
@@ -92,7 +94,7 @@ class AccessControlContextReplacerFeature implements Feature {
         if (JavaVersionUtil.JAVA_SPEC >= 11 && JavaVersionUtil.JAVA_SPEC < 17) {
             allowContextIfExists("java.util.concurrent.ForkJoinPool$InnocuousForkJoinWorkerThreadFactory", "ACC");
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17 && JavaVersionUtil.JAVA_SPEC < 19) {
             allowContextIfExists("java.util.concurrent.ForkJoinPool$WorkQueue", "INNOCUOUS_ACC");
             allowContextIfExists("java.util.concurrent.ForkJoinPool$DefaultCommonPoolForkJoinWorkerThreadFactory", "ACC");
         }

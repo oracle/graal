@@ -181,7 +181,7 @@ local devkits = common_json.devkits;
 
   graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
 
-  vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + {
+  vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + graal_common.svm_deps.linux_amd64 {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
   },
 
@@ -388,12 +388,12 @@ local devkits = common_json.devkits;
   mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
   mx_vm_installables: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
-  svm_common_linux_amd64:        { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_amd64,
-  svm_common_linux_aarch64:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_aarch64,
-  svm_common_darwin_amd64:       { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.darwin_amd64,
-  svm_common_darwin_aarch64:     { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.darwin_aarch64,
-  svm_common_windows_jdk11:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-jdk11'],
-  svm_common_windows_jdk17:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-jdk17'],
+  svm_common_linux_amd64:        { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.linux_amd64,
+  svm_common_linux_aarch64:      { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.linux_aarch64,
+  svm_common_darwin_amd64:       { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.darwin_amd64,
+  svm_common_darwin_aarch64:     { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.darwin_aarch64,
+  svm_common_windows_jdk11:      { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.windows       + common_json.devkits['windows-jdk11'],
+  svm_common_windows_jdk17:      { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.windows       + common_json.devkits['windows-jdk17'],
 
   maven_deploy_sdk: ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
   maven_deploy_sdk_base:               self.maven_deploy_sdk + ['--tags', 'graalvm',                             vm.binaries_repository],
@@ -444,7 +444,7 @@ local devkits = common_json.devkits;
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
     ],
     logs+: ['*/graal-compiler.log'],
-    timelimit: '55:00',
+    timelimit: '1:00:00',
   },
 
   # -ea assertions are enough to keep execution time reasonable
@@ -702,6 +702,9 @@ local devkits = common_json.devkits;
 
     self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-quickbuild-17-linux-amd64' },
     self.gate_vm_linux_amd64 + self.libgraal_truffle_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-truffle-quickbuild-17-linux-amd64' },
+
+    # requires compiler changes GR-39169
+    # self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_19 + { name: 'gate-vm-libgraal-compiler-quickbuild-19-linux-amd64' },
 
     vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + vm.vm_unittest + {
      run: [

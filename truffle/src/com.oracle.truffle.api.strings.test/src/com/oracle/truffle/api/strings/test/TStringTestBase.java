@@ -124,7 +124,12 @@ public class TStringTestBase {
         } catch (NoSuchFieldException e) {
             throw new RuntimeException("exception while trying to get Buffer.address via reflection:", e);
         }
-        byteBufferAddressOffset = UNSAFE.objectFieldOffset(addressField);
+        byteBufferAddressOffset = getObjectFieldOffset(addressField);
+    }
+
+    @SuppressWarnings("deprecation")
+    static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
     }
 
     protected static boolean isDebugStrictEncodingChecks() {
