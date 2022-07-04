@@ -32,11 +32,6 @@ import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movSZx;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movlhps;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeq;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovSZx;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovmsk;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
@@ -256,8 +251,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         Label diffFound = new Label();
 
         // fast path: check first element as scalar
-        movSZx(masm, strideA, extendMode, result, new AMD64Address(arrayA));
-        movSZx(masm, strideB, extendMode, tmp1, new AMD64Address(arrayB));
+        masm.movSZx(strideA, extendMode, result, new AMD64Address(arrayA));
+        masm.movSZx(strideB, extendMode, tmp1, new AMD64Address(arrayB));
         masm.subqAndJcc(result, tmp1, ConditionFlag.NotZero, returnLabel, false);
         masm.movl(result, length);
 
@@ -273,12 +268,12 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
         // load and extend elements of arrayB to match the stride of arrayA
-        pmovSZx(masm, vectorSize, extendMode, vector1, maxStride, arrayA, strideA, length, 0);
-        pmovSZx(masm, vectorSize, extendMode, vector2, maxStride, arrayB, strideB, length, 0);
+        masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, length, 0);
+        masm.pmovSZx(vectorSize, extendMode, vector2, maxStride, arrayB, strideB, length, 0);
         // compare elements of arrayA and arrayB
-        pcmpeq(masm, vectorSize, maxStride, vector1, vector2);
+        masm.pcmpeq(vectorSize, maxStride, vector1, vector2);
         // convert result to bitmask
-        pmovmsk(masm, vectorSize, tmp1, vector1);
+        masm.pmovmsk(vectorSize, tmp1, vector1);
         // invert bit mask. if the result is non-zero, compared regions are not equal
         masm.xorlAndJcc(tmp1, vectorSize == XMM ? ONES_16 : ONES_32, ConditionFlag.NotZero, diffFound, true);
         // regions are equal, continue the loop
@@ -288,12 +283,12 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.testlAndJcc(result, result, ConditionFlag.Zero, returnLabel, false);
 
         // tail: compare the remaining bytes with a vector load aligned to the end of the array.
-        pmovSZx(masm, vectorSize, extendMode, vector1, maxStride, arrayA, strideA, result, -vectorSize.getBytes());
-        pmovSZx(masm, vectorSize, extendMode, vector2, maxStride, arrayB, strideB, result, -vectorSize.getBytes());
+        masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, result, -vectorSize.getBytes());
+        masm.pmovSZx(vectorSize, extendMode, vector2, maxStride, arrayB, strideB, result, -vectorSize.getBytes());
         // adjust "length" for diffFound
         masm.leaq(length, new AMD64Address(length, result, Stride.S1, -elementsPerVector));
-        pcmpeq(masm, vectorSize, maxStride, vector1, vector2);
-        pmovmsk(masm, vectorSize, tmp1, vector1);
+        masm.pcmpeq(vectorSize, maxStride, vector1, vector2);
+        masm.pmovmsk(vectorSize, tmp1, vector1);
         masm.xorlAndJcc(tmp1, vectorSize == XMM ? ONES_16 : ONES_32, ConditionFlag.NotZero, diffFound, true);
         // all elements are equal, return 0
         masm.xorq(result, result);
@@ -310,8 +305,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         // add to current vector loop index
         masm.addq(tmp2, length);
         // load differing elements and return difference
-        movSZx(masm, strideA, extendMode, result, new AMD64Address(arrayA, tmp2, strideA));
-        movSZx(masm, strideB, extendMode, tmp1, new AMD64Address(arrayB, tmp2, strideB));
+        masm.movSZx(strideA, extendMode, result, new AMD64Address(arrayA, tmp2, strideA));
+        masm.movSZx(strideB, extendMode, tmp1, new AMD64Address(arrayB, tmp2, strideB));
         masm.subq(result, tmp1);
         masm.jmp(returnLabel);
 
@@ -345,19 +340,19 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         assert cmpSize.getBytes() == loadSize.getBytes() * 2;
         assert cmpSize == YMM || cmpSize == XMM;
         masm.cmplAndJcc(length, getElementsPerVector(loadSize, maxStride), ConditionFlag.Less, nextTail, false);
-        pmovSZx(masm, loadSize, extendMode, vector1, maxStride, arrayA, strideA, 0);
-        pmovSZx(masm, loadSize, extendMode, vector2, maxStride, arrayB, strideB, 0);
-        pmovSZx(masm, loadSize, extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
-        pmovSZx(masm, loadSize, extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
+        masm.pmovSZx(loadSize, extendMode, vector1, maxStride, arrayA, strideA, 0);
+        masm.pmovSZx(loadSize, extendMode, vector2, maxStride, arrayB, strideB, 0);
+        masm.pmovSZx(loadSize, extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
+        masm.pmovSZx(loadSize, extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
         if (cmpSize == YMM) {
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(masm, cmpSize, vector1, vector3, vector1, 0x02);
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(masm, cmpSize, vector2, vector4, vector2, 0x02);
         } else {
-            movlhps(masm, vector1, vector3);
-            movlhps(masm, vector2, vector4);
+            masm.movlhps(vector1, vector3);
+            masm.movlhps(vector2, vector4);
         }
-        pcmpeq(masm, cmpSize, maxStride, vector1, vector2);
-        pmovmsk(masm, cmpSize, result, vector1);
+        masm.pcmpeq(cmpSize, maxStride, vector1, vector2);
+        masm.pmovmsk(cmpSize, result, vector1);
         masm.xorlAndJcc(result, cmpSize == XMM ? ONES_16 : ONES_32, ConditionFlag.Zero, returnLabel, false);
 
         bsfq(masm, tmp2, result);
@@ -370,8 +365,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         // add to current vector loop index
         masm.cmovq(ConditionFlag.Greater, tmp2, tmp1);
         // load differing elements and return difference
-        movSZx(masm, strideA, extendMode, result, new AMD64Address(arrayA, tmp2, strideA));
-        movSZx(masm, strideB, extendMode, tmp1, new AMD64Address(arrayB, tmp2, strideB));
+        masm.movSZx(strideA, extendMode, result, new AMD64Address(arrayA, tmp2, strideA));
+        masm.movSZx(strideB, extendMode, tmp1, new AMD64Address(arrayB, tmp2, strideB));
         masm.subq(result, tmp1);
         masm.jmp(returnLabel);
     }
@@ -390,8 +385,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
 
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
-        movSZx(masm, strideA, extendMode, result, new AMD64Address(arrayA, length, strideA));
-        movSZx(masm, strideB, extendMode, tmp, new AMD64Address(arrayB, length, strideB));
+        masm.movSZx(strideA, extendMode, result, new AMD64Address(arrayA, length, strideA));
+        masm.movSZx(strideB, extendMode, tmp, new AMD64Address(arrayB, length, strideB));
         masm.subqAndJcc(result, tmp, ConditionFlag.NotZero, returnLabel, true);
         masm.incqAndJcc(length, ConditionFlag.NotZero, loop, true);
     }

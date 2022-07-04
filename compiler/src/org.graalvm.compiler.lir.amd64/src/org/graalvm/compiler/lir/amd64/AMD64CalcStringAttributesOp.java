@@ -33,28 +33,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Less;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotZero;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Zero;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.isAVX;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movdl;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movdqu;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movlhps;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.palignr;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pand;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pandU;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeqb;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeqd;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeqw;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpgtb;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpgtd;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovmsk;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.por;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pshufb;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pslld;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.psllw;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.psrld;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.psrlw;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.ptest;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.ptestU;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pxor;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
@@ -68,7 +46,6 @@ import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -76,6 +53,7 @@ import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -330,11 +308,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         Label returnAscii = new Label();
         Label end = new Label();
 
-        Register vecArray = isAVX(asm) ? null : asRegister(vectorTemp[1]);
+        Register vecArray = asm.isAVX() ? null : asRegister(vectorTemp[1]);
 
         // load ascii PTEST mask consisting of 0x80 bytes
         DataSection.Data mask = createMask(crb, 0x80);
-        movdqu(asm, vectorSize, vecMask, (AMD64Address) crb.recordDataSectionReference(mask));
+        asm.movdqu(vectorSize, vecMask, (AMD64Address) crb.recordDataSectionReference(mask));
 
         vectorLoopPrologue(asm, arr, len, lengthTail, tailLessThan32, tailLessThan16, true);
         // main loop: check if all bytes are ascii with PTEST mask 0x80
@@ -417,7 +395,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         Label loopHead = new Label();
         alignLoopHead(crb, asm);
         asm.bind(loopHead);
-        ptestU(asm, vectorSize, vecMask, new AMD64Address(arr, len, stride), vecArray);
+        asm.ptestU(vectorSize, vecMask, new AMD64Address(arr, len, stride), vecArray);
         asm.jccb(NotZero, labelBreak);
         asm.addqAndJcc(len, vectorLength, NotZero, loopHead, true);
     }
@@ -428,7 +406,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      */
     private static void emitPTestCurr(AMD64MacroAssembler asm, AVXKind.AVXSize size, Register arr, Register vecArray, Register vecMask, Label entry, Label match) {
         bind(asm, entry);
-        ptestU(asm, size, vecMask, new AMD64Address(arr), vecArray);
+        asm.ptestU(size, vecMask, new AMD64Address(arr), vecArray);
         asm.jccb(NotZero, match);
     }
 
@@ -445,7 +423,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // tail: align the last vector load to the end of the array, overlapping with the
         // main loop's last load
         bind(asm, entry);
-        ptestU(asm, size, vecMask, new AMD64Address(arr, lengthTail, stride, -size.getBytes()), vecArray);
+        asm.ptestU(size, vecMask, new AMD64Address(arr, lengthTail, stride, -size.getBytes()), vecArray);
         asm.jccb(NotZero, match);
         asm.jmp(noMatch, isShortJmp);
     }
@@ -459,7 +437,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     private void emitBMP(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecMaskAscii) {
         assert stride.log2 == 1;
         Register vecMaskBMP = asRegister(vectorTemp[1]);
-        Register vecArray = isAVX(asm) ? null : asRegister(vectorTemp[2]);
+        Register vecArray = asm.isAVX() ? null : asRegister(vectorTemp[2]);
         Label latin1Entry = new Label();
         Label latin1TailCmp = new Label();
 
@@ -476,7 +454,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // load ascii mask 0xff80
         loadMask(crb, asm, vecMaskAscii, 0xff80);
         // create bmp mask 0xff00
-        psllw(asm, vectorSize, vecMaskBMP, vecMaskAscii, 1);
+        asm.psllw(vectorSize, vecMaskBMP, vecMaskAscii, 1);
 
         vectorLoopPrologue(asm, arr, len, lengthTail, tailLessThan32, tailLessThan16, true);
 
@@ -717,9 +695,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         if (!assumeValid) {
             // initialize multibyte loop state registers
-            pxor(asm, vectorSize, vecPrevArray, vecPrevArray);
-            pxor(asm, vectorSize, vecError, vecError);
-            pxor(asm, vectorSize, vecPrevIsIncomplete, vecPrevIsIncomplete);
+            asm.pxor(vectorSize, vecPrevArray, vecPrevArray);
+            asm.pxor(vectorSize, vecError, vecError);
+            asm.pxor(vectorSize, vecPrevIsIncomplete, vecPrevIsIncomplete);
         }
 
         vectorLoopPrologue(asm, arr, len, lengthTail, tailLessThan32, !assumeValid ? tailLessThan32 : tailLessThan16, false);
@@ -727,14 +705,14 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // ascii loop: check if all bytes are |<| 0x80 with PTEST
         alignLoopHead(crb, asm);
         asm.bind(asciiLoop);
-        movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
-        ptest(asm, vectorSize, vecArray, vecMask);
+        asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
+        asm.ptest(vectorSize, vecArray, vecMask);
         asm.jccb(NotZero, labelMultiByteEntry);
         asm.addqAndJcc(len, vectorLength, NotZero, asciiLoop, true);
 
         // ascii tail
-        movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
-        ptest(asm, vectorSize, vecArray, vecMask);
+        asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
+        asm.ptest(vectorSize, vecArray, vecMask);
         asm.jcc(NotZero, labelMultiByteTail, assumeValid);
         asm.jmp(returnAscii);
 
@@ -742,7 +720,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // multibyte loop: at least one byte is not ascii, calculate the codepoint length
             alignLoopHead(crb, asm);
             asm.bind(labelMultiByteLoop);
-            movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
+            asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             asm.bind(labelMultiByteEntry);
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
             asm.addqAndJcc(len, vectorLength, NotZero, labelMultiByteLoop, true);
@@ -751,12 +729,12 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // overlap with the last loop iteration
             asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValid, false);
             // load tail vector
-            movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
+            asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
             asm.bind(labelMultiByteTail);
             // load tail mask address
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(validMaskTail));
             // remove overlapping bytes
-            pandU(asm, vectorSize, vecArray, new AMD64Address(tmp, lengthTail, stride), vecTmp1);
+            asm.pandU(vectorSize, vecArray, new AMD64Address(tmp, lengthTail, stride), vecTmp1);
             // identify continuation bytes
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
             asm.jmp(returnValid);
@@ -780,7 +758,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             asm.bind(tailSingleVector);
             // check if first vector is ascii
-            ptest(asm, vectorSize, vecArray, vecMask);
+            asm.ptest(vectorSize, vecArray, vecMask);
             // not ascii, go to scalar loop
             asm.jcc(Zero, returnAscii);
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
@@ -806,14 +784,14 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // multibyte loop: at least one byte is not ascii, calculate the codepoint length
             alignLoopHead(crb, asm);
             asm.bind(labelMultiByteLoop);
-            movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
+            asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             // fast path: check if current vector is ascii
             asm.bind(labelMultiByteTailLoopEntry);
-            ptest(asm, vectorSize, vecArray, vecMask);
+            asm.ptest(vectorSize, vecArray, vecMask);
             asm.jccb(NotZero, labelMultiByteEntry);
             // current vector is ascii, if the previous vector ended with an incomplete sequence, we
             // found an error
-            por(asm, vectorSize, vecError, vecPrevIsIncomplete);
+            asm.por(vectorSize, vecError, vecPrevIsIncomplete);
             // continue
             asm.addqAndJcc(len, vectorLength, NotZero, labelMultiByteLoop, true);
             asm.jmp(labelMultiByteTail);
@@ -822,11 +800,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             // codepoint counting logic:
             // AND the string's bytes with 0xc0
-            pand(asm, vectorSize, vecTmp1, vecArray, vecMaskCB);
+            asm.pand(vectorSize, vecTmp1, vecArray, vecMaskCB);
             // check if the result is equal to 0x80, identifying continuation bytes
-            pcmpeqb(asm, vectorSize, vecTmp1, vecMask);
+            asm.pcmpeqb(vectorSize, vecTmp1, vecMask);
             // count the number of continuation bytes
-            pmovmsk(asm, vectorSize, tmp, vecTmp1);
+            asm.pmovmsk(vectorSize, tmp, vecTmp1);
             asm.popcntl(tmp, tmp);
             // subtract the number of continuation bytes from the total byte length
             asm.subl(ret, tmp);
@@ -835,24 +813,24 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             prev(asm, vectorSize, vecTmp3, vecArray, vecPrevArray, 1);
             // load lower nibbles of prev1 into vecTmp3
             // load upper nibbles of prev1 into vecTmp4
-            psrlw(asm, vectorSize, vecTmp4, vecTmp3, 4);
+            asm.psrlw(vectorSize, vecTmp4, vecTmp3, 4);
             pandData(crb, asm, vectorSize, vecTmp3, mask0x0F, vecTmp1);
             pandData(crb, asm, vectorSize, vecTmp4, mask0x0F, vecTmp1);
             // perform table lookup for both nibbles
-            movdqu(asm, vectorSize, vecTmp1, getMaskOnce(crb, getStaticLUT(UTF8_BYTE_1_LOW_TABLE)));
-            movdqu(asm, vectorSize, vecTmp2, getMaskOnce(crb, getStaticLUT(UTF8_BYTE_1_HIGH_TABLE)));
-            pshufb(asm, vectorSize, vecTmp1, vecTmp3);
-            pshufb(asm, vectorSize, vecTmp2, vecTmp4);
+            asm.movdqu(vectorSize, vecTmp1, getMaskOnce(crb, getStaticLUT(UTF8_BYTE_1_LOW_TABLE)));
+            asm.movdqu(vectorSize, vecTmp2, getMaskOnce(crb, getStaticLUT(UTF8_BYTE_1_HIGH_TABLE)));
+            asm.pshufb(vectorSize, vecTmp1, vecTmp3);
+            asm.pshufb(vectorSize, vecTmp2, vecTmp4);
             // combine result into vecTmp1
-            pand(asm, vectorSize, vecTmp1, vecTmp2);
-            movdqu(asm, vectorSize, vecTmp2, getMaskOnce(crb, getStaticLUT(UTF8_BYTE_2_HIGH_TABLE)));
+            asm.pand(vectorSize, vecTmp1, vecTmp2);
+            asm.movdqu(vectorSize, vecTmp2, getMaskOnce(crb, getStaticLUT(UTF8_BYTE_2_HIGH_TABLE)));
             // load upper nibbles of array at current index into vecTmp3
-            psrlw(asm, vectorSize, vecTmp3, vecArray, 4);
+            asm.psrlw(vectorSize, vecTmp3, vecArray, 4);
             pandData(crb, asm, vectorSize, vecTmp3, mask0x0F, vecTmp4);
             // table lookup
-            pshufb(asm, vectorSize, vecTmp2, vecTmp3);
+            asm.pshufb(vectorSize, vecTmp2, vecTmp3);
             // combine result into vecTmp1
-            pand(asm, vectorSize, vecTmp1, vecTmp2);
+            asm.pand(vectorSize, vecTmp1, vecTmp2);
 
             // load a view of the array at current index - 2 into vecTmp2
             prev(asm, vectorSize, vecTmp2, vecArray, vecPrevArray, 2);
@@ -863,22 +841,22 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // find all bytes greater or equal to 0b11110000 in prev3
             psubusbData(crb, asm, vectorSize, vecTmp3, vecTmp3, mask4ByteSeq, vecTmp4);
             // combine result into vecTmp2
-            por(asm, vectorSize, vecTmp2, vecTmp3);
+            asm.por(vectorSize, vecTmp2, vecTmp3);
             // convert result to 0xff for all matching bytes
-            pxor(asm, vectorSize, vecTmp3, vecTmp3);
-            pcmpgtb(asm, vectorSize, vecTmp2, vecTmp3);
+            asm.pxor(vectorSize, vecTmp3, vecTmp3);
+            asm.pcmpgtb(vectorSize, vecTmp2, vecTmp3);
             // convert result to 0x80 for all matching bytes
-            pand(asm, vectorSize, vecTmp2, vecMask);
+            asm.pand(vectorSize, vecTmp2, vecMask);
             // xor the result with the combined table lookup results
-            pxor(asm, vectorSize, vecTmp1, vecTmp2);
+            asm.pxor(vectorSize, vecTmp1, vecTmp2);
             // if the result of all this is non-zero, we found an error
-            por(asm, vectorSize, vecError, vecTmp1);
+            asm.por(vectorSize, vecError, vecTmp1);
 
             // check if the current vector ends with an incomplete multibyte-sequence
             // (needed only for ascii fast-path)
             psubusbData(crb, asm, vectorSize, vecPrevIsIncomplete, vecArray, isIncompleteMask, vecTmp1);
             // save current vector as vecPrevArray
-            movdqu(asm, vectorSize, vecPrevArray, vecArray);
+            asm.movdqu(vectorSize, vecPrevArray, vecArray);
             asm.addqAndJcc(len, vectorLength, NotZero, labelMultiByteLoop, false);
 
             asm.bind(labelMultiByteTail);
@@ -891,8 +869,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.jmp(labelMultiByteTailLoopEntry);
 
             asm.bind(labelMultiByteEnd);
-            por(asm, vectorSize, vecError, vecPrevIsIncomplete);
-            ptest(asm, vectorSize, vecError, vecError);
+            asm.por(vectorSize, vecError, vecPrevIsIncomplete);
+            asm.ptest(vectorSize, vecError, vecError);
             asm.jcc(Zero, returnValid);
             asm.shlq(ret, 32);
             asm.orq(ret, CR_BROKEN_MULTIBYTE);
@@ -916,7 +894,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             loadLessThan8IntoXMMOrdered(asm, arr, lengthTail, vecArray, tmp, tmp2);
 
             asm.bind(tailSingleVector);
-            ptest(asm, vectorSize, vecArray, vecMask);
+            asm.ptest(vectorSize, vecArray, vecMask);
             asm.jcc(Zero, returnAscii);
             asm.subq(len, vectorLength);
             asm.xorq(lengthTail, lengthTail);
@@ -985,11 +963,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      */
     private void utf8SubtractContinuationBytes(AMD64MacroAssembler asm, Register ret, Register vecArray, Register tmp, Register vecMask, Register vecMaskCB) {
         // AND the string's bytes with 0xc0
-        pand(asm, vectorSize, vecArray, vecMaskCB);
+        asm.pand(vectorSize, vecArray, vecMaskCB);
         // check if the result is equal to 0x80, identifying continuation bytes
-        pcmpeqb(asm, vectorSize, vecArray, vecMask);
+        asm.pcmpeqb(vectorSize, vecArray, vecMask);
         // count the number of continuation bytes
-        pmovmsk(asm, vectorSize, tmp, vecArray);
+        asm.pmovmsk(vectorSize, tmp, vecArray);
         asm.popcntl(tmp, tmp);
         // subtract the number of continuation bytes from the total byte length
         asm.subl(ret, tmp);
@@ -1012,40 +990,40 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             Label done = new Label();
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(xmmTailShuffleMask));
             // load last 16 bytes
-            movdqu(asm, XMM, vecArray, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
+            asm.movdqu(XMM, vecArray, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
             // if we're using YMM vectors and the tail is greater than 16 bytes, load the tail's
             // first 16 bytes and prepend them to the shifted vector
             asm.cmpqAndJcc(lengthTail, elementsPerVector(XMM), Less, lessThan16, true);
-            movdqu(asm, XMM, vecTmp1, new AMD64Address(arr));
+            asm.movdqu(XMM, vecTmp1, new AMD64Address(arr));
             asm.negq(lengthTail);
             // load shuffle mask into a tmp vector, because pshufb doesn't support misaligned
             // memory parameters
-            movdqu(asm, XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes() * 2));
+            asm.movdqu(XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes() * 2));
             // shuffle the tail vector such that its content effectively gets left-shifted by
             // 16 - lengthTail bytes
-            pshufb(asm, XMM, vecArray, vecTmp2);
+            asm.pshufb(XMM, vecArray, vecTmp2);
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(asm, vectorSize, vecArray, vecArray, vecTmp1, 0x02);
             asm.jmpb(done);
             asm.bind(lessThan16);
             asm.negq(lengthTail);
             // load shuffle mask into a tmp vector, because pshufb doesn't support misaligned
             // memory parameters
-            movdqu(asm, XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes()));
+            asm.movdqu(XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes()));
             // shuffle the tail vector such that its content effectively gets right-shifted by
             // 16 - lengthTail bytes
-            pshufb(asm, XMM, vecArray, vecTmp2);
+            asm.pshufb(XMM, vecArray, vecTmp2);
             asm.bind(done);
         } else {
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(xmmTailShuffleMask));
             // load last 16 bytes
-            movdqu(asm, XMM, vecArray, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
+            asm.movdqu(XMM, vecArray, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
             asm.negq(lengthTail);
             // load shuffle mask into a tmp vector, because pshufb doesn't support misaligned
             // memory parameters
-            movdqu(asm, XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes()));
+            asm.movdqu(XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes()));
             // shuffle the tail vector such that its content effectively gets right-shifted by
             // 16 - lengthTail bytes
-            pshufb(asm, XMM, vecArray, vecTmp2);
+            asm.pshufb(XMM, vecArray, vecTmp2);
         }
     }
 
@@ -1055,16 +1033,16 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     private void loadLessThan32IntoYMMOrdered(CompilationResultBuilder crb, AMD64MacroAssembler asm, DataSection.Data xmmTailShuffleMask,
                     Register arr, Register lengthTail, Register tmp, Register vecArray, Register vecTmp1, Register vecTmp2) {
         // array is between 16 and 31 bytes long, load it into a YMM register via two XMM loads
-        movdqu(asm, XMM, vecTmp1, new AMD64Address(arr));
-        movdqu(asm, XMM, vecArray, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
+        asm.movdqu(XMM, vecTmp1, new AMD64Address(arr));
+        asm.movdqu(XMM, vecArray, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
         asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(xmmTailShuffleMask));
         asm.negq(lengthTail);
         // load shuffle mask into a tmp vector, because pshufb doesn't support misaligned
         // memory parameters
-        movdqu(asm, XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes() * 2));
+        asm.movdqu(XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes() * 2));
         // shuffle the tail vector such that its content effectively gets right-shifted by
         // 16 - lengthTail bytes
-        pshufb(asm, XMM, vecArray, vecTmp2);
+        asm.pshufb(XMM, vecArray, vecTmp2);
         AMD64Assembler.VexRVMIOp.VPERM2I128.emit(asm, vectorSize, vecArray, vecArray, vecTmp1, 0x02);
     }
 
@@ -1080,10 +1058,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      */
     private void loadLessThan32IntoYMMUnordered(CompilationResultBuilder crb, AMD64MacroAssembler asm, DataSection.Data maskTail,
                     Register arr, Register lengthTail, Register tmp, Register vecArray, Register vecTmp1, Register vecTmp2) {
-        movdqu(asm, XMM, vecArray, new AMD64Address(arr));
-        movdqu(asm, XMM, vecTmp1, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
+        asm.movdqu(XMM, vecArray, new AMD64Address(arr));
+        asm.movdqu(XMM, vecTmp1, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
         asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
-        pandU(asm, vectorSize, vecTmp1, new AMD64Address(tmp, lengthTail, stride), vecTmp2);
+        asm.pandU(vectorSize, vecTmp1, new AMD64Address(tmp, lengthTail, stride), vecTmp2);
         AMD64Assembler.VexRVMIOp.VPERM2I128.emit(asm, vectorSize, vecArray, vecArray, vecTmp1, 0x02);
     }
 
@@ -1097,9 +1075,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.movdq(vecTmp1, new AMD64Address(arr, lengthTail, stride, -8));
         asm.leaq(tmp, getMaskOnce(crb, createXMMTailShuffleMask(8), XMM.getBytes() * 2));
         asm.negq(lengthTail);
-        movdqu(asm, XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes()));
-        pshufb(asm, XMM, vecTmp1, vecTmp2);
-        movlhps(asm, vecArray, vecTmp1);
+        asm.movdqu(XMM, vecTmp2, new AMD64Address(tmp, lengthTail, stride, XMM.getBytes()));
+        asm.pshufb(XMM, vecTmp1, vecTmp2);
+        asm.movlhps(vecArray, vecTmp1);
     }
 
     /**
@@ -1111,8 +1089,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.movdq(vecArray, new AMD64Address(arr));
         asm.movdq(vecTmp1, new AMD64Address(arr, lengthTail, stride, -8));
         asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
-        pandU(asm, vectorSize, vecTmp1, new AMD64Address(tmp, lengthTail, stride, supportsAVX2AndYMM() ? XMM.getBytes() : 0), vecTmp2);
-        movlhps(asm, vecArray, vecTmp1);
+        asm.pandU(vectorSize, vecTmp1, new AMD64Address(tmp, lengthTail, stride, supportsAVX2AndYMM() ? XMM.getBytes() : 0), vecTmp2);
+        asm.movlhps(vecArray, vecTmp1);
     }
 
     /**
@@ -1169,7 +1147,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      * Perform a PSUBUSB with an address directly from the data section.
      */
     private static void psubusbData(CompilationResultBuilder crb, AMD64MacroAssembler asm, AVXKind.AVXSize size, Register dst, Register src1, DataSection.Data src2, Register tmp) {
-        if (isAVX(asm)) {
+        if (asm.isAVX()) {
             AMD64Assembler.VexRVMOp.VPSUBUSB.emit(asm, size, dst, src1, (AMD64Address) crb.recordDataSectionReference(src2));
         } else {
             // SSE
@@ -1182,11 +1160,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private static void pandData(CompilationResultBuilder crb, AMD64MacroAssembler asm, AVXKind.AVXSize avxSize, Register vecDst, DataSection.Data mask, Register vecTmp) {
-        if (isAVX(asm)) {
-            pand(asm, avxSize, vecDst, (AMD64Address) crb.recordDataSectionReference(mask));
+        if (asm.isAVX()) {
+            asm.pand(avxSize, vecDst, (AMD64Address) crb.recordDataSectionReference(mask));
         } else {
             asm.movdqu(vecTmp, (AMD64Address) crb.recordDataSectionReference(mask));
-            pand(asm, avxSize, vecDst, vecTmp);
+            asm.pand(avxSize, vecDst, vecTmp);
         }
     }
 
@@ -1198,9 +1176,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     private static void prev(AMD64MacroAssembler asm, AVXKind.AVXSize size, Register dst, Register cur, Register prev, int n) {
         if (size == YMM) {
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(asm, size, dst, prev, cur, 0x21);
-            palignr(asm, size, dst, cur, dst, 16 - n);
+            asm.palignr(size, dst, cur, dst, 16 - n);
         } else {
-            palignr(asm, size, dst, cur, prev, 16 - n);
+            asm.palignr(size, dst, cur, prev, 16 - n);
         }
     }
 
@@ -1242,18 +1220,18 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         if (!assumeValid) {
             asm.movl(retBroken, CR_VALID_MULTIBYTE);
-            pxor(asm, vectorSize, vecResult, vecResult);
+            asm.pxor(vectorSize, vecResult, vecResult);
         }
 
         loadMask(crb, asm, vecMaskAscii, 0xff80);
         loadMask(crb, asm, vecMaskSurrogate, assumeValid ? 0x36 : 0x1b);
-        psllw(asm, vectorSize, vecMaskLatin, vecMaskAscii, 1);
+        asm.psllw(vectorSize, vecMaskLatin, vecMaskAscii, 1);
         DataSection.Data maskTail = createTailMask(crb);
         DataSection.Data xmmTailShuffleMask = assumeValid ? null : writeToDataSection(crb, createXMMTailShuffleMask(XMM.getBytes()));
 
         vectorLoopPrologue(asm, arr, len, lengthTail, tailLessThan32, tailLessThan16, false);
 
-        movdqu(asm, vectorSize, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
+        asm.movdqu(vectorSize, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
         // ascii loop: check if all chars are |<| 0x80 with VPTEST mask 0xff80
         emitPTestLoop(crb, asm, arr, len, vecArray, vecMaskAscii, latin1Entry);
         emitPTestTail(asm, vectorSize, arr, lengthTail, vecArray, vecMaskAscii, null, latin1Tail, returnAscii, false);
@@ -1266,7 +1244,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // bmp loop: search for UTF-16 surrogate characters
         alignLoopHead(crb, asm);
         asm.bind(bmpLoop);
-        movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
+        asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
         utf16FindSurrogatesAndTest(asm, vecArray, vecArray, vecMaskSurrogate);
         asm.jccb(NotZero, assumeValid ? labelSurrogateLoop : labelSurrogateEntry);
         asm.addqAndJcc(len, vectorLength, NotZero, bmpLoop, true);
@@ -1284,7 +1262,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // (assuming the string is encoded correctly)
             alignLoopHead(crb, asm);
             asm.bind(labelSurrogateLoop);
-            movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
+            asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             utf16MatchSurrogates(asm, vecArray, vecMaskSurrogate);
             utf16SubtractMatchedChars(asm, ret, vecArray, tmp);
             asm.addqAndJcc(len, vectorLength, NotZero, labelSurrogateLoop, true);
@@ -1292,7 +1270,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValidOrBroken, false);
             // surrogate tail
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
-            pandU(asm, vectorSize, vecArrayTail, new AMD64Address(tmp, lengthTail, stride), vecTmp);
+            asm.pandU(vectorSize, vecArrayTail, new AMD64Address(tmp, lengthTail, stride), vecTmp);
             utf16MatchSurrogates(asm, vecArrayTail, vecMaskSurrogate);
             utf16SubtractMatchedChars(asm, ret, vecArrayTail, tmp);
             asm.jmp(returnValidOrBroken);
@@ -1312,11 +1290,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.movl(tmp, CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
             // high surrogate mask: 0x1b << 1 == 0x36
-            psllw(asm, vectorSize, vecMaskSurrogate, 1);
+            asm.psllw(vectorSize, vecMaskSurrogate, 1);
             // mask 0xff80 >> 15 == 0x1
-            psrlw(asm, vectorSize, vecMaskAscii, 15);
+            asm.psrlw(vectorSize, vecMaskAscii, 15);
             // low surrogate mask: 0x1 | 0x36 == 0x37
-            por(asm, vectorSize, vecMaskAscii, vecMaskSurrogate);
+            asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
             // if there is no tail, we would read out of bounds in the loop, so remove the last
             // iteration if lengthTail is zero
             Label labelSurrogateCheckLoopCountZero = new Label();
@@ -1331,9 +1309,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             alignLoopHead(crb, asm);
             asm.bind(labelSurrogateLoop);
             // load at current index
-            movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
+            asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             // load at current index + 1
-            movdqu(asm, vectorSize, vecArrayTail, new AMD64Address(arr, len, stride, 2));
+            asm.movdqu(vectorSize, vecArrayTail, new AMD64Address(arr, len, stride, 2));
             utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
             asm.addqAndJcc(len, vectorLength, NotZero, labelSurrogateLoop, true);
 
@@ -1341,12 +1319,12 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.bind(labelSurrogateTail);
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
             // load at up to array end - 1
-            movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, lengthTail, stride, -(vectorSize.getBytes() + 2)));
+            asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, lengthTail, stride, -(vectorSize.getBytes() + 2)));
             // load at up to array end
-            movdqu(asm, vectorSize, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
+            asm.movdqu(vectorSize, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
             // remove elements overlapping with the last loop vector
-            pandU(asm, vectorSize, vecArray, new AMD64Address(tmp, lengthTail, stride, -2), vecTmp);
-            pandU(asm, vectorSize, vecArrayTail, new AMD64Address(tmp, lengthTail, stride, -2), vecTmp);
+            asm.pandU(vectorSize, vecArray, new AMD64Address(tmp, lengthTail, stride, -2), vecTmp);
+            asm.pandU(vectorSize, vecArrayTail, new AMD64Address(tmp, lengthTail, stride, -2), vecTmp);
             utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
 
             // corner case: check if last char is a high surrogate
@@ -1396,9 +1374,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.movdq(vecArray, tmp);
 
         asm.bind(tailSingleVector);
-        ptest(asm, vectorSize, vecArray, vecMaskAscii);
+        asm.ptest(vectorSize, vecArray, vecMaskAscii);
         asm.jcc(Zero, returnAscii);
-        ptest(asm, vectorSize, vecArray, vecMaskLatin);
+        asm.ptest(vectorSize, vecArray, vecMaskLatin);
         asm.jcc(Zero, returnLatin1);
         utf16FindSurrogatesAndTest(asm, vecTmp, vecArray, vecMaskSurrogate);
         asm.jcc(Zero, returnBMP);
@@ -1415,7 +1393,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             // special handling for arrays that are exactly one vector register in length
             asm.bind(surrogateExactlyVectorSize);
-            movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, -vectorSize.getBytes()));
+            asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, -vectorSize.getBytes()));
             // corner case: check if the last char is a high surrogate, and if so, set code
             // range to BROKEN
             asm.movzwl(tmp, new AMD64Address(arr, -2));
@@ -1426,14 +1404,14 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             asm.bind(tailSingleVectorSurrogate);
             // high surrogate mask: 0x1b << 1 == 0x36
-            psllw(asm, vectorSize, vecMaskSurrogate, 1);
+            asm.psllw(vectorSize, vecMaskSurrogate, 1);
             // mask 0xff80 >> 15 == 0x1
-            psrlw(asm, vectorSize, vecMaskAscii, 15);
+            asm.psrlw(vectorSize, vecMaskAscii, 15);
             // low surrogate mask: 0x1 | 0x36 == 0x37
-            por(asm, vectorSize, vecMaskAscii, vecMaskSurrogate);
+            asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
 
             // generate 2nd vector by left-shifting the entire vector by 2 bytes
-            pxor(asm, vectorSize, vecTmp, vecTmp);
+            asm.pxor(vectorSize, vecTmp, vecTmp);
             prev(asm, vectorSize, vecArrayTail, vecArray, vecTmp, 2);
 
             utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
@@ -1448,7 +1426,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         if (assumeValid) {
             asm.orq(ret, CR_VALID_MULTIBYTE);
         } else {
-            ptest(asm, vectorSize, vecResult);
+            asm.ptest(vectorSize, vecResult);
             asm.movl(tmp, CR_BROKEN_MULTIBYTE);
             asm.cmovl(NotZero, retBroken, tmp);
             asm.orq(ret, retBroken);
@@ -1461,16 +1439,16 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         utf16MatchSurrogates(asm, vecArray0, vecMaskHiSurrogate);
         utf16MatchSurrogates(asm, vecArray1, vecMaskLoSurrogate);
         // identify the number of correctly encoded surrogate pairs
-        pand(asm, vectorSize, vecTmp, vecArray0, vecArray1);
+        asm.pand(vectorSize, vecTmp, vecArray0, vecArray1);
         // XOR the high surrogates identified at current index, with low surrogates
         // identified at current index + 1; if the result is zero, the current block is
         // encoded correctly
-        pxor(asm, vectorSize, vecArray0, vecArray1);
-        pmovmsk(asm, vectorSize, tmp, vecTmp);
+        asm.pxor(vectorSize, vecArray0, vecArray1);
+        asm.pmovmsk(vectorSize, tmp, vecTmp);
         // count the number of surrogate pairs
         asm.popcntl(tmp, tmp);
         // merge the validation result into the final result
-        por(asm, vectorSize, vecResult, vecArray0);
+        asm.por(vectorSize, vecResult, vecArray0);
         asm.shrl(tmp, 1);
         // subtract the number of surrogate pairs from the total char length
         asm.subq(ret, tmp);
@@ -1478,19 +1456,19 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
     private void utf16MatchSurrogates(AMD64MacroAssembler asm, Register vecArray, Register vecMaskSurrogate) {
         // identify only high or low surrogates
-        psrlw(asm, vectorSize, vecArray, 10);
-        pcmpeqw(asm, vectorSize, vecArray, vecMaskSurrogate);
+        asm.psrlw(vectorSize, vecArray, 10);
+        asm.pcmpeqw(vectorSize, vecArray, vecMaskSurrogate);
     }
 
     private void utf16FindSurrogatesAndTest(AMD64MacroAssembler asm, Register vecDst, Register vecArray, Register vecMaskSurrogate) {
         // identify surrogates by checking the upper 6 or 5 bits
-        psrlw(asm, vectorSize, vecDst, vecArray, assumeValid ? 10 : 11);
-        pcmpeqw(asm, vectorSize, vecDst, vecMaskSurrogate);
-        ptest(asm, vectorSize, vecDst, vecDst);
+        asm.psrlw(vectorSize, vecDst, vecArray, assumeValid ? 10 : 11);
+        asm.pcmpeqw(vectorSize, vecDst, vecMaskSurrogate);
+        asm.ptest(vectorSize, vecDst, vecDst);
     }
 
     private void utf16SubtractMatchedChars(AMD64MacroAssembler asm, Register ret, Register vecArrayTail, Register tmp) {
-        pmovmsk(asm, vectorSize, tmp, vecArrayTail);
+        asm.pmovmsk(vectorSize, tmp, vecArrayTail);
         asm.popcntl(tmp, tmp);
         asm.shrl(tmp, 1);
         asm.subq(ret, tmp);
@@ -1530,13 +1508,13 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         loadMask(crb, asm, vecMaskSurrogate, 0x1b);
         loadMask(crb, asm, vecMaskOutOfRange, 0x10);
         // generate latin1 mask 0xffffff00
-        pslld(asm, vectorSize, vecMaskLatin1, vecMaskAscii, 1);
+        asm.pslld(vectorSize, vecMaskLatin1, vecMaskAscii, 1);
         // generate bmp mask 0xffff0000
-        pslld(asm, vectorSize, vecMaskBMP, vecMaskAscii, 9);
+        asm.pslld(vectorSize, vecMaskBMP, vecMaskAscii, 9);
 
         vectorLoopPrologue(asm, arr, len, lengthTail, tailLessThan32, tailLessThan16, false);
 
-        movdqu(asm, vectorSize, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
+        asm.movdqu(vectorSize, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -vectorSize.getBytes()));
 
         // ascii loop: check if all codepoints are |<| 0x80 with VPTEST mask 0xffffff80
         emitPTestLoop(crb, asm, arr, len, vecArray, vecMaskAscii, labelLatin1Entry);
@@ -1551,8 +1529,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // bmp loop: check if all codepoints are |<| 0x10000 with VPTEST mask 0xffff0000
         alignLoopHead(crb, asm);
         asm.bind(labelBMPLoop);
-        movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
-        ptest(asm, vectorSize, vecArray, vecMaskBMP);
+        asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
+        asm.ptest(vectorSize, vecArray, vecMaskBMP);
         asm.jccb(NotZero, labelAstralLoop);
         // check if any codepoints are in the forbidden UTF-16 surrogate range; if so, break
         // immediately and return BROKEN
@@ -1561,7 +1539,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         // bmp tail
         asm.bind(labelBMPTail);
-        ptest(asm, vectorSize, vecArrayTail, vecMaskBMP);
+        asm.ptest(vectorSize, vecArrayTail, vecMaskBMP);
         asm.jccb(NotZero, labelAstralTail);
         utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.jmpb(returnBMP);
@@ -1573,7 +1551,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // if so, break immediately and return BROKEN
         alignLoopHead(crb, asm);
         asm.bind(labelAstralLoop);
-        movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, stride));
+        asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
         utf32CheckInvalid(asm, vecArray, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.addqAndJcc(len, vectorLength, NotZero, labelAstralLoop, true);
 
@@ -1588,8 +1566,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.bind(tailLessThan32);
             asm.cmplAndJcc(lengthTail, elementsPerVector(XMM), Less, tailLessThan16, true);
 
-            movdqu(asm, XMM, vecArray, new AMD64Address(arr));
-            movdqu(asm, XMM, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
+            asm.movdqu(XMM, vecArray, new AMD64Address(arr));
+            asm.movdqu(XMM, vecArrayTail, new AMD64Address(arr, lengthTail, stride, -XMM.getBytes()));
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(asm, vectorSize, vecArray, vecArray, vecArrayTail, 0x02);
             asm.jmpb(tailSingleVector);
         }
@@ -1599,21 +1577,21 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // array is between 8 and 12 bytes long, load it into a vector register via two QWORD loads
         asm.movdq(vecArray, new AMD64Address(arr));
         asm.movdq(vecArrayTail, new AMD64Address(arr, lengthTail, stride, -QWORD.getBytes()));
-        movlhps(asm, vecArray, vecArrayTail);
+        asm.movlhps(vecArray, vecArrayTail);
         asm.jmpb(tailSingleVector);
 
         asm.bind(tailLessThan8);
         asm.testlAndJcc(lengthTail, lengthTail, Zero, returnAscii, true);
         // array is 4 bytes long, load it into a vector register via VMOVDL
-        movdl(asm, vecArray, new AMD64Address(arr));
+        asm.movdl(vecArray, new AMD64Address(arr));
 
         asm.bind(tailSingleVector);
-        ptest(asm, vectorSize, vecArray, vecMaskAscii);
+        asm.ptest(vectorSize, vecArray, vecMaskAscii);
         asm.jccb(Zero, returnAscii);
-        ptest(asm, vectorSize, vecArray, vecMaskLatin1);
+        asm.ptest(vectorSize, vecArray, vecMaskLatin1);
         asm.jccb(Zero, returnLatin1);
         utf32CheckInvalid(asm, vecArrayTail, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, false);
-        ptest(asm, vectorSize, vecArray, vecMaskBMP);
+        asm.ptest(vectorSize, vecArray, vecMaskBMP);
         asm.jcc(Zero, returnBMP);
 
         emitExit(asm, ret, returnAstral, end, CR_VALID_FIXED_WIDTH);
@@ -1625,18 +1603,18 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     private void utf32CheckInvalid(AMD64MacroAssembler asm, Register vecArrayDst, Register vecArraySrc, Register vecArrayTmp, Register vecMaskBroken, Register vecMaskOutOfRange, Label returnBroken,
                     boolean isShortJmp) {
         // right-shift string contents by 16
-        psrld(asm, vectorSize, vecArrayTmp, vecArraySrc, 16);
+        asm.psrld(vectorSize, vecArrayTmp, vecArraySrc, 16);
         // right-shift string contents (copy) by 11
-        psrld(asm, vectorSize, vecArrayDst, vecArraySrc, 11);
+        asm.psrld(vectorSize, vecArrayDst, vecArraySrc, 11);
         // identify codepoints larger than 0x10ffff ((codepoint >> 16) > 0x10)
-        pcmpgtd(asm, vectorSize, vecArrayTmp, vecMaskOutOfRange);
+        asm.pcmpgtd(vectorSize, vecArrayTmp, vecMaskOutOfRange);
         // identify codepoints in the forbidden UTF-16 surrogate range [0xd800-0xdfff]
         // ((codepoint >> 11) == 0x1b)
-        pcmpeqd(asm, vectorSize, vecArrayDst, vecMaskBroken);
+        asm.pcmpeqd(vectorSize, vecArrayDst, vecMaskBroken);
         // merge comparison results
-        por(asm, vectorSize, vecArrayDst, vecArrayTmp);
+        asm.por(vectorSize, vecArrayDst, vecArrayTmp);
         // check if any invalid character was present
-        ptest(asm, vectorSize, vecArrayDst, vecArrayDst);
+        asm.ptest(vectorSize, vecArrayDst, vecArrayDst);
         // return CR_BROKEN if any invalid character was present
         asm.jcc(NotZero, returnBroken, isShortJmp);
     }
@@ -1646,7 +1624,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void loadMask(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register vecMask, int value) {
-        movdqu(asm, vectorSize, vecMask, getMaskOnce(crb, createMaskBytes(value)));
+        asm.movdqu(vectorSize, vecMask, getMaskOnce(crb, createMaskBytes(value)));
     }
 
     private static AMD64Address getMaskOnce(CompilationResultBuilder crb, byte[] mask) {
