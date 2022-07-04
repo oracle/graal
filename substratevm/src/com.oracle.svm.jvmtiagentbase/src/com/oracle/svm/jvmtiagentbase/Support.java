@@ -158,12 +158,8 @@ public final class Support {
         return CTypeConversion.toCString(s);
     }
 
-    public static JNIObjectHandle getCallerClass(int depth) {
-        return getMethodDeclaringClass(getCallerMethod(depth));
-    }
-
-    public static JNIObjectHandle getDirectCallerClass() {
-        return getCallerClass(1);
+    public static boolean isSerializable(JNIEnvironment env, JNIObjectHandle serializeTargetClass) {
+        return jniFunctions().getIsAssignableFrom().invoke(env, serializeTargetClass, JvmtiAgentBase.singleton().handles().javaIoSerializable);
     }
 
     public static JNIMethodId getCallerMethod(int depth) {
@@ -179,6 +175,20 @@ public final class Support {
     public static JNIObjectHandle getObjectArgument(int slot) {
         WordPointer handlePtr = StackValue.get(WordPointer.class);
         if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
+            return nullHandle();
+        }
+        return handlePtr.read();
+    }
+
+    /**
+     * This method might be slightly faster than {@link #getObjectArgument}, but can only be used
+     * for instance methods, not static methods.
+     */
+    public static JNIObjectHandle getReceiver() {
+        WordPointer handlePtr = StackValue.get(WordPointer.class);
+        JvmtiError result = jvmtiFunctions().GetLocalInstance().invoke(jvmtiEnv(), nullHandle(), 0, handlePtr);
+        if (result != JvmtiError.JVMTI_ERROR_NONE) {
+            assert result != JvmtiError.JVMTI_ERROR_INVALID_SLOT : "not an instance method";
             return nullHandle();
         }
         return handlePtr.read();
@@ -425,10 +435,21 @@ public final class Support {
         guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with " + resultCode.name());
     }
 
+    public static void checkPhase(JvmtiError resultCode) throws WrongPhaseException {
+        if (resultCode == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
+            throw new WrongPhaseException();
+        }
+        check(resultCode);
+    }
+
     public static void checkJni(int resultCode) {
         guarantee(resultCode == JNIErrors.JNI_OK());
     }
 
     private Support() {
+    }
+
+    public static class WrongPhaseException extends Exception {
+        private static final long serialVersionUID = 8503239518909756105L;
     }
 }

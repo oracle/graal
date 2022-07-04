@@ -27,14 +27,22 @@ package org.graalvm.compiler.hotspot.amd64;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
+import static org.graalvm.compiler.core.common.StrideUtil.S1;
+import static org.graalvm.compiler.core.common.StrideUtil.S2;
+import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.SnippetStub;
+import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.NodeStrideUtil;
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.word.Pointer;
@@ -43,29 +51,101 @@ import jdk.vm.ci.meta.JavaKind;
 
 public final class AMD64ArrayEqualsStub extends SnippetStub {
 
-    public static final HotSpotForeignCallDescriptor STUB_BOOLEAN_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_BOOLEAN_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "booleanArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_BYTE_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_BYTE_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "byteArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_CHAR_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_CHAR_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "charArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_SHORT_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_SHORT_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "shortArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_INT_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_INT_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "intArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_LONG_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_LONG_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "longArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_FLOAT_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_FLOAT_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "floatArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_DOUBLE_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+    private static final HotSpotForeignCallDescriptor STUB_DOUBLE_ARRAY_EQUALS = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
                     "doubleArraysEquals", boolean.class, Pointer.class, Pointer.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor STUB_BYTE_ARRAY_EQUALS_DIRECT = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "byteArraysEqualsDirect", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_CHAR_ARRAY_EQUALS_DIRECT = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "charArraysEqualsDirect", boolean.class, Pointer.class, Pointer.class, int.class);
-    public static final HotSpotForeignCallDescriptor STUB_CHAR_ARRAY_EQUALS_BYTE_ARRAY = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
-                    "charArrayEqualsByteArray", boolean.class, Pointer.class, Pointer.class, int.class);
+    private static final HotSpotForeignCallDescriptor STUB_REGION_EQUALS_DYNAMIC_STRIDES = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS,
+                    "arrayRegionEqualsDynamicStrides", boolean.class, Object.class, long.class, Object.class, long.class, int.class, int.class);
+
+    private static HotSpotForeignCallDescriptor foreignCallDescriptor(String name) {
+        return new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS, name, boolean.class, Object.class, long.class, Object.class, long.class, int.class);
+    }
+
+    /**
+     * CAUTION: the ordering here is important: entries 0-9 must match the indices generated by
+     * {@link NodeStrideUtil#getDirectStubCallIndex(ValueNode, JavaKind, JavaKind)}.
+     *
+     * @see #getRegionEqualsStub(ArrayRegionEqualsNode, AMD64HotSpotLIRGenerator)
+     */
+    public static final HotSpotForeignCallDescriptor[] STUBS = {
+                    foreignCallDescriptor("arrayRegionEqualsS1S1"),
+                    foreignCallDescriptor("arrayRegionEqualsS1S2"),
+                    foreignCallDescriptor("arrayRegionEqualsS1S4"),
+                    foreignCallDescriptor("arrayRegionEqualsS2S1"),
+                    foreignCallDescriptor("arrayRegionEqualsS2S2"),
+                    foreignCallDescriptor("arrayRegionEqualsS2S4"),
+                    foreignCallDescriptor("arrayRegionEqualsS4S1"),
+                    foreignCallDescriptor("arrayRegionEqualsS4S2"),
+                    foreignCallDescriptor("arrayRegionEqualsS4S4"),
+
+                    STUB_REGION_EQUALS_DYNAMIC_STRIDES,
+
+                    STUB_BOOLEAN_ARRAY_EQUALS,
+                    STUB_BYTE_ARRAY_EQUALS,
+                    STUB_CHAR_ARRAY_EQUALS,
+                    STUB_SHORT_ARRAY_EQUALS,
+                    STUB_INT_ARRAY_EQUALS,
+                    STUB_LONG_ARRAY_EQUALS,
+                    STUB_FLOAT_ARRAY_EQUALS,
+                    STUB_DOUBLE_ARRAY_EQUALS,
+    };
+
+    public static ForeignCallDescriptor getArrayEqualsStub(ArrayEqualsNode arrayEqualsNode, AMD64HotSpotLIRGenerator gen) {
+        JavaKind stride = arrayEqualsNode.getKind();
+        ValueNode length = arrayEqualsNode.getLength();
+        if (length.isJavaConstant() && AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(), stride, stride, length.asJavaConstant().asInt(), gen.getMaxVectorSize())) {
+            // Yield constant-length arrays comparison assembly
+            return null;
+        }
+        switch (stride) {
+            case Boolean:
+                return STUB_BOOLEAN_ARRAY_EQUALS;
+            case Byte:
+                return STUB_BYTE_ARRAY_EQUALS;
+            case Char:
+                return STUB_CHAR_ARRAY_EQUALS;
+            case Short:
+                return STUB_SHORT_ARRAY_EQUALS;
+            case Int:
+                return STUB_INT_ARRAY_EQUALS;
+            case Long:
+                return STUB_LONG_ARRAY_EQUALS;
+            case Float:
+                return STUB_FLOAT_ARRAY_EQUALS;
+            case Double:
+                return STUB_DOUBLE_ARRAY_EQUALS;
+            default:
+                return null;
+        }
+    }
+
+    public static ForeignCallDescriptor getRegionEqualsStub(ArrayRegionEqualsNode regionEqualsNode, AMD64HotSpotLIRGenerator gen) {
+        int directStubCallIndex = regionEqualsNode.getDirectStubCallIndex();
+        GraalError.guarantee(-1 <= directStubCallIndex && directStubCallIndex < 9, "invalid direct stub call index");
+        ValueNode length = regionEqualsNode.getLength();
+        if (directStubCallIndex >= 0 && length.isJavaConstant() &&
+                        AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(),
+                                        StrideUtil.getConstantStrideA(directStubCallIndex),
+                                        StrideUtil.getConstantStrideB(directStubCallIndex), length.asJavaConstant().asInt(), gen.getMaxVectorSize())) {
+            // Yield constant-length arrays comparison assembly
+            return null;
+        }
+        return directStubCallIndex < 0 ? STUB_REGION_EQUALS_DYNAMIC_STRIDES : STUBS[directStubCallIndex];
+    }
 
     public AMD64ArrayEqualsStub(ForeignCallDescriptor foreignCallDescriptor, OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
         super(foreignCallDescriptor.getName(), options, providers, linkage);
@@ -112,17 +192,52 @@ public final class AMD64ArrayEqualsStub extends SnippetStub {
     }
 
     @Snippet
-    private static boolean byteArraysEqualsDirect(Pointer array1, Pointer array2, int length) {
-        return ArrayRegionEqualsNode.regionEquals(array1, array2, length, JavaKind.Byte, JavaKind.Byte);
+    private static boolean arrayRegionEqualsDynamicStrides(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides);
     }
 
     @Snippet
-    private static boolean charArraysEqualsDirect(Pointer array1, Pointer array2, int length) {
-        return ArrayRegionEqualsNode.regionEquals(array1, array2, length, JavaKind.Char, JavaKind.Char);
+    private static boolean arrayRegionEqualsS1S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S1);
     }
 
     @Snippet
-    private static boolean charArrayEqualsByteArray(Pointer array1, Pointer array2, int length) {
-        return ArrayRegionEqualsNode.regionEquals(array1, array2, length, JavaKind.Char, JavaKind.Byte);
+    private static boolean arrayRegionEqualsS1S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S2);
+    }
+
+    @Snippet
+    private static boolean arrayRegionEqualsS1S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S4);
+    }
+
+    @Snippet
+    private static boolean arrayRegionEqualsS2S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S1);
+    }
+
+    @Snippet
+    private static boolean arrayRegionEqualsS2S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S2);
+    }
+
+    @Snippet
+    private static boolean arrayRegionEqualsS2S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S4);
+    }
+
+    @Snippet
+    private static boolean arrayRegionEqualsS4S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S1);
+    }
+
+    @Snippet
+    private static boolean arrayRegionEqualsS4S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S2);
+    }
+
+    @Snippet
+    private static boolean arrayRegionEqualsS4S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S4);
     }
 }

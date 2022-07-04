@@ -93,7 +93,7 @@ public abstract class LoopFragment {
     public abstract void insertBefore(LoopEx l);
 
     public void disconnect() {
-        // TODO (gd) possibly abstract
+        GraalError.unimplemented();
     }
 
     public boolean contains(Node n) {
@@ -437,12 +437,12 @@ public abstract class LoopFragment {
     }
 
     public static NodeIterable<AbstractBeginNode> toHirBlocks(final Iterable<Block> blocks) {
-        return new NodeIterable<AbstractBeginNode>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<AbstractBeginNode> iterator() {
                 final Iterator<Block> it = blocks.iterator();
-                return new Iterator<AbstractBeginNode>() {
+                return new Iterator<>() {
 
                     @Override
                     public void remove() {

@@ -25,17 +25,25 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_DECRYPTBLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_ENCRYPTBLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.COUNTERMODE_IMPL_CRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MULTIPLY_TO_LEN;
@@ -48,15 +56,19 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VECTORIZED_MISMATCH;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VM_ERROR;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK;
@@ -99,7 +111,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.CheckcastArrayCopyCallNode;
@@ -120,10 +131,8 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -275,10 +284,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    private boolean registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
-        if (config.invokeJavaMethodAddress == 0) {
-            return true;
+    private void registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        if (config.invokeJavaMethodAddress == 0 || IS_IN_NATIVE_IMAGE) {
+            return;
         }
+        // These functions are only used for testing purposes but their registration also ensures
+        // that libgraal has support for InvokeJavaMethodStub built into the image, which is
+        // required for support of Truffle. Because of the lazy initialization of this support in
+        // Truffle we rely on this code to ensure the support is built into the image.
         ResolvedJavaMethod booleanReturnsBoolean = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "booleanReturnsBoolean");
         invokeJavaMethodStub(options, providers, TestForeignCalls.BOOLEAN_RETURNS_BOOLEAN, config.invokeJavaMethodAddress, booleanReturnsBoolean);
         ResolvedJavaMethod byteReturnsByte = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "byteReturnsByte");
@@ -293,8 +306,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         invokeJavaMethodStub(options, providers, TestForeignCalls.LONG_RETURNS_LONG, config.invokeJavaMethodAddress, longReturnsLong);
         ResolvedJavaMethod objectReturnsObject = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "objectReturnsObject");
         invokeJavaMethodStub(options, providers, TestForeignCalls.OBJECT_RETURNS_OBJECT, config.invokeJavaMethodAddress, objectReturnsObject);
-
-        return true;
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
@@ -431,37 +442,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD);
         }
 
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_BYTE, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_CHAR, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new ArrayIndexOfStub(options, providers,
-                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER.getSignature())));
         link(new UnwindExceptionToCallerStub(options, providers,
                         registerStubCall(UNWIND_EXCEPTION_TO_CALLER, DESTROYS_ALL_CALLER_SAVE_REGISTERS)));
@@ -492,12 +472,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, createDescriptor(REGISTER_FINALIZER, SAFEPOINT, NOT_REEXECUTABLE, any()), c.registerFinalizerAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD);
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD);
-            linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD);
-        } else {
-            assert c.notifyAddress == 0 : "unexpected value";
-        }
+        linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD);
@@ -530,6 +506,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(MULTIPLY_TO_LEN, c.multiplyToLen, NativeCall);
         }
 
+        if (c.md5ImplCompress != 0L) {
+            registerForeignCall(MD5_IMPL_COMPRESS, c.md5ImplCompress, NativeCall);
+        }
+        if (c.md5ImplCompressMultiBlock != 0L) {
+            registerForeignCall(MD5_IMPL_COMPRESS_MB, c.md5ImplCompressMultiBlock, NativeCall);
+        }
         if (c.useSHA1Intrinsics()) {
             registerForeignCall(SHA_IMPL_COMPRESS, c.sha1ImplCompress, NativeCall);
             registerForeignCall(SHA_IMPL_COMPRESS_MB, c.sha1ImplCompressMultiBlock, NativeCall);
@@ -542,11 +524,20 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(SHA5_IMPL_COMPRESS, c.sha512ImplCompress, NativeCall);
             registerForeignCall(SHA5_IMPL_COMPRESS_MB, c.sha512ImplCompressMultiBlock, NativeCall);
         }
+        if (c.sha3ImplCompress != 0L) {
+            registerForeignCall(SHA3_IMPL_COMPRESS, c.sha3ImplCompress, NativeCall);
+        }
+        if (c.sha3ImplCompressMultiBlock != 0L) {
+            registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
+        }
         if (c.useGHASHIntrinsics()) {
             registerForeignCall(GHASH_PROCESS_BLOCKS, c.ghashProcessBlocks, NativeCall);
         }
-        if (c.useBase64Intrinsics()) {
+        if (c.base64EncodeBlock != 0L) {
             registerForeignCall(BASE64_ENCODE_BLOCK, c.base64EncodeBlock, NativeCall);
+        }
+        if (c.base64DecodeBlock != 0L) {
+            registerForeignCall(BASE64_DECODE_BLOCK, c.base64DecodeBlock, NativeCall);
         }
         if (c.useMulAddIntrinsic()) {
             registerForeignCall(MUL_ADD, c.mulAdd, NativeCall);
@@ -559,6 +550,28 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         if (c.useSquareToLenIntrinsic()) {
             registerForeignCall(SQUARE_TO_LEN, c.squareToLen, NativeCall);
+        }
+        if (c.useCRC32Intrinsics) {
+            // This stub does callee saving
+            registerForeignCall(UPDATE_BYTES_CRC32, c.updateBytesCRC32Stub, NativeCall);
+        }
+        if (c.useCRC32CIntrinsics) {
+            registerForeignCall(UPDATE_BYTES_CRC32C, c.updateBytesCRC32C, NativeCall);
+        }
+        if (c.updateBytesAdler32 != 0L) {
+            registerForeignCall(UPDATE_BYTES_ADLER32, c.updateBytesAdler32, NativeCall);
+        }
+        if (c.bigIntegerLeftShiftWorker != 0L) {
+            registerForeignCall(BIGINTEGER_LEFT_SHIFT_WORKER, c.bigIntegerLeftShiftWorker, NativeCall);
+        }
+        if (c.bigIntegerRightShiftWorker != 0L) {
+            registerForeignCall(BIGINTEGER_RIGHT_SHIFT_WORKER, c.bigIntegerRightShiftWorker, NativeCall);
+        }
+        if (c.electronicCodeBookEncrypt != 0L) {
+            registerForeignCall(ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT, c.electronicCodeBookEncrypt, NativeCall);
+        }
+        if (c.electronicCodeBookDecrypt != 0L) {
+            registerForeignCall(ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT, c.electronicCodeBookDecrypt, NativeCall);
         }
 
         if (c.useAESIntrinsics) {
@@ -597,7 +610,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(VECTORIZED_MISMATCH, c.vectorizedMismatch, NativeCall);
         }
 
-        assert registerStubCallFunctions(options, providers, runtime.getVMConfig());
+        registerStubCallFunctions(options, providers, runtime.getVMConfig());
     }
 
     @SuppressWarnings("unused")

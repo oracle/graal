@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.Constants;
@@ -54,7 +55,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
-public abstract class ClassRegistry implements ContextAccess {
+public abstract class ClassRegistry extends ContextAccessImpl {
 
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
@@ -192,6 +193,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         Symbol<Type> pop() {
             if (isEmpty()) {
+                CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere();
             }
             Symbol<Type> res = head.entry;
@@ -203,8 +205,6 @@ public abstract class ClassRegistry implements ContextAccess {
             head = new Node(type, head);
         }
     }
-
-    private final EspressoContext context;
 
     private final int loaderID;
 
@@ -256,13 +256,8 @@ public abstract class ClassRegistry implements ContextAccess {
         }
     }
 
-    @Override
-    public final EspressoContext getContext() {
-        return context;
-    }
-
     protected ClassRegistry(EspressoContext context) {
-        this.context = context;
+        super(context);
         this.loaderID = context.getNewLoaderId();
         ReadWriteLock rwLock = new ReentrantReadWriteLock();
         this.packages = new PackageTable(rwLock);
@@ -339,7 +334,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
-            Symbol<Type> elemental = context.getTypes().getElementalType(type);
+            Symbol<Type> elemental = getContext().getTypes().getElementalType(type);
             Klass elementalKlass = findLoadedKlass(elemental);
             if (elementalKlass == null) {
                 return null;
@@ -359,7 +354,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     @SuppressWarnings("try")
     public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
-        Meta meta = getMeta();
+        Meta meta = getContext().getMeta();
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(getContext().getTimers())) {
             parserKlass = getParserKlass(bytes, typeOrNull, info);
@@ -386,7 +381,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, context, info);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, getContext(), info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
@@ -448,11 +443,11 @@ public abstract class ClassRegistry implements ContextAccess {
 
         ObjectKlass klass;
 
-        try (DebugCloseable define = KLASS_DEFINE.scope(context.getTimers())) {
+        try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            ContextDescription description = new ContextDescription(context.getLanguage(), context.getJavaVersion());
+            ContextDescription description = new ContextDescription(getContext().getLanguage(), getContext().getJavaVersion());
             LinkedKlass linkedKlass = LinkedKlass.create(description, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
-            klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
+            klass = new ObjectKlass(getContext(), linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
         if (superKlass != null) {
@@ -482,7 +477,7 @@ public abstract class ClassRegistry implements ContextAccess {
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
 
-        EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
+        EspressoError.guarantee(previous == null, "Class already defined", type);
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
         getRegistries().onKlassDefined(klass);
@@ -496,10 +491,10 @@ public abstract class ClassRegistry implements ContextAccess {
         try {
             klass = loadKlass(type, StaticObject.NULL);
         } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
                 StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
                 throw meta.throwException(ncdfe);
             }
             throw e;
@@ -525,12 +520,12 @@ public abstract class ClassRegistry implements ContextAccess {
 
         Klass loadedKlass = findLoadedKlass(renamedKlass.getType());
         if (loadedKlass != null) {
-            context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
+            getContext().getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
         }
 
         classes.put(renamedKlass.getType(), new ClassRegistries.RegistryEntry(renamedKlass));
         // record the new loading constraint
-        context.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
+        getContext().getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
     }
 
     public void onInnerClassRemoved(Symbol<Symbol.Type> type) {

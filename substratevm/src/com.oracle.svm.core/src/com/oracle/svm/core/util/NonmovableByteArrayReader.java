@@ -25,10 +25,10 @@
 package com.oracle.svm.core.util;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -41,16 +41,19 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public class NonmovableByteArrayReader {
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer pointerTo(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
             throw VMError.shouldNotReachHere("Returns a raw pointer and therefore must not be called at image build time.");
         }
-        assert byteIndex >= 0 && NumUtil.safeToInt(byteIndex) < NonmovableArrays.lengthOf(data);
-        Pointer result = ((Pointer) data).add(getByteArrayBaseOffset()).add(NumUtil.safeToInt(byteIndex));
-        assert result.equal(NonmovableArrays.addressOf(data, NumUtil.safeToInt(byteIndex))) : "sanity check that the optimized code above does the right thing";
+        assert byteIndex >= 0 && byteIndex == (int) byteIndex;
+        assert byteIndex < NonmovableArrays.lengthOf(data);
+        Pointer result = ((Pointer) data).add(getByteArrayBaseOffset()).add((int) byteIndex);
+        assert result.equal(NonmovableArrays.addressOf(data, (int) byteIndex)) : "sanity check that the optimized code above does the right thing";
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getS1(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
             return ByteArrayReader.getS1(NonmovableArrays.getHostedArray(data), byteIndex);
@@ -58,6 +61,7 @@ public class NonmovableByteArrayReader {
         return pointerTo(data, byteIndex).readByte(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getS2(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
             return ByteArrayReader.getS2(NonmovableArrays.getHostedArray(data), byteIndex);
@@ -65,6 +69,7 @@ public class NonmovableByteArrayReader {
         return pointerTo(data, byteIndex).readShort(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getS4(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
             return ByteArrayReader.getS4(NonmovableArrays.getHostedArray(data), byteIndex);
@@ -72,6 +77,7 @@ public class NonmovableByteArrayReader {
         return pointerTo(data, byteIndex).readInt(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getS8(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
             return ByteArrayReader.getS8(NonmovableArrays.getHostedArray(data), byteIndex);
@@ -79,14 +85,17 @@ public class NonmovableByteArrayReader {
         return pointerTo(data, byteIndex).readLong(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getU1(NonmovableArray<Byte> data, long byteIndex) {
         return getS1(data, byteIndex) & 0xFF;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getU2(NonmovableArray<Byte> data, long byteIndex) {
         return getS2(data, byteIndex) & 0xFFFF;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getU4(NonmovableArray<Byte> data, long byteIndex) {
         return getS4(data, byteIndex) & 0xFFFFFFFFL;
     }

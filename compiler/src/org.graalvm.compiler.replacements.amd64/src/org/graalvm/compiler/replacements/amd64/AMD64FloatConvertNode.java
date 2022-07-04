@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,7 +91,11 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
         // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special
         // cases.
         Stamp foldedStamp = super.foldStamp(newStamp);
-        return foldedStamp.meet(createInexactCaseStamp());
+        if (foldedStamp instanceof IntegerStamp) {
+            return foldedStamp.meet(createInexactCaseStamp());
+        } else {
+            return foldedStamp.unrestricted();
+        }
     }
 
     private Stamp createInexactCaseStamp() {

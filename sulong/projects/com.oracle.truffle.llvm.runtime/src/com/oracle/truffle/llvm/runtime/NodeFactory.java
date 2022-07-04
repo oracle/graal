@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -66,6 +67,12 @@ import java.util.List;
  */
 public interface NodeFactory {
 
+    DataLayout getDataLayout();
+
+    LLVMLanguage getLanguage();
+
+    boolean isCfgOsrEnabled();
+
     LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 
     LLVMExpressionNode createExtractElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode index);
@@ -93,6 +100,8 @@ public interface NodeFactory {
     LLVMExpressionNode createRMWXor(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
     LLVMStatementNode createFence();
+
+    LLVMExpressionNode createFenceExpression();
 
     LLVMExpressionNode createVectorLiteralNode(LLVMExpressionNode[] values, Type type);
 
@@ -189,12 +198,16 @@ public interface NodeFactory {
 
     LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly);
 
+    LLVMMemoryOpNode getFreeGlobalsBlockUncached(boolean readOnly);
+
     LLVMControlFlowNode createLoop(RepeatingNode body, int[] successorIDs);
 
     RepeatingNode createLoopDispatchNode(int exceptionValueSlot, List<? extends LLVMStatementNode> list, LLVMBasicBlockNode[] originalBodyNodes, int headerId, int[] indexMapping,
                     int[] successors, int successorSlot);
 
     LLVMExpressionNode createGetStackFromFrame();
+
+    boolean boxGlobals();
 
     LLVMStackAccess createStackAccess();
 

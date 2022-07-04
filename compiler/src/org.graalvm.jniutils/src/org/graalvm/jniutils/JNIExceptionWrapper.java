@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import static org.graalvm.jniutils.JNIUtil.findClass;
 import static org.graalvm.jniutils.JNIUtil.getJVMCIClassLoader;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
+import org.graalvm.jniutils.HotSpotCalls.HotSpotCall;
 import org.graalvm.jniutils.HotSpotCalls.JNIMethod;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
@@ -50,21 +51,23 @@ import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNI.JThrowable;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
+import java.util.Set;
 
 /**
  * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an native
  * image entry point, the exception is re-thrown in HotSpot.
  */
+@SuppressWarnings("serial")
 public final class JNIExceptionWrapper extends RuntimeException {
 
     private static final String HS_ENTRYPOINTS_CLASS = "org.graalvm.jniutils.JNIExceptionWrapperEntryPoints";
@@ -112,7 +115,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
         StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, throwableHandle);
         StackTraceElement[] mergedStack;
         boolean res;
-        if (hsStack.length == 0 || containsHotSpotCall(hsStack)) {
+        if (hsStack.length == 0 || containsJNIHostCall(hsStack)) {
             mergedStack = hsStack;
             res = false;
         } else {
@@ -205,23 +208,17 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 hsThrowable = updateStackTrace(env, hsThrowable, jniExceptionWrapper.getStackTrace());
             }
         } else {
-            hsThrowable = createExceptionOfSameType(env, original);
-            boolean hasSameExceptionType = hsThrowable.isNonNull();
-            if (!hasSameExceptionType) {
-                String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
-                JString hsMessage = createHSString(env, message);
-                hsThrowable = callCreateException(env, hsMessage);
-            }
+            String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
+            JString hsMessage = createHSString(env, message);
+            hsThrowable = callCreateException(env, hsMessage);
             StackTraceElement[] nativeStack = original.getStackTrace();
             if (nativeStack.length != 0) {
                 // Update stack trace only for exceptions which have stack trace.
                 // For exceptions which override fillInStackTrace merging stack traces only adds
                 // useless JNI calls.
                 StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
-                StackTraceElement[] mergedStack = mergeStackTraces(hsStack, nativeStack,
-                                hasSameExceptionType ? 0 : 1, // exception with same exception
-                                // type has no factory method
-                                0, false);
+                StackTraceElement[] mergedStack = mergeStackTraces(hsStack, nativeStack, 1,
+                                getIndexOfPropagateJNIExceptionFrame(nativeStack), false);
                 hsThrowable = updateStackTrace(env, hsThrowable, mergedStack);
             }
         }
@@ -284,7 +281,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
          */
         public StackTraceElement[] getMergedStackTrace() {
             StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, throwable);
-            if (hsStack.length == 0 || containsHotSpotCall(hsStack)) {
+            if (hsStack.length == 0 || containsJNIHostCall(hsStack)) {
                 return hsStack;
             } else {
                 StackTraceElement[] nativeStack = Thread.currentThread().getStackTrace();
@@ -346,6 +343,25 @@ public final class JNIExceptionWrapper extends RuntimeException {
         void handleException(ExceptionHandlerContext context);
     }
 
+    public static StackTraceElement[] mergeStackTraces(
+                    StackTraceElement[] hotSpotStackTrace,
+                    StackTraceElement[] nativeStackTrace,
+                    boolean originatedInHotSpot) {
+        if (originatedInHotSpot) {
+            if (containsJNIHostCall(hotSpotStackTrace)) {
+                // Already merged
+                return hotSpotStackTrace;
+            }
+        } else {
+            if (containsJNIHostCall(nativeStackTrace)) {
+                // Already merged
+                return nativeStackTrace;
+            }
+        }
+        return mergeStackTraces(hotSpotStackTrace, nativeStackTrace, originatedInHotSpot ? 0 : getIndexOfTransitionToNativeFrame(hotSpotStackTrace),
+                        getIndexOfPropagateJNIExceptionFrame(nativeStackTrace), originatedInHotSpot);
+    }
+
     /**
      * Merges {@code hotSpotStackTrace} with {@code nativeStackTrace}.
      *
@@ -378,7 +394,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
             } else {
                 useHotSpotStack = true;
             }
-            while (nativeStackIndex < nativeStackTrace.length && (startingnativeFrame || !HotSpotCalls.isHotSpotCall(nativeStackTrace[nativeStackIndex]))) {
+            while (nativeStackIndex < nativeStackTrace.length && (startingnativeFrame || !isJNIHostCall(nativeStackTrace[nativeStackIndex]))) {
                 startingnativeFrame = false;
                 merged[targetIndex++] = nativeStackTrace[nativeStackIndex++];
             }
@@ -391,12 +407,12 @@ public final class JNIExceptionWrapper extends RuntimeException {
      * Gets the stack trace from a JNI exception.
      *
      * @param env the {@link JNIEnv}
-     * @param throwableHandle the JNI exception to get the stack trace from
+     * @param throwableHandle the JNI exception to get the stack trace from.
      * @return the stack trace
      */
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
         byte[] serializedStackTrace = JNIUtil.createArray(env, (JByteArray) callGetStackTrace(env, throwableHandle));
-        try (DataInputStream in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(serializedStackTrace)))) {
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(serializedStackTrace))) {
             int len = in.readInt();
             StackTraceElement[] res = new StackTraceElement[len];
             for (int i = 0; i < len; i++) {
@@ -416,9 +432,9 @@ public final class JNIExceptionWrapper extends RuntimeException {
     /**
      * Determines if {@code stackTrace} contains a frame denoting a call into HotSpot.
      */
-    private static boolean containsHotSpotCall(StackTraceElement[] stackTrace) {
+    private static boolean containsJNIHostCall(StackTraceElement[] stackTrace) {
         for (StackTraceElement e : stackTrace) {
-            if (HotSpotCalls.isHotSpotCall(e)) {
+            if (isJNIHostCall(e)) {
                 return true;
             }
         }
@@ -427,7 +443,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
 
     private static JThrowable updateStackTrace(JNIEnv env, JThrowable throwableHandle, StackTraceElement[] mergedStackTrace) {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        try (DataOutputStream out = new DataOutputStream(new GZIPOutputStream(bout))) {
+        try (DataOutputStream out = new DataOutputStream(bout)) {
             out.writeInt(mergedStackTrace.length);
             for (int i = 0; i < mergedStackTrace.length; i++) {
                 StackTraceElement stackTraceElement = mergedStackTrace[i];
@@ -481,33 +497,26 @@ public final class JNIExceptionWrapper extends RuntimeException {
         return 0;
     }
 
+    /**
+     * Gets the index of the first frame denoting the native method call.
+     *
+     * @returns {@code 0} if no caller found
+     */
+    private static int getIndexOfTransitionToNativeFrame(StackTraceElement[] stackTrace) {
+        for (int i = 0; i < stackTrace.length; i++) {
+            if (stackTrace[i].isNativeMethod()) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
     private static boolean isStackFrame(StackTraceElement stackTraceElement, Class<?> clazz, String methodName) {
         return clazz.getName().equals(stackTraceElement.getClassName()) && methodName.equals(stackTraceElement.getMethodName());
     }
 
-    private static <T extends JObject> T createExceptionOfSameType(JNIEnv env, Throwable original) {
-        WordFactory.nullPointer();
-        String className = original.getClass().getTypeName();
-        JClass exceptionClass = JNIUtil.findClass(env, WordFactory.nullPointer(), getBinaryName(className), false);
-        if (exceptionClass.isNonNull()) {
-            JNIMethod constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class, String.class));
-            if (constructor != null) {
-                JNI.JValue args = StackValue.get(1, JNI.JValue.class);
-                args.addressOf(0).setJObject(createHSString(env, original.getMessage()));
-                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, args);
-                return res;
-            }
-            constructor = JNIMethod.findMethod(env, exceptionClass, false, false, "<init>", encodeMethodSignature(void.class));
-            if (constructor != null) {
-                T res = HotSpotCalls.getDefault().callNewObject(env, exceptionClass, constructor, WordFactory.nullPointer());
-                return res;
-            }
-        }
-        return WordFactory.nullPointer();
-    }
-
     // JNI calls
-    private static <T extends JObject> T callCreateException(JNIEnv env, JObject p0) {
+    private static JThrowable callCreateException(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
@@ -586,12 +595,15 @@ public final class JNIExceptionWrapper extends RuntimeException {
         JNI.JClass res = entryPointsClass;
         if (res.isNull()) {
             String binaryName = getBinaryName(HS_ENTRYPOINTS_CLASS);
-            JNI.JObject classLoader = getJVMCIClassLoader(env);
-            JNI.JClass entryPoints;
-            if (classLoader.isNonNull()) {
-                entryPoints = findClass(env, classLoader, binaryName);
-            } else {
-                entryPoints = findClass(env, binaryName);
+            JNI.JClass entryPoints = findClass(env, binaryName);
+            if (entryPoints.isNull()) {
+                // Clear the exception and try to load the entry points class using JVMCI
+                // classloader.
+                ExceptionClear(env);
+                JObject classLoader = getJVMCIClassLoader(env);
+                if (classLoader.isNonNull()) {
+                    entryPoints = findClass(env, classLoader, binaryName);
+                }
             }
             if (entryPoints.isNull()) {
                 // Here we cannot use JNIExceptionWrapper.
@@ -608,5 +620,42 @@ public final class JNIExceptionWrapper extends RuntimeException {
             }
         }
         return res;
+    }
+
+    /**
+     * Determines if {@code frame} is for a method denoting a call into HotSpot.
+     */
+    private static boolean isJNIHostCall(StackTraceElement frame) {
+        return JNI_TRANSITION_CLASS.equals(frame.getClassName()) && JNI_TRANSITION_METHODS.contains(frame.getMethodName());
+    }
+
+    /**
+     * Names of the methods in the {@link HotSpotCalls} class annotated by the {@link HotSpotCall}.
+     */
+    private static final Set<String> JNI_TRANSITION_METHODS;
+    private static final String JNI_TRANSITION_CLASS;
+    static {
+        Map<String, Method> entryPoints = new HashMap<>();
+        Map<String, Method> others = new HashMap<>();
+        for (Method m : HotSpotCalls.class.getDeclaredMethods()) {
+            if (m.getAnnotation(HotSpotCall.class) != null) {
+                Method existing = entryPoints.put(m.getName(), m);
+                if (existing != null) {
+                    throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
+                                    " must have unique name: " + m + " and " + existing);
+                }
+            } else {
+                others.put(m.getName(), m);
+            }
+        }
+        for (Map.Entry<String, Method> e : entryPoints.entrySet()) {
+            Method existing = others.get(e.getKey());
+            if (existing != null) {
+                throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
+                                " must have unique name: " + e.getValue() + " and " + existing);
+            }
+        }
+        JNI_TRANSITION_CLASS = HotSpotCalls.class.getName();
+        JNI_TRANSITION_METHODS = Set.copyOf(entryPoints.keySet());
     }
 }

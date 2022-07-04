@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.code.CompilationResult.MarkId;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
@@ -201,7 +202,9 @@ public class AMD64Call {
             // erratum padding should be inserted before the mov instruction.
             before = masm.directCall(0L, scratch);
         } else {
-            before = masm.directCall(align);
+            masm.alignBeforeCall(align, 0);
+            before = masm.position();
+            masm.call();
         }
         int after = masm.position();
         Call call = crb.recordDirectCall(before, after, callTarget, info);
@@ -211,6 +214,33 @@ public class AMD64Call {
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
         return before;
+    }
+
+    private static final int INLINE_CACHE_MOV_SIZE = 10;
+
+    /**
+     * Emits a direct call instruction, immediately preceded by a mov instruction. This is used for
+     * emitting HotSpot inline cache call. The runtime will patch the mov instruction to load the
+     * cached receiver type, which will be used in {@code [Entry Point]} code section for receiver
+     * type check.
+     *
+     * @param nonOopBits placeholder bit pattern for inline cache receiver type patching
+     */
+    public static void directInlineCacheCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, MarkId markId, long nonOopBits, LIRFrameState info) {
+        masm.alignBeforeCall(true, INLINE_CACHE_MOV_SIZE);
+        // The mark for an invocation that uses an inline cache must be placed at the
+        // instruction that loads the Klass from the inline cache.
+        crb.recordMark(markId);
+        int movPos = masm.position();
+        masm.movq(AMD64.rax, nonOopBits);
+        int before = masm.position();
+        assert movPos + INLINE_CACHE_MOV_SIZE == before;
+        masm.call();
+        int after = masm.position();
+        Call call = crb.recordDirectCall(before, after, callTarget, info);
+        checkCallDisplacementAlignment(crb, before, call);
+        crb.recordExceptionHandlers(after, info);
+        masm.ensureUniquePC();
     }
 
     private static void checkCallDisplacementAlignment(CompilationResultBuilder crb, int before, Call call) throws GraalError {
@@ -241,16 +271,19 @@ public class AMD64Call {
         masm.ensureUniquePC();
     }
 
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
+        return indirectCall(crb, masm, dst, callTarget, info, false);
+    }
+
     /**
      * @return the position of the emitted call instruction
      */
-    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
-        int before = masm.indirectCall(dst);
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, boolean mitigateDecodingAsDirectCall) {
+        int before = masm.indirectCall(dst, mitigateDecodingAsDirectCall);
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
         return before;
     }
-
 }

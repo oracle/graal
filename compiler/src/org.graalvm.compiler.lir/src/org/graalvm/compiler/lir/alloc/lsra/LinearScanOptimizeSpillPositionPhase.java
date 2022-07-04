@@ -222,7 +222,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
     }
 
     private Iterable<AbstractBlockBase<?>> blocksForInterval(Interval interval) {
-        return new Iterable<AbstractBlockBase<?>>() {
+        return new Iterable<>() {
             @Override
             public Iterator<AbstractBlockBase<?>> iterator() {
                 return new IntervalBlockIterator(interval);

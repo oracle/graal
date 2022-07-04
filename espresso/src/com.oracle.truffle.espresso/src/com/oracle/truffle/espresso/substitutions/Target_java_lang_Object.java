@@ -23,14 +23,16 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.dsl.Bind;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -46,7 +48,7 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
-    @Substitution(hasReceiver = true, methodName = "<init>")
+    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
@@ -55,25 +57,27 @@ public final class Target_java_lang_Object {
             return ((ObjectKlass) self.getKlass()).hasFinalizer();
         }
 
-        @Specialization(guards = "hasFinalizer(self)")
-        void registerFinalizer(@JavaType(Object.class) StaticObject self,
-                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_ref_Finalizer_register.getCallTarget())") DirectCallNode register) {
-            register.call(self);
-        }
-
-        @Fallback
+        @Specialization(guards = "!hasFinalizer(self)")
         void noFinalizer(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject self) {
             // nop
+        }
+
+        @TruffleBoundary
+        @Fallback
+        void registerFinalizer(@JavaType(Object.class) StaticObject self,
+                        @Cached("getMeta().java_lang_ref_Finalizer_register.getCallTarget()") CallTarget register,
+                        @Cached IndirectCallNode indirectCallNode) {
+            indirectCallNode.call(register, self);
         }
     }
 
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @JavaType(Object.class) StaticObject clone(@JavaType(Object.class) StaticObject self,
+                    @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
-        return VM.JVM_Clone(self, meta, profiler);
+        return VM.JVM_Clone(self, language, meta, profiler);
     }
 
     /* As of JDK 14+, these are no longer linked in libjava. */

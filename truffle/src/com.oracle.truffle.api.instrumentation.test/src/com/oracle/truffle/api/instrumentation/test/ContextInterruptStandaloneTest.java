@@ -89,6 +89,10 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
 
     @Rule public TestName testNameRule = new TestName();
 
+    public ContextInterruptStandaloneTest() {
+        ignoreCancelOnClose = true;
+    }
+
     @After
     public void checkInterrupted() {
         Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
@@ -240,6 +244,10 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
             beforeSleep.await();
             ctx.close(true);
             future.get();
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
         } finally {
             executorService.shutdownNow();
             executorService.awaitTermination(100, TimeUnit.SECONDS);
@@ -285,6 +293,10 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
             }
             for (Future<?> future : futures) {
                 future.get();
+            }
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
             }
         } finally {
             executorService.shutdownNow();

@@ -90,14 +90,14 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
                 EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, runtime.getTarget().arch);
 
                 StructuredGraph targetGraph = new StructuredGraph.Builder(graph.getOptions(), graph.getDebug(), AllowAssumptions.YES).method(graph.method()).trackNodeSourcePosition(
-                                graph.trackNodeSourcePosition()).build();
+                                graph.trackNodeSourcePosition()).profileProvider(graph.getProfileProvider()).build();
                 SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(runtime.getTarget().arch, targetGraph, context, true);
                 graphDecoder.decode(encodedGraph);
             }
 
             @Override
-            protected CharSequence getName() {
-                return "VerifyEncodingDecoding";
+            public CharSequence getName() {
+                return "VerifyEncodingDecodingPhase";
             }
         });
         return true;

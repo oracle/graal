@@ -53,6 +53,7 @@ import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Set;
 
 import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
@@ -133,6 +134,21 @@ public class WasmPolyglotTestSuite {
                     Assert.assertTrue("Should not throw internal error", !pex.isInternalError());
                 }
             }
+        }
+    }
+
+    @Test
+    public void extractKeys() throws IOException {
+        ByteSequence test = ByteSequence.create(binaryReturnConst);
+        Source source = Source.newBuilder(WasmLanguage.ID, test, "main").build();
+        try (Context context = Context.create(WasmLanguage.ID)) {
+            context.eval(source);
+            Value instance = context.getBindings(WasmLanguage.ID).getMember("main");
+            Set<String> keys = instance.getMemberKeys();
+            Assert.assertTrue("Should contain function 'main'", keys.contains("main"));
+            Assert.assertTrue("Should contain memory 'memory'", keys.contains("memory"));
+            Assert.assertTrue("Should contain global '__heap_base'", keys.contains("__heap_base"));
+            Assert.assertTrue("Should contain global '__data_end'", keys.contains("__data_end"));
         }
     }
 

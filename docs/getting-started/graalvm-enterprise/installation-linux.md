@@ -7,7 +7,7 @@ permalink: /getting-started/installation-linux/
 
 Follow these steps to install Oracle GraalVM Enterprise Edition on the Linux operating system:
 
-1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html?selected_tab=21).
+1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
 2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **11** or **17** for the Java version, **Linux** for the operating system, and **amd64** for the architecture.
 3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-linux-amd64-<version>.tar.gz**.
@@ -40,7 +40,7 @@ Tools/Utilities:
 
 Runtimes:
 * [Java on Truffle](../../reference-manual/java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
-* [Node.js](../../reference-manual/js/README.md) -- Node.js v14.18.1 compatible
+* [Node.js](../../reference-manual/js/README.md) -- Node.js v16.14.2 compatible
 * [Python](../../reference-manual/python/README.md) -- Python 3.8.5 compatible
 * [Ruby](../../reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
 * [R](/../../reference-manual/r/README.md) -- GNU R 4.0.3 compatible

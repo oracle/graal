@@ -98,6 +98,8 @@ public @interface TruffleFromLibGraal {
         GetURI(String.class, Object.class),
         IsBytecodeInterpreterSwitch(boolean.class, Object.class, long.class),
         IsBytecodeInterpreterSwitchBoundary(boolean.class, Object.class, long.class),
+        IsInInterpreter(boolean.class, Object.class, long.class),
+        IsTransferToInterpreterMethod(boolean.class, Object.class, long.class),
         IsCancelled(boolean.class, Object.class),
         IsInliningForced(boolean.class, Object.class),
         IsLastTier(boolean.class, Object.class),
@@ -106,6 +108,7 @@ public @interface TruffleFromLibGraal {
         IsSpecializationMethod(boolean.class, Object.class, long.class),
         IsSuppressedFailure(boolean.class, Object.class, Object.class, Supplier.class),
         IsTrivial(boolean.class, Object.class),
+        IsInlineable(boolean.class, Object.class, long.class),
         IsTruffleBoundary(boolean.class, Object.class, long.class),
         IsValueType(boolean.class, Object.class, long.class),
         InliningData(Object.class, Object.class),
@@ -118,8 +121,7 @@ public @interface TruffleFromLibGraal {
         OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class),
         OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
         RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
-        SetCallCount(void.class, Object.class, int.class),
-        SetInlinedCallCount(void.class, Object.class, int.class);
+        SetCallCounts(void.class, Object.class, int.class, int.class);
         // @formatter:on
 
         private final String signature;

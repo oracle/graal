@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,6 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -138,16 +137,9 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    @Fold
-    public static ResolvedJavaType methodHolderClass(@InjectedParameter IntrinsicContext context) {
-        return context.getOriginalMethod().getDeclaringClass();
-    }
-
-    @Fold
-    public static ResolvedJavaType getType(@Fold.InjectedParameter IntrinsicContext context, String typeName) {
+    public static ResolvedJavaType getType(ResolvedJavaType accessingClass, String typeName) {
         try {
-            UnresolvedJavaType unresolved = UnresolvedJavaType.create(typeName);
-            return unresolved.resolve(methodHolderClass(context));
+            return UnresolvedJavaType.create(typeName).resolve(accessingClass);
         } catch (LinkageError e) {
             throw new GraalError(e);
         }
@@ -677,6 +669,21 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static boolean useBiasedLocking(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.useBiasedLocking;
+    }
+
+    @Fold
+    public static boolean diagnoseSyncOnValueBasedClasses(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.diagnoseSyncOnValueBasedClasses != 0 && config.jvmAccIsValueBasedClass != 0;
+    }
+
+    @Fold
+    public static int jvmAccIsValueBasedClass(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.jvmAccIsValueBasedClass;
+    }
+
+    @Fold
+    public static long defaultPrototypeMarkWord(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.defaultPrototypeMarkWord();
     }
 
     @Fold

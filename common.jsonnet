@@ -9,7 +9,7 @@
   local downloads = common_json.downloads,
 
   mx:: {
-    packages +: {
+    packages+: {
       mx: mx_version
     }
   },
@@ -75,16 +75,8 @@
   // JDK definitions
   // ***************
   # jdk_version is an hidden field that can be used to generate job names
-  local jdk8 =           { jdk_version:: 8},
   local jdk11 =          { jdk_version:: 11},
   local jdk17 =          { jdk_version:: 17},
-
-  oraclejdk8::           jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8,      EXTRA_JAVA_HOMES : { pathlist :[ jdks["labsjdk-ee-11"] ]} }},
-  oraclejdk8Only::       jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8 }},
-  oraclejdk8Debug::      jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8Debug, EXTRA_JAVA_HOMES : { pathlist :[ jdks["labsjdk-ee-11"] ]} }},
-  oraclejdk8OnlyDebug::  jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8Debug }},
-
-  openjdk8::             jdk8 + { downloads+: { JAVA_HOME : jdks.openjdk8 }},
 
   oraclejdk11::          jdk11 + { downloads+: { JAVA_HOME : jdks.oraclejdk11 }},
   oraclejdk17::          jdk17 + { downloads+: { JAVA_HOME : jdks.oraclejdk17 }},
@@ -96,12 +88,18 @@
   "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
   "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
   "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
+  "labsjdk-ce-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-11-llvm"] }},
+  "labsjdk-ee-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-11-llvm"] }},
+  "labsjdk-ce-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
+  "labsjdk-ee-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
 
   # Aliases to edition specific labsjdks
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   labsjdk11Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-11Debug"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
+  labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],
+  labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
 
 
   // Hardware definitions
@@ -114,22 +112,42 @@
     arch:: error "self.arch not set" + where,
     capabilities +: [],
     catch_files +: common_json.catch_files,
-    logs : [
+    logs +: [
       "*.bgv",
-      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
-      "*/es-*.json"
+      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*"
     ]
+  },
+
+  ol7:: self.build_base + {
+    local ol7_image = self.ci_resources.infra.docker_image_ol7,
+    docker+: {
+      image: ol7_image,
+      mount_modules: true,
+    },
   },
 
   linux::   deps.linux   + self.common + {os::"linux",   capabilities+: [self.os]},
   darwin::  deps.darwin  + self.common + {os::"darwin",  capabilities+: [self.os]},
   windows:: deps.windows + self.common + {os::"windows", capabilities+: [self.os]},
+  windows_server_2016:: self.windows + {capabilities+: ["windows_server_2016"]},
 
   amd64::   { arch::"amd64",   capabilities+: [self.arch]},
   aarch64:: { arch::"aarch64", capabilities+: [self.arch]},
 
-  linux_amd64::     self.linux + self.amd64,
-  darwin_amd64::    self.darwin + self.amd64,
-  windows_amd64::   self.windows + self.amd64,
-  linux_aarch64::   self.linux + self.aarch64,
+  linux_amd64::               self.linux               + self.amd64,
+  darwin_amd64::              self.darwin              + self.amd64,
+  darwin_aarch64::            self.darwin              + self.aarch64 + {
+      # only needed until GR-22580 is resolved?
+      python_version: 3,
+  },
+  windows_amd64::             self.windows             + self.amd64,
+  windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
+  linux_aarch64::             self.linux               + self.aarch64,
+
+  mach5_target:: {targets+: ["mach5"]},
+
+  // Utils
+  disable_proxies:: {
+    setup+: [["unset", "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]],
+  },
 }

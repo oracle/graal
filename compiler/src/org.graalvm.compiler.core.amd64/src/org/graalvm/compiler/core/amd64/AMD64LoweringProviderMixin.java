@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
 import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
 import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
 import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
@@ -48,6 +46,12 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
+
+    @Override
+    default boolean divisionOverflowIsJVMSCompliant() {
+        // amd64 traps on a division overflow
+        return false;
+    }
 
     @Override
     default Integer smallestCompareWidth() {
@@ -67,21 +71,21 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
         return true;
     }
 
+    @Override
+    default boolean narrowsUseCastValue() {
+        return false;
+    }
+
+    @Override
+    default boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind) {
+        return false;
+    }
+
     /**
      * Performs AMD64-specific lowerings. Returns {@code true} if the given Node {@code n} was
      * lowered, {@code false} otherwise.
      */
-    default boolean lowerAMD64(Node n, LoweringTool tool) {
-        if (n instanceof AMD64ArrayIndexOfWithMaskNode) {
-            tool.getReplacements().getSnippetTemplateCache(AMD64TruffleArrayUtilsWithMaskSnippets.Templates.class).lower((AMD64ArrayIndexOfWithMaskNode) n);
-            return true;
-        }
-
-        if (n instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-            tool.getReplacements().getSnippetTemplateCache(AMD64TruffleArrayUtilsWithMaskSnippets.Templates.class).lower((AMD64ArrayRegionEqualsWithMaskNode) n);
-            return true;
-        }
-
+    default boolean lowerAMD64(Node n) {
         if (n instanceof CountLeadingZerosNode) {
             AMD64 arch = (AMD64) getTarget().arch;
             CountLeadingZerosNode count = (CountLeadingZerosNode) n;
@@ -92,7 +96,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
                 LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
                 ValueNode result = new SubNode(ConstantNode.forIntegerKind(JavaKind.Int, kind.getBitCount() - 1), new BitScanReverseNode(count.getValue()));
                 ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), result, NodeView.DEFAULT);
-                graph.addOrUniqueWithInputs(conditional);
+                conditional = graph.addOrUniqueWithInputs(conditional);
                 count.replaceAndDelete(conditional);
                 return true;
             }
@@ -107,7 +111,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
                 ValueNode zero = ConstantNode.forIntegerKind(kind, 0, graph);
                 LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
                 ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), new BitScanForwardNode(count.getValue()), NodeView.DEFAULT);
-                graph.addOrUniqueWithInputs(conditional);
+                conditional = graph.addOrUniqueWithInputs(conditional);
                 count.replaceAndDelete(conditional);
                 return true;
             }

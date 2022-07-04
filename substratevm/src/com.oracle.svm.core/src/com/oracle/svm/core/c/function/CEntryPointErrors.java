@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import org.graalvm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -118,6 +118,12 @@ public final class CEntryPointErrors {
 
     @Description("The auxiliary image was built from a different primary image.") //
     public static final int AUX_IMAGE_PRIMARY_IMAGE_MISMATCH = 21;
+
+    @Description("The isolate arguments could not be parsed.") //
+    public static final int ARGUMENT_PARSING_FAILED = 22;
+
+    @Description("Current target does not support the following CPU features that are required by the image.") //
+    public static final int CPU_FEATURE_CHECK_FAILED = 23;
 
     public static String getDescription(int code) {
         String result = null;

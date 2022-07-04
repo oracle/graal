@@ -28,9 +28,9 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -141,7 +141,6 @@ public final class InterfaceMethodHandleTest extends GraalCompilerTest {
     private final AsmLoader loader;
 
     public InterfaceMethodHandleTest() {
-        exportPackage(JAVA_BASE, "jdk.internal.org.objectweb.asm");
         loader = new AsmLoader(UnbalancedMonitorsTest.class.getClassLoader());
     }
 

@@ -93,16 +93,10 @@ final class DefaultNodeExports {
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     @TruffleBoundary
     private static Object createDefaultScope(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
         LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
         FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
-        for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
-            if (!isInternal(slot.getIdentifier()) && (frame == null || InteropLibrary.isValidValue(frame.getValue(slot)))) {
-                slotsMap.put(Objects.toString(slot.getIdentifier()), slot);
-            }
-        }
         for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {
             if (!isInternal(entry.getKey()) && (frame == null || InteropLibrary.isValidValue(frame.getAuxiliarySlot(entry.getValue())))) {
                 slotsMap.put(Objects.toString(entry.getKey()), entry.getValue());
@@ -153,7 +147,6 @@ final class DefaultNodeExports {
             return true;
         }
 
-        @SuppressWarnings("deprecation")
         @ExportMessage
         @TruffleBoundary
         Object readMember(String member) throws UnknownIdentifierException {
@@ -164,11 +157,7 @@ final class DefaultNodeExports {
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
-                    return frame.getValue((com.oracle.truffle.api.frame.FrameSlot) slot);
-                } else {
-                    return frame.getAuxiliarySlot((int) slot);
-                }
+                return frame.getAuxiliarySlot((int) slot);
             }
         }
 
@@ -190,7 +179,6 @@ final class DefaultNodeExports {
             return slots.containsKey(member) && frame != null;
         }
 
-        @SuppressWarnings("deprecation")
         @ExportMessage
         @TruffleBoundary
         void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -201,11 +189,7 @@ final class DefaultNodeExports {
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
-                    frame.setObject((com.oracle.truffle.api.frame.FrameSlot) slot, value);
-                } else {
-                    frame.setAuxiliarySlot((int) slot, value);
-                }
+                frame.setAuxiliarySlot((int) slot, value);
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 @SuppressWarnings("unused")
 public class SharedCachedTest {
 
-    // TODO how to share primitive caches? maybe through a specialization class?
+    // TODO GR-38632 how to share primitive caches? maybe through a specialization class?
     abstract static class UnboundCachedPrimitiveNode extends Node {
 
         abstract Object execute(Object arg);

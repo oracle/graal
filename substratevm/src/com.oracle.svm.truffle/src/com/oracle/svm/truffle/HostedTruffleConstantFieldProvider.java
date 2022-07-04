@@ -66,4 +66,9 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
 
         return wrappedConstantFieldProvider.readConstantField(field, tool);
     }
+
+    @Override
+    public boolean maybeFinal(ResolvedJavaField field) {
+        return wrappedConstantFieldProvider.maybeFinal(field);
+    }
 }

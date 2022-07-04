@@ -67,6 +67,7 @@ import java.nio.charset.Charset;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -99,6 +100,8 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -766,10 +769,39 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testInvalidScheme() {
-        assertFails(() -> languageEnv.getPublicTruffleFile(URI.create("http://127.0.0.1/foo.js")), UnsupportedOperationException.class);
-        assertFails(() -> languageEnv.getInternalTruffleFile(URI.create("http://127.0.0.1/foo.js")), UnsupportedOperationException.class);
-        assertFails(() -> languageEnv.getTruffleFileInternal(URI.create("http://127.0.0.1/foo.js"), (f) -> false), UnsupportedOperationException.class);
+    public void testInvalidScheme() throws IOException {
+        URI httpScheme = URI.create("http://127.0.0.1/foo.js");
+        Path tmp = Files.createTempDirectory("invalidscheme");
+        Path existingJar = tmp.resolve("exiting.jar");
+        try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(existingJar, StandardOpenOption.CREATE))) {
+            out.putNextEntry(new ZipEntry("file.txt"));
+            out.write("content\n".getBytes(UTF_8));
+            out.closeEntry();
+        }
+        Path nonExistingJar = tmp.resolve("non_existing.jar");
+        URI jarSchemeExistingFile = URI.create("jar:" + existingJar.toUri() + "!/");
+        URI jarSchemeNonExistingFile = URI.create("jar:" + nonExistingJar.toUri() + "!/");
+        java.nio.file.FileSystem nioJarFS = FileSystems.newFileSystem(jarSchemeExistingFile, Collections.emptyMap());
+        try {
+            // Context with enabled IO
+            testInvalidSchemeImpl(httpScheme);
+            testInvalidSchemeImpl(jarSchemeExistingFile);
+            testInvalidSchemeImpl(jarSchemeNonExistingFile);
+            // Context with disabled IO
+            setupEnv(Context.newBuilder().build());
+            testInvalidSchemeImpl(httpScheme);
+            testInvalidSchemeImpl(jarSchemeExistingFile);
+            testInvalidSchemeImpl(jarSchemeNonExistingFile);
+        } finally {
+            nioJarFS.close();
+            delete(tmp);
+        }
+    }
+
+    private void testInvalidSchemeImpl(URI uri) {
+        assertFails(() -> languageEnv.getPublicTruffleFile(uri), UnsupportedOperationException.class);
+        assertFails(() -> languageEnv.getInternalTruffleFile(uri), UnsupportedOperationException.class);
+        assertFails(() -> languageEnv.getTruffleFileInternal(uri, (f) -> false), UnsupportedOperationException.class);
     }
 
     private static void delete(Path path) throws IOException {
@@ -903,6 +935,10 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         public static LanguageContext getContext() {
             return CONTEXT_REF.get(null);
         }
+
+        public DuplicateMimeTypeLanguage1() {
+            wrapper = false;
+        }
     }
 
     @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage2", name = "DuplicateMimeTypeLanguage2", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage2.Language2Detector.class)
@@ -914,10 +950,26 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             }
         }
 
+        public DuplicateMimeTypeLanguage2() {
+            wrapper = false;
+        }
     }
 
     @TruffleLanguage.Registration(id = "InternalTruffleFileTestLanguage", name = "InternalTruffleFileTestLanguage", characterMimeTypes = "text/x-internal-file-test")
     public static final class InternalTruffleFileTestLanguage extends ProxyLanguage {
+
+        public InternalTruffleFileTestLanguage() {
+            /*
+             * Whenever the language is not used as a standalone language, e.g. it is used in
+             * AbstractPolyglotTest#setupEnv, or the delegation is set directly by
+             * ProxyLanguage#setDelegate, we cannot set wrapper to false for all instances, because
+             * the instance created by Truffle framework must delegate to the instance set by
+             * ProxyLanguage#setDelegate.
+             */
+            if (ProxyLanguage.getDelegate().getClass() == ProxyLanguage.class) {
+                wrapper = false;
+            }
+        }
 
         public String getHome() {
             return getLanguageHome();

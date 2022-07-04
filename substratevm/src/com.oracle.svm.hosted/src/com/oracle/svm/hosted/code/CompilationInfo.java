@@ -27,10 +27,14 @@ package com.oracle.svm.hosted.code;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
@@ -48,13 +52,12 @@ public class CompilationInfo {
      */
     protected boolean inCompileQueue;
 
-    protected volatile StructuredGraph graph;
+    private volatile CompilationGraph compilationGraph;
+    private OptionValues compileOptions;
 
     protected boolean isTrivialMethod;
 
     protected boolean canDeoptForTesting;
-
-    protected boolean modifiesSpecialRegisters;
 
     /**
      * The constant arguments for a {@link DeoptTest} method called by a {@link Specialize} method.
@@ -126,22 +129,41 @@ public class CompilationInfo {
         return deoptTarget;
     }
 
-    public void setGraph(StructuredGraph graph) {
-        this.graph = graph;
+    public CompilationGraph getCompilationGraph() {
+        return compilationGraph;
     }
 
-    public void clear() {
-        graph = null;
-        specializedArguments = null;
-    }
+    @SuppressWarnings("try")
+    public StructuredGraph createGraph(DebugContext debug, CompilationIdentifier compilationId, boolean decode) {
+        var graph = new StructuredGraph.Builder(compileOptions, debug)
+                        .method(method)
+                        .recordInlinedMethods(false)
+                        .trackNodeSourcePosition(getCompilationGraph().getEncodedGraph().trackNodeSourcePosition())
+                        .compilationId(compilationId)
+                        .build();
 
-    public StructuredGraph getGraph() {
+        if (decode) {
+            try (var s = debug.scope("CreateGraph", graph, method)) {
+                var decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, graph);
+                decoder.decode(getCompilationGraph().getEncodedGraph());
+            } catch (Throwable ex) {
+                throw debug.handle(ex);
+            }
+        }
         return graph;
     }
 
-    public boolean modifiesSpecialRegisters() {
-        assert SubstrateOptions.useLLVMBackend();
-        return modifiesSpecialRegisters;
+    void encodeGraph(StructuredGraph graph) {
+        compilationGraph = CompilationGraph.encode(graph);
+    }
+
+    public void setCompileOptions(OptionValues compileOptions) {
+        this.compileOptions = compileOptions;
+    }
+
+    public void clear() {
+        compilationGraph = null;
+        specializedArguments = null;
     }
 
     public boolean isTrivialMethod() {

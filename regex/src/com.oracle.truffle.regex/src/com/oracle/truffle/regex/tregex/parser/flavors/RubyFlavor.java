@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,36 +40,34 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
 /**
  * An implementation of the Ruby regex flavor.
  *
  * <p>
- * This implementation supports translating all Ruby regular expressions to ECMAScript regular
- * expressions with the exception of the following features:
+ * This implementation supports all Ruby regular expressions with the exception of the following
+ * features:
  * </p>
  * <ul>
  * <li>case-insensitive backreferences: In Ruby, case-insensitive matching has to be implemented by
  * case-folding. However, there is no way we can case-fold a backreference, since we don't know
  * which string it will match.</li>
- * <li>\G escape sequence: In Ruby regular expressions, \G can be used to assert that we are at some
- * special position that was marked by a previous execution of the regular expression on that input.
- * ECMAScript doesn't support assertions which check the current index against some reference
- * value.</li>
+ * <li>\G escape sequence: In Ruby regular expressions, \G can be used to assert that we are still
+ * at the initial index. TRegex only provides limited support for this feature by handling cases
+ * when \G appears at the beginning of all top-level alternatives.</li>
  * <li>\K keep command: This command can be used in Ruby regular expressions to modify the matcher's
  * state so that it deletes any characters matched so far and considers the current position as the
  * start of the reported match. There is no operator like this in ECMAScript that would allow one to
  * tinker with the matcher's state.</li>
- * <li>backreferences to named capture groups with the same name: Ruby admits regular expressions
- * with named capture groups that share the same name. These situations can't be handled by
- * replacing those capture groups with regular numbered capture groups and then mapping the capture
- * group names to lists of capture group indices as we wouldn't know which of the homonymous capture
- * groups was matched last and therefore which value should be used.</li>
  * <li>Unicode character properties not supported by ECMAScript and not covered by the POSIX
  * character classes: Ruby regular expressions use the syntax \p{...} for Unicode character
  * properties. Similar to ECMAScript, they offer access to Unicode Scripts, General Categories and
@@ -79,33 +77,15 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * have access to extra Unicode character properties (e.g. Age) that we do not support. We could
  * dive through Ruby's implementation to find out which other properties might be used and try
  * providing them too.</li>
- * <li>\g&lt;...&gt; subexpression calls and \k&lt;...+-x&gt; backreferences to other levels: Ruby
- * allows recursive calls into subexpressions of the regular expression. There is nothing like this
- * in ECMAScript or in the TRegex engine. Furthermore, Ruby allows backreferences to access captured
- * groups on different levels (of the call stack), so as we don't support subexpression calls, we
- * also don't support those backreferences.</li>
- * <li>(?>....) atomic groups: This construct allows control over the matcher's backtracking by
- * making committed choices which can't be undone. This is not something we can support using
- * ECMAScript regexes, however these is an option ({@code IgnoreAtomicGroups}), that lets atomic
- * groups be treated like any other groups.</li>
- * <li>\X extended grapheme cluster escapes: This is just syntactic sugar for a certain expression
- * which uses atomic groups, and it is therefore not supported.</li>
- * <li>possessive quantifiers, e.g. a*+: Possessive quantifiers are quantifiers which consume
- * greedily and also do not allow backtracking, so they are another example of the atomic groups
- * that we do not support (a*+ is equivalent to (?>a*)).</li>
+ * <li>recursive \g&lt;...&gt; subexpression calls and \k&lt;...+-x&gt; backreferences to other
+ * levels</li>
+ * <li>\X extended grapheme cluster escapes: This escape sequence expands into a complex expression
+ * that references a lot of Unicode character sets that we currently do not have support for in
+ * TRegex.</li>
  * <li>(?~...) absent expressions: These constructs can be used in Ruby regular expressions to match
- * strings that do not contain a match for a given expression. ECMAScript doesn't offer a similar
- * operation.</li>
- * <li>quantifiers on lookaround assertions: We translate the Ruby regular expressions to
- * Unicode-mode ECMAScript regular expressions. Among other reasons, this lets us assume that a
- * single character matcher will match a single Unicode code point, not just a UTF-16 code unit, as
- * would be the case in non-Unicode ECMAScript regular expressions. Unicode-mode ECMAScript regular
- * expressions do not allow quantifiers on lookaround assertions, as they rarely make any sense. One
- * would hope to implement this by dropping any lookaround assertions that have a quantifier on them
- * that makes them optional. However, this is not correct as the lookaround assertion might contain
- * capture groups and thus have visible side effects.</li>
- * <li>conditional backreferences (?(group)then|else): There is no counterpart to this in ECMAScript
- * regular expressions.</li>
+ * strings that do not contain a match for a given expression. TRegex doesn't have support for this
+ * kind of construction.</li>
+ * <li>conditional backreferences (?(group)then|else)</li>
  * </ul>
  *
  * <p>
@@ -133,7 +113,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * 
  * This is solved in {@link TRegexBacktrackingNFAExecutorNode}, by the introduction of the
  * {@code backrefWithNullTargetSucceeds} field, which controls how backreferences to unmatched
- * capture groups are resolved. Also, in {@link RegexParser}, an optimization that drops forward
+ * capture groups are resolved. Also, in {@link JSRegexParser}, an optimization that drops forward
  * references and nested references from ECMAScript regular expressions is turned off for Ruby
  * regular expressions.</li>
  *
@@ -204,11 +184,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * we need fine-grained information about capture group updates and so we include this information
  * in the transition guards by {@link QuantifierGuard#createUpdateCG}.
  *
- * In unrolled loops, we disable empty checks altogether (in {@link RegexParser}, in the calls to
+ * In unrolled loops, we disable empty checks altogether (in {@link JSRegexParser}, in the calls to
  * {@code RegexParser#createOptional}). This is correct since Ruby's empty checks terminate a loop
  * only when it reaches a fixed point w.r.t. to any observable state. Finally, also in
- * {@link RegexParser}. we also disable an optimization that drops zero-width groups and lookaround
- * assertions with optional quantifiers.</li>
+ * {@link JSRegexParser}. we also disable an optimization that drops zero-width groups and
+ * lookaround assertions with optional quantifiers.</li>
  *
  * <li>failing the empty check should lead to matching the sequel of the quantified expression
  * instead of backtracking: In ECMAScript, when a loop fails the empty check (an iteration matches
@@ -248,8 +228,12 @@ public final class RubyFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexFlavorProcessor forRegex(RegexSource source) {
-        return new RubyFlavorProcessor(source);
+    public RegexValidator createValidator(RegexSource source) {
+        return RubyRegexParser.createValidator(source);
     }
 
+    @Override
+    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return RubyRegexParser.createParser(language, source, compilationBuffer);
+    }
 }

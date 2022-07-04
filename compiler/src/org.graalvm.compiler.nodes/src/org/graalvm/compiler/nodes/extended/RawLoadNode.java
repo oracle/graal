@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,9 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -59,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the load.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable {
+public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable, SingleMemoryKill {
     public static final NodeClass<RawLoadNode> TYPE = NodeClass.create(RawLoadNode.class);
 
     /**
@@ -114,6 +116,14 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation,
                     MemoryOrderMode memoryOrder) {
         super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, forceLocation, memoryOrder);
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
     }
 
     @Override

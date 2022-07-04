@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -45,6 +43,10 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -53,6 +55,7 @@ import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -67,7 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
-public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, Virtualizable, UncheckedInterfaceProvider {
+public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, Virtualizable, UncheckedInterfaceProvider, SingleMemoryKill {
 
     public static final NodeClass<LoadFieldNode> TYPE = NodeClass.create(LoadFieldNode.class);
 
@@ -106,6 +109,14 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
+    }
+
+    @Override
     public ValueNode getValue() {
         return object();
     }
@@ -113,7 +124,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
         NodeView view = NodeView.from(tool);
-        if (tool.allUsagesAvailable() && hasNoUsages() && !hasMemoryFences()) {
+        if (tool.allUsagesAvailable() && hasNoUsages() && !ordersMemoryAccesses()) {
             if (isStatic() || StampTool.isPointerNonNull(forObject.stamp(view))) {
                 return null;
             }
@@ -175,7 +186,8 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     private static PhiNode asPhi(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection,
                     MetaAccessProvider metaAcccess, OptionValues options, ValueNode forObject, ResolvedJavaField field, Stamp stamp) {
-        if (!field.isStatic() && field.isFinal() && forObject instanceof ValuePhiNode && ((ValuePhiNode) forObject).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
+        if (!field.isStatic() && (field.isFinal() || constantFields.maybeFinal(field)) && forObject instanceof ValuePhiNode &&
+                        ((ValuePhiNode) forObject).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
             PhiNode phi = (PhiNode) forObject;
             ConstantNode[] constantNodes = new ConstantNode[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
@@ -220,7 +232,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (hasMemoryFences()) {
+        if (ordersMemoryAccesses()) {
             return CYCLES_2;
         }
         return super.estimatedNodeCycles();

@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -89,24 +89,14 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         Registration r = new Registration(conf.getPlugins().getInvocationPlugins(), ConditionalEliminationRegressionTest.class);
-        r.register0("deoptimizeAndInvalidateUnreached", new InvocationPlugin() {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new InlineOnlyInvocationPlugin("deoptimizeAndInvalidateUnreached") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode));
                 return true;
             }
         });
-        r.register3("guardingBoolean", Object.class, boolean.class, boolean.class, new InvocationPlugin() {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new InlineOnlyInvocationPlugin("guardingBoolean", Object.class, boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode condition, ValueNode negatedConstant) {
                 if (!(condition instanceof ConditionalNode)) {

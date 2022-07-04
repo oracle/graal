@@ -67,6 +67,7 @@ final class ImageHeapMapFeature implements Feature {
         for (HostedImageHeapMap<?, ?> hostedImageHeapMap : allInstances) {
             if (needsUpdate(hostedImageHeapMap)) {
                 update(hostedImageHeapMap);
+                access.rescanObject(hostedImageHeapMap.runtimeMap);
                 access.requireAnalysisIteration();
             }
         }

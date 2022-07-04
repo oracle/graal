@@ -101,7 +101,7 @@ public final class AnalysisParsedGraph {
                 return optimizeAndEncode(bb, method, graph, false);
             }
 
-            InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
+            InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, options);
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
                 graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(), code).buildGraph(plugin);
@@ -114,7 +114,10 @@ public final class AnalysisParsedGraph {
                 return EMPTY;
             }
 
-            graph = new StructuredGraph.Builder(options, debug).method(method).build();
+            graph = new StructuredGraph.Builder(options, debug)
+                            .method(method)
+                            .recordInlinedMethods(false)
+                            .build();
             try (DebugContext.Scope s = debug.scope("ClosedWorldAnalysis", graph, method)) {
 
                 // enable this logging to get log output in compilation passes

@@ -32,6 +32,7 @@ import java.util.Map;
 
 import org.graalvm.options.OptionMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -40,24 +41,22 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.jvmti.JvmtiPhase;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-final class AgentLibraries implements ContextAccess {
+final class AgentLibraries extends ContextAccessImpl {
 
     private static final String AGENT_ONLOAD = "Agent_OnLoad";
     private static final NativeSignature ONLOAD_SIGNATURE = NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
-
-    private final EspressoContext context;
 
     private final List<AgentLibrary> agents = new ArrayList<>(0);
     private final InteropLibrary interop = InteropLibrary.getUncached();
 
     AgentLibraries(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     TruffleObject bind(Method method, String mangledName) {
@@ -82,15 +81,16 @@ final class AgentLibraries implements ContextAccess {
         for (AgentLibrary agent : agents) {
             TruffleObject onLoad = lookupOnLoad(agent);
             if (onLoad == null) {
-                throw context.abort("Unable to locate " + AGENT_ONLOAD + " in agent " + agent.name);
+                throw getContext().abort("Unable to locate " + AGENT_ONLOAD + " in agent " + agent.name);
             }
             try (RawBuffer optionBuffer = RawBuffer.getNativeString(agent.options)) {
-                ret = interop.execute(onLoad, context.getVM().getJavaVM(), optionBuffer.pointer(), RawPointer.nullInstance());
+                ret = interop.execute(onLoad, getContext().getVM().getJavaVM(), optionBuffer.pointer(), RawPointer.nullInstance());
                 assert interop.fitsInInt(ret);
                 if (interop.asInt(ret) != JNI_OK) {
-                    throw context.abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
+                    throw getContext().abort(AGENT_ONLOAD + " call for agent " + agent.name + " returned with error: " + interop.asInt(ret));
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -117,24 +117,19 @@ final class AgentLibraries implements ContextAccess {
             library = getNativeAccess().loadLibrary(Paths.get(agent.name));
         } else {
             // Lookup standard directory
-            library = getNativeAccess().loadLibrary(context.getVmProperties().bootLibraryPath(), agent.name, false);
+            library = getNativeAccess().loadLibrary(getContext().getVmProperties().bootLibraryPath(), agent.name, false);
             if (library == null) {
                 // Try library path directory
-                library = getNativeAccess().loadLibrary(context.getVmProperties().javaLibraryPath(), agent.name, false);
+                library = getNativeAccess().loadLibrary(getContext().getVmProperties().javaLibraryPath(), agent.name, false);
             }
         }
         if (library == null) {
-            throw context.abort("Could not locate library for agent " + agent.name);
+            throw getContext().abort("Could not locate library for agent " + agent.name);
         }
         agent.lib = library;
 
         TruffleObject onLoad = getNativeAccess().lookupAndBindSymbol(library, AGENT_ONLOAD, ONLOAD_SIGNATURE);
         return onLoad;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     private static class AgentLibrary {

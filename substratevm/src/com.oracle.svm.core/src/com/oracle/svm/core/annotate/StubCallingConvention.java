@@ -29,7 +29,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.graalvm.util.GuardedAnnotationAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -45,6 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
+@Platforms(Platform.HOSTED_ONLY.class)
 public @interface StubCallingConvention {
 
     class Utils {

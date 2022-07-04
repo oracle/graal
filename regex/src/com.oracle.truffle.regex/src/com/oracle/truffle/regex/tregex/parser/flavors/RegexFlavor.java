@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 
 /**
- * An implementation of a dialect (flavor) of regular expressions other than ECMAScript. The goal of
- * a flavor implementation is to translate regular expressions written in one flavor of regex (e.g.
- * Python) into equivalent regexes in ECMAScript.
+ * An implementation of a dialect (flavor) of regular expressions other than ECMAScript. It provides
+ * support for validating and parsing (building the AST) of regular expressions.
  */
 public abstract class RegexFlavor {
 
@@ -62,11 +65,9 @@ public abstract class RegexFlavor {
         this.traits = traits;
     }
 
-    /**
-     * Given a {@link RegexSource}, returns a {@link RegexFlavorProcessor} that can be used to parse
-     * and translate the flavored regex into an ECMAScript regex.
-     */
-    public abstract RegexFlavorProcessor forRegex(RegexSource source);
+    public abstract RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
+
+    public abstract RegexValidator createValidator(RegexSource source);
 
     private boolean hasTrait(int traitMask) {
         return (traits & traitMask) != 0;

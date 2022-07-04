@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -236,26 +236,18 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      *
      * @since 22.0
      */
+    @SuppressWarnings("unchecked")
     static <K, V> MapCursor<K, V> emptyCursor() {
-        return new MapCursor<K, V>() {
-            @Override
-            public void remove() {
-            }
+        return (MapCursor<K, V>) EmptyMap.EMPTY_CURSOR;
+    }
 
-            @Override
-            public boolean advance() {
-                return false;
-            }
-
-            @Override
-            public K getKey() {
-                return null;
-            }
-
-            @Override
-            public V getValue() {
-                return null;
-            }
-        };
+    /**
+     * Return an empty, unmodifiable {@link EconomicMap}.
+     *
+     * @since 22.2
+     */
+    @SuppressWarnings("unchecked")
+    static <K, V> EconomicMap<K, V> emptyMap() {
+        return (EconomicMap<K, V>) EmptyMap.EMPTY_MAP;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -433,6 +433,15 @@ class MBeanProxy<T extends DynamicMBean> {
      * Gets a pointer to a global word used as spin lock for safely defining classes in HotSpot.
      */
     static Pointer getDefineClassesStatePointer() {
+        // Substituted by Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy
+        return WordFactory.nullPointer();
+    }
+
+    /**
+     * Gets a pointer to a global word used as a flag to show a deprecated option warning only once
+     * even in case of multiple compiler isolates per process.
+     */
+    static Pointer getOptionWarningStatePointer() {
         // Substituted by Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy
         return WordFactory.nullPointer();
     }

@@ -86,13 +86,13 @@ Give it a name, and press Apply.
 ![](/img/add-project-sdk.png)
 
 If you wish to add GraalVM SDK platform-wise, navigate to Project Structure -> Platform Settings -> SDK.
-Then press the plus button (+)  -> Add JDK and open the folder where you installed GraalVM.
-Give it a name and press Apply.
+Then press the plus button, click Add JDK and open the folder where you installed GraalVM.
+Give it a name and click Apply.
 
 4&#46; Run the project. Setting GraalVM SDK as default for all project modules ensures that you run the project on GraalVM.
 To double-check that, verify the project's Run configurations: from the main menu select Run -> Run... -> Edit Configurations, expand Environment, and check the provided value.
 It should show GraalVM.
-Press Run.
+Click Run.
 
 ![](/img/run-jre-configurations.png)
 
@@ -106,7 +106,6 @@ It should show GraalVM.
 Press Debug.
 
 This will run the application and start a debugger session in the background.
-
 
 ## Configure JVM Options for Applications Running on GraalVM
 

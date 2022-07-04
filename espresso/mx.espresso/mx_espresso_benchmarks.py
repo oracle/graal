@@ -134,6 +134,8 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-o
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('safe', ['--experimental-options', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('field-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('field-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
 

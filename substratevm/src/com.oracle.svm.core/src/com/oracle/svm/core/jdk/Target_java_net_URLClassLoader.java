@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.security.AccessControlContext;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -54,6 +55,10 @@ final class Target_jdk_internal_loader_URLClassPath {
     /* The original locations of the .jar files are no longer available at run time. */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ArrayList.class)//
     private ArrayList<URL> path;
+
+    /* Reset acc to null, since contexts in image heap are replaced */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private AccessControlContext acc;
 
     @Substitute
     public Target_jdk_internal_loader_Resource getResource(String name, boolean check) {

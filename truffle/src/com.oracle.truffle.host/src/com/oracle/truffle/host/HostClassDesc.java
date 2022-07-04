@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -128,7 +128,7 @@ final class HostClassDesc {
         final Map<String, HostFieldDesc> staticFields;
         final HostMethodDesc functionalMethod;
 
-        private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc>() {
+        private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<>() {
             @Override
             public HostMethodDesc apply(HostMethodDesc m1, HostMethodDesc m2) {
                 return merge(m1, m2);
@@ -140,7 +140,7 @@ final class HostClassDesc {
             Map<String, HostMethodDesc> staticMethodMap = new LinkedHashMap<>();
             Map<String, HostFieldDesc> fieldMap = new LinkedHashMap<>();
             Map<String, HostFieldDesc> staticFieldMap = new LinkedHashMap<>();
-            HostMethodDesc functionalInterfaceMethod = null;
+            HostMethodDesc functionalInterfaceMethodImpl = null;
 
             collectPublicMethods(hostAccess, type, methodMap, staticMethodMap);
             collectPublicFields(hostAccess, type, fieldMap, staticFieldMap);
@@ -148,9 +148,9 @@ final class HostClassDesc {
             HostMethodDesc ctor = collectPublicConstructors(hostAccess, type);
 
             if (!Modifier.isInterface(type.getModifiers()) && !Modifier.isAbstract(type.getModifiers())) {
-                String functionalInterfaceMethodName = findFunctionalInterfaceMethodName(type);
-                if (functionalInterfaceMethodName != null) {
-                    functionalInterfaceMethod = methodMap.get(functionalInterfaceMethodName);
+                Method implementableAbstractMethod = findFunctionalInterfaceMethod(hostAccess, type);
+                if (implementableAbstractMethod != null) {
+                    functionalInterfaceMethodImpl = lookupAbstractMethodImplementation(implementableAbstractMethod, methodMap);
                 }
             }
 
@@ -159,16 +159,16 @@ final class HostClassDesc {
             this.constructor = ctor;
             this.fields = fieldMap;
             this.staticFields = staticFieldMap;
-            this.functionalMethod = functionalInterfaceMethod;
+            this.functionalMethod = functionalInterfaceMethodImpl;
         }
 
         private static boolean isClassAccessible(Class<?> declaringClass, HostClassCache hostAccess) {
-            return Modifier.isPublic(declaringClass.getModifiers()) && HostAccessor.JDKSERVICES.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
+            return Modifier.isPublic(declaringClass.getModifiers()) && HostContext.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
         }
 
         private static HostMethodDesc collectPublicConstructors(HostClassCache hostAccess, Class<?> type) {
             HostMethodDesc ctor = null;
-            if (isClassAccessible(type, hostAccess)) {
+            if (isClassAccessible(type, hostAccess) && !Modifier.isAbstract(type.getModifiers())) {
                 for (Constructor<?> c : type.getConstructors()) {
                     if (!hostAccess.allowsAccess(c)) {
                         continue;
@@ -188,26 +188,23 @@ final class HostClassDesc {
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited,
                         Class<?> startType) {
             boolean isPublicType = isClassAccessible(type, hostAccess) && !Proxy.isProxyClass(type);
-            boolean allMethodsPublic = true;
+            boolean includeInherited = hostAccess.allowsPublicAccess || hostAccess.allowsAccessInheritance;
             List<Method> bridgeMethods = null;
-            if (isPublicType) {
+            /**
+             * If we do not allow inheriting access, we discover all accessible methods through the
+             * public methods of this class. That way, (possibly inaccessible) method overrides hide
+             * inherited, otherwise accessible methods.
+             */
+            if (isPublicType || !includeInherited) {
                 for (Method m : type.getMethods()) {
                     Class<?> declaringClass = m.getDeclaringClass();
                     if (Modifier.isStatic(m.getModifiers()) && (declaringClass != startType && Modifier.isInterface(declaringClass.getModifiers()))) {
                         // do not inherit static interface methods
                         continue;
-                    } else if (!isClassAccessible(declaringClass, hostAccess)) {
-                        /*
-                         * If a public method is declared in a non-public superclass, there should
-                         * be a public bridge method in this class that provides access to it.
-                         *
-                         * In some more elaborate class hierarchies, or if the method is declared in
-                         * an interface (i.e. a default method), no bridge method is generated, so
-                         * search the whole inheritance hierarchy for accessible methods.
-                         */
-                        allMethodsPublic = false;
+                    } else if (!isClassAccessible(declaringClass, hostAccess) && !Proxy.isProxyClass(declaringClass)) {
+                        // the declaring class and the method itself must be public and accessible
                         continue;
-                    } else if (m.isBridge()) {
+                    } else if (m.isBridge() && hostAccess.allowsAccess(m)) {
                         /*
                          * Bridge methods for varargs methods generated by javac may not have the
                          * varargs modifier, so we must not use the bridge method in that case since
@@ -216,14 +213,13 @@ final class HostClassDesc {
                          * As a workaround, stash away all bridge methods and only consider them at
                          * the end if no equivalent public non-bridge method was found.
                          */
-                        allMethodsPublic = false;
                         if (bridgeMethods == null) {
                             bridgeMethods = new ArrayList<>();
                         }
                         bridgeMethods.add(m);
                         continue;
                     }
-                    if (visited.add(methodInfo(m))) {
+                    if (hostAccess.allowsAccess(m) && visited.add(methodInfo(m))) {
                         putMethod(hostAccess, m, methodMap, staticMethodMap);
                     }
                 }
@@ -232,11 +228,8 @@ final class HostClassDesc {
                     methodMap.put(arrayCloneMethod.getName(), arrayCloneMethod);
                 }
             }
-            /*
-             * Look for inherited public methods if the class/interface is not public or if we have
-             * seen a public method declared in a non-public class (see above).
-             */
-            if (!isPublicType || !allMethodsPublic) {
+            if (includeInherited) {
+                // Look for accessible inherited public methods, if allowed.
                 if (type.getSuperclass() != null) {
                     collectPublicMethods(hostAccess, type.getSuperclass(), methodMap, staticMethodMap, visited, startType);
                 }
@@ -247,8 +240,10 @@ final class HostClassDesc {
                 }
             }
             // Add bridge methods for public methods inherited from non-public superclasses.
+            // See https://bugs.openjdk.java.net/browse/JDK-6342411
             if (bridgeMethods != null && !bridgeMethods.isEmpty()) {
                 for (Method m : bridgeMethods) {
+                    assert hostAccess.allowsAccess(m); // already checked above
                     if (visited.add(methodInfo(m))) {
                         putMethod(hostAccess, m, methodMap, staticMethodMap);
                     }
@@ -286,9 +281,7 @@ final class HostClassDesc {
         }
 
         private static void putMethod(HostClassCache hostAccess, Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
-            if (!hostAccess.allowsAccess(m)) {
-                return;
-            }
+            assert hostAccess.allowsAccess(m);
             boolean scoped = hostAccess.methodScoped(m);
             SingleMethod method = SingleMethod.unreflect(m, scoped);
             Map<String, HostMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
@@ -378,12 +371,12 @@ final class HostClassDesc {
             }
         }
 
-        private static String findFunctionalInterfaceMethodName(Class<?> clazz) {
+        private static Method findFunctionalInterfaceMethod(HostClassCache hostAccess, Class<?> clazz) {
             for (Class<?> iface : clazz.getInterfaces()) {
-                if (Modifier.isPublic(iface.getModifiers()) && iface.isAnnotationPresent(FunctionalInterface.class)) {
+                if (isClassAccessible(iface, hostAccess) && iface.isAnnotationPresent(FunctionalInterface.class)) {
                     for (Method m : iface.getMethods()) {
                         if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
-                            return m.getName();
+                            return m;
                         }
                     }
                 }
@@ -391,7 +384,41 @@ final class HostClassDesc {
 
             Class<?> superclass = clazz.getSuperclass();
             if (superclass != null && superclass != Object.class) {
-                return findFunctionalInterfaceMethodName(superclass);
+                return findFunctionalInterfaceMethod(hostAccess, superclass);
+            }
+            return null;
+        }
+
+        private static HostMethodDesc lookupAbstractMethodImplementation(Method abstractMethod, Map<String, HostMethodDesc> methodMap) {
+            HostMethodDesc accessibleMethodDesc = methodMap.get(abstractMethod.getName());
+            if (accessibleMethodDesc != null) {
+                Class<?>[] searchTypes = abstractMethod.getParameterTypes();
+                SingleMethod[] available = accessibleMethodDesc.getOverloads();
+                List<SingleMethod> candidates = new ArrayList<>(available.length);
+                next: for (SingleMethod candidate : available) {
+                    Class<?>[] candidateTypes = candidate.getParameterTypes();
+                    if (searchTypes.length == candidateTypes.length) {
+                        for (int i = 0; i < searchTypes.length; i++) {
+                            if (candidateTypes[i].isAssignableFrom(searchTypes[i])) {
+                                // allow covariant parameter types
+                                continue;
+                            } else if (searchTypes[i].isAssignableFrom(candidateTypes[i])) {
+                                // allow contravariant generic type parameters
+                                continue;
+                            } else {
+                                continue next;
+                            }
+                        }
+                        candidates.add(candidate);
+                    }
+                }
+                if (candidates.size() == available.length) {
+                    return accessibleMethodDesc;
+                } else if (candidates.size() == 1) {
+                    return candidates.get(0);
+                } else if (candidates.size() > 1) {
+                    return new OverloadedMethod(candidates.toArray(new SingleMethod[candidates.size()]));
+                }
             }
             return null;
         }

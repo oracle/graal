@@ -29,7 +29,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.EdgeAction;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 
-public class SelectEdgeAction implements EdgeAction {
+public final class SelectEdgeAction implements EdgeAction {
     @CompilationFinal(dimensions = 1) //
     private final int[] from;
     @CompilationFinal(dimensions = 1) //

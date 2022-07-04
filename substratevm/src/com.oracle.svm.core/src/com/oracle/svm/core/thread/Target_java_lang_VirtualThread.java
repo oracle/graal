@@ -61,4 +61,7 @@ public final class Target_java_lang_VirtualThread {
 
     @Alias//
     private native StackTraceElement[] tryGetStackTrace();
+
+    @Alias
+    native boolean joinNanos(long nanos) throws InterruptedException;
 }

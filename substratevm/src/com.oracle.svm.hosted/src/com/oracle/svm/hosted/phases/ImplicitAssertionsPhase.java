@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -61,11 +61,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * the allocation of the error and the constructor invocation to a {@link BytecodeExceptionNode}
  * that is later lowered to either the allocation-free or the allocating variants in
  * {@link ImplicitExceptions}.
- * 
+ *
  * We only intrinsify the two most common constructors: the nullary constructor (no parameters), and
  * the constructor that takes a single Object parameter. The other variants are not used in
  * low-level VM code that must be allocation free, and are rarely used in general.
- * 
+ *
  * A side-benefit of this phase is reduced code size of images with assertions enabled, since the
  * pretty complex machine code for allocation is not inlined at every assertion.
  */
@@ -171,7 +171,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
          */
         List<ValueNode> args = new ArrayList<>(callTargetNode.arguments());
         args.remove(0);
-        BytecodeExceptionNode replacement = graph.add(new BytecodeExceptionNode(context.getMetaAccess(), bytecodeExceptionKind, args.toArray(new ValueNode[0])));
+        BytecodeExceptionNode replacement = graph.add(new BytecodeExceptionNode(context.getMetaAccess(), bytecodeExceptionKind, args.toArray(ValueNode.EMPTY_ARRAY)));
         replacement.setStateAfter(constructorInvoke.stateAfter());
 
         InvokeNode invokeNode;
@@ -185,6 +185,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
         } else {
             invokeNode = (InvokeNode) constructorInvoke;
         }
+        replacement.setNodeSourcePosition(invokeNode.getNodeSourcePosition());
         graph.replaceFixedWithFixed(invokeNode, replacement);
         graph.replaceFixedWithFloating(exceptionAllocation, replacement);
     }

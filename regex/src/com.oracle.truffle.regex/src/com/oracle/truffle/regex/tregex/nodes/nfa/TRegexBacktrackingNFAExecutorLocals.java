@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,22 +55,24 @@ import com.oracle.truffle.regex.util.BitSets;
  * <ul>
  * <li>the current index in the input string</li>
  * <li>the current NFA state</li>
- * <li>all current capture group boundaries</li>
+ * <li>all current capture group boundaries (including the number of the last matched group, if
+ * tracked)</li>
  * <li>all current quantifier loop counters</li>
  * <li>all saved indices for zero-width checks in quantifiers</li>
+ * <li>all saved capture groups for zero-width checks in quantifiers</li>
  * </ul>
  * The backtracker state is written to the stack in the order given above, so one stack frame looks
  * like this:
  *
  * <pre>
- * sp    sp+1      sp+2           sp+2+ncg           sp+2+ncg+nq
- * |     |         |              |                  |
- * v     v         v              v                  v
- * --------------------------------------------------------------------------
- * |index|nfa_state|capture_groups|quantifiers_counts|zero_width_quantifiers|
- * --------------------------------------------------------------------------
+ * sp    sp+1      sp+2           sp+2+ncg           sp+2+ncg+nq                   sp+2+ncg+nq+nzwq
+ * |     |         |              |                  |                             |
+ * v     v         v              v                  v                             v
+ * ----------------------------------------------------------------------------------------------------------
+ * |index|nfa_state|capture_groups|quantifiers_counts|zero_width_quantifier_indices|zero_width_quantifier_CG|
+ * ----------------------------------------------------------------------------------------------------------
  *
- * frame size: 2 + n_capture_groups*2 + n_quantifiers + n_zero_width_quantifiers
+ * frame size: 2 + n_capture_groups*2 [+ 1 last_group] + n_quantifiers + n_zero_width_quantifiers + zero_width_quantifier_CG_length
  * </pre>
  */
 public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLocals {
@@ -89,6 +91,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private final boolean trackLastGroup;
     private final boolean dontOverwriteLastGroup;
     private int lastResultSp = -1;
+    private int lastResultIndex = -1;
     private int lastInnerLiteralIndex;
     private int lastInitialStateIndex;
 
@@ -270,6 +273,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
      */
     public void pushResult() {
         lastResultSp = sp;
+        lastResultIndex = getIndex();
     }
 
     /**
@@ -284,7 +288,13 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public int[] popResult() {
-        return lastResultSp < 0 ? null : result;
+        if (lastResultSp < 0) {
+            return null;
+        }
+        // Restore the index to the locals to reflect the state of the successful match.
+        // This index will be reused when used inside a submatcher for an atomic group.
+        setIndex(lastResultIndex);
+        return result;
     }
 
     public boolean canPop() {

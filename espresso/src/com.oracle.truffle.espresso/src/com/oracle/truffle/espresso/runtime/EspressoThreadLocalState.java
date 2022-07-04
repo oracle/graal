@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -29,6 +30,10 @@ public class EspressoThreadLocalState {
     private EspressoException pendingJniException;
     private final ClassRegistry.TypeStack typeStack;
     private final VM.PrivilegedStack privilegedStack;
+    // Not compilation final. A single host thread can be associated with multiple different guest
+    // threads during its lifetime (for example: on natural exits, the host main thread will be both
+    // the guest main thread, and the DestroyVM thread).
+    private StaticObject currentThread;
 
     @SuppressWarnings("unused")
     public EspressoThreadLocalState(EspressoContext context) {
@@ -41,7 +46,7 @@ public class EspressoThreadLocalState {
         if (espressoException == null) {
             return null;
         }
-        return espressoException.getExceptionObject();
+        return espressoException.getGuestException();
     }
 
     public EspressoException getPendingException() {
@@ -55,6 +60,34 @@ public class EspressoThreadLocalState {
 
     public void clearPendingException() {
         setPendingException(null);
+    }
+
+    public void setCurrentThread(StaticObject t) {
+        assert currentThread == null || currentThread == t;
+        assert t != null && StaticObject.notNull(t);
+        assert t.getKlass().getContext().getThreadAccess().getHost(t) == Thread.currentThread() : "Current thread fast access set by non-current thread";
+        currentThread = t;
+    }
+
+    public void clearCurrentThread(StaticObject expectedGuest) {
+        if (currentThread == expectedGuest) {
+            currentThread = null;
+        }
+    }
+
+    public StaticObject getCurrentThread(EspressoContext context) {
+        StaticObject result = currentThread;
+        if (result == null) {
+            // Failsafe, should not happen.
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            context.getLogger().warning("Uninitialized fast current thread lookup for " + Thread.currentThread());
+            result = context.getGuestThreadFromHost(Thread.currentThread());
+            if (result != null) {
+                setCurrentThread(result);
+            }
+            return result;
+        }
+        return result;
     }
 
     public ClassRegistry.TypeStack getTypeStack() {

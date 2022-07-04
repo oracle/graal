@@ -32,10 +32,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class AbstractClassSerializationTest {
+public class AbstractClassSerializationTest implements Serializable {
+    private static final long serialVersionUID = 1L;
     private static final byte[] serializedObject;
     private static final Map<Integer, String> map;
 
@@ -45,7 +47,7 @@ public class AbstractClassSerializationTest {
         map.put(2, "This is a test");
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        ObjectOutputStream objectOutputStream = null;
+        ObjectOutputStream objectOutputStream;
         try {
             objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
             objectOutputStream.writeObject(map);

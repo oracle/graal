@@ -25,11 +25,11 @@
 package com.oracle.svm.core.identityhashcode;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 
 @AutomaticFeature
-final class SubstrateIdentityHashCodeFeature implements GraalFeature {
+final class SubstrateIdentityHashCodeFeature implements InternalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {

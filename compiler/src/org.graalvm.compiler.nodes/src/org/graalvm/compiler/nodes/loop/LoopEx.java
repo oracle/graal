@@ -137,13 +137,13 @@ public class LoopEx {
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideFrom insideFrom(FixedNode point) {
-        // TODO (gd)
+        GraalError.unimplemented();
         return null;
     }
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideBefore insideBefore(FixedNode point) {
-        // TODO (gd)
+        GraalError.unimplemented();
         return null;
     }
 

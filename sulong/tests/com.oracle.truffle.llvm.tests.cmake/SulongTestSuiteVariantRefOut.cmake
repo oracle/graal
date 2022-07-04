@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -71,5 +71,6 @@ macro(setupOptions)
     # reset in order to create a log message
     setCompilerConfig(LLVM_CONFIG ${LLVM_CONFIG})
     execute_process(COMMAND ${LLVM_CONFIG} --libdir OUTPUT_VARIABLE _llvm_config_libdir OUTPUT_STRIP_TRAILING_WHITESPACE)
-    setCompilerConfig(CMAKE_INSTALL_RPATH "${_llvm_config_libdir}")
+    execute_process(COMMAND ${LLVM_CONFIG} --host-target OUTPUT_VARIABLE _llvm_config_target OUTPUT_STRIP_TRAILING_WHITESPACE)
+    setCompilerConfig(CMAKE_INSTALL_RPATH "${_llvm_config_libdir}/${_llvm_config_target}")
 endmacro()

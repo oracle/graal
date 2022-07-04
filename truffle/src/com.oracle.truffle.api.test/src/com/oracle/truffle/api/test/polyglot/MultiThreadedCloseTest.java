@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,7 +100,7 @@ public class MultiThreadedCloseTest extends AbstractPolyglotTest {
 
     @Test
     public void testWithThreads() {
-        setupEnv(Context.newBuilder().allowCreateThread(true).build(), new CloseLanguage() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowCreateThread(true).build(), new CloseLanguage() {
 
             @Override
             protected void initializeContext(CloseContext ctx) throws Exception {

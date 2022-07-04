@@ -298,7 +298,6 @@ public class EventBinding<T> {
 
         }
 
-        @SuppressWarnings("deprecation")
         public SourceSectionFilter getFilter() {
             return filterSourceSection;
         }

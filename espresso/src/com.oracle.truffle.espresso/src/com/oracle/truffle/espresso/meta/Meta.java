@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOTSPOT;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
@@ -39,14 +39,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode;
+import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -62,9 +62,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
-public final class Meta implements ContextAccess {
+public final class Meta extends ContextAccessImpl {
 
-    private final EspressoContext context;
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
     private final InteropKlassesDispatch interopDispatch;
@@ -72,8 +71,8 @@ public final class Meta implements ContextAccess {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Meta(EspressoContext context) {
+        super(context);
         CompilerAsserts.neverPartOfCompilation();
-        this.context = context;
         this.stringConversion = StringConversion.select(context);
 
         // Give access to the partially-built Meta instance.
@@ -85,6 +84,7 @@ public final class Meta implements ContextAccess {
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
         java_lang_Object_array = java_lang_Object.array();
+        java_lang_Enum = knownKlass(Type.java_lang_Enum);
 
         EspressoError.guarantee(
                         new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES)).equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
@@ -228,6 +228,7 @@ public final class Meta implements ContextAccess {
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
         java_lang_NegativeArraySizeException = knownKlass(Type.java_lang_NegativeArraySizeException);
         java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
+        java_lang_IllegalStateException = knownKlass(Type.java_lang_IllegalStateException);
         java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
@@ -359,7 +360,10 @@ public final class Meta implements ContextAccess {
                         .field(higher(14), Name.interrupted, Type._boolean) //
                         .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
+        HIDDEN_ESPRESSO_MANAGED = java_lang_Thread.requireHiddenField(Name.HIDDEN_ESPRESSO_MANAGED);
         HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEPRECATION_SUPPORT);
+        HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS);
+        HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
 
         if (context.EnableManagement) {
             HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
@@ -1069,6 +1073,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_NegativeArraySizeException;
     public final ObjectKlass java_lang_IllegalArgumentException;
     public final ObjectKlass java_lang_IllegalMonitorStateException;
+    public final ObjectKlass java_lang_IllegalStateException;
     public final ObjectKlass java_lang_NullPointerException;
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
@@ -1174,7 +1179,10 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Thread_checkAccess;
     public final Method java_lang_Thread_stop;
     public final Field HIDDEN_HOST_THREAD;
+    public final Field HIDDEN_ESPRESSO_MANAGED;
     public final Field HIDDEN_INTERRUPTED;
+    public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
+    public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;
     public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
@@ -1403,6 +1411,7 @@ public final class Meta implements ContextAccess {
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
 
     // used by class redefinition
+    public final Klass java_lang_Enum;
     @CompilationFinal public ObjectKlass java_lang_reflect_Proxy;
     @CompilationFinal public ObjectKlass sun_misc_ProxyGenerator;
     @CompilationFinal public Method sun_misc_ProxyGenerator_generateProxyClass;
@@ -1553,6 +1562,7 @@ public final class Meta implements ContextAccess {
         if (arg instanceof Double) {
             return meta.boxDouble((double) arg);
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
 
@@ -1733,7 +1743,7 @@ public final class Meta implements ContextAccess {
         assert !Types.isPrimitive(type);
         ObjectKlass k = loadKlassOrNull(type, classLoader);
         if (k == null) {
-            throw EspressoError.shouldNotReachHere("Failed loading known class: ", type, ", discovered java version: ", getJavaVersion());
+            throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
         }
         return k;
     }
@@ -1889,7 +1899,7 @@ public final class Meta implements ContextAccess {
         if (StaticObject.isNull(str)) {
             return null;
         }
-        return stringConversion.toHost(str, this);
+        return stringConversion.toHost(str, getLanguage(), this);
     }
 
     @TruffleBoundary
@@ -1960,7 +1970,7 @@ public final class Meta implements ContextAccess {
                 return null;
             }
             if (guestObject.isArray()) {
-                return guestObject.unwrap();
+                return guestObject.unwrap(getLanguage());
             }
             if (guestObject.getKlass() == java_lang_String) {
                 return toHostString(guestObject);
@@ -1968,11 +1978,6 @@ public final class Meta implements ContextAccess {
             return unboxGuest((StaticObject) object);
         }
         return object;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     // region Guest Unboxing
@@ -2127,7 +2132,7 @@ public final class Meta implements ContextAccess {
             return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirect(null, (long) hostPrimitive);
         }
 
-        throw EspressoError.shouldNotReachHere("Not a boxed type ", hostPrimitive);
+        throw EspressoError.shouldNotReachHere("Not a boxed type " + hostPrimitive);
     }
 
     // endregion Guest boxing
@@ -2137,7 +2142,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a boolean.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2154,7 +2159,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a byte.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2171,7 +2176,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a short.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2188,7 +2193,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a char.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2205,7 +2210,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to an int.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2222,7 +2227,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a float.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2239,7 +2244,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a double.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2256,7 +2261,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2273,7 +2278,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a Object value to a StaticObject.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will return StaticObject.NULL when the Object value is not a StaticObject. If the conversion
      * is not possible, throws {@link EspressoError}.
      */
@@ -2287,7 +2292,7 @@ public final class Meta implements ContextAccess {
     /**
      * Bitwise conversion from a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will fill the upper bits with 0. If the conversion is not possible, throws
      * {@link EspressoError}.
      *
@@ -2296,7 +2301,7 @@ public final class Meta implements ContextAccess {
      */
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private long tryBitwiseConversionToLong(Object value, boolean defaultIfNull) {
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
+        if (getLanguage().getSpecComplianceMode() == HOTSPOT) {
             // Checkstyle: stop
             // @formatter:off
             if (value instanceof Boolean)   return ((boolean) value) ? 1 : 0;
@@ -2321,7 +2326,7 @@ public final class Meta implements ContextAccess {
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private StaticObject hotSpotMaybeNull(Object value) {
         assert !(value instanceof StaticObject);
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
+        if (getLanguage().getSpecComplianceMode() == HOTSPOT) {
             return StaticObject.NULL;
         }
         throw EspressoError.shouldNotReachHere("Unexpected object:" + value);

@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.config;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.List;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -149,6 +150,18 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
         Executable[] methods = type.getElement().getDeclaredConstructors();
         registerExecutable(type.getCondition(), queriedOnly, methods);
         return methods.length > 0;
+    }
+
+    @Override
+    public void registerUnsafeAllocated(ConditionalElement<Class<?>> clazz) {
+        Class<?> type = clazz.getElement();
+        if (!type.isArray() && !type.isInterface() && !Modifier.isAbstract(type.getModifiers())) {
+            registry.register(clazz.getCondition(), true, clazz.getElement());
+            /*
+             * Ignore otherwise as the implementation of allocateInstance will anyhow throw an
+             * exception.
+             */
+        }
     }
 
     @Override

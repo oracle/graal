@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,10 +89,11 @@ public class LanguageCacheTest {
 
     @Test
     public void testDuplicateLanguageIds() throws Throwable {
+        TruffleTestAssumptions.assumeNotAOT();
         CodeSource codeSource = LanguageCacheTest.class.getProtectionDomain().getCodeSource();
         Assume.assumeNotNull(codeSource);
         Path location = Paths.get(codeSource.getLocation().toURI());
-        Function<String, List<URL>> loader = new Function<String, List<URL>>() {
+        Function<String, List<URL>> loader = new Function<>() {
             @Override
             public List<URL> apply(String binaryName) {
                 try {
@@ -124,6 +125,7 @@ public class LanguageCacheTest {
 
     @Test
     public void testNestedArchives() throws Throwable {
+        TruffleTestAssumptions.assumeNotAOT();
         CodeSource codeSource = LanguageCacheTest.class.getProtectionDomain().getCodeSource();
         Assume.assumeNotNull(codeSource);
         URL location = codeSource.getLocation();

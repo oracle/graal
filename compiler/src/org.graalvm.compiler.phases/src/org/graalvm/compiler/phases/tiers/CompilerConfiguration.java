@@ -29,6 +29,7 @@ import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisC
 import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 
@@ -47,4 +48,8 @@ public interface CompilerConfiguration {
     LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage(OptionValues options);
 
     LIRPhaseSuite<FinalCodeAnalysisContext> createFinalCodeAnalysisStage(OptionValues options);
+
+    @SuppressWarnings("unused")
+    default void registerGraphBuilderPlugins(Plugins plugins, OptionValues options) {
+    }
 }

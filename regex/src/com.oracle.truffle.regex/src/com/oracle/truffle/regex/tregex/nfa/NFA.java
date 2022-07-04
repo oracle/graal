@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -225,7 +225,19 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public boolean isDead() {
-        return anchoredEntry != null ? getAnchoredInitialState().isDead(true) : (reverseAnchoredEntry.getSource().isDead(false) && reverseUnAnchoredEntry.getSource().isDead(false));
+        return anchoredEntry != null ? allDead(anchoredEntry) : (reverseAnchoredEntry.getSource().isDead(false) && reverseUnAnchoredEntry.getSource().isDead(false));
+    }
+
+    private static boolean allDead(NFAStateTransition[] entries) {
+        if (entries == null) {
+            return true;
+        }
+        for (NFAStateTransition t : entries) {
+            if (!t.getTarget().isDead(true)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void setInitialLoopBack(boolean enable) {

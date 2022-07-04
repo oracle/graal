@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public class LLVMAlias extends LLVMSymbol {
@@ -79,6 +80,7 @@ public class LLVMAlias extends LLVMSymbol {
     }
 
     public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
+        CompilerAsserts.partialEvaluationConstant(symbol);
         if (symbol.isAlias()) {
             return ((LLVMAlias) symbol).getTarget();
         }
@@ -93,5 +95,15 @@ public class LLVMAlias extends LLVMSymbol {
     @Override
     public LLVMElemPtrSymbol asElemPtrExpression() {
         return target.asElemPtrExpression();
+    }
+
+    @Override
+    public LLVMThreadLocalSymbol asThreadLocalSymbol() {
+        return target.asThreadLocalSymbol();
+    }
+
+    @Override
+    public boolean isThreadLocalSymbol() {
+        return target.isThreadLocalSymbol();
     }
 }

@@ -35,26 +35,32 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.util.VMError;
 
 public final class RuntimeSupport implements VMRuntimeSupport {
+    @FunctionalInterface
+    public interface Hook {
+        void execute(boolean isFirstIsolate);
+    }
+
     private final AtomicReference<InitializationState> initializationState = new AtomicReference<>(InitializationState.Uninitialized);
 
     /** Hooks that run before calling Java {@code main} or in {@link VMRuntime#initialize()}. */
-    private final AtomicReference<Runnable[]> startupHooks = new AtomicReference<>();
+    private final AtomicReference<Hook[]> startupHooks = new AtomicReference<>();
 
     /**
      * Hooks that run after the Java {@code main} method or when calling {@link Runtime#exit} (or
      * {@link System#exit}).
      */
-    private final AtomicReference<Runnable[]> shutdownHooks = new AtomicReference<>();
+    private final AtomicReference<Hook[]> shutdownHooks = new AtomicReference<>();
 
     /** Hooks that run during isolate initialization. */
-    private final AtomicReference<Runnable[]> initializationHooks = new AtomicReference<>();
+    private final AtomicReference<Hook[]> initializationHooks = new AtomicReference<>();
 
     /** Hooks that run during isolate tear-down. */
-    private final AtomicReference<Runnable[]> tearDownHooks = new AtomicReference<>();
+    private final AtomicReference<Hook[]> tearDownHooks = new AtomicReference<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private RuntimeSupport() {
@@ -72,7 +78,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addStartupHook(Runnable hook) {
+    public void addStartupHook(Hook hook) {
         addHook(startupHooks, hook);
     }
 
@@ -95,7 +101,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addShutdownHook(Runnable hook) {
+    public void addShutdownHook(Hook hook) {
         addHook(shutdownHooks, hook);
     }
 
@@ -103,7 +109,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         executeHooks(getRuntimeSupport().shutdownHooks);
     }
 
-    public void addInitializationHook(Runnable initHook) {
+    public void addInitializationHook(Hook initHook) {
         addHook(initializationHooks, initHook);
     }
 
@@ -112,7 +118,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         executeHooks(getRuntimeSupport().initializationHooks);
     }
 
-    public void addTearDownHook(Runnable tearDownHook) {
+    public void addTearDownHook(Hook tearDownHook) {
         addHook(tearDownHooks, tearDownHook);
     }
 
@@ -121,27 +127,28 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         executeHooks(getRuntimeSupport().tearDownHooks);
     }
 
-    private static void addHook(AtomicReference<Runnable[]> hooksReference, Runnable newHook) {
+    private static void addHook(AtomicReference<Hook[]> hooksReference, Hook newHook) {
         Objects.requireNonNull(newHook);
 
-        Runnable[] existingHooks;
-        Runnable[] newHooks;
+        Hook[] existingHooks;
+        Hook[] newHooks;
         do {
             existingHooks = hooksReference.get();
             if (existingHooks != null) {
                 newHooks = Arrays.copyOf(existingHooks, existingHooks.length + 1);
                 newHooks[newHooks.length - 1] = newHook;
             } else {
-                newHooks = new Runnable[]{newHook};
+                newHooks = new Hook[]{newHook};
             }
         } while (!hooksReference.compareAndSet(existingHooks, newHooks));
     }
 
-    private static void executeHooks(AtomicReference<Runnable[]> hooksReference) {
-        Runnable[] hooks = hooksReference.getAndSet(null);
+    private static void executeHooks(AtomicReference<Hook[]> hooksReference) {
+        Hook[] hooks = hooksReference.getAndSet(null);
         if (hooks != null) {
-            for (Runnable hook : hooks) {
-                hook.run();
+            boolean firstIsolate = Isolates.isCurrentFirst();
+            for (Hook hook : hooks) {
+                hook.execute(firstIsolate);
             }
         }
     }

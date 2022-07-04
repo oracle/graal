@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.nativebridge;
 
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,10 +31,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.LongPredicate;
 
 /**
- * We will need to turn {@link NativeIsolate} into an interface to support libgraal.
+ * Represents a single native image isolate. All {@link NativeObject}s have a {@link NativeIsolate}
+ * context.
  */
 public final class NativeIsolate {
 
@@ -48,10 +46,9 @@ public final class NativeIsolate {
     private final long uuid;
     private final long isolateId;
     private final JNIConfig config;
-    private final Set<Cleaner> cleaners;
-    private final ReferenceQueue<Object> cleanersQueue;
     private final ThreadLocal<NativeIsolateThread> attachedIsolateThread;
     private final Collection<NativeIsolateThread> threads;      // Guarded by this
+    final Set<NativeObjectCleaner<?>> cleaners;
     private volatile State state;  // Guarded by this
 
     private NativeIsolate(long isolateId, JNIConfig config) {
@@ -62,12 +59,18 @@ public final class NativeIsolate {
         this.isolateId = isolateId;
         this.config = config;
         this.cleaners = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        this.cleanersQueue = new ReferenceQueue<>();
         this.threads = new ArrayList<>();
         this.attachedIsolateThread = new ThreadLocal<>();
         this.state = State.ACTIVE;
     }
 
+    /**
+     * Binds a native image thread to this isolate. When a thread created in the native image enters
+     * for the first time to the host, it must be registered to the {@link NativeIsolate} as a
+     * native thread.
+     *
+     * @param isolateThreadId the isolate thread to bind.
+     */
     public void registerNativeThread(long isolateThreadId) {
         NativeIsolateThread nativeIsolateThread = attachedIsolateThread.get();
         if (nativeIsolateThread != null) {
@@ -83,18 +86,55 @@ public final class NativeIsolate {
         }
     }
 
+    /**
+     * Enters this {@link NativeIsolate} on the current thread.
+     *
+     * @throws IllegalStateException when this {@link NativeObject} is already closed or being
+     *             closed.
+     */
     public NativeIsolateThread enter() {
         NativeIsolateThread nativeIsolateThread = getOrCreateNativeIsolateThread();
-        nativeIsolateThread.enter();
-        return nativeIsolateThread;
+        if (nativeIsolateThread != null && nativeIsolateThread.enter()) {
+            return nativeIsolateThread;
+        } else {
+            throw throwClosedException();
+        }
     }
 
+    /**
+     * Tries to enter this {@link NativeIsolate} on the current thread.
+     *
+     * @return {@link NativeIsolateThread} on success or {@code null} when this
+     *         {@link NativeIsolate} is closed or being closed.
+     * @see #enter()
+     */
+    public NativeIsolateThread tryEnter() {
+        NativeIsolateThread nativeIsolateThread = getOrCreateNativeIsolateThread();
+        if (nativeIsolateThread != null && nativeIsolateThread.enter()) {
+            return nativeIsolateThread;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns true if the current thread is entered to this {@link NativeIsolate}.
+     */
     public boolean isActive() {
         NativeIsolateThread nativeIsolateThread = attachedIsolateThread.get();
         return nativeIsolateThread != null && (nativeIsolateThread.isNativeThread() || nativeIsolateThread.isActive());
     }
 
+    /**
+     * Requests an isolate shutdown. If there is no host thread entered into this
+     * {@link NativeIsolate} the isolate is closed and the isolate heap is freed. If this
+     * {@link NativeIsolate} has active threads the isolate is freed by the last leaving thread.
+     */
     public boolean shutdown() {
+        NativeIsolateThread currentIsolateThread = attachedIsolateThread.get();
+        if (currentIsolateThread != null && currentIsolateThread.isNativeThread()) {
+            return false;
+        }
         boolean deferredClose = false;
         synchronized (this) {
             if (state == State.DISPOSED) {
@@ -112,10 +152,16 @@ public final class NativeIsolate {
         }
     }
 
+    /**
+     * Returns the isolate address.
+     */
     public long getIsolateId() {
         return isolateId;
     }
 
+    /**
+     * Returns the {@link JNIConfig} used by this {@link NativeIsolate}.
+     */
     public JNIConfig getConfig() {
         return config;
     }
@@ -126,11 +172,13 @@ public final class NativeIsolate {
     }
 
     /**
-     * Gets the NativeIsolate object for the entered isolate with the specified isolateId.
+     * Gets the NativeIsolate object for the entered isolate with the specified isolate address.
      * IMPORTANT: Must be used only when the isolate with the specified isolateId is entered.
      *
      * @param isolateId id of an entered isolate
-     * @return NativeIsolate object for the entered isolate with the specified isolateId
+     * @return NativeIsolate object for the entered isolate with the specified isolate address
+     * @throws IllegalStateException when {@link NativeIsolate} does not exist for the
+     *             {@code isolateId}
      */
     public static NativeIsolate get(long isolateId) {
         NativeIsolate res = isolates.get(isolateId);
@@ -140,6 +188,15 @@ public final class NativeIsolate {
         return res;
     }
 
+    /**
+     * Creates a {@link NativeIsolate} for the {@code isolateId} and {@link JNIConfig}. This method
+     * can be called at most once, preferably right after creating the isolate. Use the
+     * {@link #get(long)} method to get an existing {@link NativeIsolate} instance.
+     *
+     * @return the newly created {@link NativeIsolate} for the {@code isolateId}.
+     * @throws IllegalStateException when {@link NativeIsolate} for the {@code isolateId} already
+     *             exists.
+     */
     public static NativeIsolate forIsolateId(long isolateId, JNIConfig config) {
         NativeIsolate res = new NativeIsolate(isolateId, config);
         NativeIsolate previous = isolates.put(isolateId, res);
@@ -149,11 +206,11 @@ public final class NativeIsolate {
         return res;
     }
 
-    public void registerForCleanup(Object cleanableObject, LongPredicate cleanupAction) {
-        if (state != State.DISPOSED) {
-            cleanHandles();
-            cleaners.add(new Cleaner(cleanersQueue, cleanableObject, cleanupAction));
-        }
+    /*
+     * Returns true if the isolate shutdown process has already begun or is finished.
+     */
+    public boolean isDisposed() {
+        return state == State.DISPOSED;
     }
 
     void lastLeave() {
@@ -169,39 +226,6 @@ public final class NativeIsolate {
 
     RuntimeException throwClosedException() {
         throw new IllegalStateException("Isolate 0x" + Long.toHexString(getIsolateId()) + " is already closed.");
-    }
-
-    private void cleanHandles() {
-        NativeIsolateThread nativeIsolateThread = null;
-        Cleaner cleaner;
-        try {
-            while ((cleaner = (Cleaner) cleanersQueue.poll()) != null) {
-                if (cleaners.remove(cleaner)) {
-                    if (nativeIsolateThread == null) {
-                        nativeIsolateThread = enter();
-                    }
-                    cleanImpl(this.isolateId, nativeIsolateThread.getIsolateThreadId(), cleaner.action);
-                }
-            }
-        } finally {
-            if (nativeIsolateThread != null) {
-                nativeIsolateThread.leave();
-            }
-        }
-    }
-
-    private static void cleanImpl(long isolate, long isolateThread, LongPredicate action) {
-        try {
-            if (!action.test(isolateThread)) {
-                throw new Exception(String.format("Error releasing %s in isolate 0x%x.", action, isolate));
-            }
-        } catch (Throwable t) {
-            boolean ae = false;
-            assert (ae = true) == true;
-            if (ae) {
-                t.printStackTrace();
-            }
-        }
     }
 
     private boolean doIsolateShutdown() {
@@ -240,7 +264,7 @@ public final class NativeIsolate {
         if (nativeIsolateThread == null) {
             synchronized (this) {
                 if (!state.isValid()) {
-                    throw throwClosedException();
+                    return null;
                 }
                 nativeIsolateThread = new NativeIsolateThread(Thread.currentThread(), this, false, config.attachThread(isolateId));
                 threads.add(nativeIsolateThread);
@@ -250,30 +274,14 @@ public final class NativeIsolate {
         return nativeIsolateThread;
     }
 
-    private static final class Cleaner extends WeakReference<Object> {
-
-        private final LongPredicate action;
-
-        private Cleaner(ReferenceQueue<Object> cleanersQueue, Object referent, LongPredicate action) {
-            super(referent, cleanersQueue);
-            this.action = action;
-        }
-    }
-
     private enum State {
 
-        ACTIVE(true),
-        DISPOSING(false),
-        DISPOSED(false);
-
-        private final boolean valid;
-
-        State(boolean valid) {
-            this.valid = valid;
-        }
+        ACTIVE,
+        DISPOSING,
+        DISPOSED;
 
         boolean isValid() {
-            return valid;
+            return this == ACTIVE;
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,22 +29,11 @@
  */
 package com.oracle.truffle.llvm.tests;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
+import com.oracle.truffle.llvm.tests.util.ProcessUtil;
+import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
@@ -54,11 +43,22 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameter;
 
-import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
-import com.oracle.truffle.llvm.tests.util.ProcessUtil;
-import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Base class for parameterized tests that run a {@link #getIsExecutableFilter() reference
@@ -133,16 +133,21 @@ public abstract class BaseSuiteHarness {
      */
     protected void validateResults(Path referenceBinary, ProcessUtil.ProcessResult referenceResult,
                     Path candidateBinary, ProcessUtil.ProcessResult candidateResult) {
+        ProcessUtil.ProcessResult filteredCandidateResult = TestEngineConfig.getInstance().filterCandidateProcessResult(candidateResult);
         String testCaseDescription = candidateBinary.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
         try {
-            Assert.assertEquals(testCaseDescription, referenceResult, candidateResult);
+            Assert.assertEquals(testCaseDescription, referenceResult, filteredCandidateResult);
         } catch (AssertionError e) {
             throw fail(getTestName(), e);
         }
     }
 
-    protected Map<String, String> getContextOptions() {
-        return TestEngineConfig.getInstance().getContextOptions();
+    protected Map<String, String> getContextOptions(String testFilePath) {
+        return TestEngineConfig.getInstance().getContextOptions(testFilePath);
+    }
+
+    protected boolean evaluateSourceOnly() {
+        return TestEngineConfig.getInstance().evaluateSourceOnly();
     }
 
     /**
@@ -161,7 +166,7 @@ public abstract class BaseSuiteHarness {
 
     @BeforeClass
     public static void createEngine() {
-        engine = Engine.newBuilder().allowExperimentalOptions(true).build();
+        engine = Engine.newBuilder().allowExperimentalOptions(true).options(TestEngineConfig.getInstance().getEngineOptions()).build();
     }
 
     @AfterClass
@@ -181,7 +186,8 @@ public abstract class BaseSuiteHarness {
         ProcessResult result;
         try {
             assert engine != null;
-            result = ProcessUtil.executeSulongTestMainSameEngine(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(), getCaptureOutput(), engine);
+            result = ProcessUtil.executeSulongTestMainSameEngine(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(candidateBinary.toAbsolutePath().toString()),
+                            getCaptureOutput(), engine, evaluateSourceOnly());
         } catch (Exception e) {
             throw fail(getTestName(), new Exception("Candidate binary that failed: " + candidateBinary, e));
         }
@@ -191,17 +197,20 @@ public abstract class BaseSuiteHarness {
             throw fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value: " + sulongRet));
         }
 
-        validateResults(referenceBinary, referenceResult, candidateBinary, result);
+        if (referenceBinary != null) {
+            validateResults(referenceBinary, referenceResult, candidateBinary, result);
+        }
     }
 
     private ProcessResult runReference(Path referenceBinary) {
         String[] inputArgs = getInputArgs(referenceBinary);
-        String cmdlineArgs = String.join(" ", inputArgs);
-        String cmd = String.join(" ", referenceBinary.toAbsolutePath().toString(), cmdlineArgs);
         int retries = 0;
         for (;;) {
             try {
-                return ProcessUtil.executeNativeCommand(cmd);
+                List<String> command = new ArrayList<>();
+                command.add(referenceBinary.toAbsolutePath().toString());
+                command.addAll(Arrays.asList(inputArgs));
+                return ProcessUtil.executeNativeCommand(command);
             } catch (ProcessUtil.TimeoutError e) {
                 /*
                  * Retry on timeout: This is the reference executable, if that's timing out, it's
@@ -217,25 +226,29 @@ public abstract class BaseSuiteHarness {
     @Test
     public void test() throws IOException {
         assumeNotExcluded();
-        Path referenceBinary;
-        ProcessResult referenceResult;
-        try (Stream<Path> walk = Files.list(getTestDirectory())) {
-            List<Path> files = walk.filter(getIsExecutableFilter()).collect(Collectors.toList());
+        Path referenceBinary = null;
+        ProcessResult referenceResult = null;
+        if (TestEngineConfig.getInstance().runReference()) {
+            try (Stream<Path> walk = Files.list(getTestDirectory())) {
+                List<Path> files = walk.filter(getIsExecutableFilter()).collect(Collectors.toList());
 
-            // some tests do not compile with certain versions of clang
-            assumeFalse("reference binary missing", files.isEmpty());
+                // some tests do not compile with certain versions of clang
+                assumeFalse("reference binary missing", files.isEmpty());
 
-            referenceBinary = files.get(0);
-            referenceResult = runReference(referenceBinary);
+                referenceBinary = files.get(0);
+                referenceResult = runReference(referenceBinary);
+            }
         }
 
-        try (Stream<Path> walk = Files.list(getTestDirectory())) {
-            List<Path> testCandidates = walk.filter(CommonTestUtils.isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
-            Assert.assertFalse("candidate list empty", testCandidates.isEmpty());
-            for (Path candidate : testCandidates) {
-                runCandidate(referenceBinary, referenceResult, candidate);
+        if (TestEngineConfig.getInstance().runCandidate()) {
+            try (Stream<Path> walk = Files.list(getTestDirectory())) {
+                List<Path> testCandidates = walk.filter(CommonTestUtils.isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
+                Assert.assertFalse("candidate list empty", testCandidates.isEmpty());
+                for (Path candidate : testCandidates) {
+                    runCandidate(referenceBinary, referenceResult, candidate);
+                }
+                pass(getTestName());
             }
-            pass(getTestName());
         }
     }
 

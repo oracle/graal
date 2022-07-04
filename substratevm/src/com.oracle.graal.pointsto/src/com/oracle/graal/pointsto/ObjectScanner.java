@@ -30,14 +30,10 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -46,7 +42,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -121,16 +116,9 @@ public class ObjectScanner {
 
     private void execute(Runnable runnable) {
         if (executor != null) {
-            executor.execute((ObjectScannerRunnable) debug -> runnable.run());
+            executor.execute(debug -> runnable.run());
         } else {
             runnable.run();
-        }
-    }
-
-    private interface ObjectScannerRunnable extends DebugContextRunnable {
-        @Override
-        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
-            return DebugContext.disabled(null);
         }
     }
 
@@ -163,8 +151,11 @@ public class ObjectScanner {
     protected final void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
+            if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
+                /* The value is not available yet. */
+                return;
+            }
             JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
-
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
@@ -236,7 +227,7 @@ public class ObjectScanner {
             return;
         }
         if (!bb.scanningPolicy().scanConstant(bb, value)) {
-            analysisType(bb, valueObj).registerAsInHeap();
+            bb.markTypeInHeap(analysisType(bb, valueObj));
             return;
         }
         if (scannedObjects.putAndAcquire(valueObj) == null) {
@@ -246,7 +237,7 @@ public class ObjectScanner {
                 scannedObjects.release(valueObj);
                 WorklistEntry worklistEntry = new WorklistEntry(value, reason);
                 if (executor != null) {
-                    executor.execute((ObjectScannerRunnable) debug -> doScan(worklistEntry));
+                    executor.execute(debug -> doScan(worklistEntry));
                 } else {
                     worklist.push(worklistEntry);
                 }
@@ -315,7 +306,7 @@ public class ObjectScanner {
         if (obj == null) {
             return "null";
         }
-        String str = obj.getClass().getTypeName() + '@' + Integer.toHexString(System.identityHashCode(obj));
+        String str = analysisType(bb, obj).toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
         if (appendToString) {
             try {
                 str += ": " + limit(obj.toString(), 80).replace(System.lineSeparator(), "");
@@ -431,8 +422,8 @@ public class ObjectScanner {
     }
 
     public static class OtherReason extends ScanReason {
-        public static final ScanReason RESCAN = new OtherReason("Manually triggered rescan");
-        public static final ScanReason HUB = new OtherReason("DynamicHub scan");
+        public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
+        public static final ScanReason HUB = new OtherReason("scanning a class constant");
 
         final String reason;
 

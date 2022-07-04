@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.FrameState;
@@ -40,6 +38,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -53,12 +52,12 @@ public class CompilationInfoSupport {
      * (deoptimization entry point).
      */
     public static final class DeoptSourceFrameInfo {
-        public final List<JavaKind> expectedKinds;
+        public final JavaKind[] expectedKinds;
         public final int numLocals;
         public final int numStack;
         public final int numLocks;
 
-        private DeoptSourceFrameInfo(List<JavaKind> expectedKinds, int numLocals, int numStack, int numLocks) {
+        private DeoptSourceFrameInfo(JavaKind[] expectedKinds, int numLocals, int numStack, int numLocks) {
             this.expectedKinds = expectedKinds;
             this.numLocals = numLocals;
             this.numStack = numStack;
@@ -69,8 +68,19 @@ public class CompilationInfoSupport {
             return new DeoptSourceFrameInfo(getKinds(state), state.localsSize(), state.stackSize(), state.locksSize());
         }
 
-        private static List<JavaKind> getKinds(FrameState state) {
-            return state.values().stream().map(DeoptSourceFrameInfo::getKind).collect(Collectors.toList());
+        private static JavaKind[] getKinds(FrameState state) {
+            JavaKind[] kinds = new JavaKind[state.locksSize() + state.stackSize() + state.localsSize()];
+            int index = 0;
+            for (int i = 0; i < state.locksSize(); i++) {
+                kinds[index++] = getKind(state.lockAt(i));
+            }
+            for (int i = 0; i < state.stackSize(); i++) {
+                kinds[index++] = getKind(state.stackAt(i));
+            }
+            for (int i = 0; i < state.localsSize(); i++) {
+                kinds[index++] = getKind(state.localAt(i));
+            }
+            return kinds;
         }
 
         private static JavaKind getKind(ValueNode value) {
@@ -87,15 +97,25 @@ public class CompilationInfoSupport {
          * the intersection of all potential deoptimization points.
          */
         public DeoptSourceFrameInfo mergeStateInfo(FrameState state) {
-            List<JavaKind> otherKinds = getKinds(state);
+            JavaKind[] otherKinds = getKinds(state);
 
             boolean matchingSizes = numLocals == state.localsSize() &&
                             numStack == state.stackSize() &&
                             numLocks == state.locksSize() &&
-                            expectedKinds.size() == otherKinds.size();
+                            expectedKinds.length == otherKinds.length;
             if (!matchingSizes) {
+                if (!NativeImageCodeCache.Options.VerifyDeoptimizationEntryPoints.getValue()) {
+                    /*
+                     * If VerifyDeoptimizationEntryPoints is not enabled, then this information does
+                     * not need to be accurate.
+                     */
+                    return this;
+                }
+
                 StringBuilder errorMessage = new StringBuilder();
-                errorMessage.append("Unexpected number of values in state to merge. Please report this problem.\n");
+                errorMessage.append(
+                                "Unexpected number of values in state to merge. Please report this problem and try building again with -H:-VerifyDeoptimizationEntryPoints " +
+                                                "to check if you are calling methods on the blocklist without a @TruffleBoundary.\n");
                 errorMessage.append(String.format("****Merge FrameState****\n%s************************\n", state.toString(Verbosity.Debugger)));
                 errorMessage.append(String.format("bci: %d, duringCall: %b, rethrowException: %b\n", state.bci, state.duringCall(), state.rethrowException()));
                 errorMessage.append(String.format("DeoptSourceFrameInfo: locals-%d, stack-%d, locks-%d.\n", numLocals, numStack, numLocks));
@@ -103,16 +123,16 @@ public class CompilationInfoSupport {
                 throw VMError.shouldNotReachHere(errorMessage.toString());
             }
 
-            for (int i = 0; i < expectedKinds.size(); i++) {
-                JavaKind current = expectedKinds.get(i);
-                JavaKind other = otherKinds.get(i);
+            for (int i = 0; i < expectedKinds.length; i++) {
+                JavaKind current = expectedKinds[i];
+                JavaKind other = otherKinds[i];
 
                 if (current != JavaKind.Illegal && current != other) {
                     /*
                      * The deopt target cannot have a value in this slot which matches all seen
                      * frame states.
                      */
-                    expectedKinds.set(i, JavaKind.Illegal);
+                    expectedKinds[i] = JavaKind.Illegal;
                 }
             }
             return this;

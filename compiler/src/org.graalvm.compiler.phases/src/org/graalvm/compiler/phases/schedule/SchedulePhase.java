@@ -81,6 +81,7 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -388,13 +389,13 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             if (!killed.isAny()) {
                 for (Node n : subList) {
                     // Check if this node kills a node in the watch list.
-                    if (n instanceof SingleMemoryKill) {
+                    if (MemoryKill.isSingleMemoryKill(n)) {
                         LocationIdentity identity = ((SingleMemoryKill) n).getKilledLocationIdentity();
                         killed.add(identity);
                         if (killed.isAny()) {
                             return;
                         }
-                    } else if (n instanceof MultiMemoryKill) {
+                    } else if (MemoryKill.isMultiMemoryKill(n)) {
                         for (LocationIdentity identity : ((MultiMemoryKill) n).getKilledLocationIdentities()) {
                             killed.add(identity);
                             if (killed.isAny()) {
@@ -485,10 +486,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         private static void checkWatchList(Block b, NodeMap<Block> nodeMap, NodeBitMap unprocessed, ArrayList<Node> result, ArrayList<FloatingReadNode> watchList, Node n) {
             if (watchList != null && !watchList.isEmpty()) {
                 // Check if this node kills a node in the watch list.
-                if (n instanceof SingleMemoryKill) {
+                if (MemoryKill.isSingleMemoryKill(n)) {
                     LocationIdentity identity = ((SingleMemoryKill) n).getKilledLocationIdentity();
                     checkWatchList(watchList, identity, b, result, nodeMap, unprocessed);
-                } else if (n instanceof MultiMemoryKill) {
+                } else if (MemoryKill.isMultiMemoryKill(n)) {
                     for (LocationIdentity identity : ((MultiMemoryKill) n).getKilledLocationIdentities()) {
                         checkWatchList(watchList, identity, b, result, nodeMap, unprocessed);
                     }
@@ -579,7 +580,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         Block previousCurrentBlock = currentBlock;
                         currentBlock = currentBlock.getDominator();
                         if (previousCurrentBlock.isLoopHeader()) {
-                            if (currentBlock.getRelativeFrequency() < latestBlock.getRelativeFrequency() ||
+                            if (compareRelativeFrequencies(currentBlock.getRelativeFrequency(), latestBlock.getRelativeFrequency()) <= 0 ||
                                             ((StructuredGraph) currentNode.graph()).isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
                                 // Only assign new latest block if frequency is actually lower or if
                                 // loop proxies would be required otherwise.
@@ -600,6 +601,18 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
 
             selectLatestBlock(currentNode, earliestBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
+        }
+
+        public static int compareRelativeFrequencies(double f1, double f2) {
+            double delta = 0.01D;
+            double res = f1 - f2;
+            if (res > delta) {
+                return 1;
+            }
+            if (res < -delta) {
+                return -1;
+            }
+            return 0;
         }
 
         protected static boolean isImplicitNullOpportunity(Node currentNode, Block block, boolean supportsImplicitNullChecks) {
@@ -1201,9 +1214,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         private static void printNode(Node n) {
             Formatter buf = new Formatter();
             buf.format("%s", n);
-            if (n instanceof SingleMemoryKill) {
+            if (MemoryKill.isSingleMemoryKill(n)) {
                 buf.format(" // kills %s", ((SingleMemoryKill) n).getKilledLocationIdentity());
-            } else if (n instanceof MultiMemoryKill) {
+            } else if (MemoryKill.isMultiMemoryKill(n)) {
                 buf.format(" // kills ");
                 for (LocationIdentity locid : ((MultiMemoryKill) n).getKilledLocationIdentities()) {
                     buf.format("%s, ", locid);

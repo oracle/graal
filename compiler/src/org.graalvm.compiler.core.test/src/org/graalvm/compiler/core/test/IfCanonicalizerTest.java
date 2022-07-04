@@ -33,11 +33,12 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.junit.Test;
 
@@ -226,12 +227,13 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
     private void testCombinedIf(String snippet, int count) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         CoreProviders context = getProviders();
-        new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
-        new FloatingReadPhase().apply(graph);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new HighTierLoweringPhase(canonicalizer).apply(graph, context);
+        new FloatingReadPhase(canonicalizer).apply(graph, context);
         MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
         new GuardLoweringPhase().apply(graph, midContext);
-        new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
-        createCanonicalizerPhase().apply(graph, context);
+        new MidTierLoweringPhase(canonicalizer).apply(graph, midContext);
+        canonicalizer.apply(graph, context);
         assertDeepEquals(count, graph.getNodes().filter(IfNode.class).count());
     }
 

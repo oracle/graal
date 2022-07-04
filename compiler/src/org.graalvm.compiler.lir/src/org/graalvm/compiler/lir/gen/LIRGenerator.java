@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
@@ -289,14 +288,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
     }
 
-    @Override
-    public Variable load(Value value) {
-        if (!isVariable(value)) {
-            return emitMove(value);
-        }
-        return asVariable(value);
-    }
-
     /**
      * Determines if only oop maps are required for the code generated from the LIR.
      */
@@ -482,7 +473,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
     }
 
-    public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+    public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value) {
         SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
 
         int keyCount = keyConstants.length;
@@ -531,11 +522,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
     }
 
-    public abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
+    public abstract void emitStrategySwitch(SwitchStrategy strategy, AllocatableValue key, LabelRef[] keyTargets, LabelRef defaultTarget);
 
-    protected abstract void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
+    protected abstract void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key);
 
-    protected abstract void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash);
+    protected abstract void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash);
 
     private static Optional<IntHasher> hasherFor(JavaConstant[] keyConstants) {
         int[] keys = new int[keyConstants.length];
@@ -545,7 +536,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return IntHasher.forKeys(keys);
     }
 
-    private void emitHashTableSwitch(IntHasher hasher, JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value) {
+    private void emitHashTableSwitch(IntHasher hasher, JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value) {
         Value hash = value;
         if (hasher.factor > 1) {
             Value factor = emitJavaConstant(JavaConstant.forShort(hasher.factor));

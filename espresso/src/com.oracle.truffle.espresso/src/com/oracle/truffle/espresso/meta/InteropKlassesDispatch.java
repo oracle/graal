@@ -30,11 +30,13 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.InterruptedExceptionInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.IterableInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.IteratorInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.ListInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.MapEntryInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.MapInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.ThrowableInterop;
 
 public class InteropKlassesDispatch {
     /**
@@ -59,6 +61,7 @@ public class InteropKlassesDispatch {
                         new Pair[]{Pair.create(meta.java_util_Map, MapInterop.class)},
                         new Pair[]{Pair.create(meta.java_util_Map_Entry, MapEntryInterop.class)},
                         new Pair[]{Pair.create(meta.java_util_Iterator, IteratorInterop.class)},
+                        new Pair[]{Pair.create(meta.java_lang_InterruptedException, InterruptedExceptionInterop.class), Pair.create(meta.java_lang_Throwable, ThrowableInterop.class)}
         };
     }
 

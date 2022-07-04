@@ -1,12 +1,13 @@
 ---
-layout: docs toc_group: truffle link_title: Truffle Strings Guide permalink:
-/graalvm-as-a-platform/language-implementation-framework/TruffleStrings/
+layout: docs
+toc_group: truffle
+link_title: Truffle Strings Guide
+permalink: /graalvm-as-a-platform/language-implementation-framework/TruffleStrings/
 ---
-
 # Truffle Strings Guide
 
-Truffle Strings is Truffle's primitive String type, which can be shared between languages. Language implementers are
-encouraged to use Truffle Strings as their language's string type for easier interoperability and better performance.
+Truffle Strings is Truffle's primitive String type, which can be shared between languages.
+Language implementers are encouraged to use Truffle Strings as their language's string type for easier interoperability and better performance.
 
 `TruffleString` supports a plethora of string encodings, but is especially optimized for the most commonly used:
 
@@ -19,23 +20,20 @@ encouraged to use Truffle Strings as their language's string type for easier int
 
 ### TruffleString API
 
-All operations exposed by `TruffleString` are provided as an inner `Node`, and as a static or instance methods. Users
-should use the provided nodes where possible, as the static/instance methods are just shorthands for executing their
-respective node's uncached version. All nodes are named `{NameOfOperation}Node`, and all convenience methods are
-named `{nameOfOperation}Uncached`.
+All operations exposed by `TruffleString` are provided as an inner `Node`, and as static or instance methods.
+Users should use the provided nodes where possible, as the static/instance methods are just shorthands for executing their respective node's uncached version.
+All nodes are named `{NameOfOperation}Node`, and all convenience methods are named `{nameOfOperation}Uncached`.
 
 Some operations support lazy evaluation, such as lazy concatenation or lazy evaluation of certain string properties.
-Most of these operations provide a parameter `boolean lazy`, which allows the user to enable or disable lazy evaluation
-on a per-callsite basis.
+Most of these operations provide a parameter `boolean lazy`, which allows the user to enable or disable lazy evaluation on a per-callsite basis.
 
-Operations dealing with index values, such as `CodePointAtIndex`, are available in two variants: codepoint-based
-indexing and byte-based indexing. Byte-based indexing is indicated by the `ByteIndex`-suffix or prefix in an operation's
-name, otherwise indices are based on codepoints. For example, the index parameter of`CodePointAtIndex` is
-codepoint-based, whereas `CodePointAtByteIndex` uses a byte-based index.
+Operations dealing with index values, such as `CodePointAtIndex`, are available in two variants: codepoint-based indexing and byte-based indexing.
+Byte-based indexing is indicated by the `ByteIndex`-suffix or prefix in an operation's name, otherwise indices are based on codepoints.
+For example, the index parameter of`CodePointAtIndex` is codepoint-based, whereas `CodePointAtByteIndex` uses a byte-based index.
 
 The list of currently available operations is listed below and grouped by category.
 
-Creating a new TruffleString:
+Creating a new `TruffleString`:
 
 * [FromCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.FromCodePointNode.html):
   Create a new TruffleString from a given codepoint.
@@ -110,8 +108,6 @@ Conversion:
   Convert a MutableTruffleString to an immutable TruffleString.
 * [AsManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsManagedNode.html):
   Convert a TruffleString backed by a native pointer to one backed by a java byte array.
-* [Materialize](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.MaterializeNode.html):
-  Force evaluation of lazily calculated string properties and materialization of a string's backing array.
 * [CopyToByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CopyToByteArrayNode.html):
   Copy a string's content into a byte array.
 * [GetInternalByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetInternalByteArrayNode.html):
@@ -131,6 +127,8 @@ Conversion:
 
 Accessing codepoints and bytes:
 
+* [Materialize](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.MaterializeNode.html):
+  Use this node to avoid materialization code inside loops iterating over a string's code points or bytes.
 * [ReadByte](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ReadByteNode.html):
   Read a single byte from a string.
 * [ReadCharUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ReadCharUTF16Node.html):
@@ -148,6 +146,8 @@ Accessing codepoints and bytes:
   Return the number of bytes occupied by the codepoint starting at a given byte index.
 * [CodePointIndexToByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointIndexToByteIndexNode.html):
   Convert a given codepoint index to a byte index on a given string.
+* [ByteIndexToCodePointIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ByteIndexToCodePointIndexNode.html):
+  Convert a given byte index to a codepoint index on a given string.
 
 Search:
 
@@ -189,10 +189,10 @@ Combining:
 
 A `TruffleString` can be created from a codepoint, a number, a primitive array or a `java.lang.String`.
 
-Strings of any encoding can be created with `TruffleString.FromByteArrayNode`, which expects a byte array containing the
-already encoded string. This operation can be non-copying, by setting the `copy` parameter to `false`. Caution:
-TruffleStrings will assume the array content to be immutable, do not modify the array after passing it to the
-non-copying variant of this operation!
+Strings of any encoding can be created with `TruffleString.FromByteArrayNode`, which expects a byte array containing the already encoded string.
+This operation can be non-copying, by setting the `copy` parameter to `false`.
+
+Important: `TruffleStrings` will assume the array content to be immutable, do not modify the array after passing it to the non-copying variant of this operation.
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -209,11 +209,9 @@ abstract static class SomeNode extends Node {
 }
 ```
 
-For easier creation of UTF-16 and UTF-32 strings independent of the system's endianness, TruffleString
-provides `TruffleString.FromCharArrayUTF16Node` and `TruffleString.FromIntArrayUTF32Node`.
+For easier creation of UTF-16 and UTF-32 strings independent of the system's endianness, `TruffleString` provides `TruffleString.FromCharArrayUTF16Node` and `TruffleString.FromIntArrayUTF32Node`.
 
-TruffleStrings may also be created via `TruffleStringBuilder`, which is TruffleString's equivalent
-to `java.lang.StringBuilder`.
+`TruffleString` may also be created via `TruffleStringBuilder`, which is `TruffleString`'s equivalent to `java.lang.StringBuilder`.
 
 `TruffleStringBuilder` provides the following operations:
 
@@ -236,7 +234,7 @@ to `java.lang.StringBuilder`.
 * [ToString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleStringBuilder.ToStringNode.html):
   Create a new TruffleString from a string builder.
 
-Example:
+See the below example:
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -268,9 +266,9 @@ abstract static class SomeNode extends Node {
 
 ### Encodings
 
-Every TruffleString string is encoded in a specific internal encoding, which is set during instantiation.
+Every `TruffleString` is encoded in a specific internal encoding, which is set during instantiation.
 
-TruffleString is fully optimized for the following encodings:
+`TruffleString` is fully optimized for the following encodings:
 
 * `UTF-8`
 * `UTF-16`
@@ -279,13 +277,11 @@ TruffleString is fully optimized for the following encodings:
 * `ISO-8859-1`
 * `BYTES`
 
-Many other encodings are supported, but not fully optimized. To use them, they must be enabled by
-setting `needsAllEncodings = true` in
-the [Truffle language registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html)
-.
+Many other encodings are supported, but not fully optimized.
+To use them, they must be enabled by setting `needsAllEncodings = true` in the [Truffle language registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html).
 
-A TruffleString's internal encoding is not exposed. Instead of querying a string's encoding, languages should pass
-an `expectedEncoding` parameter to all methods where the string's encoding matters (which is almost all operations).
+A `TruffleString`'s internal encoding is not exposed.
+Instead of querying a string's encoding, languages should pass an `expectedEncoding` parameter to all methods where the string's encoding matters (which is almost all operations).
 This allows re-using string objects when converting between encodings, if a string is byte-equivalent in both encodings.
 A string can be converted to a different encoding using `SwitchEncodingNode`, as shown in the following example:
 
@@ -321,21 +317,15 @@ abstract static class SomeNode extends Node {
 }
 ```
 
-Byte-equivalency between encodings is determined *with* string compaction on UTF-16 and UTF-32, so e.g. a compacted
-UTF-16 string is byte-equivalent to ISO-8859-1, and if all of its characters are in the ASCII range (see `CodeRange`),
-it is also byte-equivalent to UTF-8.
+Byte-equivalency between encodings is determined *with* string compaction on UTF-16 and UTF-32, so e.g. a compacted UTF-16 String is byte-equivalent to ISO-8859-1, and if all of its characters are in the ASCII range (see `CodeRange`), it is also byte-equivalent to UTF-8.
 
-To check if your code is switching encodings properly, run your unit tests with the system
-property `truffle.strings.debug-strict-encoding-checks=true`. This disables re-using string objects when switching
-encodings, and makes encoding checks more strict: all operations working on a single string will enforce an exact match,
+To check if your code is switching encodings properly, run your unit tests with the system property `truffle.strings.debug-strict-encoding-checks=true`.
+This disables re-using string objects when switching encodings, and makes encoding checks more strict: all operations working on a single string will enforce an exact match,
 whereas operations working on two strings will still allow byte-equivalent re-interpretations.
 
-All TruffleString operations with more than one string parameter require the strings to be in an encoding compatible
-with the result encoding. So either the strings need to be in the same encoding, or the caller must ensure that both
-strings are
-[compatible](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-)
-with the resulting encoding. This enable callers which already know the SwitchEncodingNodes would be noops to just skip
-them for footprint reasons.
+All `TruffleString` operations with more than one string parameter require the strings to be in an encoding compatible with the result encoding.
+So either the strings need to be in the same encoding, or the caller must ensure that both Strings are [compatible](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-) with the resulting encoding.
+This enable callers which already know the `SwitchEncodingNodes` would be noops to just skip them for footprint reasons.
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -360,7 +350,7 @@ abstract static class SomeNode extends Node {
 
 ### String Properties
 
-TruffleString strings expose the following properties:
+`TruffleString` exposes the following properties:
 
 * `byteLength`: The string's length in bytes, exposed via the `byteLength` method.
 * `codePointLength`: The string's length in codepoints, exposed via `CodePointLengthNode`.
@@ -381,7 +371,7 @@ TruffleString strings expose the following properties:
 * `hashCode`: The string's hash code, exposed via `HashCodeNode`. The hash code is dependent on the string's encoding;
   strings must always be converted to a common encoding before comparing their hash codes!
 
-Example: Querying all properties exposed by TruffleString:
+See the below example how to query all properties exposed by `TruffleString`:
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -405,29 +395,23 @@ abstract static class SomeNode extends Node {
 }
 ```
 
-### String equality and comparison
+### String Equality and Comparison
 
-TruffleString objects should be checked for equality using `EqualNode`. Just like `HashCodeNode`, the equality
-comparison is sensitive to the string's encoding, so before any comparison, strings should always be converted to a
-common encoding. `Object#equals(Object)` behaves analogous to `EqualNode`, but since this method does not have
-an `expectedEncoding` parameter, it will determine the string's common encoding automatically: If the string's encodings
-are not equal, TruffleString will check whether one string is binary-compatible to the other string's encoding, and if
-so, match their content. Otherwise, the strings are deemed not equal, no automatic conversion is applied!
+`TruffleString` objects should be checked for equality using `EqualNode`.
+Just like `HashCodeNode`, the equality comparison is sensitive to the string's encoding, so before any comparison, strings should always be converted to a common encoding. `Object#equals(Object)` behaves analogous to `EqualNode`, but since this method does not have an `expectedEncoding` parameter, it will determine the string's common encoding automatically.
+If the string's encodings are not equal, `TruffleString` will check whether one string is binary-compatible to the other string's encoding, and if so, match their content. Otherwise, the strings are deemed not equal, no automatic conversion is applied.
 
-Note that since TruffleString's `hashCode` and `equals` methods are sensitive to string encoding, TruffleString objects
-must always be converted to a common encoding before e.g. using them as keys in a `HashMap`.
+Note that since `TruffleString`'s `hashCode` and `equals` methods are sensitive to string encoding, `TruffleString` objects must always be converted to a common encoding before, e.g., using them as keys in a `HashMap`.
 
-TruffleString also provides three comparison nodes `CompareBytesNode`, `CompareCharsUTF16Node`,
-and `CompareIntsUTF32Node`, to compare strings respectively byte-by-byte, char-by-char, and int-by-int.
+`TruffleString` also provides three comparison nodes `CompareBytesNode`, `CompareCharsUTF16Node`, and `CompareIntsUTF32Node`, to compare strings respectively byte-by-byte, char-by-char, and int-by-int.
 
 ### Concatenation
 
-Concatenation is done via `ConcatNode`. This operation requires both strings to be in `expectedEncoding`, which is also
-the encoding of the resulting string. _Lazy concatenation_ is supported via the `lazy` parameter. When two strings are
-concatenated lazily, the allocation and initialization of the new string's internal array is delayed until another
-operation requires direct access to that array. Materialization of such "lazy concatenation strings" can be triggered
-explicitly with a `MaterializeNode`. This is useful to do before accessing a string in a loop, such as in the following
-example:
+Concatenation is done via `ConcatNode`.
+This operation requires both strings to be in `expectedEncoding`, which is also the encoding of the resulting string. _Lazy concatenation_ is supported via the `lazy` parameter.
+When two strings are concatenated lazily, the allocation and initialization of the new string's internal array is delayed until another operation requires direct access to that array.
+Materialization of such "lazy concatenation strings" can be triggered explicitly with a `MaterializeNode`.
+This is useful to do before accessing a string in a loop, such as in the following example:
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -459,20 +443,18 @@ abstract static class SomeNode extends Node {
 
 ### Substrings
 
-Substrings can be created via `SubstringNode` and `SubstringByteIndexNode`, which use codepoint-based and byte-based
-indices, respectively. Substrings can also be `lazy`, meaning that no new array is created for the resulting string, but
-instead the parent string's array is re-used and just accessed with the offset and length passed to the substring node.
-Currently, a lazy substring's internal array is never trimmed (i.e. replaced by a new array of the string's exact
-length). Note that this behavior effectively creates a memory leak whenever a lazy substring is created! An extreme
-example where this could be problematic: Given a string that is 100 megabyte in size, any lazy substring created from
-this string will keep the 100 megabyte array alive, even when the original string is freed by the garbage collector. Use
-lazy substrings with caution.
+Substrings can be created via `SubstringNode` and `SubstringByteIndexNode`, which use codepoint-based and byte-based indices, respectively.
+Substrings can also be `lazy`, meaning that no new array is created for the resulting string, but instead the parent string's array is re-used and just accessed with the offset and length passed to the substring node.
+Currently, a lazy substring's internal array is never trimmed (i.e. replaced by a new array of the string's exact length).
+Note that this behavior effectively creates a memory leak whenever a lazy substring is created.
+An extreme example where this could be problematic: given a string that is 100 megabyte in size, any lazy substring created from this string will keep the 100 megabyte array alive, even when the original string is freed by the garbage collector.
+Use lazy substrings with caution.
 
-### Interoperability with java.lang.String
+### Interoperability with `java.lang.String`
 
-TruffleString provides `FromJavaStringNode` for converting a `java.lang.String` to TruffleString. To convert from
-TruffleString to `java.lang.String`, use a `ToJavaStringNode`. This node will internally convert the string to UTF-16,
-if necessary, and create a `java.lang.String` from that representation.
+TruffleString provides `FromJavaStringNode` for converting a `java.lang.String` to `TruffleString`.
+To convert from `TruffleString` to `java.lang.String`, use a `ToJavaStringNode`.
+This node will internally convert the string to UTF-16, if necessary, and create a `java.lang.String` from that representation.
 
 `Object#toString()` is implemented using the uncached version of `ToJavaStringNode` and should be avoided on fast paths.
 
@@ -495,47 +477,44 @@ abstract static class SomeNode extends Node {
 }
 ```
 
-TruffleString also exposes `#toStringDebug()` for debugging purposes. Do not use this method for anything other than
-debugging, as its return value is unspecified and may change at any time.
+`TruffleString` also exposes `#toStringDebug()` for debugging purposes.
+Do not use this method for anything other than debugging, as its return value is unspecified and may change at any time.
 
 ### Differences to `java.lang.String`
 
-The following items should be considered when switching from java.lang.String to TruffleString:
+The following items should be considered when switching from `java.lang.String` to `TruffleString`:
 
-* The static overhead of TruffleString instances is larger than that of java.lang.String objects: A TruffleString object
+* The static overhead of `TruffleString` instances is larger than that of `java.lang.String` objects. A `TruffleString` object
   contains 2 pointers fields, 4 `int` fields and 4 `byte` fields, which will usually result in a total object size of 40
   bytes (object header of 12 bytes, 4 bytes per pointer with compressed oops, 8-byte memory alignment). A
-  java.lang.String object contains one pointer field, one `int` field and one `byte` field, which in the same conditions
+  `java.lang.String` object contains one pointer field, one `int` field and one `byte` field, which in the same conditions
   results in a total object size of 24 bytes. This difference in memory footprint may negatively impact some cases where
   lots of small strings are generated.
-* TruffleString does string compaction just like java.lang.String.
+* `TruffleString` does string compaction just like `java.lang.String`.
 * If your language needs to convert strings to other encodings, e.g. UTF-8, which is very common in web applications,
-  TruffleString can turn this operation into a no-op if the string doesn't contain special characters. For example,
+  `TruffleString` can turn this operation into a no-op if the string does now contain special characters. For example,
   ASCII-only strings can be re-interpreted as almost any encoding, and converting an ASCII-only UTF-16 string to UTF-8
-  is a no-op!
-  In cases where transcoding a string is unavoidable, TruffleStrings will cache the transcoded string in the original
+  is a no-op.
+  In cases where transcoding a string is unavoidable, `TruffleString`s will cache the transcoded string in the original
   string, so transcoding is only done once per string and encoding.
-* In order to use 3rd party libraries, TruffleString object will have to be converted to java.lang.String and back. In
-  order to make this as cheap as possible, TruffleString re-uses Java string's internal byte arrays when converting from
-  java.lang.String to TruffleString, and caches Java strings created from TruffleString objects in the object itself.
-* TruffleString offers additional features not present in java.lang.String:
+* In order to use 3rd party libraries, `TruffleString` object will have to be converted to `java.lang.String` and back. In
+  order to make this as cheap as possible, `TruffleString` re-uses Java String's internal byte arrays when converting from
+  `java.lang.String` to `TruffleString`, and caches Java Strings created from `TruffleString` objects in the object itself.
+* `TruffleString` offers additional features not present in `java.lang.String`:
     * Lazy concatenation and string views, which can significantly decrease the amount of array-copy operations your
       language may have to do.
-    * String views into native memory, completely avoiding the need to copy native memory into java arrays before using
+    * `String` views into native memory, completely avoiding the need to copy native memory into Java arrays before using
       it.
-    * String content classification via the `codeRange` property, which allows specializations on strings that are
+    * `String` content classification via the `codeRange` property, which allows specializations on strings that are
       ASCII-only et cetera. This can reduce the complexity of some string operations significantly.
-* The performance of all TruffleString operations should be on par with or better than their
-  java.lang.String-counterparts.
+* The performance of all `TruffleString` operations should be on par with or better than their `java.lang.String`-counterparts.
 
 ### Codepoint Iterators
 
-TruffleString provides `TruffleStringIterator` as a means of iterating over a string's codepoints. This method should be
-preferred over using `CodePointAtIndexNode` in a loop, especially on variable-width encodings such as UTF-8,
-since `CodePointAtIndexNode` may have to re-calculate the byte index equivalent of the given codepoint index on every
-call.
+`TruffleString` provides `TruffleStringIterator` as a means of iterating over a string's codepoints.
+This method should be preferred over using `CodePointAtIndexNode` in a loop, especially on variable-width encodings such as UTF-8, since `CodePointAtIndexNode` may have to re-calculate the byte index equivalent of the given codepoint index on every call.
 
-Example:
+See the example:
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -561,7 +540,7 @@ abstract static class SomeNode extends Node {
         // suboptimal variant: using CodePointAtIndexNode in a loop
         int codePointLength = codePointLengthNode.execute(string, TruffleString.Encoding.UTF_8);
         for (int i = 0; i < codePointLength; i++) {
-            // performance problem: codePointAtIndexNode may have to calculate the byte index corresponding 
+            // performance problem: codePointAtIndexNode may have to calculate the byte index corresponding
             // to codepoint index i for every loop iteration
             System.out.printf("%x%n", codePointAtIndexNode.execute(string, i, TruffleString.Encoding.UTF_8));
         }
@@ -571,9 +550,6 @@ abstract static class SomeNode extends Node {
 
 ### Mutable Strings
 
-TruffleString also provides a mutable string variant called `MutableTruffleString`, which is also accepted in all nodes
-of `TruffleString`. `MutableTruffleString` is *not thread-safe* and allows overwriting bytes in its internal byte array
-or native pointer via `WriteByteNode`. The internal array or native pointer's content may also be modified externally,
-but the corresponding `MutableTruffleString` must be notified of this via `notifyExternalMutation()`.
-`MutableTruffleString` is *not* a Truffle interop type, and must be converted to an immutable `TruffleString` via
-`TruffleString.AsTruffleString` before passing a language boundary.
+`TruffleString` also provides a mutable string variant called `MutableTruffleString`, which is also accepted in all nodes of `TruffleString`. `MutableTruffleString` is *not thread-safe* and allows overwriting bytes in its internal byte array or native pointer via `WriteByteNode`.
+The internal array or native pointer's content may also be modified externally, but the corresponding `MutableTruffleString` must be notified of this via `notifyExternalMutation()`.
+`MutableTruffleString` is *not* a Truffle interop type, and must be converted to an immutable `TruffleString` via `TruffleString.AsTruffleString` before passing a language boundary.

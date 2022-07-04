@@ -29,7 +29,6 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 
 /**
  * Code buffer management for the assembler.
@@ -49,7 +48,7 @@ final class Buffer {
 
     public void setPosition(int position) {
         assert position >= 0 && position <= data.limit();
-        BufferUtil.asBaseBuffer(data).position(position);
+        data.position(position);
     }
 
     /**
@@ -94,7 +93,7 @@ final class Buffer {
             byte[] newBuf = Arrays.copyOf(data.array(), length * 4);
             ByteBuffer newData = ByteBuffer.wrap(newBuf);
             newData.order(data.order());
-            BufferUtil.asBaseBuffer(newData).position(data.position());
+            newData.position(data.position());
             data = newData;
         }
     }
@@ -171,6 +170,6 @@ final class Buffer {
     }
 
     public void reset() {
-        BufferUtil.asBaseBuffer(data).clear();
+        data.clear();
     }
 }

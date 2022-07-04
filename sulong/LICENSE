@@ -1,14 +1,12 @@
-Sulong is copyright (c) 2013-2020 Oracle and/or its affiliates, and is licensed for use as follows:
 
-"""
-
-Copyright (c) 2013, 2020, Oracle and/or its affiliates.
+           Sulong – LLVM
+Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
+modification, are permitted provided that the following conditions
+are met:
 
 1. Redistributions of source code must retain the above copyright
 notice, this list of conditions and the following disclaimer.
@@ -26,10 +24,45 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
-TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""
+
+===========================================================================
+
+           WRITTEN OFFER FOR SOURCE CODE
+For any software that you receive from Oracle in binary form which is licensed
+under an open source license that gives you the right to receive the source
+code for that binary, you can obtain a copy of the applicable source code by
+visiting http://www.oracle.com/goto/opensourcecode. If the source code for the
+binary was not provided to you with the binary, you can also receive a copy of
+the source code on physical media by submitting a written request to the
+address listed below or by sending an email to Oracle using the following link:
+ http://www.oracle.com/goto/opensourcecode/request.
+
+Oracle America, Inc.
+Attn: Senior Vice President
+Development and Engineering Legal
+500 Oracle Parkway, 10th Floor
+Redwood Shores, CA 94065
+
+Your request should include:
+    • The name of the binary for which you are requesting the source code
+    • The name and version number of the Oracle product containing the binary
+    • The date you received the Oracle product
+    • Your name
+    • Your company name (if applicable)
+    • Your return mailing address and email, and
+    • A telephone number in the event we need to reach you.
+
+We may charge you a fee to cover the cost of physical media and processing.
+Your request must be sent
+    a. within three (3) years of the date you received the Oracle product that
+included the binary that is the subject of your request, or
+    b. in the case of code licensed under the GPL v3 for as long as Oracle
+offers spare parts or customer support for that product model.
+
+===========================================================================

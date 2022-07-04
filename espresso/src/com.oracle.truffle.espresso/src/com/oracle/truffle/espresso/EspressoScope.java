@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
@@ -154,6 +155,7 @@ public final class EspressoScope {
                 case Double:  return BytecodeNode.getLocalDouble(frame, slotInfo.getSlot());
                 case Object:  return BytecodeNode.getLocalObject(frame, slotInfo.getSlot());
                 default:
+                    CompilerAsserts.neverPartOfCompilation();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -204,6 +206,7 @@ public final class EspressoScope {
                 case Double:  BytecodeNode.setLocalDouble(frame, slotInfo.getSlot(), interop.asDouble(value));        break;
                 case Object:  BytecodeNode.setLocalObject(frame, slotInfo.getSlot(), (StaticObject) value);                 break;
                 default:
+                    CompilerAsserts.neverPartOfCompilation();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on

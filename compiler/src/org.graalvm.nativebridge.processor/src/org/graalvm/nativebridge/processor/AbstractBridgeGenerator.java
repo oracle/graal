@@ -26,11 +26,8 @@ package org.graalvm.nativebridge.processor;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -40,22 +37,13 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.UnionType;
 import javax.lang.model.util.Types;
-import javax.tools.JavaFileObject;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
@@ -64,91 +52,61 @@ import org.graalvm.nativebridge.processor.AbstractBridgeParser.MethodData;
 
 abstract class AbstractBridgeGenerator {
 
+    static final String MARSHALLED_DATA_PARAMETER = "marshalledData";
+    private static final int BYTES_PER_PARAMETER = 256;
+
     final AbstractBridgeParser parser;
+    final DefinitionData definitionData;
     final Types types;
-    private final AbstractTypeCache typeCache;
 
-    AbstractBridgeGenerator(AbstractBridgeParser parser) {
+    AbstractBridgeGenerator(AbstractBridgeParser parser, DefinitionData definitionData) {
         this.parser = parser;
+        this.definitionData = definitionData;
         this.types = parser.types;
-        this.typeCache = parser.typeCache;
     }
 
-    protected final TypeMirror getType(Class<?> type) {
-        return parser.processor.getType(type);
-    }
-
-    abstract void generate(DefinitionData data) throws IOException;
-
-    abstract MarshallerSnippets marshallerSnippets(DefinitionData data, MarshallerData marshallerData);
-
-    final void writeSourceFile(DefinitionData data, String content) throws IOException {
-        TypeElement originatingElement = (TypeElement) data.annotatedType.asElement();
-        String sourceFileFQN = String.format("%s.%s",
-                        getEnclosingPackageElement(originatingElement).getQualifiedName().toString(), data.getTargetClassSimpleName());
-        JavaFileObject sourceFile = parser.processor.env().getFiler().createSourceFile(sourceFileFQN, originatingElement);
-        try (PrintWriter out = new PrintWriter(sourceFile.openWriter())) {
-            out.print(content);
-        }
-    }
-
-    final FactoryMethodInfo generateStartPointFactory(CodeBuilder builder, DefinitionData data,
-                    Collection<? extends DeclaredType> jniConfigProviderTypes, CharSequence startPointClassName,
-                    CharSequence factoryMethodName, CodeBuilder.Parameter... additionalRequiredParameters) {
-        List<CodeBuilder.Parameter> parameters = new ArrayList<>(data.annotatedTypeConstructorParams.size() + 1);
-        List<CodeBuilder.Parameter> superParameters = new ArrayList<>(data.annotatedTypeConstructorParams.size());
-        CodeBuilder.Parameter jniConfigProvider = null;
-        CodeBuilder.Parameter jniConfig = null;
+    final FactoryMethodInfo resolveFactoryMethod(CharSequence factoryMethodName, CharSequence startPointSimpleName, CharSequence endPointSimpleName,
+                    CodeBuilder.Parameter... additionalRequiredParameters) {
+        List<CodeBuilder.Parameter> parameters = new ArrayList<>(definitionData.annotatedTypeConstructorParams.size() + 1);
+        List<CodeBuilder.Parameter> superParameters = new ArrayList<>(definitionData.annotatedTypeConstructorParams.size());
         List<CodeBuilder.Parameter> requiredList = new ArrayList<>();
         Collections.addAll(requiredList, additionalRequiredParameters);
-        for (VariableElement ve : data.annotatedTypeConstructorParams) {
+        for (VariableElement ve : definitionData.annotatedTypeConstructorParams) {
             TypeMirror parameterType = ve.asType();
             CodeBuilder.Parameter parameter = CodeBuilder.newParameter(parameterType, ve.getSimpleName());
-            if (isAssignableToAny(parameterType, jniConfigProviderTypes)) {
-                jniConfigProvider = parameter;
-            } else if (types.isSameType(typeCache.jniConfig, parameterType)) {
-                jniConfig = parameter;
-            }
             requiredList.removeIf((required) -> types.isSameType(required.type, parameterType));
             parameters.add(parameter);
             superParameters.add(parameter);
         }
         parameters.addAll(requiredList);
-        // `factoryMethodsParameters` differs from `parameters` by missing
-        // `SuppressWarnings("unused")` annotation on `jniConfig`.
-        List<CodeBuilder.Parameter> factoryMethodsParameters = new ArrayList<>(parameters);
-        if (jniConfig == null && jniConfigProvider == null) {
-            CharSequence[] annotations;
-            if (data.getAllCustomMarshallers().isEmpty()) {
-                annotations = new CharSequence[]{new CodeBuilder(builder).annotation(typeCache.suppressWarnings, "unused").build()};
-            } else {
-                annotations = new CharSequence[0];
-            }
-            jniConfig = CodeBuilder.newParameter(typeCache.jniConfig, "config", annotations);
-        }
-        builder.methodStart(EnumSet.of(Modifier.STATIC), factoryMethodName, data.annotatedType,
-                        factoryMethodsParameters, Collections.emptyList());
+        return new FactoryMethodInfo(factoryMethodName, startPointSimpleName, endPointSimpleName, parameters, superParameters);
+    }
+
+    abstract void generateAPI(CodeBuilder builder, CharSequence targetClassSimpleName);
+
+    abstract void generateImpl(CodeBuilder builder, CharSequence targetClassSimpleName);
+
+    abstract MarshallerSnippets marshallerSnippets(MarshallerData marshallerData);
+
+    void configureMultipleDefinitions(@SuppressWarnings("unused") List<DefinitionData> otherDefinitions) {
+    }
+
+    static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult) {
+        int slots = marshalledParametersCount != 0 ? marshalledParametersCount : marshalledResult ? 1 : 0;
+        return slots * BYTES_PER_PARAMETER;
+    }
+
+    final void generateStartPointFactory(CodeBuilder builder, FactoryMethodInfo factoryMethod) {
+        builder.methodStart(EnumSet.of(Modifier.STATIC), factoryMethod.name, definitionData.annotatedType,
+                        factoryMethod.parameters, Collections.emptyList());
         builder.indent();
-        builder.lineStart("return ").newInstance(startPointClassName, parameterNames(parameters)).lineEnd(";");
+        builder.lineStart("return ").newInstance(factoryMethod.startPointSimpleName, parameterNames(factoryMethod.parameters)).lineEnd(";");
         builder.dedent();
         builder.line("}");
-        return new FactoryMethodInfo(parameters, superParameters, jniConfig, jniConfigProvider, requiredList);
     }
 
-    private boolean isAssignableToAny(TypeMirror type, Collection<? extends DeclaredType> targetTypes) {
-        for (DeclaredType targetType : targetTypes) {
-            if (types.isAssignable(type, targetType)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data, CodeBuilder.Parameter jniConfigVariable,
-                    boolean staticFields, DeclaredType marshallerType) {
-        String prefix = staticFields ? "" : "this.";
-        String lookupMethod = marshallerType.equals(typeCache.jniHotSpotMarshaller) ? "lookupHotSpotMarshaller" : "lookupNativeMarshaller";
-        for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
+    final void generateMarshallerLookups(CodeBuilder builder) {
+        for (MarshallerData marshaller : definitionData.getAllCustomMarshallers()) {
             List<CharSequence> params = new ArrayList<>();
             if (types.isSameType(marshaller.forType, types.erasure(marshaller.forType))) {
                 params.add(new CodeBuilder(builder).classLiteral(marshaller.forType).build());
@@ -158,23 +116,23 @@ abstract class AbstractBridgeGenerator {
             for (AnnotationMirror annotationType : marshaller.annotations) {
                 params.add(new CodeBuilder(builder).classLiteral(annotationType.getAnnotationType()).build());
             }
-            builder.lineStart(prefix).write(marshaller.name).write(" = ");
-            CharSequence jniConfigName = jniConfigVariable == null ? "config" : jniConfigVariable.name;
-            builder.invoke(jniConfigName, lookupMethod, params.toArray(new CharSequence[params.size()])).lineEnd(";");
+            builder.lineStart().write(marshaller.name).write(" = ");
+            builder.invoke("config", "lookupMarshaller", params.toArray(new CharSequence[0])).lineEnd(";");
         }
     }
 
-    final CacheSnippets cacheSnippets(DefinitionData data) {
-        if (data.hasExplicitReceiver()) {
-            return CacheSnippets.explicitReceiver(types, typeCache);
+    final CacheSnippets cacheSnippets() {
+        if (definitionData.hasCustomDispatch()) {
+            return CacheSnippets.customDispatch(types, parser.typeCache);
         } else {
-            return CacheSnippets.implicitReceiver(types, typeCache);
+            return CacheSnippets.standardDispatch(types, parser.typeCache);
         }
     }
 
     final CodeBuilder overrideMethod(CodeBuilder builder, MethodData methodData) {
         for (AnnotationMirror mirror : methodData.element.getAnnotationMirrors()) {
-            if (Utilities.contains(parser.copyAnnotations, mirror.getAnnotationType(), types)) {
+            if (!Utilities.contains(definitionData.ignoreAnnotations, mirror.getAnnotationType(), types) &&
+                            !Utilities.contains(definitionData.marshallerAnnotations, mirror.getAnnotationType(), types)) {
                 builder.lineStart().annotation(mirror.getAnnotationType(), null).lineEnd("");
             }
         }
@@ -182,7 +140,7 @@ abstract class AbstractBridgeGenerator {
     }
 
     final CodeBuilder overrideMethod(CodeBuilder builder, ExecutableElement methodElement, ExecutableType methodType) {
-        builder.lineStart().annotation(typeCache.override, null).lineEnd("");
+        builder.lineStart().annotation(parser.typeCache.override, null).lineEnd("");
         Set<Modifier> newModifiers = EnumSet.copyOf(methodElement.getModifiers());
         newModifiers.remove(Modifier.ABSTRACT);
         builder.methodStart(newModifiers, methodElement.getSimpleName(),
@@ -263,16 +221,16 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static void generateMarshallerFields(CodeBuilder builder, DefinitionData data, DeclaredType type, Modifier... modifiers) {
-        for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
+    void generateMarshallerFields(CodeBuilder builder, Modifier... modifiers) {
+        for (MarshallerData marshaller : definitionData.getAllCustomMarshallers()) {
             Set<Modifier> modSet = EnumSet.noneOf(Modifier.class);
             Collections.addAll(modSet, modifiers);
-            builder.lineStart().writeModifiers(modSet).space().parameterizedType(type, marshaller.forType).space().write(marshaller.name).lineEnd(";");
+            builder.lineStart().writeModifiers(modSet).space().parameterizedType(parser.typeCache.binaryMarshaller, marshaller.forType).space().write(marshaller.name).lineEnd(";");
         }
     }
 
-    static void generateCacheFields(CodeBuilder builder, HotSpotToNativeBridgeGenerator.CacheSnippets cacheSnippets, DefinitionData data) {
-        for (AbstractBridgeParser.MethodData methodData : data.toGenerate) {
+    void generateCacheFields(CodeBuilder builder, HotSpotToNativeBridgeGenerator.CacheSnippets cacheSnippets) {
+        for (AbstractBridgeParser.MethodData methodData : definitionData.toGenerate) {
             AbstractBridgeParser.CacheData cacheData = methodData.cachedData;
             if (cacheData != null) {
                 Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE);
@@ -282,8 +240,8 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static void generateCacheFieldsInit(CodeBuilder builder, CacheSnippets cacheSnippets, DefinitionData data) {
-        for (AbstractBridgeParser.MethodData methodData : data.toGenerate) {
+    void generateCacheFieldsInit(CodeBuilder builder, CacheSnippets cacheSnippets) {
+        for (AbstractBridgeParser.MethodData methodData : definitionData.toGenerate) {
             AbstractBridgeParser.CacheData cacheData = methodData.cachedData;
             if (cacheData != null) {
                 CharSequence cacheFieldInit = cacheSnippets.initializeCacheField(builder, cacheData);
@@ -294,21 +252,33 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
-        return (PackageElement) typeElement.getEnclosingElement();
+    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<Map.Entry<MarshallerData, CharSequence>> customMarshallers) {
+        builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
+        boolean first = true;
+        for (Map.Entry<MarshallerData, CharSequence> e : customMarshallers) {
+            if (first) {
+                first = false;
+            } else {
+                builder.spaceIfNeeded().write("+").space();
+            }
+            builder.invoke(e.getKey().name, "inferSize", e.getValue());
+        }
+        builder.lineEnd(";");
     }
 
     static CharSequence[] parameterNames(List<? extends CodeBuilder.Parameter> parameters) {
-        return parameters.stream().map((p) -> p.name).toArray((len) -> new CharSequence[len]);
+        return parameters.stream().map((p) -> p.name).toArray(CharSequence[]::new);
     }
 
     abstract static class MarshallerSnippets {
 
+        private final NativeBridgeProcessor processor;
         private final AbstractTypeCache cache;
         final MarshallerData marshallerData;
         final Types types;
 
-        MarshallerSnippets(MarshallerData marshallerData, Types types, AbstractTypeCache cache) {
+        MarshallerSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, AbstractTypeCache cache) {
+            this.processor = processor;
             this.marshallerData = marshallerData;
             this.types = types;
             this.cache = cache;
@@ -321,9 +291,11 @@ abstract class AbstractBridgeGenerator {
 
         abstract TypeMirror getEndPointMethodParameterType(TypeMirror type);
 
-        abstract CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence jniEnvFieldName);
+        abstract CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence marshalledParametersOutput,
+                        CharSequence jniEnvFieldName);
 
-        abstract CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName);
+        abstract CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput,
+                        CharSequence jniEnvFieldName);
 
         @SuppressWarnings("unused")
         boolean preMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName,
@@ -345,9 +317,20 @@ abstract class AbstractBridgeGenerator {
         void postUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName, CharSequence resultVariableName) {
         }
 
-        abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName);
+        @SuppressWarnings("unused")
+        CharSequence preMarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+            return null;
+        }
 
-        abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName);
+        @SuppressWarnings("unused")
+        CharSequence preUnmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+            return null;
+        }
+
+        abstract CharSequence marshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName);
+
+        abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                        CharSequence jniEnvFieldName);
 
         static CharSequence outArrayLocal(CharSequence parameterName) {
             return parameterName + "Out";
@@ -363,6 +346,129 @@ abstract class AbstractBridgeGenerator {
 
         final AnnotationMirror findOut(List<? extends AnnotationMirror> annotations) {
             return find(annotations, cache.out);
+        }
+
+        final CharSequence unmarshallHotSpotToNativeProxyInNative(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
+            TypeMirror receiverType = marshallerData.useCustomReceiverAccessor ? data.customReceiverAccessor.getParameters().get(0).asType() : parameterType;
+            CharSequence classLiteral = new CodeBuilder(builder).classLiteral(receiverType).build();
+            CodeBuilder result = new CodeBuilder(builder).invokeStatic(cache.nativeObjectHandles, "resolve", parameterName, classLiteral);
+            if (marshallerData.useCustomReceiverAccessor) {
+                result = new CodeBuilder(result).invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(), result.build());
+            }
+            return result.build();
+        }
+
+        final CharSequence unmarshallNativeToHotSpotProxyInNative(CodeBuilder builder, CharSequence parameterName, CharSequence jniEnvFieldName) {
+            List<CharSequence> args = Arrays.asList(jniEnvFieldName, parameterName);
+            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
+            boolean isHSObject = types.isSubtype(marshallerData.forType, cache.hSObject);
+            if (hasGeneratedFactory && !isHSObject) {
+                DeclaredType receiverType = (DeclaredType) marshallerData.nonDefaultReceiver.asType();
+                List<CharSequence> newArgs = new ArrayList<>();
+                newArgs.add(new CodeBuilder(builder).newInstance(receiverType, args.toArray(new CharSequence[0])).build());
+                newArgs.add(jniEnvFieldName);
+                args = newArgs;
+            }
+            CharSequence proxy = createProxy(builder, NativeToNativeBridgeGenerator.COMMON_START_POINT_FACTORY_NAME, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME,
+                            NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            if (marshallerData.customDispatchFactory != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
+                                marshallerData.customDispatchFactory.getSimpleName(), proxy);
+                proxy = factory.build();
+            }
+            CodeBuilder result = new CodeBuilder(builder);
+            result.invoke(parameterName, "isNonNull").write(" ? ").write(proxy).write(" : ").write("null");
+            return result.build();
+        }
+
+        final CharSequence unmarshallHotSpotToNativeProxyInHotSpot(CodeBuilder builder, CharSequence parameterName, CharSequence currentIsolateSnippet) {
+            List<CharSequence> args = Arrays.asList(currentIsolateSnippet, parameterName);
+            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
+            boolean isNativeObject = types.isSubtype(marshallerData.forType, cache.nativeObject);
+            if (hasGeneratedFactory && !isNativeObject) {
+                args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[0])).build());
+            }
+            CharSequence proxy = createProxy(builder, NativeToNativeBridgeGenerator.COMMON_START_POINT_FACTORY_NAME, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME,
+                            NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            if (marshallerData.customDispatchFactory != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
+                                marshallerData.customDispatchFactory.getSimpleName(), proxy);
+                proxy = factory.build();
+            }
+            CodeBuilder result = new CodeBuilder(builder);
+            result.write(parameterName).write(" != 0L ? ").write(proxy).write(" : ").write("null");
+            return result.build();
+        }
+
+        final CharSequence unmarshallNativeToHotSpotProxyInHotSpot(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
+            TypeMirror receiverType = marshallerData.useCustomReceiverAccessor ? data.customReceiverAccessor.getParameters().get(0).asType() : parameterType;
+            CharSequence result = parameterName;
+            if (!types.isSubtype(parameterType, receiverType)) {
+                result = new CodeBuilder(builder).cast(receiverType, parameterName).build();
+            }
+            if (marshallerData.useCustomReceiverAccessor) {
+                result = new CodeBuilder(builder).invokeStatic(data.annotatedType, data.customReceiverAccessor.getSimpleName(), result).build();
+            }
+            return result;
+        }
+
+        private CharSequence createProxy(CodeBuilder builder, CharSequence commonFactoryMethod, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
+            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
+            if (hasGeneratedFactory) {
+                CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
+                CodeBuilder newInstanceBuilder = new CodeBuilder(builder);
+                boolean hasJNI = hasJNIFactory(marshallerData);
+                boolean hasNative = hasNativeFactory(marshallerData);
+                if (hasJNI && hasNative) {
+                    newInstanceBuilder.invoke(type, commonFactoryMethod, args.toArray(new CharSequence[0]));
+                } else if (hasJNI) {
+                    newInstanceBuilder.invoke(type, jniFactoryMethod, args.toArray(new CharSequence[0]));
+                } else if (hasNative) {
+                    newInstanceBuilder.invoke(type, nativeFactoryMethod, args.toArray(new CharSequence[0]));
+                } else {
+                    throw new IllegalStateException("Generated type must have JNI or Native start point.");
+                }
+                return newInstanceBuilder.build();
+            } else {
+                return new CodeBuilder(builder).newInstance((DeclaredType) types.erasure(marshallerData.forType),
+                                args.toArray(new CharSequence[0])).build();
+            }
+        }
+
+        private boolean hasJNIFactory(MarshallerData data) {
+            Element element = ((DeclaredType) types.erasure(data.forType)).asElement();
+            return processor.getAnnotation(element, cache.generateHSToNativeBridge) != null || processor.getAnnotation(element, cache.generateNativeToHSBridge) != null;
+        }
+
+        private boolean hasNativeFactory(MarshallerData data) {
+            Element element = ((DeclaredType) types.erasure(data.forType)).asElement();
+            return processor.getAnnotation(element, cache.generateNativeToNativeBridge) != null;
+        }
+
+        final CharSequence marshallHotSpotToNativeProxyInNative(CodeBuilder builder, CharSequence parameterName) {
+            return new CodeBuilder(builder).invokeStatic(cache.nativeObjectHandles, "create", parameterName).build();
+        }
+
+        final CharSequence marshallNativeToHotSpotProxyInNative(CodeBuilder builder, CharSequence parameterName) {
+            CodeBuilder receiver;
+            if (types.isSubtype(marshallerData.forType, cache.hSObject)) {
+                receiver = new CodeBuilder(builder).cast(cache.hSObject, parameterName, true);
+            } else {
+                CharSequence cast = new CodeBuilder(builder).cast(marshallerData.forType, parameterName).build();
+                receiver = new CodeBuilder(builder).memberSelect(cast, marshallerData.nonDefaultReceiver.getSimpleName(), true);
+            }
+            return new CodeBuilder(builder).write(parameterName).write(" != null ? ").invoke(receiver.build(), "getHandle").write(" : ").invokeStatic(cache.wordFactory, "nullPointer").build();
+        }
+
+        final CharSequence marshallHotSpotToNativeProxyInHotSpot(CodeBuilder builder, CharSequence parameterName) {
+            CodeBuilder receiver;
+            if (types.isSubtype(marshallerData.forType, cache.nativeObject)) {
+                receiver = new CodeBuilder(builder).write("((").write(cache.nativeObject).write(")").write(parameterName).write(")");
+            } else {
+                CharSequence cast = new CodeBuilder(builder).cast(marshallerData.forType, parameterName).build();
+                receiver = new CodeBuilder(builder).memberSelect(cast, marshallerData.nonDefaultReceiver.getSimpleName(), true);
+            }
+            return new CodeBuilder(builder).write(parameterName).write(" != null ? ").invoke(receiver.build(), "getHandle").write(" : 0L").build();
         }
 
         static boolean trimToResult(AnnotationMirror annotation) {
@@ -408,17 +514,17 @@ abstract class AbstractBridgeGenerator {
 
         abstract CharSequence writeCache(CodeBuilder currentBuilder, CharSequence cacheField, CharSequence receiver, CharSequence value);
 
-        static CacheSnippets implicitReceiver(Types types, AbstractTypeCache cache) {
-            return new ImplicitReceiver(types, cache);
+        static CacheSnippets standardDispatch(Types types, AbstractTypeCache cache) {
+            return new StandardDispatch(types, cache);
         }
 
-        static CacheSnippets explicitReceiver(Types types, AbstractTypeCache cache) {
-            return new ExplicitReceiver(types, cache);
+        static CacheSnippets customDispatch(Types types, AbstractTypeCache cache) {
+            return new CustomDispatch(types, cache);
         }
 
-        private static final class ImplicitReceiver extends CacheSnippets {
+        private static final class StandardDispatch extends CacheSnippets {
 
-            ImplicitReceiver(Types types, AbstractTypeCache cache) {
+            StandardDispatch(Types types, AbstractTypeCache cache) {
                 super(types, cache);
             }
 
@@ -448,9 +554,9 @@ abstract class AbstractBridgeGenerator {
             }
         }
 
-        private static final class ExplicitReceiver extends CacheSnippets {
+        private static final class CustomDispatch extends CacheSnippets {
 
-            ExplicitReceiver(Types type, AbstractTypeCache cache) {
+            CustomDispatch(Types type, AbstractTypeCache cache) {
                 super(type, cache);
             }
 
@@ -483,486 +589,21 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static final class CodeBuilder {
-
-        private static final int INDENT_SIZE = 4;
-        private static final Comparator<TypeElement> FQN_COMPARATOR = (a, b) -> a.getQualifiedName().toString().compareTo(b.getQualifiedName().toString());
-
-        private final CodeBuilder parent;
-        private final PackageElement pkg;
-        private final Types types;
-        private final AbstractTypeCache typeCache;
-        private final Collection<TypeElement> toImport;
-        private final StringBuilder body;
-        private int indentLevel;
-
-        CodeBuilder(PackageElement pkg, Types types, AbstractTypeCache typeCache) {
-            this(null, pkg, types, typeCache, new TreeSet<>(FQN_COMPARATOR), new StringBuilder());
-        }
-
-        CodeBuilder(CodeBuilder parent) {
-            this(parent, parent.pkg, parent.types, parent.typeCache, parent.toImport, new StringBuilder());
-        }
-
-        private CodeBuilder(CodeBuilder parent, PackageElement pkg, Types types, AbstractTypeCache typeCache, Collection<TypeElement> toImport, StringBuilder body) {
-            this.parent = parent;
-            this.pkg = pkg;
-            this.types = types;
-            this.typeCache = typeCache;
-            this.toImport = toImport;
-            this.body = body;
-        }
-
-        CodeBuilder indent() {
-            indentLevel++;
-            return this;
-        }
-
-        CodeBuilder dedent() {
-            indentLevel--;
-            return this;
-        }
-
-        CodeBuilder classStart(Set<Modifier> modifiers, CharSequence name, DeclaredType superClass, List<DeclaredType> superInterfaces) {
-            lineStart();
-            writeModifiers(modifiers).spaceIfNeeded().write("class ").write(name);
-            if (superClass != null) {
-                write(" extends ").write(superClass);
-            }
-            if (!superInterfaces.isEmpty()) {
-                write(" implements ");
-                for (Iterator<DeclaredType> it = superInterfaces.iterator(); it.hasNext();) {
-                    write(it.next());
-                    if (it.hasNext()) {
-                        write(", ");
-                    }
-                }
-            }
-            lineEnd(" {");
-            return this;
-        }
-
-        CodeBuilder methodStart(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType,
-                        List<? extends Parameter> params, List<? extends TypeMirror> exceptions) {
-            lineStart();
-            writeModifiers(modifiers).spaceIfNeeded();
-            if (returnType != null) {
-                write(returnType).space();
-            }
-            if (name != null) {
-                write(name).write("(");
-                for (Iterator<? extends Parameter> it = params.iterator(); it.hasNext();) {
-                    Parameter param = it.next();
-                    for (CharSequence annotation : param.annotations) {
-                        write(annotation).space();
-                    }
-                    write(param.type).space().write(param.name);
-                    if (it.hasNext()) {
-                        write(", ");
-                    }
-                }
-                write(")");
-            }
-            if (!exceptions.isEmpty()) {
-                write(" throws ");
-                for (Iterator<? extends TypeMirror> it = exceptions.iterator(); it.hasNext();) {
-                    write(it.next());
-                    if (it.hasNext()) {
-                        write(", ");
-                    }
-                }
-            }
-            if (modifiers.contains(Modifier.ABSTRACT) || modifiers.contains(Modifier.NATIVE)) {
-                lineEnd(";");
-            } else {
-                lineEnd(" {");
-            }
-            return this;
-        }
-
-        CodeBuilder call(CharSequence methodName, CharSequence... args) {
-            write(methodName).write("(");
-            for (int i = 0; i < args.length; i++) {
-                write(args[i]);
-                if ((i + 1) < args.length) {
-                    write(", ");
-                }
-            }
-            return write(")");
-        }
-
-        CodeBuilder newArray(TypeMirror componentType, CharSequence length) {
-            return write("new ").write(componentType).write("[").write(length).write("]");
-        }
-
-        CodeBuilder newInstance(DeclaredType type, CharSequence... args) {
-            return newInstance(new CodeBuilder(this).write(type).build(), Collections.emptyList(), args);
-        }
-
-        CodeBuilder newInstance(DeclaredType type, List<TypeMirror> actualTypeParameters, CharSequence... args) {
-            return newInstance(new CodeBuilder(this).write(type).build(), actualTypeParameters, args);
-        }
-
-        CodeBuilder newInstance(CharSequence type, CharSequence... args) {
-            return newInstance(type, Collections.emptyList(), args);
-        }
-
-        CodeBuilder newInstance(CharSequence type, List<TypeMirror> actualTypeParameters, CharSequence... args) {
-            write("new ").write(type);
-            if (!actualTypeParameters.isEmpty()) {
-                write("<");
-                for (Iterator<TypeMirror> it = actualTypeParameters.iterator(); it.hasNext();) {
-                    write(it.next());
-                    if (it.hasNext()) {
-                        write(", ");
-                    }
-                }
-                write(">");
-            }
-            write("(");
-            for (int i = 0; i < args.length; i++) {
-                write(args[i]);
-                if ((i + 1) < args.length) {
-                    write(", ");
-                }
-            }
-            return write(")");
-        }
-
-        CodeBuilder invoke(CharSequence receiver, CharSequence methodName, CharSequence... args) {
-            if (receiver != null) {
-                write(receiver).write(".");
-            }
-            return call(methodName, args);
-        }
-
-        CodeBuilder invokeStatic(DeclaredType receiver, CharSequence methodName, CharSequence... args) {
-            return write(types.erasure(receiver)).write(".").call(methodName, args);
-        }
-
-        CodeBuilder memberSelect(CharSequence receiver, CharSequence memberName, boolean brackets) {
-            if (receiver != null) {
-                if (brackets) {
-                    write("(");
-                }
-                write(receiver);
-                if (brackets) {
-                    write(")");
-                }
-                write(".");
-            }
-            return write(memberName);
-        }
-
-        CodeBuilder parameterizedType(DeclaredType parameterizedType, TypeMirror... actualTypeParameters) {
-            write(types.erasure(parameterizedType));
-            write("<");
-            for (int i = 0; i < actualTypeParameters.length; i++) {
-                write(actualTypeParameters[i]);
-                if (i + 1 < actualTypeParameters.length) {
-                    write(", ");
-                }
-            }
-            return write(">");
-        }
-
-        CodeBuilder annotation(DeclaredType type, Object value) {
-            write("@").write(type);
-            if (value != null) {
-                write("(").writeAnnotationAttributeValue(value).write(")");
-            }
-            return this;
-        }
-
-        CodeBuilder annotationWithAttributes(DeclaredType type, Map<? extends CharSequence, Object> attributes) {
-            write("@").write(type);
-            if (!attributes.isEmpty()) {
-                write("(");
-                for (Iterator<? extends Map.Entry<? extends CharSequence, Object>> it = attributes.entrySet().iterator(); it.hasNext();) {
-                    Map.Entry<? extends CharSequence, Object> e = it.next();
-                    write(e.getKey()).write(" = ").writeAnnotationAttributeValue(e.getValue());
-                    if (it.hasNext()) {
-                        write(", ");
-                    }
-                }
-                write(")");
-            }
-            return this;
-        }
-
-        CodeBuilder classLiteral(TypeMirror type) {
-            return write(types.erasure(type)).write(".class");
-        }
-
-        CodeBuilder typeLiteral(TypeMirror type) {
-            return newInstance((DeclaredType) types.erasure(typeCache.typeLiteral), Collections.singletonList(type)).write("{}");
-        }
-
-        CodeBuilder cast(TypeMirror type, CharSequence value) {
-            return cast(type, value, false);
-        }
-
-        CodeBuilder cast(TypeMirror type, CharSequence value, boolean brackets) {
-            if (brackets) {
-                write("(");
-            }
-            write("(").write(type).write(")").space().write(value);
-            if (brackets) {
-                write(")");
-            }
-            return this;
-        }
-
-        CodeBuilder writeAnnotationAttributeValue(Object value) {
-            if (value.getClass() == String.class) {
-                write('"' + (String) value + '"');
-            } else if (value instanceof DeclaredType) {
-                classLiteral((DeclaredType) value);
-            } else if (value.getClass().isArray()) {
-                write("{");
-                int len = Array.getLength(value);
-                for (int i = 0; i < len; i++) {
-                    writeAnnotationAttributeValue(Array.get(value, i));
-                    if ((i + 1) < len) {
-                        write(", ");
-                    }
-                }
-                write("}");
-            } else {
-                write(String.valueOf(value));
-            }
-            return this;
-        }
-
-        CodeBuilder writeDefaultValue(TypeMirror type) {
-            switch (types.erasure(type).getKind()) {
-                case VOID:
-                    throw new IllegalArgumentException("The void type does not have default value.");
-                case BOOLEAN:
-                    write("false");
-                    break;
-                case BYTE:
-                case CHAR:
-                case INT:
-                case LONG:
-                case SHORT:
-                    write("0");
-                    break;
-                case DOUBLE:
-                    write("0.0d");
-                    break;
-                case FLOAT:
-                    write("0.0f");
-                    break;
-                case DECLARED:
-                    write("null");
-                    break;
-            }
-            return this;
-        }
-
-        CodeBuilder writeModifiers(Set<Modifier> modifiers) {
-            if (modifiers.contains(Modifier.ABSTRACT)) {
-                write("abstract");
-            }
-            if (modifiers.contains(Modifier.PRIVATE)) {
-                spaceIfNeeded();
-                write("private");
-            }
-            if (modifiers.contains(Modifier.PROTECTED)) {
-                spaceIfNeeded();
-                write("protected");
-            }
-            if (modifiers.contains(Modifier.PUBLIC)) {
-                spaceIfNeeded();
-                write("public");
-            }
-            if (modifiers.contains(Modifier.STATIC)) {
-                spaceIfNeeded();
-                write("static");
-            }
-            if (modifiers.contains(Modifier.SYNCHRONIZED)) {
-                spaceIfNeeded();
-                write("synchronized");
-            }
-            if (modifiers.contains(Modifier.NATIVE)) {
-                spaceIfNeeded();
-                write("native");
-            }
-            if (modifiers.contains(Modifier.VOLATILE)) {
-                spaceIfNeeded();
-                write("volatile");
-            }
-            if (modifiers.contains(Modifier.FINAL)) {
-                spaceIfNeeded();
-                write("final");
-            }
-            return this;
-        }
-
-        CodeBuilder lineStart(CharSequence text) {
-            return write(new String(new char[indentLevel * INDENT_SIZE]).replace('\0', ' ')).write(text);
-        }
-
-        CodeBuilder emptyLine() {
-            return lineEnd("");
-        }
-
-        CodeBuilder lineStart() {
-            return lineStart("");
-        }
-
-        CodeBuilder lineEnd(CharSequence text) {
-            return write(text).write("\n");
-        }
-
-        CodeBuilder line(CharSequence line) {
-            return lineStart(line).lineEnd("");
-        }
-
-        CodeBuilder write(CharSequence str) {
-            body.append(str);
-            return this;
-        }
-
-        CodeBuilder write(TypeElement te) {
-            Element teEnclosing = te.getEnclosingElement();
-            if (!teEnclosing.equals(pkg) && !isJavaLang(teEnclosing)) {
-                toImport.add(te);
-            }
-            return write(te.getSimpleName());
-        }
-
-        private static boolean isJavaLang(Element element) {
-            return element.getKind() == ElementKind.PACKAGE && ((PackageElement) element).getQualifiedName().contentEquals("java.lang");
-        }
-
-        CodeBuilder write(TypeMirror type) {
-            switch (type.getKind()) {
-                case ARRAY:
-                    write(((ArrayType) type).getComponentType()).write("[]");
-                    break;
-                case BOOLEAN:
-                    write("boolean");
-                    break;
-                case BYTE:
-                    write("byte");
-                    break;
-                case CHAR:
-                    write("char");
-                    break;
-                case DECLARED:
-                    DeclaredType declaredType = ((DeclaredType) type);
-                    List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
-                    if (!typeArguments.isEmpty()) {
-                        parameterizedType(declaredType, typeArguments.toArray(new TypeMirror[typeArguments.size()]));
-                    } else {
-                        write((TypeElement) declaredType.asElement());
-                    }
-                    break;
-                case DOUBLE:
-                    write("double");
-                    break;
-                case FLOAT:
-                    write("float");
-                    break;
-                case INT:
-                    write("int");
-                    break;
-                case LONG:
-                    write("long");
-                    break;
-                case SHORT:
-                    write("short");
-                    break;
-                case VOID:
-                    write("void");
-                    break;
-                case WILDCARD:
-                    write("?");
-                    break;
-            }
-            return this;
-        }
-
-        CodeBuilder space() {
-            return write(" ");
-        }
-
-        CodeBuilder spaceIfNeeded() {
-            if (body.length() > 0 && !Character.isSpaceChar(body.charAt(body.length() - 1))) {
-                write(" ");
-            }
-            return this;
-        }
-
-        String build() {
-            if (parent == null) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("package ").append(pkg.getQualifiedName()).append(";\n\n");
-                for (TypeElement typeElement : toImport) {
-                    sb.append("import ").append(typeElement.getQualifiedName()).append(";\n");
-                }
-                sb.append("\n");
-                sb.append(body);
-                return sb.toString();
-            } else {
-                return body.toString();
-            }
-        }
-
-        static Parameter newParameter(TypeMirror type, CharSequence name, CharSequence... annotations) {
-            return new Parameter(type, name, annotations);
-        }
-
-        static List<? extends Parameter> newParameters(List<? extends VariableElement> params) {
-            List<TypeMirror> parameterTypes = params.stream().map((ve) -> ve.asType()).collect(Collectors.toList());
-            return newParameters(params, parameterTypes);
-        }
-
-        static List<? extends Parameter> newParameters(List<? extends VariableElement> params,
-                        List<? extends TypeMirror> parameterTypes) {
-            if (params.size() != parameterTypes.size()) {
-                throw new IllegalArgumentException(String.format("params.size(%d) != parameterTypes.size(%d)",
-                                params.size(), parameterTypes.size()));
-            }
-            List<Parameter> result = new ArrayList<>();
-            for (int i = 0; i < params.size(); i++) {
-                result.add(newParameter(parameterTypes.get(i), params.get(i).getSimpleName()));
-            }
-            return result;
-        }
-
-        static final class Parameter {
-
-            final TypeMirror type;
-            final CharSequence name;
-            final CharSequence[] annotations;
-
-            private Parameter(TypeMirror type, CharSequence name, CharSequence[] annotations) {
-                this.type = type;
-                this.name = name;
-                this.annotations = annotations;
-            }
-        }
-    }
-
     static final class FactoryMethodInfo {
 
+        final CharSequence name;
+        final CharSequence startPointSimpleName;
+        final CharSequence endPointSimpleName;
         final List<CodeBuilder.Parameter> parameters;
         final List<CodeBuilder.Parameter> superCallParameters;
-        final CodeBuilder.Parameter jniConfigParameter;
-        final CodeBuilder.Parameter jniConfigProvider;
-        final List<CodeBuilder.Parameter> addedRequiredParameters;
 
-        FactoryMethodInfo(List<CodeBuilder.Parameter> parameters, List<CodeBuilder.Parameter> superCallParameters,
-                        CodeBuilder.Parameter jniConfigParameter, CodeBuilder.Parameter nativeIsolate,
-                        List<CodeBuilder.Parameter> addedRequiredParameters) {
+        FactoryMethodInfo(CharSequence name, CharSequence startPointSimpleName, CharSequence endPointSimpleName, List<CodeBuilder.Parameter> parameters,
+                        List<CodeBuilder.Parameter> superCallParameters) {
+            this.name = name;
+            this.startPointSimpleName = startPointSimpleName;
+            this.endPointSimpleName = endPointSimpleName;
             this.parameters = parameters;
             this.superCallParameters = superCallParameters;
-            this.jniConfigParameter = jniConfigParameter;
-            this.jniConfigProvider = nativeIsolate;
-            this.addedRequiredParameters = addedRequiredParameters;
         }
     }
 }

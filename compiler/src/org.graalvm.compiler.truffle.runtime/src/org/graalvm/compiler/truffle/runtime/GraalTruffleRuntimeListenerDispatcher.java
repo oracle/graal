@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 
 /**
@@ -106,6 +107,7 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
+    @TruffleBoundary
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
         invokeListeners((l) -> l.onCompilationDeoptimized(target, frame));
     }

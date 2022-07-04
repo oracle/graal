@@ -28,19 +28,17 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
-import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
 
@@ -63,7 +61,7 @@ public abstract class TypeFlow<T> {
      */
     protected final AnalysisType declaredType;
 
-    private volatile TypeState state;
+    protected volatile TypeState state;
 
     /** The set of all {@link TypeFlow}s that need to be update when this flow changes. */
     @SuppressWarnings("unused") private volatile Object uses;
@@ -80,7 +78,6 @@ public abstract class TypeFlow<T> {
     private int slot;
     private final boolean isClone; // true -> clone, false -> original
     protected final MethodFlowsGraph graphRef;
-    protected final AnalysisContext context;
 
     /** True if this flow is passed as a parameter to a call. */
     protected boolean usedAsAParameter;
@@ -124,7 +121,6 @@ public abstract class TypeFlow<T> {
         this.slot = slot;
         this.isClone = isClone;
         this.graphRef = graphRef;
-        this.context = graphRef != null ? graphRef.context() : null;
         this.state = typeState;
         this.usedAsAParameter = false;
         this.usedAsAReceiver = false;
@@ -180,7 +176,7 @@ public abstract class TypeFlow<T> {
      *
      * @param bb
      */
-    public void initClone(PointsToAnalysis bb) {
+    public void initFlow(PointsToAnalysis bb) {
     }
 
     public void setUsedAsAParameter(boolean usedAsAParameter) {
@@ -208,16 +204,26 @@ public abstract class TypeFlow<T> {
         return id;
     }
 
-    public AnalysisContext context() {
-        return context;
-    }
-
     public MethodFlowsGraph graphRef() {
-        return graphRef;
+        if (graphRef != null) {
+            return graphRef;
+        }
+        if (source instanceof BytecodePosition && !isClone) {
+            BytecodePosition position = (BytecodePosition) source;
+            return ((PointsToAnalysisMethod) position.getMethod()).getTypeFlow().getMethodFlowsGraph();
+        }
+        return null;
     }
 
     public AnalysisMethod method() {
-        return graphRef != null ? graphRef.getMethod() : null;
+        if (graphRef != null) {
+            return graphRef.getMethod();
+        }
+        if (source instanceof BytecodePosition) {
+            BytecodePosition position = (BytecodePosition) source;
+            return (AnalysisMethod) position.getMethod();
+        }
+        return null;
     }
 
     public T getSource() {
@@ -226,6 +232,10 @@ public abstract class TypeFlow<T> {
 
     public boolean isClone() {
         return isClone;
+    }
+
+    public boolean isContextInsensitive() {
+        return false;
     }
 
     public AnalysisType getDeclaredType() {
@@ -346,13 +356,12 @@ public abstract class TypeFlow<T> {
 
     // manage uses
 
-    /** Adds a use, if not already present, without propagating state. */
-    public boolean addOriginalUse(PointsToAnalysis bb, TypeFlow<?> use) {
-        return addUse(bb, use, false, false);
-    }
-
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use) {
         return addUse(bb, use, true, false);
+    }
+
+    public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState) {
+        return addUse(bb, use, propagateTypeState, false);
     }
 
     private boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState, boolean registerInput) {
@@ -411,14 +420,13 @@ public abstract class TypeFlow<T> {
 
     // manage observers
 
-    /** Adds an observer, if not already present, without triggering update. */
-    public boolean addOriginalObserver(PointsToAnalysis bb, TypeFlow<?> observer) {
-        return addObserver(bb, observer, false, false);
-    }
-
     /** Register object that will be notified when the state of this flow changes. */
     public void addObserver(PointsToAnalysis bb, TypeFlow<?> observer) {
         addObserver(bb, observer, true, false);
+    }
+
+    public boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate) {
+        return addObserver(bb, observer, triggerUpdate, false);
     }
 
     private boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate, boolean registerObservees) {
@@ -440,12 +448,7 @@ public abstract class TypeFlow<T> {
                      * Notify the observer after registering. This flow might have already reached a
                      * fixed point and might never notify its observers otherwise.
                      */
-                    bb.postTask(new DebugContextRunnable() {
-                        @Override
-                        public void run(DebugContext ignore) {
-                            observer.onObservedUpdate(bb);
-                        }
-                    });
+                    bb.postTask(ignore -> observer.onObservedUpdate(bb));
                 }
             }
             return true;
@@ -462,6 +465,11 @@ public abstract class TypeFlow<T> {
          * An observer is linked even if it is already saturated itself, hence no
          * 'observer.isSaturated()' check is performed here. For observers the saturation state is
          * that of the values flowing through and not that of the objects they observe.
+         * 
+         * Some observers may need to continue to observe the state of their receiver object until
+         * the receiver object saturates itself, e.g., instance field stores, other observers may
+         * deregister themselves from observing the receiver object when they saturate, e.g.,
+         * instance field loads.
          */
         if (observer.equals(this)) {
             return false;
@@ -479,13 +487,6 @@ public abstract class TypeFlow<T> {
 
     public Collection<TypeFlow<?>> getObservers() {
         return ConcurrentLightHashSet.getElements(this, OBSERVERS_UPDATER);
-    }
-
-    /** Let the observers know that the state has changed. */
-    protected void notifyObservers(PointsToAnalysis bb) {
-        for (TypeFlow<?> observer : getObservers()) {
-            observer.onObservedUpdate(bb);
-        }
     }
 
     // manage observees
@@ -553,7 +554,9 @@ public abstract class TypeFlow<T> {
             }
         }
 
-        notifyObservers(bb);
+        for (TypeFlow<?> observer : getObservers()) {
+            observer.onObservedUpdate(bb);
+        }
     }
 
     /** Notify the observer that the observed type flow state has changed. */
@@ -596,8 +599,14 @@ public abstract class TypeFlow<T> {
 
         /* Mark the flow as saturated, this will lead to lazy removal from *all* its inputs. */
         setSaturated();
+        /* Run flow-specific saturation tasks, e.g., stop observing receivers. */
+        onSaturated();
         /* Notify uses and observers that this input is saturated and unlink them. */
         notifySaturated(bb);
+    }
+
+    protected void onSaturated() {
+        // hook for flow-specific saturation tasks
     }
 
     /*** Notify the uses and observers that this flow is saturated and unlink them. */

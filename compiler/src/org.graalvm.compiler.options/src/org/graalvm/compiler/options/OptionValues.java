@@ -140,7 +140,7 @@ public class OptionValues {
     }
 
     public static String toString(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-        Comparator<OptionKey<?>> comparator = new Comparator<OptionKey<?>>() {
+        Comparator<OptionKey<?>> comparator = new Comparator<>() {
             @Override
             public int compare(OptionKey<?> o1, OptionKey<?> o2) {
                 return o1.getName().compareTo(o2.getName());

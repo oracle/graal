@@ -24,32 +24,24 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
-
-    protected final BytecodeLocation allocationSite;
-
     /** The new type provider. */
-    protected TypeFlow<?> newTypeFlow;
+    private TypeFlow<?> newTypeFlow;
 
     /**
      * The allocation context for the generated dynamic object. Null if this is not a clone.
      */
-    protected final AnalysisContext allocationContext;
+    private final AnalysisContext allocationContext;
 
-    public DynamicNewInstanceTypeFlow(TypeFlow<?> newTypeFlow, AnalysisType type, ValueNode node, BytecodeLocation allocationLabel) {
-        super(node.getNodeSourcePosition(), type);
-        this.allocationSite = allocationLabel;
+    public DynamicNewInstanceTypeFlow(BytecodePosition location, TypeFlow<?> newTypeFlow, AnalysisType type) {
+        super(location, type);
         this.allocationContext = null;
         this.newTypeFlow = newTypeFlow;
 
@@ -63,51 +55,27 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     private DynamicNewInstanceTypeFlow(PointsToAnalysis bb, DynamicNewInstanceTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {
         super(original, methodFlows);
-        this.allocationSite = original.allocationSite;
         this.allocationContext = allocationContext;
         this.newTypeFlow = methodFlows.lookupCloneOf(bb, original.newTypeFlow);
     }
 
     @Override
     public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        AnalysisContext enclosingContext = methodFlows.context();
-        AnalysisContext allocContext = bb.contextPolicy().allocationContext(enclosingContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
-
+        AnalysisContext allocContext = bb.analysisPolicy().allocationContext(bb, methodFlows);
         return new DynamicNewInstanceTypeFlow(bb, this, methodFlows, allocContext);
     }
 
     @Override
-    public void initClone(PointsToAnalysis bb) {
-        assert this.isClone();
+    public void initFlow(PointsToAnalysis bb) {
         this.newTypeFlow.addObserver(bb, this);
     }
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        /* Only a clone should be updated */
-        assert this.isClone();
-
         /* The state of the new type provider has changed. */
         TypeState newTypeState = newTypeFlow.getState();
-        TypeState currentTypeState = getState();
-
-        /* Generate a heap object for every new incoming type. */
-        TypeState resultState = newTypeState.typesStream(bb)
-                        .filter(t -> !currentTypeState.containsType(t))
-                        .map(type -> TypeState.forAllocation(bb, allocationSite, type, allocationContext))
-                        .reduce(TypeState.forEmpty(), (s1, s2) -> TypeState.forUnion(bb, s1, s2));
-
-        assert !resultState.canBeNull();
-
-        addState(bb, resultState);
-    }
-
-    public TypeFlow<?> newTypeFlow() {
-        return newTypeFlow;
-    }
-
-    public BytecodeLocation allocationSite() {
-        return allocationSite;
+        TypeState updateState = bb.analysisPolicy().dynamicNewInstanceState(bb, state, newTypeState, source, allocationContext);
+        addState(bb, updateState);
     }
 
     public AnalysisContext allocationContext() {
@@ -121,7 +89,6 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
         /* When the new-type flow saturates start observing the flow of the declared type. */
         replaceObservedWith(bb, declaredType);
     }
@@ -134,8 +101,6 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("DynamicNewInstanceFlow<").append(getState()).append(">");
-        return str.toString();
+        return "DynamicNewInstanceFlow<" + getState() + ">";
     }
 }

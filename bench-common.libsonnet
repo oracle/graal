@@ -23,8 +23,9 @@
     min_jdk_version:: null,
     max_jdk_version:: null,
     is_jdk_supported(jdk_version)::
-      if self.min_jdk_version != null && jdk_version < self.min_jdk_version then false
-      else if self.max_jdk_version != null && jdk_version > self.max_jdk_version then false
+      if jdk_version == null then error "jdk_version cannot be null!" else
+      if std.objectHasAll(self, "min_jdk_version") && self.min_jdk_version != null && jdk_version < self.min_jdk_version then false
+      else if std.objectHasAll(self, "max_jdk_version") &&  self.max_jdk_version != null && jdk_version > self.max_jdk_version then false
       else true
   },
 

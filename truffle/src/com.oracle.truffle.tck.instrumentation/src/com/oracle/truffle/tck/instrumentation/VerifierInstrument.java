@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -261,16 +261,12 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             checkFrameIsEmpty(context, frame.materialize());
         }
 
-        @SuppressWarnings("deprecation")
         @TruffleBoundary
         private static void checkFrameIsEmpty(EventContext context, MaterializedFrame frame) {
             Node node = context.getInstrumentedNode();
             if (!hasParentRootTag(node) &&
                             node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
                 Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
-                for (com.oracle.truffle.api.frame.FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-                    Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
-                }
                 for (int slot = 0; slot < frame.getFrameDescriptor().getNumberOfSlots(); slot++) {
                     Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
                 }

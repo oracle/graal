@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,7 @@
 package com.oracle.truffle.api.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Assume;
@@ -54,10 +54,8 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
@@ -92,87 +90,11 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  * {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}.
  * </p>
  */
-@SuppressWarnings("deprecation")
 public class FrameTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
-    @Test
-    public void test() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        String varName = "localVar";
-        com.oracle.truffle.api.frame.FrameSlot slot = frameDescriptor.addFrameSlot(varName, FrameSlotKind.Int);
-        TestRootNode rootNode = new TestRootNode(frameDescriptor, new AssignLocal(slot), new ReadLocal(slot));
-        Object result = rootNode.getCallTarget().call();
-        assertEquals(42, result);
-        frameDescriptor.removeFrameSlot(varName);
-        assertNull(frameDescriptor.findFrameSlot(varName));
-    }
-
-    class TestRootNode extends RootNode {
-
-        @Child TestChildNode left;
-        @Child TestChildNode right;
-
-        TestRootNode(FrameDescriptor descriptor, TestChildNode left, TestChildNode right) {
-            super(null, descriptor);
-            this.left = left;
-            this.right = right;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return left.execute(frame) + right.execute(frame);
-        }
-    }
-
-    abstract class TestChildNode extends Node {
-
-        TestChildNode() {
-        }
-
-        abstract int execute(VirtualFrame frame);
-    }
-
-    abstract class FrameSlotNode extends TestChildNode {
-
-        protected final com.oracle.truffle.api.frame.FrameSlot slot;
-
-        FrameSlotNode(com.oracle.truffle.api.frame.FrameSlot slot) {
-            this.slot = slot;
-        }
-    }
-
-    class AssignLocal extends FrameSlotNode {
-
-        AssignLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
-            super(slot);
-        }
-
-        @Override
-        int execute(VirtualFrame frame) {
-            frame.setInt(slot, 42);
-            return 0;
-        }
-    }
-
-    class ReadLocal extends FrameSlotNode {
-
-        ReadLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
-            super(slot);
-        }
-
-        @Override
-        int execute(VirtualFrame frame) {
-            try {
-                return frame.getInt(slot);
-            } catch (FrameSlotTypeException e) {
-                throw new IllegalStateException(e);
-            }
-        }
     }
 
     @Test
@@ -188,12 +110,17 @@ public class FrameTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                FrameInstance frameInstance = runtime.getCurrentFrame();
-                Frame readWrite = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-                Frame materialized = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
+                Frame result = runtime.iterateFrames(f -> {
+                    Frame readWrite = f.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                    Frame materialized = f.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
 
-                assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
-                assertEquals("It's my frame", frame, readWrite);
+                    assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
+                    assertEquals("It's my frame", frame, readWrite);
+                    return materialized;
+                });
+                // at least one frame available
+                assertNotNull(result);
+
                 return this;
             }
         }

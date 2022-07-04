@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -134,7 +134,7 @@ class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
             for t in self.getTests():
                 t = t + self.getTestDirExt()
                 if self.buildRef:
-                    self.results.append(os.path.join(t, 'ref.out'))
+                    self.results.append(os.path.join(t, mx.exe_suffix('ref.out')))
                 for v in self.getVariants():
                     result_file = v + '.so' if self.buildSharedObject else v + '.bc'
                     self.results.append(os.path.join(t, result_file))
@@ -566,7 +566,8 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
             self._testfile = os.path.join(self.out_dir, 'tests.cache')
             with mx.SafeFileCreation(self._testfile) as sfc, open(sfc.tmpPath, "w") as f:
                 mx.logv("Writing test file: " + self._testfile)
-                f.write('set(SULONG_TESTS {} CACHE FILEPATH "test files")'.format(';'.join(self.getTests())))
+                tests = ';'.join([x.replace('\\', '\\\\') for x in self.getTests()])
+                f.write('set(SULONG_TESTS {} CACHE FILEPATH "test files")'.format(tests))
         return self._testfile
 
     def _default_cmake_vars(self):
@@ -654,14 +655,17 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         return self.source_dirs()[0]
 
     def _archivable_results(self, target_arch, use_relpath, single):
-        def result(base_dir, file_path):
-            assert not mx.isabs(file_path)
-            archive_path = file_path if use_relpath else mx.basename(file_path)
-            return mx.join(base_dir, file_path), archive_path
-
         out_dir_arch = self._install_dir
-        for _result in self.getResults():
-            yield result(out_dir_arch, _result)
+        for file_path in self.getResults():
+            assert not mx.isabs(file_path)
+            abs_path = mx.join(out_dir_arch, file_path)
+            archive_path = file_path if use_relpath else mx.basename(file_path)
+
+            # if test.skip exists the test should be skipped
+            if mx.exists(mx.join(mx.dirname(abs_path), "test.skip")):
+                continue
+
+            yield abs_path, archive_path
 
 
 class ExternalCMakeTestSuite(ExternalTestSuiteMixin, SulongCMakeTestSuite):  # pylint: disable=too-many-ancestors

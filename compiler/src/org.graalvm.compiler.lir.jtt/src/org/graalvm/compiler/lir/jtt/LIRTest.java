@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -145,7 +146,12 @@ public abstract class LIRTest extends JTTTest {
 
     }
 
-    private InvocationPlugin lirTestPlugin = new InvocationPlugin() {
+    private class LIRTestPlugin extends InvocationPlugin {
+
+        LIRTestPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
@@ -202,8 +208,21 @@ public abstract class LIRTest extends JTTTest {
                 b.addPush(returnKind, node);
             }
         }
+    }
 
-    };
+    private class GetOutputPlugin extends InvocationPlugin {
+
+        GetOutputPlugin(Type... argumentTypes) {
+            super("getOutput", argumentTypes);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode outputName, ValueNode expected) {
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
+            b.addPush(returnKind, new LIRValueNode(getSnippetReflection(), returnKind, spec, outputName));
+            return true;
+        }
+    }
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
@@ -215,19 +234,11 @@ public abstract class LIRTest extends JTTTest {
                 assert p.length > 0;
                 assert LIRTestSpecification.class.isAssignableFrom(p[0]);
 
-                invocationPlugins.register(lirTestPlugin, c, m.getName(), p);
+                invocationPlugins.register(c, new LIRTestPlugin(m.getName(), p));
             }
         }
-        InvocationPlugin outputPlugin = new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode name, ValueNode expected) {
-                JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-                b.addPush(returnKind, new LIRValueNode(getSnippetReflection(), returnKind, spec, name));
-                return true;
-            }
-        };
-        invocationPlugins.register(outputPlugin, LIRTest.class, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, Object.class});
-        invocationPlugins.register(outputPlugin, LIRTest.class, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, int.class});
+        invocationPlugins.register(LIRTest.class, new GetOutputPlugin(LIRTestSpecification.class, String.class, Object.class));
+        invocationPlugins.register(LIRTest.class, new GetOutputPlugin(LIRTestSpecification.class, String.class, int.class));
         super.registerInvocationPlugins(invocationPlugins);
     }
 

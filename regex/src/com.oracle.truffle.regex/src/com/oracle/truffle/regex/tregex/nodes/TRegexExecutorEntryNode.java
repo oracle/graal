@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,17 +43,20 @@ package com.oracle.truffle.regex.tregex.nodes;
 import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
-
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.util.TRegexGuards;
+
 import sun.misc.Unsafe;
 
 /**
  * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
  * provided to {@link TRegexExecNode}.
  */
+@ImportStatic(TRegexGuards.class)
 public abstract class TRegexExecutorEntryNode extends Node {
 
     private static final sun.misc.Unsafe UNSAFE;
@@ -113,17 +116,17 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     @Specialization
     Object doByteArray(byte[] input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN, false);
     }
 
     @Specialization(guards = "isCompactString(input)")
     Object doStringCompact(String input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.LATIN_1);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.LATIN_1, false);
     }
 
     @Specialization(guards = "!isCompactString(input)")
     Object doStringNonCompact(String input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN, false);
     }
 
     @Specialization(guards = "codeRangeEqualsNode.execute(input, cachedCodeRange)", limit = "5")
@@ -131,7 +134,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
                     @Cached @SuppressWarnings("unused") TruffleString.GetCodeRangeNode codeRangeNode,
                     @Cached @SuppressWarnings("unused") TruffleString.CodeRangeEqualsNode codeRangeEqualsNode,
                     @Cached("codeRangeNode.execute(input, executor.getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange) {
-        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, true);
     }
 
     @Specialization(guards = "neitherByteArrayNorString(input)")
@@ -140,14 +143,10 @@ public abstract class TRegexExecutorEntryNode extends Node {
         // conservatively disable compact string optimizations.
         // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
         // strings?
-        return executor.execute(executor.createLocals(inputClassProfile.profile(input), fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN);
+        return executor.execute(executor.createLocals(inputClassProfile.profile(input), fromIndex, index, maxIndex), TruffleString.CodeRange.BROKEN, false);
     }
 
     static boolean isCompactString(String str) {
         return UNSAFE != null && UNSAFE.getByte(str, coderFieldOffset) == 0;
-    }
-
-    protected static boolean neitherByteArrayNorString(Object obj) {
-        return !(obj instanceof byte[]) && !(obj instanceof String) && !(obj instanceof TruffleString);
     }
 }

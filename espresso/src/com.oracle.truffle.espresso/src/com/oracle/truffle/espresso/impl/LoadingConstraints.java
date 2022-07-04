@@ -57,17 +57,16 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * Once the bucket is obtained, we immediately synchronize on it. This prevents concurrency problems
  * as a whole, while allowing multiple threads to do constraint checking on different types.
  */
-final class LoadingConstraints implements ContextAccess {
+final class LoadingConstraints extends ContextAccessImpl {
     private static DebugTimer CONSTRAINTS = DebugTimer.create("constraints");
 
     private static final int NULL_KLASS_ID = -1;
     static final int INVALID_LOADER_ID = -1;
 
-    private final EspressoContext context;
     private final PurgeInfo info = new PurgeInfo();
 
     LoadingConstraints(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     /**
@@ -126,7 +125,7 @@ final class LoadingConstraints implements ContextAccess {
     }
 
     void purge() {
-        int[] alive = context.getRegistries().aliveLoaders();
+        int[] alive = getContext().getRegistries().aliveLoaders();
         info.emptyBuckets = 0;
         for (ConstraintBucket bucket : pairings.values()) {
             synchronized (bucket) {
@@ -184,11 +183,6 @@ final class LoadingConstraints implements ContextAccess {
                 mergeConstraints(bucket, c1, c2);
             }
         }
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     private static final class ConstraintBucket {

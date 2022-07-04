@@ -55,7 +55,6 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
         StaticObject executeImpl(
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_bootModules.getCallTargetNoSubstitution())") DirectCallNode original) {
-
             Meta meta = context.getMeta();
             // fetch original platform modules set
             @JavaType(Set.class)

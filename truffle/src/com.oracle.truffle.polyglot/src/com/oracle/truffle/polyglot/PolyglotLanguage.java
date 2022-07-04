@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         this.cache = cache;
         this.initError = initError;
         this.engineIndex = engineIndex;
-        this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
+        this.info = NODES.createLanguage(cache, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
     }
 
     PolyglotLanguageContext getCurrentLanguageContext() {
@@ -266,4 +266,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return true;
     }
 
+    String getWebsite() {
+        return cache.getWebsite();
+    }
 }

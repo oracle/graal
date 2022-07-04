@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -373,8 +373,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 wrappedExecuteMethods.add(method);
             } else {
                 String methodName = method.getSimpleName().toString();
-                if (method.getModifiers().contains(Modifier.ABSTRACT) && !methodName.equals("getSourceSection") //
-                                && !methodName.equals(METHOD_GET_NODE_COST) && !hasUnexpectedResult(context, method)) {
+                if (method.getModifiers().contains(Modifier.ABSTRACT) && !methodName.equals(METHOD_GET_NODE_COST) && !hasUnexpectedResult(context, method)) {
                     wrappedMethods.add(method);
                 }
             }

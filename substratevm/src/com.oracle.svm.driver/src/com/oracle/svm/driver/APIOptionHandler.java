@@ -52,11 +52,13 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -295,7 +297,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     String translateOption(ArgumentQueue argQueue) {
         OptionInfo option = null;
         String[] optionNameAndOptionValue = null;
-        String argumentOrigin = argQueue.argumentOrigin;
+        OptionOrigin argumentOrigin = OptionOrigin.from(argQueue.argumentOrigin);
         found: for (OptionInfo optionInfo : apiOptions.values()) {
             for (String variant : optionInfo.variants) {
                 String optionName;
@@ -472,6 +474,12 @@ final class APIOptionSupport {
 
 @AutomaticFeature
 final class APIOptionFeature implements Feature {
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, APIOptionFeature.class, true,
+                        "jdk.internal.vm.compiler", "org.graalvm.compiler.options");
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {

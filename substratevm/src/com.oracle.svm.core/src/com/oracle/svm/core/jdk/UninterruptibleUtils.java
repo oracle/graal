@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.StringUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -34,7 +34,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Annotated replacements to be called from uninterruptible code for methods whose source I do not
@@ -47,7 +47,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicInteger {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -91,13 +91,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(int expected, int update) {
-            return UNSAFE.compareAndSwapInt(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetInt(this, VALUE_OFFSET, expected, update);
         }
     }
 
     public static class AtomicLong {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -161,7 +161,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(long expected, long update) {
-            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetLong(this, VALUE_OFFSET, expected, update);
         }
     }
 
@@ -288,7 +288,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicPointer<T extends PointerBase> {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -313,13 +313,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
+            return UNSAFE.compareAndSetLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
         }
     }
 
     public static class AtomicReference<T> {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -351,7 +351,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetObject(this, VALUE_OFFSET, expected, update);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -511,26 +511,12 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator) {
             int result = 0;
-            boolean isLatin1 = JavaLangSubstitutions.isLatin1(string);
-            byte[] value = JavaLangSubstitutions.getBytes(string);
             for (int index = 0; index < string.length(); index++) {
-                char ch = charAt(isLatin1, value, index);
+                char ch = StringUtil.charAt(string, index);
                 result += modifiedUTF8Length(ch);
             }
 
             return result + (addNullTerminator ? 1 : 0);
-        }
-
-        /**
-         * Returns a character from a string at {@code index} position based on the encoding format.
-         */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static char charAt(boolean isLatin1, byte[] value, int index) {
-            if (isLatin1) {
-                return (char) (value[index] & 0xFF);
-            } else {
-                return Target_java_lang_StringUTF16.getChar(value, index);
-            }
         }
 
         /**
@@ -543,10 +529,8 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
             Pointer pos = buffer;
-            boolean isLatin1 = JavaLangSubstitutions.isLatin1(string);
-            byte[] value = JavaLangSubstitutions.getBytes(string);
             for (int index = 0; index < string.length(); index++) {
-                pos = writeModifiedUTF8(pos, charAt(isLatin1, value, index));
+                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index));
             }
 
             if (addNullTerminator) {

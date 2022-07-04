@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
@@ -51,8 +52,6 @@ import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.configure.trace.AccessAdvisor;
-import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.util.VMError;
 
 public class OmitPreviousConfigTests {
@@ -60,23 +59,18 @@ public class OmitPreviousConfigTests {
     private static final String PREVIOUS_CONFIG_DIR_NAME = "prev-config-dir";
     private static final String CURRENT_CONFIG_DIR_NAME = "config-dir";
 
-    private static TraceProcessor loadTraceProcessorFromResourceDirectory(String resourceDirectory, TraceProcessor previous) {
+    private static ConfigurationSet loadTraceProcessorFromResourceDirectory(String resourceDirectory, ConfigurationSet omittedConfig) {
         try {
-            ConfigurationSet configurationSet = new ConfigurationSet();
-            configurationSet.addDirectory(resourceFileName -> {
+            ConfigurationFileCollection configurationFileCollection = new ConfigurationFileCollection();
+            configurationFileCollection.addDirectory(resourceFileName -> {
                 try {
                     String resourceName = resourceDirectory + "/" + resourceFileName;
                     URL resourceURL = OmitPreviousConfigTests.class.getResource(resourceName);
-                    if (resourceURL == null) {
-                        Assert.fail("Configuration file " + resourceName + " does not exist. Make sure that the test or the config directory have not been moved.");
-                    }
-                    return resourceURL.toURI();
+                    return (resourceURL != null) ? resourceURL.toURI() : null;
                 } catch (Exception e) {
                     throw VMError.shouldNotReachHere("Unexpected error while locating the configuration files.", e);
                 }
             });
-
-            AccessAdvisor unusedAdvisor = new AccessAdvisor();
 
             Function<IOException, Exception> handler = e -> {
                 StringWriter sw = new StringWriter();
@@ -85,12 +79,10 @@ public class OmitPreviousConfigTests {
                 return e;
             };
             Predicate<String> shouldExcludeClassesWithHash = null;
-            if (previous != null) {
-                shouldExcludeClassesWithHash = previous.getPredefinedClassesConfiguration()::containsClassWithHash;
+            if (omittedConfig != null) {
+                shouldExcludeClassesWithHash = omittedConfig.getPredefinedClassesConfiguration()::containsClassWithHash;
             }
-            return new TraceProcessor(unusedAdvisor, configurationSet.loadJniConfig(handler), configurationSet.loadReflectConfig(handler), configurationSet.loadProxyConfig(handler),
-                            configurationSet.loadResourceConfig(handler), configurationSet.loadSerializationConfig(handler),
-                            configurationSet.loadPredefinedClassesConfig(null, shouldExcludeClassesWithHash, handler), previous);
+            return configurationFileCollection.loadConfigurationSet(handler, null, shouldExcludeClassesWithHash);
         } catch (Exception e) {
             throw VMError.shouldNotReachHere("Unexpected error while loading the configuration files.", e);
         }
@@ -98,32 +90,34 @@ public class OmitPreviousConfigTests {
 
     @Test
     public void testSameConfig() {
-        TraceProcessor previousConfigProcessor = loadTraceProcessorFromResourceDirectory(PREVIOUS_CONFIG_DIR_NAME, null);
-        TraceProcessor sameConfigProcessor = loadTraceProcessorFromResourceDirectory(PREVIOUS_CONFIG_DIR_NAME, previousConfigProcessor);
+        ConfigurationSet omittedConfig = loadTraceProcessorFromResourceDirectory(PREVIOUS_CONFIG_DIR_NAME, null);
+        ConfigurationSet config = loadTraceProcessorFromResourceDirectory(PREVIOUS_CONFIG_DIR_NAME, omittedConfig);
+        config = config.copyAndSubtract(omittedConfig);
 
-        assertTrue(sameConfigProcessor.getJniConfiguration().isEmpty());
-        assertTrue(sameConfigProcessor.getReflectionConfiguration().isEmpty());
-        assertTrue(sameConfigProcessor.getProxyConfiguration().isEmpty());
-        assertTrue(sameConfigProcessor.getResourceConfiguration().isEmpty());
-        assertTrue(sameConfigProcessor.getSerializationConfiguration().isEmpty());
-        assertTrue(sameConfigProcessor.getPredefinedClassesConfiguration().isEmpty());
+        assertTrue(config.getJniConfiguration().isEmpty());
+        assertTrue(config.getReflectionConfiguration().isEmpty());
+        assertTrue(config.getProxyConfiguration().isEmpty());
+        assertTrue(config.getResourceConfiguration().isEmpty());
+        assertTrue(config.getSerializationConfiguration().isEmpty());
+        assertTrue(config.getPredefinedClassesConfiguration().isEmpty());
     }
 
     @Test
     public void testConfigDifference() {
-        TraceProcessor previousConfigProcessor = loadTraceProcessorFromResourceDirectory(PREVIOUS_CONFIG_DIR_NAME, null);
-        TraceProcessor currentConfigProcessor = loadTraceProcessorFromResourceDirectory(CURRENT_CONFIG_DIR_NAME, previousConfigProcessor);
+        ConfigurationSet omittedConfig = loadTraceProcessorFromResourceDirectory(PREVIOUS_CONFIG_DIR_NAME, null);
+        ConfigurationSet config = loadTraceProcessorFromResourceDirectory(CURRENT_CONFIG_DIR_NAME, omittedConfig);
+        config = config.copyAndSubtract(omittedConfig);
 
         doTestGeneratedTypeConfig();
-        doTestTypeConfig(currentConfigProcessor.getJniConfiguration());
+        doTestTypeConfig(config.getJniConfiguration());
 
-        doTestProxyConfig(currentConfigProcessor.getProxyConfiguration());
+        doTestProxyConfig(config.getProxyConfiguration());
 
-        doTestResourceConfig(currentConfigProcessor.getResourceConfiguration());
+        doTestResourceConfig(config.getResourceConfiguration());
 
-        doTestSerializationConfig(currentConfigProcessor.getSerializationConfiguration());
+        doTestSerializationConfig(config.getSerializationConfiguration());
 
-        doTestPredefinedClassesConfig(currentConfigProcessor.getPredefinedClassesConfiguration());
+        doTestPredefinedClassesConfig(config.getPredefinedClassesConfiguration());
     }
 
     private static void doTestGeneratedTypeConfig() {
@@ -300,7 +294,7 @@ class TypeMethodsWithFlagsTest {
     }
 
     void doTest() {
-        TypeConfiguration currentConfigWithoutPrevious = TypeConfiguration.copyAndSubtract(currentConfig, previousConfig);
+        TypeConfiguration currentConfigWithoutPrevious = currentConfig.copyAndSubtract(previousConfig);
 
         String name = getTypeName();
         ConfigurationType configurationType = currentConfigWithoutPrevious.get(ConfigurationCondition.alwaysTrue(), name);

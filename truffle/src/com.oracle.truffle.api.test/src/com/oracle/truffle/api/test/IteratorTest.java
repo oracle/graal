@@ -104,10 +104,10 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class IteratorTest extends AbstractPolyglotTest {
 
-    private static final TypeLiteral<Function<Object, Object>> FUNCTION_OBJECT_OBJECT = new TypeLiteral<Function<Object, Object>>() {
+    private static final TypeLiteral<Function<Object, Object>> FUNCTION_OBJECT_OBJECT = new TypeLiteral<>() {
     };
 
-    private static final TypeLiteral<Iterable<Value>> ITERABLE_VALUE = new TypeLiteral<Iterable<Value>>() {
+    private static final TypeLiteral<Iterable<Value>> ITERABLE_VALUE = new TypeLiteral<>() {
     };
 
     @BeforeClass
@@ -216,7 +216,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         Object[] values = {"a", "b"};
         List<Object> valuesList = Arrays.asList(values);
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
-        Value iterable = context.asValue(new Iterable<Object>() {
+        Value iterable = context.asValue(new Iterable<>() {
 
             private final List<Object> elements = new ArrayList<>(valuesList);
 

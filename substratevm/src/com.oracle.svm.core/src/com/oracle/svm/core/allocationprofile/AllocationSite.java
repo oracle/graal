@@ -161,6 +161,12 @@ public final class AllocationSite {
         return sortedSites;
     }
 
+    public static void dumpProfilingResultsOnShutdown(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            dumpProfilingResults();
+        }
+    }
+
     public static void dumpProfilingResults() {
         dumpProfilingResults(Log.log());
     }
@@ -209,7 +215,7 @@ class AllocationProfilingFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (AllocationSite.Options.AllocationProfiling.getValue()) {
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite::dumpProfilingResults);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite::dumpProfilingResultsOnShutdown);
         }
     }
 }

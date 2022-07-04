@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
+import com.oracle.truffle.regex.tregex.parser.JSRegexValidator;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 
 public final class ECMAScriptFlavor extends RegexFlavor {
 
@@ -51,7 +57,12 @@ public final class ECMAScriptFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexFlavorProcessor forRegex(RegexSource source) {
-        throw new UnsupportedOperationException("forRegex should only be called on dialects other than ECMAScript");
+    public RegexValidator createValidator(RegexSource source) {
+        return new JSRegexValidator(source);
+    }
+
+    @Override
+    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return new JSRegexParser(language, source, compilationBuffer);
     }
 }

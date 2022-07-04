@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
@@ -286,7 +287,7 @@ public abstract class TruffleLanguage<C> {
          * @return identifier of your language
          * @since 0.8 or earlier
          */
-        String name();
+        String name() default "";
 
         /**
          * Unique name of your language implementation.
@@ -476,6 +477,15 @@ public abstract class TruffleLanguage<C> {
          * @since 22.1
          */
         boolean needsAllEncodings() default false;
+
+        /**
+         * A link to a website with more information about the instrument. Will be shown in the help
+         * text of GraalVM launchers.
+         *
+         * @since 22.1.0
+         * @return URL for language website.
+         */
+        String website() default "";
     }
 
     /**
@@ -603,7 +613,8 @@ public abstract class TruffleLanguage<C> {
      * Performs language context finalization actions that are necessary before language contexts
      * are {@link #disposeContext(Object) disposed}. However, in case the underlying polyglot
      * context is being cancelled or hard-exited, {@link #disposeContext(Object)} is called even if
-     * {@link #finalizeContext(Object)} throws a {@link TruffleException} or a {@link ThreadDeath}
+     * {@link #finalizeContext(Object)} throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or a {@link ThreadDeath}
      * cancel or exit exception.
      * <p>
      * For the hard exit a language is supposed to run its finalization actions that require running
@@ -613,6 +624,13 @@ public abstract class TruffleLanguage<C> {
      * for instance, finalization for standard streams should both flush and set them to unbuffered
      * mode at the end of exitContext, so that running guest code is not required to dispose the
      * streams after that point.
+     * <p>
+     * Context finalization is invoked even if a context was cancelled. In such a case, if guest
+     * code would run as part of the finalization, it would be cancelled at the next polled
+     * {@link TruffleSafepoint safepoint}. If there is guest code that always needs to run even if
+     * cancelled, e.g. to prevent resource leakage, use
+     * {@link TruffleSafepoint#setAllowActions(boolean)} to temporarily disable safepoints while
+     * executing that code.
      * <p>
      * All installed languages must remain usable after finalization. The finalization order can be
      * influenced by specifying {@link Registration#dependentLanguages() language dependencies}. By
@@ -656,10 +674,11 @@ public abstract class TruffleLanguage<C> {
      * {@link #finalizeContext(Object) finalized}. However, in case the underlying polyglot context
      * is being cancelled, {@link #exitContext(Object, ExitMode, int) exit notifications} are not
      * executed. Also, for {@link ExitMode#HARD hard exit}, {@link #finalizeContext(Object)} is
-     * called even if {@link #exitContext(Object, ExitMode, int)} throws a {@link TruffleException}
-     * or a {@link ThreadDeath} cancel or exit exception. All initialized language contexts must
-     * remain usable after exit notifications. In case a {@link TruffleException} or the
-     * {@link ThreadDeath} exit exception is thrown during a {@link ExitMode#HARD hard exit
+     * called even if {@link #exitContext(Object, ExitMode, int)} throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or a {@link ThreadDeath}
+     * cancel or exit exception. All initialized language contexts must remain usable after exit
+     * notifications. In case a {@link com.oracle.truffle.api.exception.AbstractTruffleException} or
+     * the {@link ThreadDeath} exit exception is thrown during an {@link ExitMode#HARD hard exit
      * notification}, it is just logged and otherwise ignored and the notification process continues
      * with the next language in order. In case the {@link ThreadDeath} cancel exception is thrown,
      * it means the context is being cancelled in which case the exit notification process
@@ -678,9 +697,12 @@ public abstract class TruffleLanguage<C> {
      * non-deterministic and/or not respect the order specified by language dependencies.
      * <p>
      * In case {@link TruffleContext#closeExited(Node, int)} is called during a
-     * {@link ExitMode#NATURAL natural exit notification}, it is ignored. In case it is called
-     * during a {@link ExitMode#HARD hard exit notification}, it just throws the special
-     * {@link ThreadDeath} exit exception, which is then just logged as described above.
+     * {@link ExitMode#NATURAL natural exit} notification, natural exit notifications for remaining
+     * language contexts are not executed and the {@link ExitMode#HARD hard exit} process starts by
+     * executing {@link ExitMode#HARD hard exit} notifications. In case
+     * {@link TruffleContext#closeExited(Node, int)} is called during a {@link ExitMode#HARD hard
+     * exit} notification, it just throws the special {@link ThreadDeath} exit exception, which is
+     * then just logged as described above.
      * <p>
      * In case the underlying polyglot context is cancelled by e.g.
      * {@link TruffleContext#closeCancelled(Node, String)} during exit notifications, guest code
@@ -761,7 +783,8 @@ public abstract class TruffleLanguage<C> {
      * should be run in {@link #finalizeContext(Object)} instead. Finalization will be performed
      * prior to context {@link #disposeContext(Object) disposal}. However, in case the underlying
      * polyglot context is being cancelled, {@link #disposeContext(Object)} is called even if
-     * {@link #finalizeContext(Object)} throws {@link TruffleException} or {@link ThreadDeath}
+     * {@link #finalizeContext(Object)} throws
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} or {@link ThreadDeath}
      * exception..
      * <p>
      * The disposal order can be influenced by specifying {@link Registration#dependentLanguages()
@@ -1335,7 +1358,7 @@ public abstract class TruffleLanguage<C> {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link ContextReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
         try {
             return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
@@ -1350,7 +1373,7 @@ public abstract class TruffleLanguage<C> {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link LanguageReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         try {
             return ENGINE.getCurrentContext(languageClass);
@@ -1511,7 +1534,7 @@ public abstract class TruffleLanguage<C> {
      */
     protected final String getLanguageHome() {
         try {
-            return LanguageAccessor.engineAccess().getLanguageHome(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
+            return ENGINE.getLanguageHome(languageInfo);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -1531,7 +1554,8 @@ public abstract class TruffleLanguage<C> {
      * @since 20.1.0
      */
     protected final int getAsynchronousStackDepth() {
-        return LanguageAccessor.engineAccess().getAsynchronousStackDepth(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
+        assert polyglotLanguageInstance != null : "getAsynchronousStackDepth not supported for host language";
+        return LanguageAccessor.engineAccess().getAsynchronousStackDepth(polyglotLanguageInstance);
     }
 
     /**
@@ -2727,14 +2751,14 @@ public abstract class TruffleLanguage<C> {
 
         private abstract static class TruffleFileFactory<P> implements BiFunction<P, FileSystemContext, TruffleFile> {
 
-            static final TruffleFileFactory<String> PATH = new TruffleFileFactory<String>() {
+            static final TruffleFileFactory<String> PATH = new TruffleFileFactory<>() {
                 @Override
                 Path parsePath(String path, FileSystemContext fileSystemContext) {
                     return fileSystemContext.fileSystem.parsePath(path);
                 }
             };
 
-            static final TruffleFileFactory<URI> URI = new TruffleFileFactory<URI>() {
+            static final TruffleFileFactory<URI> URI = new TruffleFileFactory<>() {
                 @Override
                 public Path parsePath(URI uri, FileSystemContext fileSystemContext) {
                     return fileSystemContext.fileSystem.parsePath(uri);
@@ -2999,6 +3023,30 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * @since 20.3.0
+         * @deprecated since 22.1; replaced by {@link #createHostAdapter(Object[])}.
+         */
+        @Deprecated(since = "22.1")
+        @TruffleBoundary
+        public Object createHostAdapterClass(Class<?>[] types) {
+            Objects.requireNonNull(types, "types");
+            return createHostAdapterClassLegacyImpl(types, null);
+        }
+
+        /**
+         * @since 20.3.0
+         * @deprecated since 22.1; replaced by
+         *             {@link #createHostAdapterWithClassOverrides(Object[], Object)}.
+         */
+        @Deprecated(since = "22.1")
+        @TruffleBoundary
+        public Object createHostAdapterClassWithStaticOverrides(Class<?>[] types, Object classOverrides) {
+            Objects.requireNonNull(types, "types");
+            Objects.requireNonNull(classOverrides, "classOverrides");
+            return createHostAdapterClassLegacyImpl(types, classOverrides);
+        }
+
+        /**
          * Creates a Java host adapter class that can be
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate instantiated} with
          * a guest object (as the last argument) in order to create adapter instances of the
@@ -3006,7 +3054,8 @@ public abstract class TruffleLanguage<C> {
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMemberInvocable invocable}
          * members. Implementations must be
          * {@linkplain org.graalvm.polyglot.HostAccess.Builder#allowImplementations(Class) allowed}
-         * for these types. The returned adapter class is also a
+         * for these types. The returned host adapter class is an instantiable
+         * {@linkplain #isHostObject(Object) host object} that is also a
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMetaObject meta object}, so
          * {@link com.oracle.truffle.api.interop.InteropLibrary#isMetaInstance isMetaInstance} can
          * be used to check if an object is an instance of this adapter class. See usage example
@@ -3054,7 +3103,9 @@ public abstract class TruffleLanguage<C> {
          *
          * <pre>
          * <code>
-         * Object hostClass = env.createHostAdapterClass(new Class<?>[]{Superclass.class, Interface.class});
+         * Object hostClass = env.createHostAdapter(new Object[]{
+         *      env.asHostSymbol(Superclass.class),
+         *      env.asHostSymbol(Interface.class)});
          * // generates a class along the lines of:
          *
          * public class Adapter extends Superclass implements Interface {
@@ -3090,17 +3141,17 @@ public abstract class TruffleLanguage<C> {
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if {@code types} is null
          *
-         * @see #createHostAdapterClassWithStaticOverrides(Class[], Object)
-         * @since 20.3.0
+         * @see #createHostAdapterWithClassOverrides(Object[], Object)
+         * @since 22.1
          */
         @TruffleBoundary
-        public Object createHostAdapterClass(Class<?>[] types) {
+        public Object createHostAdapter(Object[] types) {
             Objects.requireNonNull(types, "types");
             return createHostAdapterClassImpl(types, null);
         }
 
         /**
-         * Like {@link #createHostAdapterClass(Class[])} but creates a Java host adapter class with
+         * Like {@link #createHostAdapter(Object[])} but creates a Java host adapter class with
          * class-level overrides, i.e., the guest object provided as {@code classOverrides} is
          * statically bound to the class rather than instances of the class. Returns a host class
          * that can be {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate
@@ -3111,7 +3162,7 @@ public abstract class TruffleLanguage<C> {
          * superclass of other host adapter classes. Note that classes created with method cannot be
          * cached. Therefore, this feature should be used sparingly.
          * <p>
-         * See {@link #createHostAdapterClass(Class[])} for more details.
+         * See {@link #createHostAdapter(Object[])} for more details.
          *
          * @param types the types to extend. Must be non-null and contain at least one extensible
          *            superclass or interface, and at most one superclass. All types must be public,
@@ -3132,11 +3183,11 @@ public abstract class TruffleLanguage<C> {
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if either {@code types} or {@code classOverrides} is null.
          *
-         * @see #createHostAdapterClass(Class[])
-         * @since 20.3.0
+         * @see #createHostAdapter(Object[])
+         * @since 22.1
          */
         @TruffleBoundary
-        public Object createHostAdapterClassWithStaticOverrides(Class<?>[] types, Object classOverrides) {
+        public Object createHostAdapterWithClassOverrides(Object[] types, Object classOverrides) {
             Objects.requireNonNull(types, "types");
             Objects.requireNonNull(classOverrides, "classOverrides");
             return createHostAdapterClassImpl(types, classOverrides);
@@ -3247,7 +3298,7 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
+         * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
          * {@link Interruptible}. If the underlying polyglot context is already closed, the method
@@ -3296,7 +3347,17 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
-        private Object createHostAdapterClassImpl(Class<?>[] types, Object classOverrides) {
+        private Object createHostAdapterClassLegacyImpl(Class<?>[] types, Object classOverrides) {
+            checkDisposed();
+            Object[] hostTypes = new Object[types.length];
+            for (int i = 0; i < types.length; i++) {
+                Class<?> type = types[i];
+                hostTypes[i] = asHostSymbol(type);
+            }
+            return createHostAdapterClassImpl(hostTypes, classOverrides);
+        }
+
+        private Object createHostAdapterClassImpl(Object[] types, Object classOverrides) {
             checkDisposed();
             try {
                 if (types.length == 0) {
@@ -3412,13 +3473,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 19.0
-         * @deprecated in 21.3, use {@link #get(Node)} instead.
-         */
-        @Deprecated
-        public abstract L get();
-
-        /**
          * Returns the current language instance associated with the current thread. An enclosing
          * node should be provided as parameter if available, otherwise <code>null</code> may be
          * provided. This method is designed to be called safely from compiled code paths. In order
@@ -3455,7 +3509,7 @@ public abstract class TruffleLanguage<C> {
          */
         public static <T extends TruffleLanguage<?>> LanguageReference<T> create(Class<T> languageClass) {
             Objects.requireNonNull(languageClass);
-            return LanguageAccessor.ENGINE.createLanguageReference(null, languageClass);
+            return LanguageAccessor.ENGINE.createLanguageReference(languageClass);
         }
 
     }
@@ -3537,14 +3591,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 0.25
-         * @deprecated in 21.3, use {@link #get(Node)} instead.
-         */
-        @SuppressWarnings("unchecked")
-        @Deprecated
-        public abstract C get();
-
-        /**
          * Returns the current language context associated with the current thread. An enclosing
          * node should be provided as parameter if available, otherwise <code>null</code> may be
          * provided. This method is designed to be called safely from compiled code paths. In order
@@ -3580,7 +3626,7 @@ public abstract class TruffleLanguage<C> {
          */
         public static <T extends TruffleLanguage<C>, C> ContextReference<C> create(Class<T> languageClass) {
             Objects.requireNonNull(languageClass);
-            return LanguageAccessor.ENGINE.createContextReference(null, languageClass);
+            return LanguageAccessor.ENGINE.createContextReference(languageClass);
         }
     }
 

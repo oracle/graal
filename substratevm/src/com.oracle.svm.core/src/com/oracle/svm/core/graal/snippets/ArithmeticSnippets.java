@@ -243,7 +243,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             args.add("y", node.getY());
 
             IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
-            boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroCheck() == null && yStamp.contains(0));
+            boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
             args.addConst("needsZeroCheck", needsZeroCheck);
             if (node instanceof SignedDivNode || node instanceof SignedRemNode) {
                 args.addConst("needsBoundsCheck", needsSignedBoundsCheck);
@@ -263,6 +263,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
 
 @NodeInfo
 class SafeSignedDivNode extends SignedDivNode {
+
     public static final NodeClass<SafeSignedDivNode> TYPE = NodeClass.create(SafeSignedDivNode.class);
 
     protected SafeSignedDivNode(ValueNode x, ValueNode y) {
@@ -280,6 +281,11 @@ class SafeSignedDivNode extends SignedDivNode {
         assert forZeroCheck == null;
         // note that stateBefore is irrelevant, as this "safe" variant will not deoptimize
         return new SafeSignedDivNode(forX, forY);
+    }
+
+    @Override
+    public boolean canFloat() {
+        return false;
     }
 
     @Override
@@ -304,6 +310,11 @@ class SafeSignedRemNode extends SignedRemNode {
     protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
         assert forZeroCheck == null;
         return new SafeSignedRemNode(forX, forY);
+    }
+
+    @Override
+    public boolean canFloat() {
+        return false;
     }
 
     @Override

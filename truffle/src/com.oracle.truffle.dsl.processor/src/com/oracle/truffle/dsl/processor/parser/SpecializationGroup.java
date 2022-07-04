@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -184,7 +184,7 @@ public final class SpecializationGroup {
             if (!guardMatch.getExpression().findBoundVariables().isEmpty()) {
                 iterator.remove();
             }
-            // TODO we need to be smarter here with bound parameters.
+            // TODO GR-38632 we need to be smarter here with bound parameters.
         }
 
         if (typeGuardsMatches.isEmpty() && guardMatches.isEmpty()) {

@@ -65,7 +65,10 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     private Map<String, Integer> missingIntrinsicMetrics;
 
     public static class Options {
-        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug) public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
+        // @formatter:off
+        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
+        // @formatter:on
     }
 
     /**
@@ -83,23 +86,24 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             this.unimplementedIntrinsics = null;
         }
         this.missingIntrinsicMetrics = null;
+
         registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
 
     @Override
-    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
+    protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         if (!config.usePopCountInstruction) {
-            if (name.equals("bitCount")) {
+            if ("bitCount".equals(plugin.name)) {
                 GraalError.guarantee(declaringClass.equals(Integer.class) || declaringClass.equals(Long.class), declaringClass.getTypeName());
                 return;
             }
         }
         if (!config.useUnalignedAccesses) {
-            if (name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
+            if (plugin.name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
                 return;
             }
         }
-        super.register(plugin, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
+        super.register(declaringClass, plugin, allowOverwrite);
     }
 
     @Override

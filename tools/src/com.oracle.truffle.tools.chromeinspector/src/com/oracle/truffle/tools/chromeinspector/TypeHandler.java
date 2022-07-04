@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -157,12 +158,7 @@ public final class TypeHandler {
                 @Override
                 protected void onEnter(VirtualFrame frame) {
                     if (nodeLibrary.hasScope(node, frame)) {
-                        try {
-                            Object scope = nodeLibrary.getScope(node, frame, true);
-                            processArguments(scope);
-                        } catch (UnsupportedMessageException e) {
-                            throw CompilerDirectives.shouldNotReachHere(e);
-                        }
+                        onEnterSlowPath(frame.materialize());
                     }
                 }
 
@@ -172,6 +168,15 @@ public final class TypeHandler {
                 }
 
                 @CompilerDirectives.TruffleBoundary
+                private void onEnterSlowPath(MaterializedFrame frame) {
+                    try {
+                        Object scope = nodeLibrary.getScope(node, frame, true);
+                        processArguments(scope);
+                    } catch (UnsupportedMessageException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
+                }
+
                 private void processArguments(Object arguments) {
                     final SourceSection section = context.getInstrumentedSourceSection();
                     final LanguageInfo language = node.getRootNode().getLanguageInfo();

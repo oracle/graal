@@ -65,15 +65,16 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
     EspressoRootNode(FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode, boolean usesMonitors) {
-        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
+        super(methodNode.getMethod().getLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = usesMonitors ? SLOT_UNINITIALIZED : SLOT_UNUSED;
         this.cookieSlot = SLOT_UNINITIALIZED;
     }
 
+    // Splitting constructor
     private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode) {
-        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
-        this.methodNode = methodNode;
+        super(methodNode.getMethod().getLanguage(), frameDescriptor);
+        this.methodNode = methodNode.split();
         this.monitorSlot = split.monitorSlot;
         this.cookieSlot = split.cookieSlot;
     }
@@ -90,12 +91,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public boolean isCloningAllowed() {
-        return getMethodNode().shouldSplit();
+        return getMethodNode().canSplit();
     }
 
     @Override
     protected boolean isCloneUninitializedSupported() {
-        return getMethodNode().shouldSplit();
+        return getMethodNode().canSplit();
     }
 
     @Override
@@ -108,8 +109,21 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getMethodNode().getContext();
     }
 
+    /*
+     * Needed to prevent svm analysis from including other versions of getMeta.
+     */
+    @Override
+    public Meta getMeta() {
+        return getContext().getMeta();
+    }
+
     @Override
     public final String getName() {
+        return getMethod().getName().toString() + getMethod().getRawSignature();
+    }
+
+    @Override
+    public String getQualifiedName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
     }
 
@@ -245,7 +259,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             super(frameDescriptor, methodNode, true);
         }
 
-        Synchronized(Synchronized split) {
+        private Synchronized(Synchronized split) {
             super(split, split.getFrameDescriptor(), split.getMethodNode());
         }
 
@@ -258,6 +272,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         public Object execute(VirtualFrame frame) {
             Method method = getMethod();
             assert method.isSynchronized();
+            assert method.getDeclaringKlass().isInitializedOrInitializing() : method.getDeclaringKlass();
             StaticObject monitor = method.isStatic()
                             ? /* class */ method.getDeclaringKlass().mirror()
                             : /* receiver */ (StaticObject) frame.getArguments()[0];
@@ -285,7 +300,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             super(frameDescriptor, methodNode, methodNode.getMethod().usesMonitors());
         }
 
-        Default(Default split) {
+        private Default(Default split) {
             super(split, split.getFrameDescriptor(), split.getMethodNode());
         }
 
@@ -296,6 +311,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         @Override
         public Object execute(VirtualFrame frame) {
+            assert getMethod().getDeclaringKlass().isInitializedOrInitializing() || getContext().anyHierarchyChanged() : getMethod().getDeclaringKlass();
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }

@@ -77,6 +77,10 @@ public class InlineOnlyTest {
 
         public static final String ID = "truffle-exclude-pattern-test-language";
 
+        public ExcludePatternTestLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final RootCallTarget rootCallTarget = new RootNode(this) {
@@ -123,6 +127,10 @@ public class InlineOnlyTest {
     public static class InlineSelectedMethodsTestLanguage extends ProxyLanguage {
 
         public static final String ID = "truffle-inline-selected-methods-test-language";
+
+        public InlineSelectedMethodsTestLanguage() {
+            wrapper = false;
+        }
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {

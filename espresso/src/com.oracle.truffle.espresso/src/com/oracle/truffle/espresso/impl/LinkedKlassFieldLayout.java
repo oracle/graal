@@ -28,6 +28,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.api.staticobject.StaticShape.Builder;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -74,7 +75,7 @@ final class LinkedKlassFieldLayout {
 
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
             if (hiddenField.versionRange.contains(description.javaVersion)) {
-                ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
+                ParserField hiddenParserField = new ParserField(ParserField.HIDDEN | hiddenField.additionalFlags, hiddenField.name, hiddenField.type, null);
                 createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
@@ -164,18 +165,26 @@ final class LinkedKlassFieldLayout {
 
     private static class HiddenField {
 
+        private static final int NO_ADDITIONAL_FLAGS = 0;
+
         private final Symbol<Name> name;
         private final Symbol<Type> type;
         private final VersionRange versionRange;
+        private final int additionalFlags;
 
         HiddenField(Symbol<Name> name) {
-            this(name, Type.java_lang_Object, VersionRange.ALL);
+            this(name, Type.java_lang_Object, VersionRange.ALL, NO_ADDITIONAL_FLAGS);
         }
 
-        HiddenField(Symbol<Name> name, Symbol<Type> type, VersionRange versionRange) {
+        HiddenField(Symbol<Name> name, int additionalFlags) {
+            this(name, Type.java_lang_Object, VersionRange.ALL, additionalFlags);
+        }
+
+        HiddenField(Symbol<Name> name, Symbol<Type> type, VersionRange versionRange, int additionalFlags) {
             this.name = name;
             this.type = type;
             this.versionRange = versionRange;
+            this.additionalFlags = additionalFlags;
         }
 
         private boolean appliesTo(JavaVersion version) {
@@ -249,9 +258,12 @@ final class LinkedKlassFieldLayout {
             }
             if (holder == Type.java_lang_Thread) {
                 return new HiddenField[]{
-                                new HiddenField(Name.HIDDEN_INTERRUPTED, Type._boolean, VersionRange.lower(13)),
+                                new HiddenField(Name.HIDDEN_INTERRUPTED, Type._boolean, VersionRange.lower(13), NO_ADDITIONAL_FLAGS),
                                 new HiddenField(Name.HIDDEN_HOST_THREAD),
+                                new HiddenField(Name.HIDDEN_ESPRESSO_MANAGED, Type._boolean, VersionRange.ALL, NO_ADDITIONAL_FLAGS),
                                 new HiddenField(Name.HIDDEN_DEPRECATION_SUPPORT),
+                                new HiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS, Type._int, VersionRange.ALL, Constants.ACC_VOLATILE),
+                                new HiddenField(Name.HIDDEN_THREAD_PARK_LOCK, Type.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
 
                                 // Only used for j.l.management bookkeeping.
                                 new HiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT),
@@ -262,7 +274,7 @@ final class LinkedKlassFieldLayout {
             if (holder == Type.java_lang_Class) {
                 return new HiddenField[]{
                                 new HiddenField(Name.HIDDEN_SIGNERS),
-                                new HiddenField(Name.HIDDEN_MIRROR_KLASS),
+                                new HiddenField(Name.HIDDEN_MIRROR_KLASS, Constants.ACC_FINAL),
                                 new HiddenField(Name.HIDDEN_PROTECTION_DOMAIN)
                 };
             }

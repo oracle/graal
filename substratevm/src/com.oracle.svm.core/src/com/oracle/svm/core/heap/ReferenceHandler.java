@@ -26,19 +26,24 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
-        return ReferenceHandlerThread.isSupported() && ReferenceHandlerThread.isEnabled();
+        int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
+        return ReferenceHandlerThread.isSupported() && IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
+    }
+
+    public static boolean isExecutedManually() {
+        return !useDedicatedThread();
     }
 
     public static void processPendingReferencesInRegularThread() {
-        assert !useDedicatedThread() && isReferenceHandlingAllowed();
+        assert isExecutedManually();
 
         /*
          * We might be running in a user thread that is close to a stack overflow, so enable the
@@ -72,15 +77,6 @@ public final class ReferenceHandler {
             }
             ref = commonCleaner.impl.queue.poll();
         }
-    }
-
-    public static boolean isReferenceHandlingAllowed() {
-        /*
-         * Inside a VMOperation, we are not allowed to do certain things, e.g., perform
-         * synchronization (because it can deadlock when a lock is held outside the VMOperation).
-         * Similar restrictions apply if we are too early in the attach sequence of a thread.
-         */
-        return !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized();
     }
 
     private ReferenceHandler() {

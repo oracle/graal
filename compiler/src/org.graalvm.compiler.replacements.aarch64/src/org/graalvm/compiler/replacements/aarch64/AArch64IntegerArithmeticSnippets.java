@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -36,6 +36,8 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -115,7 +117,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         args.add("y", node.getY());
 
         IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
-        boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroCheck() == null && yStamp.contains(0));
+        boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
         args.addConst("needsZeroCheck", needsZeroCheck);
 
         template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -125,32 +127,40 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     public static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet
     public static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet
@@ -242,7 +252,8 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         protected SignedDivNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck, FrameState forStateBefore) {
             assert forZeroCheck == null;
             // note that stateBefore is irrelevant, as this "safe" variant will not deoptimize
-            return new SafeSignedDivNode(forX, forY);
+            SafeSignedDivNode div = new SafeSignedDivNode(forX, forY);
+            return div;
         }
 
         @Override
@@ -251,6 +262,11 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
              * All checks have been done. Returning false is the indicator that no FrameState is
              * necessary anymore for the node.
              */
+            return false;
+        }
+
+        @Override
+        public boolean canFloat() {
             return false;
         }
     }
@@ -266,7 +282,8 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         @Override
         protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
             assert forZeroCheck == null;
-            return new SafeSignedRemNode(forX, forY);
+            SafeSignedRemNode rem = new SafeSignedRemNode(forX, forY);
+            return rem;
         }
 
         @Override
@@ -275,6 +292,11 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
              * All checks have been done. Returning false is the indicator that no FrameState is
              * necessary anymore for the node.
              */
+            return false;
+        }
+
+        @Override
+        public boolean canFloat() {
             return false;
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Test;
 
@@ -62,7 +61,7 @@ public class PoorMansEATest extends GraalCompilerTest {
             HighTierContext highTierContext = getDefaultHighTierContext();
             createInliningPhase().apply(graph, highTierContext);
             CoreProviders context = getProviders();
-            new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
 
             // remove framestates in order to trigger the simplification.
             cleanup: for (FrameState fs : graph.getNodes(FrameState.TYPE).snapshot()) {

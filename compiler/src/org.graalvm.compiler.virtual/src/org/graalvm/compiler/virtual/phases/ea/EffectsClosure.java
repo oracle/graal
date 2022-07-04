@@ -157,7 +157,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
          * correct order, e.g., apply the effect that adds a node to the graph before the node is
          * used.
          */
-        BlockIteratorClosure<Void> closure = new BlockIteratorClosure<Void>() {
+        BlockIteratorClosure<Void> closure = new BlockIteratorClosure<>() {
 
             @Override
             protected Void getInitialState() {

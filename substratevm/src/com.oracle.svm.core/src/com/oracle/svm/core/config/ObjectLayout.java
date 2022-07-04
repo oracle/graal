@@ -27,7 +27,7 @@ package com.oracle.svm.core.config;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;

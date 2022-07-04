@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
 @Platforms(Platform.AMD64.class)
-class AMD64SnippetsFeature implements GraalFeature {
+class AMD64SnippetsFeature implements InternalFeature {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,

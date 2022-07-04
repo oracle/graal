@@ -287,31 +287,54 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
 
     public DFAStateNodeBuilder updateFinalStateData(DFAGenerator dfaGenerator) {
         boolean forward = dfaGenerator.isForward();
+        boolean traceFinder = dfaGenerator.getNfa().isTraceFinderNFA();
         for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
             NFAState target = t.getTarget(forward);
             if (target.hasTransitionToAnchoredFinalState(forward)) {
                 if (anchoredFinalStateTransition == null) {
-                    setAnchoredFinalState();
-                    setAnchoredFinalStateTransition(target.getFirstTransitionToFinalState(forward));
+                    if (traceFinder && isBackwardPrefixState()) {
+                        for (NFAStateTransition t2 : target.getSuccessors(forward)) {
+                            NFAState target2 = t2.getTarget(forward);
+                            if (target2.isAnchoredFinalState(forward) && target2.hasPrefixStates()) {
+                                setAnchoredFinalState();
+                                setAnchoredFinalStateTransition(t2);
+                            }
+                        }
+                    } else {
+                        setAnchoredFinalState();
+                        setAnchoredFinalStateTransition(target.getFirstTransitionToFinalState(forward));
+                    }
                 }
             }
             if (target.hasTransitionToUnAnchoredFinalState(forward)) {
-                setUnAnchoredFinalState();
-                setUnAnchoredFinalStateTransition(target.getTransitionToUnAnchoredFinalState(forward));
+                if (traceFinder && isBackwardPrefixState()) {
+                    for (NFAStateTransition t2 : target.getSuccessors(forward)) {
+                        NFAState target2 = t2.getTarget(forward);
+                        if (target2.isUnAnchoredFinalState(forward) && target2.hasPrefixStates()) {
+                            setUnAnchoredFinalState();
+                            setUnAnchoredFinalStateTransition(t2);
+                        }
+                    }
+                } else {
+                    setUnAnchoredFinalState();
+                    setUnAnchoredFinalStateTransition(target.getTransitionToUnAnchoredFinalState(forward));
+                }
                 if (forward) {
                     return this;
                 }
             }
-            if (dfaGenerator.getNfa().isTraceFinderNFA()) {
+            if (traceFinder) {
                 for (NFAStateTransition t2 : target.getSuccessors(forward)) {
                     NFAState target2 = t2.getTarget(forward);
-                    if (target2.isAnchoredFinalState(forward)) {
-                        assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
-                        updatePreCalcAnchoredResult(target2.getPossibleResults().iterator().nextInt());
-                    }
-                    if (target2.isUnAnchoredFinalState(forward)) {
-                        assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
-                        updatePreCalcUnAnchoredResult(target2.getPossibleResults().iterator().nextInt());
+                    if (!isBackwardPrefixState() || target2.hasPrefixStates()) {
+                        if (target2.isAnchoredFinalState(forward)) {
+                            assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
+                            updatePreCalcAnchoredResult(target2.getPossibleResults().iterator().nextInt());
+                        }
+                        if (target2.isUnAnchoredFinalState(forward)) {
+                            assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
+                            updatePreCalcUnAnchoredResult(target2.getPossibleResults().iterator().nextInt());
+                        }
                     }
                 }
             }

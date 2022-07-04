@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import static com.oracle.truffle.api.strings.TStringGuards.isBytes;
 import static com.oracle.truffle.api.strings.TStringGuards.isLatin1;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class TSCodeRange {
@@ -84,10 +83,8 @@ final class TSCodeRange {
      */
     private static final int CR_UNKNOWN = 7;
 
-    @CompilationFinal(dimensions = 1) private static final int[] MAX_CODEPOINT_PER_CODE_RANGE = {0x7f, 0xff, 0xffff, 0x10ffff, 0x10ffff, 0x10ffff, 0x10ffff, 0x10ffff};
-
     private static int maxCodePoint(int codeRange) {
-        return MAX_CODEPOINT_PER_CODE_RANGE[codeRange];
+        return codeRange == CR_7BIT ? 0x7f : codeRange == CR_8BIT ? 0xff : codeRange == CR_16BIT ? 0xffff : 0x10ffff;
     }
 
     static boolean isCodeRange(int codeRange) {

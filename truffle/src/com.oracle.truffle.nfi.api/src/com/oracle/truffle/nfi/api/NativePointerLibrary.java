@@ -47,6 +47,12 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 
+/**
+ * This library contains a subset of {@link com.oracle.truffle.api.interop.InteropLibrary} messages
+ * exported by some NFI objects. Those objects already implement the corresponding
+ * {@link com.oracle.truffle.api.interop.InteropLibrary} messages, but they cannot be used in the
+ * AOT mode, as {@link com.oracle.truffle.api.interop.InteropLibrary} is not an AOT-enabled library.
+ */
 @GenerateLibrary
 @GenerateAOT
 @GenerateLibrary.DefaultExport(NativePointerLibrary.LongNativePointerLibrary.class)

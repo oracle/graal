@@ -58,12 +58,14 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -80,6 +82,7 @@ import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -89,7 +92,6 @@ import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CHeader.Header;
 import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.CUnsigned;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
@@ -180,8 +182,9 @@ public abstract class NativeImage extends AbstractImage {
         }
         resultingImageSize = (int) outputFile.toFile().length();
         debugInfoSize = 0;
+        String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
         for (Element e : objectFile.getElements()) {
-            if (e.getName().contains(".debug")) {
+            if (e.getName().contains(debugIdentifier)) {
                 debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
             }
         }
@@ -465,10 +468,10 @@ public abstract class NativeImage extends AbstractImage {
              * If we constructed debug info give the object file a chance to install it
              */
             if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
-                Timer timer = new Timer(imageName, "dbginfo");
+                Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
                 try (Timer.StopTimer t = timer.start()) {
                     ImageSingletons.add(SourceManager.class, new SourceManager());
-                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
+                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap, metaAccess);
                     objectFile.installDebugInfo(provider);
                 }
                 ProgressReporter.singleton().setDebugInfoTimer(timer);
@@ -583,8 +586,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
-        final int functionPointerRelocationSize = 8;
-        assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
+
         // References to functions are via relocations to the symbol for the function.
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
@@ -593,7 +595,9 @@ public abstract class NativeImage extends AbstractImage {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
         // A reference to a method. Mark the relocation site using the symbol name.
-        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(target), 0L);
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
+        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), localSymbolNameForMethod(target), 0L);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -907,11 +911,11 @@ public abstract class NativeImage extends AbstractImage {
 
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
-                for (Map.Entry<HostedMethod, CompilationResult> ent : codeCache.getCompilations().entrySet()) {
-                    final String symName = localSymbolNameForMethod(ent.getKey());
-                    final String signatureString = ent.getKey().getUniqueShortName();
+                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
+                    final String symName = localSymbolNameForMethod(pair.getLeft());
+                    final String signatureString = pair.getLeft().getUniqueShortName();
                     final HostedMethod existing = methodsBySignature.get(signatureString);
-                    HostedMethod current = ent.getKey();
+                    HostedMethod current = pair.getLeft();
                     if (existing != null) {
                         /*
                          * We've hit a signature with multiple methods. Choose the "more specific"
@@ -927,7 +931,7 @@ public abstract class NativeImage extends AbstractImage {
                     } else {
                         methodsBySignature.put(signatureString, current);
                     }
-                    defineMethodSymbol(symName, false, textSection, current, ent.getValue());
+                    defineMethodSymbol(symName, false, textSection, current, pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -948,7 +952,7 @@ public abstract class NativeImage extends AbstractImage {
                         if (cEntryData != null) {
                             assert !cEntryData.getSymbolName().isEmpty();
                             // no need for mangling: name must already be a valid external name
-                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.getCompilations().get(method));
+                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.compilationResultFor(method));
                         }
                     }
                 }
@@ -989,6 +993,6 @@ final class MethodPointerInvalidHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true);
     }
 }

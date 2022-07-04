@@ -28,7 +28,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * This interface provides functions related to monitor operations (the Java "synchronized" keyword
@@ -79,8 +78,6 @@ public abstract class MonitorSupport {
     /** Determines whether the object's monitor is locked by the current or any other thread. */
     public abstract boolean isLockedByAnyThread(Object obj);
 
-    public abstract int countThreadLock(IsolateThread vmThread);
-
     /**
      * Implements the semantics of {@link Object#wait}.
      */
@@ -107,6 +104,11 @@ public abstract class MonitorSupport {
      * Called from {@code Unsafe.park} when changing the current thread's state before parking the
      * thread. When the thread is parked due to a monitor operation, we need to alter the new thread
      * state so {@link Thread#getState()} gives the expected result.
+     *
+     * Note that the thread state is set only while the thread is parked, but if the thread is
+     * spuriously unparked, the thread's state briefly changes to running until it parks again. This
+     * is a difference to other VMs which remain in the blocked/waiting state until the monitor has
+     * been successfully acquired.
      */
     public abstract int maybeAdjustNewParkStatus(int status);
 }

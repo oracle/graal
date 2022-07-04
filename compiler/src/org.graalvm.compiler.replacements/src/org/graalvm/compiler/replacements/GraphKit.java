@@ -50,6 +50,7 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -106,9 +107,9 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     }
 
     public GraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name,
-                    boolean trackNodeSourcePosition) {
+                    boolean trackNodeSourcePosition, boolean recordInlinedMethods) {
         super(providers);
-        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).compilationId(compilationId);
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).recordInlinedMethods(recordInlinedMethods).compilationId(compilationId).profileProvider(null);
         if (name != null) {
             builder.name(name);
         } else {
@@ -564,7 +565,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         return startInvokeWithException(callTarget, frameStateBuilder, invokeBci);
     }
 
-    public InvokeWithExceptionNode startInvokeWithException(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
+    public InvokeWithExceptionNode startInvokeWithException(CallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
         ExceptionObjectNode exceptionObject = createExceptionObjectNode(frameStateBuilder, invokeBci);
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionObject, invokeBci));
         AbstractBeginNode noExceptionEdge = graph.add(new BeginNode());

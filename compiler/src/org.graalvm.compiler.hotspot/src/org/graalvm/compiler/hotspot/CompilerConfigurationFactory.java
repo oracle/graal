@@ -159,7 +159,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      */
     private static boolean checkUnique(CompilerConfigurationFactory factory, List<CompilerConfigurationFactory> factories) {
         for (CompilerConfigurationFactory other : factories) {
-            if (other != factory) {
+            if (other != factory && factory.autoSelectionPriority == other.autoSelectionPriority) {
                 assert !other.name.equals(factory.name) : factory.getClass().getName() + " cannot have the same selector as " + other.getClass().getName() + ": " + factory.name;
                 assert other.autoSelectionPriority != factory.autoSelectionPriority : factory.getClass().getName() + " cannot have the same auto-selection priority as " +
                                 other.getClass().getName() +
@@ -200,7 +200,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
             if ("help".equals(value)) {
                 System.out.println("The available compiler configurations are:");
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {
-                    System.out.println("    " + candidate.name);
+                    System.out.println("    " + candidate.name + " priority " + candidate.autoSelectionPriority);
                 }
                 HotSpotGraalServices.exit(0, runtime);
             } else if (value != null) {
@@ -247,8 +247,32 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         return factory;
     }
 
+    /**
+     * Gets an object whose {@link #toString()} value describes where this configuration factory was
+     * loaded from.
+     */
+    private Object getLoadedFromLocation() {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            if (nativeImageLocationQualifier != null) {
+                return nativeImageLocationQualifier + " JVMCI native library";
+            }
+            return "JVMCI native library";
+        }
+        return getClass().getResource(getClass().getSimpleName() + ".class");
+    }
+
+    private static String nativeImageLocationQualifier;
+
+    /**
+     * Records a qualifier for the libgraal library (e.g., "PGO optimized").
+     */
+    public static void setNativeImageLocationQualifier(String s) {
+        GraalError.guarantee(nativeImageLocationQualifier == null, "Native image location qualifier is already set to %s", nativeImageLocationQualifier);
+        nativeImageLocationQualifier = s;
+    }
+
     private static void printConfigInfo(CompilerConfigurationFactory factory) {
-        Object location = Services.IS_IN_NATIVE_IMAGE ? "JVMCI native library" : factory.getClass().getResource(factory.getClass().getSimpleName() + ".class");
+        Object location = factory.getLoadedFromLocation();
         TTY.printf("Using compiler configuration '%s' provided by %s loaded from %s%n", factory.name, factory.getClass().getName(), location);
     }
 

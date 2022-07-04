@@ -29,6 +29,13 @@ For example:
 
 * To dump the compile graphs at runtime, specify the dump flags at runtime: `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`.
 
+### Software Bill of Materials (SBOM)
+
+GraalVM Enterprise Native Image can embed a Software Bill of Materials (SBOM) into a native executable by using an experimental option.
+The option takes the desired SBOM format as input, and the embedded SBOM can be passively obtained by using the [Native Image Inspection Tool](InspectTool.md).
+Currently, the CycloneDX format is supported. Users may embed a CycloneDX SBOM into a native executable by using the `-H:IncludeSBOM=cyclonedx` option during compilation.
+The SBOM is stored in a compressed format (`gzip`) with the exported `sbom` symbol referencing its start address and the `sbom_length` symbol its size.
+
 ### Debug Options
 These options enable additional checks in the generated executable to help with debugging:
 

@@ -174,6 +174,10 @@ final class Target_java_lang_String {
 
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native boolean isEmpty();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public native int length();
 
     @AnnotateOriginal
@@ -706,14 +710,24 @@ final class Target_jdk_internal_loader_BootLoader {
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static byte[] getBytes(String string) {
-        return SubstrateUtil.cast(string, Target_java_lang_String.class).value;
-    }
+    public static final class StringUtil {
+        /**
+         * Returns a character from a string at {@code index} position based on the encoding format.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static char charAt(String string, int index) {
+            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
+            byte[] value = str.value;
+            if (str.isLatin1()) {
+                return (char) (value[index] & 0xFF);
+            } else {
+                return Target_java_lang_StringUTF16.getChar(value, index);
+            }
+        }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isLatin1(String string) {
-        return SubstrateUtil.cast(string, Target_java_lang_String.class).isLatin1();
+        public static byte coder(String string) {
+            return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
+        }
     }
 
     public static final class ClassValueSupport {

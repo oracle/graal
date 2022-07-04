@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -242,6 +242,7 @@ public class UnrollingTestNode {
                 if (i >= count) {
                     break;
                 }
+                GraalDirectives.controlFlowAnchor();
                 CompilerAsserts.partialEvaluationConstant(i);
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 int j = 0;
@@ -256,9 +257,11 @@ public class UnrollingTestNode {
                         /* continue to outer loop */
                         break inner;
                     }
+                    GraalDirectives.controlFlowAnchor();
                     GraalDirectives.blackhole(INSIDE_LOOP_MARKER_2);
                     j++;
                 }
+                GraalDirectives.controlFlowAnchor();
                 i++;
             }
             GraalDirectives.blackhole(AFTER_LOOP_MARKER);
@@ -276,6 +279,7 @@ public class UnrollingTestNode {
                 if (i >= count) {
                     break;
                 }
+                GraalDirectives.controlFlowAnchor();
                 CompilerAsserts.partialEvaluationConstant(i);
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 int j = 0;
@@ -309,9 +313,11 @@ public class UnrollingTestNode {
         @Override
         public int execute(VirtualFrame frame) {
             outer: for (int i = 0; i < count; i++) {
+                GraalDirectives.controlFlowAnchor();
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 CompilerAsserts.partialEvaluationConstant(i);
                 for (int j = 0; j < count; j++) {
+                    GraalDirectives.controlFlowAnchor();
                     GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
                     if (j == SideEffect3) {
                         GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
@@ -331,9 +337,11 @@ public class UnrollingTestNode {
         @Override
         public int execute(VirtualFrame frame) {
             outer: for (int i = 0; i < count; i++) {
+                GraalDirectives.controlFlowAnchor();
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 CompilerAsserts.partialEvaluationConstant(i);
                 for (int j = 0; j < count; j++) {
+                    GraalDirectives.controlFlowAnchor();
                     GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
                     if (j == SideEffect3) {
                         GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
@@ -364,6 +372,7 @@ public class UnrollingTestNode {
                 GraalDirectives.controlFlowAnchor();
             }
             outer: for (int i = 0; i < count; i++) {
+                GraalDirectives.controlFlowAnchor();
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 CompilerAsserts.partialEvaluationConstant(i);
                 for (int j = 0; j < count; j++) {

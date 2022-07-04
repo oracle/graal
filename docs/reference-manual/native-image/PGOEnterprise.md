@@ -42,14 +42,14 @@ javac OptimizedImage.java
 native-image --pgo-instrument OptimizedImage
 ```
 
-3&#46; Run this instrumented image, saving the result in a _profile.iprof_ file, if nothing else is specified:
+3&#46; Run this instrumented image, saving the result in a _default.iprof_ file, if nothing else is specified:
 ```shell
 ./optimizedimage
 ```
 
-4&#46; Lastly, create the second native image by specifying the path to the _profile.iprof_ file and execute it.
+4&#46; Lastly, create the second native image by specifying the path to the _default.iprof_ file and execute it.
 ```shell
-native-image --pgo=profile.iprof OptimizedImage
+native-image --pgo=default.iprof OptimizedImage
 ./optimizedimage
 ```
 

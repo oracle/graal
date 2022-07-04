@@ -54,4 +54,5 @@ public class SideEffectFreeWrite extends WriteNode {
     public boolean hasSideEffect() {
         return false;
     }
+
 }

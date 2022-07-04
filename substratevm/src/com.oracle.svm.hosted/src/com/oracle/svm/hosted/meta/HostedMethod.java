@@ -55,6 +55,7 @@ import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 
+import jdk.internal.vm.annotation.ForceInline;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -160,6 +161,8 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     public void setCodeAddressOffset(int address) {
         assert isCompiled();
+        assert !codeAddressOffsetValid;
+
         codeAddressOffset = address;
         codeAddressOffsetValid = true;
     }
@@ -385,21 +388,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
-    }
-
-    @Override
     public Annotation[][] getParameterAnnotations() {
         return wrapped.getParameterAnnotations();
     }
@@ -421,7 +409,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public boolean shouldBeInlined() {
-        return getAnnotation(AlwaysInline.class) != null;
+        return getAnnotation(AlwaysInline.class) != null || getAnnotation(ForceInline.class) != null;
     }
 
     @Override

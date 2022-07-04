@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,8 +87,8 @@ import java.lang.annotation.Target;
  * {@link Fallback} for specializations that are significantly important for peak performance.
  * </p>
  *
- * Fallback annotated methods support {@link Cached}, {@link Bind}, {@link CachedContext},
- * {@link CachedLanguage} and dispatched {@link com.oracle.truffle.api.library.CachedLibrary}.
+ * Fallback annotated methods support {@link Cached}, {@link Bind} and dispatched
+ * {@link com.oracle.truffle.api.library.CachedLibrary}.
  *
  * @see Specialization
  * @see NodeChild

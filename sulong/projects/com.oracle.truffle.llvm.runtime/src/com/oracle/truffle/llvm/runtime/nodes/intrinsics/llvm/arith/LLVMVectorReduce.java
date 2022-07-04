@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -163,7 +163,7 @@ public abstract class LLVMVectorReduce {
         @ExplodeLoop
         protected byte doVector(LLVMI8Vector value) {
             assert value.getLength() == getVectorLength();
-            byte result = 0;
+            byte result = -1;
             for (int i = 0; i < getVectorLength(); i++) {
                 result &= value.getValue(i);
             }
@@ -174,7 +174,7 @@ public abstract class LLVMVectorReduce {
         @ExplodeLoop
         protected short doVector(LLVMI16Vector value) {
             assert value.getLength() == getVectorLength();
-            short result = 0;
+            short result = -1;
             for (int i = 0; i < getVectorLength(); i++) {
                 result &= value.getValue(i);
             }

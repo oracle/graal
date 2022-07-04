@@ -27,6 +27,7 @@ package org.graalvm.jniutils;
 import static org.graalvm.jniutils.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
 import static org.graalvm.jniutils.JNIUtil.createString;
 import static org.graalvm.jniutils.JNIUtil.trace;
+import static org.graalvm.jniutils.JNIUtil.tracingAt;
 
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JObject;
@@ -39,12 +40,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * Support for calling into HotSpot using JNI. In addition to calling a method using JNI, the
@@ -258,6 +254,19 @@ public final class HotSpotCalls {
     }
 
     private static void traceCall(JNIEnv env, JClass clazz, JNIMethod method) {
+        if (tracingAt(1)) {
+            traceCallImpl(env, clazz, method);
+        }
+    }
+
+    private static void traceCall(JNIEnv env, JObject receiver, JNIMethod method) {
+        if (tracingAt(1)) {
+            // Intentionally does not use JNIUtil. The tracing JNI usage should not be traced.
+            traceCallImpl(env, env.getFunctions().getGetObjectClass().call(env, receiver), method);
+        }
+    }
+
+    private static void traceCallImpl(JNIEnv env, JClass clazz, JNIMethod method) {
         // The tracing performs JNI calls to obtain name of the HotSpot entry point class.
         // This call must not be traced to prevent endless recursion.
         if (!inTrace.get()) {
@@ -271,11 +280,6 @@ public final class HotSpotCalls {
                 inTrace.remove();
             }
         }
-    }
-
-    private static void traceCall(JNIEnv env, JObject receiver, JNIMethod method) {
-        // Intentionally does not use JNIUtil. The tracing JNI usage should not be traced.
-        traceCall(env, env.getFunctions().getGetObjectClass().call(env, receiver), method);
     }
 
     private static String toSimpleName(String fqn) {
@@ -336,49 +340,10 @@ public final class HotSpotCalls {
     }
 
     /**
-     * Determines if {@code frame} is for a method denoting a call into HotSpot.
-     */
-    static boolean isHotSpotCall(StackTraceElement frame) {
-        if (!HotSpotCalls.class.getName().equals(frame.getClassName())) {
-            return false;
-        }
-        return HOT_SPOT_CALL_NAMES.contains(frame.getMethodName());
-    }
-
-    /**
      * Marker annotation for the helper methods for calling a method in HotSpot.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
-    private static @interface HotSpotCall {
-    }
-
-    /**
-     * Names of the methods in this class annotated by {@link HotSpotCall}.
-     */
-    private static final Set<String> HOT_SPOT_CALL_NAMES;
-    static {
-        Map<String, Method> entryPoints = new HashMap<>();
-        Map<String, Method> others = new HashMap<>();
-
-        for (Method m : HotSpotCalls.class.getDeclaredMethods()) {
-            if (m.getAnnotation(HotSpotCall.class) != null) {
-                Method existing = entryPoints.put(m.getName(), m);
-                if (existing != null) {
-                    throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
-                                    " must have unique name: " + m + " and " + existing);
-                }
-            } else {
-                others.put(m.getName(), m);
-            }
-        }
-        for (Map.Entry<String, Method> e : entryPoints.entrySet()) {
-            Method existing = others.get(e.getKey());
-            if (existing != null) {
-                throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
-                                " must have unique name: " + e.getValue() + " and " + existing);
-            }
-        }
-        HOT_SPOT_CALL_NAMES = Collections.unmodifiableSet(entryPoints.keySet());
+    @interface HotSpotCall {
     }
 }

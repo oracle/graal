@@ -30,6 +30,7 @@ import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PA
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
@@ -43,7 +44,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
@@ -87,8 +87,8 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     private static final CEntryPointLiteral<CFunctionPointer> HANDLER_LITERAL = CEntryPointLiteral.create(WindowsSubstrateSegfaultHandler.class,
                     "handler", ErrHandlingAPI.EXCEPTION_POINTERS.class);
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     private static int handler(ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo) {

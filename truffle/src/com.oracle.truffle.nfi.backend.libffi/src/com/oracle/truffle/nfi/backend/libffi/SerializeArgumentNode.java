@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,6 +98,42 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    static final class SerializeInt8VarargsNode extends SerializeArgumentNode {
+
+        SerializeInt8VarargsNode(BasicType type) {
+            super(type);
+        }
+
+        @Override
+        void execute(Object arg, NativeArgumentBuffer buffer) {
+            // for varargs, int8 needs to be promoted to int32
+            buffer.putInt32((byte) arg);
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    }
+
+    static final class SerializeUInt8VarargsNode extends SerializeArgumentNode {
+
+        SerializeUInt8VarargsNode(BasicType type) {
+            super(type);
+        }
+
+        @Override
+        void execute(Object arg, NativeArgumentBuffer buffer) {
+            // for varargs, uint8 needs to be promoted to uint32
+            buffer.putInt32((byte) arg & 0xFF);
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    }
+
     static final class SerializeInt16Node extends SerializeArgumentNode {
 
         SerializeInt16Node(BasicType type) {
@@ -107,6 +143,42 @@ abstract class SerializeArgumentNode extends Node {
         @Override
         void execute(Object arg, NativeArgumentBuffer buffer) {
             buffer.putInt16((short) arg);
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    }
+
+    static final class SerializeInt16VarargsNode extends SerializeArgumentNode {
+
+        SerializeInt16VarargsNode(BasicType type) {
+            super(type);
+        }
+
+        @Override
+        void execute(Object arg, NativeArgumentBuffer buffer) {
+            // for varargs, int16 needs to be promoted to int32
+            buffer.putInt32((short) arg);
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    }
+
+    static final class SerializeUInt16VarargsNode extends SerializeArgumentNode {
+
+        SerializeUInt16VarargsNode(BasicType type) {
+            super(type);
+        }
+
+        @Override
+        void execute(Object arg, NativeArgumentBuffer buffer) {
+            // for varargs, uint16 needs to be promoted to uint32
+            buffer.putInt32((short) arg & 0xFFFF);
         }
 
         @Override
@@ -158,6 +230,24 @@ abstract class SerializeArgumentNode extends Node {
         @Override
         void execute(Object arg, NativeArgumentBuffer buffer) {
             buffer.putFloat((float) arg);
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    }
+
+    static final class SerializeFloatVarargsNode extends SerializeArgumentNode {
+
+        SerializeFloatVarargsNode(BasicType type) {
+            super(type);
+        }
+
+        @Override
+        void execute(Object arg, NativeArgumentBuffer buffer) {
+            // for varargs, float needs to be promoted to double
+            buffer.putDouble((float) arg);
         }
 
         @Override

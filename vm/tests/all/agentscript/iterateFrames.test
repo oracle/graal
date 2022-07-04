@@ -1,3 +1,8 @@
+>[0] js iterateFramesJsTypes.mjs
+6
+>[0] js --insight=iterateFramesJsInsight.js iterateFramesJsTypes.mjs
+at ./iterateFramesJsTypesMod.mjs:3 {"a":3}{"b":2}{"c":1}{}
+6
 > cp iterateFrames.js ${TMP_DIR}/iterateFrames.js
 > cp iterateFramesSieve.js ${TMP_DIR}/iterateFramesSieve.js
 > cp ../../../benchmarks/agentscript/sieve.js ${TMP_DIR}/sieve.js

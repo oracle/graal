@@ -221,7 +221,12 @@ public class BoxingSnippets implements Snippets {
                 if (innerClasses == null || innerClasses.length == 0) {
                     throw GraalError.shouldNotReachHere("Inner classes must exist");
                 }
-                return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClasses[0].getDeclaredField("cache")));
+                for (Class<?> innerClass : innerClasses) {
+                    if (innerClass.getName().endsWith("Cache")) {
+                        return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClass.getDeclaredField("cache")));
+                    }
+                }
+                throw GraalError.shouldNotReachHere("No cache inner class found");
             } catch (Throwable e) {
                 throw GraalError.shouldNotReachHere(e);
             }

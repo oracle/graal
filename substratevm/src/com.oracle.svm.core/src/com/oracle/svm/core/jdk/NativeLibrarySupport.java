@@ -27,9 +27,9 @@ package com.oracle.svm.core.jdk;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -70,7 +70,7 @@ public final class NativeLibrarySupport {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final List<NativeLibrary> knownLibraries = new ArrayList<>();
+    private final List<NativeLibrary> knownLibraries = new CopyOnWriteArrayList<>();
 
     private final Deque<NativeLibrary> currentLoadContext = new ArrayDeque<>();
 

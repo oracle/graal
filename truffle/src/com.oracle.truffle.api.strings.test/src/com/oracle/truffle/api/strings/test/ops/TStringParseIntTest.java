@@ -66,7 +66,35 @@ public class TStringParseIntTest extends TStringTestBase {
 
     @Test
     public void testAll() throws Exception {
-        for (int n : new int[]{Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Short.MIN_VALUE, -12345, -1, 0, 1, 12345, Short.MAX_VALUE, Integer.MAX_VALUE - 1, Integer.MAX_VALUE}) {
+        for (int n : new int[]{
+                        Integer.MIN_VALUE,
+                        Integer.MIN_VALUE + 1,
+                        Short.MIN_VALUE,
+                        -12345,
+                        -1,
+                        0,
+                        1,
+                        9,
+                        10,
+                        99,
+                        100,
+                        999,
+                        1000,
+                        9999,
+                        10000,
+                        99999,
+                        100000,
+                        999999,
+                        1000000,
+                        9999999,
+                        10000000,
+                        99999999,
+                        100000000,
+                        999999999,
+                        1000000000,
+                        Short.MAX_VALUE,
+                        Integer.MAX_VALUE - 1,
+                        Integer.MAX_VALUE}) {
             int[] radixes = {10, 16};
             String[] strings = {String.valueOf(n), n < 0 ? '-' + Integer.toHexString(-n) : Integer.toHexString(n)};
             for (int i = 0; i < radixes.length; i++) {

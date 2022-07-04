@@ -86,7 +86,7 @@ public class GraalChannelFactory implements SoftwareChannel.Factory {
         }
         GraalChannel ch = new GraalChannel(input, output, input.getLocalRegistry());
         ch.setEdition(source.getParameter("edition"));
-        ch.setReleasesIndexURL(u);
+        ch.setIndexURL(u);
         ch.setMailStorage(initMailStorage(input, output));
         return ch;
     }
@@ -103,6 +103,6 @@ public class GraalChannelFactory implements SoftwareChannel.Factory {
 
     @Override
     public void init(CommandInput input, Feedback output) {
-        feedback = output;
+        feedback = output.withBundle(this.getClass());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -349,9 +349,9 @@ public final class Debugger {
     static final class AccessorDebug extends Accessor {
 
         /*
-         * TODO get rid of this access and replace it with an API in {@link TruffleInstrument.Env}.
-         * I don't think {@link CallTarget} is the right return type here as we want to make it
-         * embeddable into the current AST.
+         * TODO GR-38632 get rid of this access and replace it with an API in {@link
+         * TruffleInstrument.Env}. I don't think {@link CallTarget} is the right return type here as
+         * we want to make it embeddable into the current AST.
          */
         protected CallTarget parse(Source code, Node context, String... argumentNames) {
             RootNode rootNode = context.getRootNode();
@@ -359,8 +359,8 @@ public final class Debugger {
         }
 
         /*
-         * TODO I initially moved this to TruffleInstrument.Env but decided against as a new API for
-         * inline parsing might replace it.
+         * TODO GR-38632 I initially moved this to TruffleInstrument.Env but decided against as a
+         * new API for inline parsing might replace it.
          */
         protected Object evalInContext(Source source, Node node, MaterializedFrame frame) {
             return languageSupport().evalInContext(source, node, frame);

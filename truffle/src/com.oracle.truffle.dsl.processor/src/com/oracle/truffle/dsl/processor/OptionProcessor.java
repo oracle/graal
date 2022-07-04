@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import static com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor.resolveLanguageId;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 
 import java.util.ArrayList;
@@ -197,7 +198,8 @@ public class OptionProcessor extends AbstractProcessor {
             if (context.getEnvironment().getTypeUtils().isAssignable(info.type.asType(), erasedTruffleType)) {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(info.type, types.TruffleLanguage_Registration);
                 if (registration != null) {
-                    groupPrefixStrings = Arrays.asList(ElementUtils.getAnnotationValue(String.class, registration, "id"));
+                    String languageId = resolveLanguageId(info.type, registration);
+                    groupPrefixStrings = Arrays.asList(languageId);
                     if (groupPrefixStrings.get(0).isEmpty()) {
                         error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.",
                                         types.TruffleLanguage_Registration.asElement().getSimpleName().toString());
@@ -266,6 +268,8 @@ public class OptionProcessor extends AbstractProcessor {
             }
         }
 
+        String usageSyntax = ElementUtils.getAnnotationValue(String.class, annotation, "usageSyntax");
+
         AnnotationValue value = ElementUtils.getAnnotationValue(elementAnnotation, "name", false);
         String optionName;
         if (value == null) {
@@ -319,7 +323,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage, usageSyntax));
         }
         return true;
     }
@@ -456,6 +460,7 @@ public class OptionProcessor extends AbstractProcessor {
             builder.startCall("", "deprecated").string("false").end();
         }
         addCallWithStringWithPossibleNewlines(builder, context, "help", info.help);
+        addCallWithStringWithPossibleNewlines(builder, context, "usageSyntax", info.usageSyntax);
 
         builder.startCall("", "category").staticReference(types.OptionCategory, info.category).end();
         builder.startCall("", "stability").staticReference(types.OptionStability, info.stability).end();
@@ -484,8 +489,10 @@ public class OptionProcessor extends AbstractProcessor {
         final String category;
         final String stability;
         final String deprecationMessage;
+        private String usageSyntax;
 
-        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage) {
+        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage,
+                        String usageSyntax) {
             this.name = name;
             this.help = help;
             this.field = field;
@@ -495,6 +502,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.stability = stability;
             this.optionMap = optionMap;
             this.deprecationMessage = deprecationMessage;
+            this.usageSyntax = usageSyntax;
         }
 
         @Override

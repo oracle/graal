@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,12 +61,11 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
     private long exec(long code, LLVMPointer addr, LLVMPointerStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS: {
-                getContext().setThreadLocalStorage(addr);
+                getLanguage().contextThreadLocal.get().setThreadLocalStorage(addr);
                 return 0;
             }
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
-                LLVMPointer tls = getContext().getThreadLocalStorage();
-                store.executeWithTarget(addr, tls);
+                store.executeWithTarget(addr, getLanguage().contextThreadLocal.get().getThreadLocalStorage());
                 return 0;
             }
             default: {

@@ -45,15 +45,15 @@ GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but 
 
 Check the versions of the runtimes provided by default:
 ```shell
-java version "17.0.2" 2022-01-18 LTS
-Java(TM) SE Runtime Environment GraalVM EE 22.0.0 (build 17.0.2+5-LTS-jvmci-22.0-b02)
-Java HotSpot(TM) 64-Bit Server VM GraalVM EE 22.0.0 (build 17.0.2+5-LTS-jvmci-22.0-b02, mixed mode, sharing)
+java version "17.0.3" 2022-04-19 LTS
+Java(TM) SE Runtime Environment GraalVM EE 22.1.0 (build 17.0.3+8-LTS-jvmci-22.1-b05)
+Java HotSpot(TM) 64-Bit Server VM GraalVM EE 22.1.0 (build 17.0.3+8-LTS-jvmci-22.1-b05, mixed mode, sharing)
 
 js -version
-GraalVM JavaScript (GraalVM EE Native 22.0.0)
+GraalVM JavaScript (GraalVM EE Native 22.1.0)
 
 lli --version
-LLVM 12.0.1 (GraalVM EE Native 22.0.0)
+LLVM 12.0.1 (GraalVM EE Native 22.1.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM Enterprise runtimes including Node.js, Ruby, R, Python, and WebAssembly.
@@ -84,7 +84,8 @@ For more extensive documentation on running Java, proceed to [JVM Languages](../
 
 ### JavaScript and Node.js
 
-GraalVM Enterprise can execute plain JavaScript code, both in REPL mode and by executing script files directly:
+As mentioned above, upon the installation completion, the `<graalvm>/bin` directory already includes the `js` launcher to run JavaScript programs.
+It can execute plain JavaScript code, both in REPL mode and by executing script files directly:
 ```shell
 $JAVA_HOME/bin/js
 > 1 + 2
@@ -96,9 +97,12 @@ Node.js support is not installed by default, but can be easily added with GraalV
 ```shell
 gu install nodejs
 ```
+
+The `node` launcher becomes available in the `<graalvm>/bin` directory.
+
 ```shell
 $JAVA_HOME/bin/node -v
-v14.18.1
+v16.14.2
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM Enterprise, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.

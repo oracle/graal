@@ -89,6 +89,7 @@ import java.util.zip.ZipFile;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeLookupSwitch;
@@ -103,8 +104,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecode;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -159,14 +158,7 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
-        String bootclasspath;
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            String propertyName = "sun.boot.class.path";
-            bootclasspath = System.getProperty(propertyName);
-            Assert.assertNotNull("Cannot find value of " + propertyName, bootclasspath);
-        } else {
-            bootclasspath = JRT_CLASS_PATH_ENTRY;
-        }
+        String bootclasspath = JRT_CLASS_PATH_ENTRY;
 
         for (String path : bootclasspath.split(File.pathSeparator)) {
             if (shouldProcess(path)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,16 +35,11 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.jtt.LIRTest;
 import org.graalvm.compiler.lir.jtt.LIRTestSpecification;
 import org.graalvm.compiler.lir.stackslotalloc.LSStackSlotAllocator;
-import org.graalvm.compiler.nodes.SafepointNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests the mitigation against overflowing the max size limit for a HotSpot OopMap. The mitigation
@@ -111,25 +106,6 @@ public class MitigateExceedingMaxOopMapStackOffsetTest extends LIRTest {
                 gen.emitBlackhole(gen.emitMove(slots[i]));
             }
         }
-    }
-
-    @Override
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        InvocationPlugin safepointPlugin = new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new SafepointNode());
-                return true;
-            }
-        };
-        conf.getPlugins().getInvocationPlugins().register(safepointPlugin, getClass(), "safepoint");
-        return super.editGraphBuilderConfiguration(conf);
-    }
-
-    /*
-     * Safepoint Snippet
-     */
-    private static void safepoint() {
     }
 
     private static int numPrimitiveSlots;

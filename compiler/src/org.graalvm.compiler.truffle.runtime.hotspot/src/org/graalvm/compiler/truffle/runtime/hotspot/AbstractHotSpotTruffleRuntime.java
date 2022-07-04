@@ -49,9 +49,8 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -117,12 +116,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         @Override
-        protected void compilerThreadIdled() {
+        protected void notifyIdleCompilerThread() {
             TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
             // truffleCompiler should never be null outside unit-tests, this check avoids transient
             // failures.
             if (compiler != null) {
-                ((HotSpotTruffleCompiler) compiler).purgeCaches();
+                ((HotSpotTruffleCompiler) compiler).purgePartialEvaluationCaches();
             }
         }
     }
@@ -155,7 +154,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private final MethodHandle getJVMCIReservedReference0;
 
     public AbstractHotSpotTruffleRuntime() {
-        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class));
+        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, AbstractHotSpotTruffleRuntime.class));
         installCallBoundaryMethods(null);
 
         this.vmConfigAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
@@ -446,6 +445,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     @SuppressWarnings("try")
     @Override
+    @TruffleBoundary
     public void bypassedInstalledCode(OptimizedCallTarget target) {
         if (!truffleCompilerInitialized) {
             // do not wait for initialization
@@ -553,21 +553,24 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected CallMethods getCallMethods() {
-        if (callMethods == null) {
-            lookupCallMethods(getMetaAccess());
+    public KnownMethods getKnownMethods() {
+        if (knownMethods == null) {
+            knownMethods = new KnownMethods(getMetaAccess());
         }
-        return callMethods;
+        return knownMethods;
     }
 
     @Override
-    public void notifyTransferToInterpreter() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (traceTransferToInterpreter) {
-            TruffleCompiler compiler = truffleCompiler;
-            assert compiler != null;
-            TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, (HotSpotTruffleCompiler) compiler);
+    public final void notifyTransferToInterpreter() {
+        if (CompilerDirectives.inInterpreter() && traceTransferToInterpreter) {
+            traceTransferToInterpreter();
         }
+    }
+
+    private void traceTransferToInterpreter() {
+        TruffleCompiler compiler = truffleCompiler;
+        assert compiler != null;
+        TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, (HotSpotTruffleCompiler) compiler);
     }
 
     @Override
@@ -727,11 +730,10 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
-            FrameInstance currentFrame = runtime.getCurrentFrame();
-            if (currentFrame == null) {
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.iterateFrames((f) -> f.getCallTarget());
+            if (callTarget == null) {
                 return;
             }
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) currentFrame.getCallTarget();
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
             long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;

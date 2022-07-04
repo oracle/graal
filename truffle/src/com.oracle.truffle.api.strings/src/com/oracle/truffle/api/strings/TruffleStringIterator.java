@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -579,6 +579,9 @@ public final class TruffleStringIterator {
         int bSecondIndex = bIt.getRawIndex();
         while (aIt.hasNext() && aCodepointIndex < toIndex) {
             if (nextNodeA.execute(aIt) == bFirst) {
+                if (!bIt.hasNext()) {
+                    return aCodepointIndex;
+                }
                 int aCurIndex = aIt.getRawIndex();
                 int innerLoopCount = 0;
                 while (bIt.hasNext()) {
@@ -588,10 +591,10 @@ public final class TruffleStringIterator {
                     if (nextNodeA.execute(aIt) != nextNodeB.execute(bIt)) {
                         break;
                     }
+                    if (!bIt.hasNext()) {
+                        return aCodepointIndex;
+                    }
                     TStringConstants.truffleSafePointPoll(location, ++innerLoopCount);
-                }
-                if (!bIt.hasNext()) {
-                    return aCodepointIndex;
                 }
                 aIt.setRawIndex(aCurIndex);
                 bIt.setRawIndex(bSecondIndex);
@@ -613,6 +616,9 @@ public final class TruffleStringIterator {
         while (aIt.hasNext() && aIt.getRawIndex() < toByteIndex) {
             int ret = aIt.getRawIndex();
             if (nextNodeA.execute(aIt) == bFirst) {
+                if (!bIt.hasNext()) {
+                    return ret;
+                }
                 int aCurIndex = aIt.getRawIndex();
                 while (bIt.hasNext()) {
                     if (!aIt.hasNext()) {
@@ -621,10 +627,10 @@ public final class TruffleStringIterator {
                     if (nextNodeA.execute(aIt) != nextNodeB.execute(bIt)) {
                         break;
                     }
+                    if (!bIt.hasNext()) {
+                        return ret;
+                    }
                     TStringConstants.truffleSafePointPoll(location, ++loopCount);
-                }
-                if (!bIt.hasNext()) {
-                    return ret;
                 }
                 aIt.setRawIndex(aCurIndex);
                 bIt.setRawIndex(bSecondIndex);
@@ -658,6 +664,9 @@ public final class TruffleStringIterator {
         int bSecondIndex = bIt.getRawIndex();
         while (aIt.hasPrevious() && aCodepointIndex >= toIndex) {
             if (prevNodeA.execute(aIt) == bFirstCodePoint) {
+                if (!bIt.hasPrevious()) {
+                    return aCodepointIndex;
+                }
                 int aCurIndex = aIt.getRawIndex();
                 int aCurCodePointIndex = aCodepointIndex;
                 while (bIt.hasPrevious()) {
@@ -668,10 +677,10 @@ public final class TruffleStringIterator {
                         break;
                     }
                     aCurCodePointIndex--;
+                    if (!bIt.hasPrevious() && aCurCodePointIndex >= toIndex) {
+                        return aCurCodePointIndex;
+                    }
                     TStringConstants.truffleSafePointPoll(location, aCurCodePointIndex);
-                }
-                if (!bIt.hasPrevious()) {
-                    return aCurCodePointIndex;
                 }
                 aIt.setRawIndex(aCurIndex);
                 bIt.setRawIndex(bSecondIndex);
@@ -701,8 +710,11 @@ public final class TruffleStringIterator {
         }
         aIt.setRawIndex(lastMatchByteIndex);
         int bSecondIndex = bIt.getRawIndex();
-        while (aIt.hasPrevious() && aIt.getRawIndex() >= toByteIndex) {
+        while (aIt.hasPrevious() && aIt.getRawIndex() > toByteIndex) {
             if (prevNodeA.execute(aIt) == bFirstCodePoint) {
+                if (!bIt.hasPrevious()) {
+                    return aIt.getRawIndex();
+                }
                 int aCurIndex = aIt.getRawIndex();
                 while (bIt.hasPrevious()) {
                     if (!aIt.hasPrevious()) {
@@ -711,10 +723,10 @@ public final class TruffleStringIterator {
                     if (prevNodeA.execute(aIt) != prevNodeB.execute(bIt)) {
                         break;
                     }
+                    if (!bIt.hasPrevious() && aIt.getRawIndex() >= toByteIndex) {
+                        return aIt.getRawIndex();
+                    }
                     TStringConstants.truffleSafePointPoll(location, ++loopCount);
-                }
-                if (!bIt.hasPrevious()) {
-                    return aIt.getRawIndex();
                 }
                 aIt.setRawIndex(aCurIndex);
                 bIt.setRawIndex(bSecondIndex);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,16 +45,17 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexExecNode extends RegexBodyNode {
 
-    private final boolean mustCheckUnicodeSurrogates;
+    private final boolean mustCheckUTF16Surrogates;
     private @Child InputLengthNode lengthNode;
     private @Child InputReadNode charAtNode;
 
-    public RegexExecNode(RegexLanguage language, RegexSource source, boolean mustCheckUnicodeSurrogates) {
+    public RegexExecNode(RegexLanguage language, RegexSource source, boolean mustCheckUTF16Surrogates) {
         super(language, source);
-        this.mustCheckUnicodeSurrogates = mustCheckUnicodeSurrogates;
+        this.mustCheckUTF16Surrogates = getEncoding() == Encodings.UTF_16 && mustCheckUTF16Surrogates;
     }
 
     @Override
@@ -65,7 +66,8 @@ public abstract class RegexExecNode extends RegexBodyNode {
     }
 
     private int adjustFromIndex(int fromIndex, Object input) {
-        if (mustCheckUnicodeSurrogates && fromIndex > 0 && fromIndex < inputLength(input)) {
+        if (mustCheckUTF16Surrogates && fromIndex > 0 && fromIndex < inputLength(input)) {
+            assert getEncoding() == Encodings.UTF_16;
             if (Character.isLowSurrogate((char) inputRead(input, fromIndex)) && Character.isHighSurrogate((char) inputRead(input, fromIndex - 1))) {
                 return fromIndex - 1;
             }

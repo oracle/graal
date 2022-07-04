@@ -55,7 +55,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 @TruffleLanguage.Registration(id = WasmLanguage.ID, name = WasmLanguage.NAME, defaultMimeType = WasmLanguage.WASM_MIME_TYPE, byteMimeTypes = WasmLanguage.WASM_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
-                fileTypeDetectors = WasmFileDetector.class, interactive = false)
+                fileTypeDetectors = WasmFileDetector.class, interactive = false, website = "https://www.graalvm.org/")
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String ID = "wasm";
     public static final String NAME = "WebAssembly";
@@ -83,7 +83,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         isFirst = false;
         final Source source = request.getSource();
         final byte[] data = source.getBytes().toByteArray();
-        final WasmModule module = context.readModule(moduleName, data, null, source);
+        final WasmModule module = context.readModule(moduleName, data, null);
         final WasmInstance instance = context.readInstance(module);
         return new RootNode(this) {
             @Override

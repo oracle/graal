@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.libgraal;
 
-import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -274,16 +272,6 @@ public final class LibGraalScope implements AutoCloseable {
         }
     }
 
-    // Shared support for the LibGraal overlays
-
-    /**
-     * Convenience function for wrapping varargs into an array for use in calls to
-     * {@link #method(Class, String, Class[][])}.
-     */
-    static Class<?>[] sig(Class<?>... types) {
-        return types;
-    }
-
     /**
      * Returns the nesting depth of this {@code LibGraalScope} object.
      */
@@ -295,68 +283,5 @@ public final class LibGraalScope implements AutoCloseable {
             ancestor = ancestor.parent;
         }
         return depth;
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name}.
-     *
-     * @param sigs the signatures the method may have
-     */
-    static Method method(Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        if (sigs.length == 1 || sigs.length == 0) {
-            try {
-                Class<?>[] sig = sigs.length == 1 ? sigs[0] : new Class<?>[0];
-                return declaringClass.getDeclaredMethod(name, sig);
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw (NoSuchMethodError) new NoSuchMethodError(name).initCause(e);
-            }
-        }
-        Method match = null;
-        for (Method m : declaringClass.getDeclaredMethods()) {
-            if (m.getName().equals(name)) {
-                if (match != null) {
-                    throw new InternalError(String.format("Expected single method named %s, found %s and %s",
-                                    name, match, m));
-                }
-                match = m;
-            }
-        }
-        if (match == null) {
-            throw new NoSuchMethodError("Cannot find method " + name + " in " + declaringClass.getName());
-        }
-        Class<?>[] parameterTypes = match.getParameterTypes();
-        for (Class<?>[] sig : sigs) {
-            if (Arrays.equals(parameterTypes, sig)) {
-                return match;
-            }
-        }
-        throw new NoSuchMethodError(String.format("Unexpected signature for %s: %s", name, Arrays.toString(parameterTypes)));
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
-     * if not found.
-     *
-     * @param sigs the signatures the method may have
-     */
-    static Method methodOrNull(Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        try {
-            return method(declaringClass, name, sigs);
-        } catch (NoSuchMethodError e) {
-            return null;
-        }
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
-     * if {@code guard == null}.
-     *
-     * @param sigs the signatures the method may have
-     */
-    static Method methodIf(Object guard, Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        if (guard == null) {
-            return null;
-        }
-        return method(declaringClass, name, sigs);
     }
 }

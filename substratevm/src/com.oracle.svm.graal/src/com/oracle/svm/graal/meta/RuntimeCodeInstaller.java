@@ -182,53 +182,58 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                             "No direct calls permitted: patching of runtime-compiled code intentionally not supported");
         }
 
-        prepareCodeMemory();
+        RuntimeCodeInfoAccess.acquireThreadWriteAccess();
+        try {
+            prepareCodeMemory();
 
-        /*
-         * Object reference constants are stored in this holder first, then written and made visible
-         * in a single step that is atomic regarding to GC.
-         */
-        ObjectConstantsHolder objectConstants = new ObjectConstantsHolder(compilation);
+            /*
+             * Object reference constants are stored in this holder first, then written and made
+             * visible in a single step that is atomic regarding to GC.
+             */
+            ObjectConstantsHolder objectConstants = new ObjectConstantsHolder(compilation);
 
-        // Build an index of PatchingAnnotations
-        Map<Integer, NativeImagePatcher> patches = new HashMap<>();
-        for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
-            if (codeAnnotation instanceof NativeImagePatcher) {
-                NativeImagePatcher priorValue = patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
-                VMError.guarantee(priorValue == null, "Registering two patchers for same position.");
+            // Build an index of PatchingAnnotations
+            Map<Integer, NativeImagePatcher> patches = new HashMap<>();
+            for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
+                if (codeAnnotation instanceof NativeImagePatcher) {
+                    NativeImagePatcher priorValue = patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
+                    VMError.guarantee(priorValue == null, "Registering two patchers for same position.");
+                }
             }
+            int numPatchesHandled = patchData(patches, objectConstants);
+            VMError.guarantee(numPatchesHandled == patches.size(), "Not all patches applied.");
+
+            // Store the compiled code
+            for (int index = 0; index < codeSize; index++) {
+                code.writeByte(index, compiledBytes[index]);
+            }
+
+            // remove write access from code
+            if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
+                makeCodeMemoryReadOnly(code, codeSize);
+            }
+
+            /* Write primitive constants to the buffer, record object constants with offsets */
+            ByteBuffer dataBuffer = CTypeConversion.asByteBuffer(code.add(dataOffset), compilation.getDataSection().getSectionSize());
+            compilation.getDataSection().buildDataSection(dataBuffer, (position, constant) -> {
+                objectConstants.add(dataOffset + position,
+                                ConfigurationValues.getObjectLayout().getReferenceSize(),
+                                (SubstrateObjectConstant) constant);
+            });
+
+            NonmovableArray<InstalledCodeObserverHandle> observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
+            RuntimeCodeInfoAccess.initialize(codeInfo, code, codeSize, dataOffset, dataSize, codeAndDataMemorySize, tier, observerHandles, false);
+
+            CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
+            encoder.add(objectConstants.referenceMap);
+            RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
+            ImageSingletons.lookup(CodeInfoEncoder.Counters.class).addToReferenceMapSize(encoder.getEncodingSize());
+            patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
+
+            createCodeChunkInfos(codeInfo, adjuster);
+        } finally {
+            RuntimeCodeInfoAccess.releaseThreadWriteAccess();
         }
-        int numPatchesHandled = patchData(patches, objectConstants);
-        VMError.guarantee(numPatchesHandled == patches.size(), "Not all patches applied.");
-
-        // Store the compiled code
-        for (int index = 0; index < codeSize; index++) {
-            code.writeByte(index, compiledBytes[index]);
-        }
-
-        // remove write access from code
-        if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-            makeCodeMemoryReadOnly(code, codeSize);
-        }
-
-        /* Write primitive constants to the buffer, record object constants with offsets */
-        ByteBuffer dataBuffer = CTypeConversion.asByteBuffer(code.add(dataOffset), compilation.getDataSection().getSectionSize());
-        compilation.getDataSection().buildDataSection(dataBuffer, (position, constant) -> {
-            objectConstants.add(dataOffset + position,
-                            ConfigurationValues.getObjectLayout().getReferenceSize(),
-                            (SubstrateObjectConstant) constant);
-        });
-
-        NonmovableArray<InstalledCodeObserverHandle> observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
-        RuntimeCodeInfoAccess.initialize(codeInfo, code, codeSize, dataOffset, dataSize, codeAndDataMemorySize, tier, observerHandles, false);
-
-        CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
-        encoder.add(objectConstants.referenceMap);
-        RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
-        ImageSingletons.lookup(CodeInfoEncoder.Counters.class).addToReferenceMapSize(encoder.getEncodingSize());
-        patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
-
-        createCodeChunkInfos(codeInfo, adjuster);
         compilation = null;
     }
 
@@ -247,10 +252,10 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders());
-        codeInfoEncoder.addMethod(method, compilation, 0);
+        codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 
-        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, runtimeMethodInfo);
+        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo);
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();

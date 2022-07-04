@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2069,7 +2069,7 @@ public final class DebugContext implements AutoCloseable {
      * There are paths where construction of formatted class names are common and the code below is
      * surprisingly expensive, so compute it once and cache it.
      */
-    private static final ClassValue<String> formattedClassName = new ClassValue<String>() {
+    private static final ClassValue<String> formattedClassName = new ClassValue<>() {
         @Override
         protected String computeValue(Class<?> c) {
             String baseName = getBaseName(c);

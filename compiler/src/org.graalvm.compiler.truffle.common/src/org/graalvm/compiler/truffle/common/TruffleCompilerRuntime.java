@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -439,6 +439,11 @@ public interface TruffleCompilerRuntime {
     int getFrameSlotKindTagsCount();
 
     /**
+     * Determines if {@code method} can be inlined by the runtime (independently from Truffle).
+     */
+    boolean isInlineable(ResolvedJavaMethod method);
+
+    /**
      * Determines if {@code method} is annotated by {@code TruffleBoundary}.
      */
     boolean isTruffleBoundary(ResolvedJavaMethod method);
@@ -463,5 +468,16 @@ public interface TruffleCompilerRuntime {
      * silent.
      */
     boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException);
+
+    /**
+     * Determines if {@code method} is the inInterpeter method from CompilerDirectives.
+     */
+    boolean isInInterpreter(ResolvedJavaMethod targetMethod);
+
+    /**
+     * Determines if {@code method} is a method is a transferToInterpreter method from
+     * CompilerDirectives.
+     */
+    boolean isTransferToInterpreterMethod(ResolvedJavaMethod method);
 
 }

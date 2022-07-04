@@ -24,39 +24,57 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
+public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider, AnnotationWrapper {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> OBSERVERS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisField.class, Object.class, "observers");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisField> isAccessedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisField.class, "isAccessed");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisField> isReadUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisField.class, "isRead");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisField> isWrittenUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisField.class, "isWritten");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisField> isFoldedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisField.class, "isFolded");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisField> isUnsafeAccessedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisField.class, "isUnsafeAccessed");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisField> unsafeFrozenTypeStateUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisField.class, "unsafeFrozenTypeState");
 
     private final int id;
 
@@ -70,19 +88,19 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     /**
      * Field type flow that reflects all the types flowing in this field on its declaring type and
-     * all the sub-types.
+     * all the sub-types. It doesn't track any context-sensitive information.
      */
-    private FieldSinkTypeFlow instanceFieldFlow;
+    private ContextInsensitiveFieldTypeFlow instanceFieldFlow;
 
-    private AtomicBoolean isAccessed = new AtomicBoolean();
-    private AtomicBoolean isRead = new AtomicBoolean();
-    private AtomicBoolean isWritten = new AtomicBoolean();
-    private AtomicBoolean isFolded = new AtomicBoolean();
+    @SuppressWarnings("unused") private volatile int isAccessed;
+    @SuppressWarnings("unused") private volatile int isRead;
+    @SuppressWarnings("unused") private volatile int isWritten;
+    @SuppressWarnings("unused") private volatile int isFolded;
 
     private boolean isJNIAccessed;
     private boolean isUsedInComparison;
-    private AtomicBoolean isUnsafeAccessed;
-    private AtomicBoolean unsafeFrozenTypeState;
+    @SuppressWarnings("unused") private volatile int isUnsafeAccessed;
+    @SuppressWarnings("unused") private volatile int unsafeFrozenTypeState;
     @SuppressWarnings("unused") private volatile Object observers;
 
     /**
@@ -91,23 +109,21 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
      */
     private boolean canBeNull;
 
-    private ConcurrentMap<MethodTypeFlow, Boolean> readBy;
-    private ConcurrentMap<MethodTypeFlow, Boolean> writtenBy;
+    private ConcurrentMap<AnalysisMethod, Boolean> readBy;
+    private ConcurrentMap<AnalysisMethod, Boolean> writtenBy;
 
     protected TypeState instanceFieldTypeState;
 
     /** Field's position in the list of declaring type's fields, including inherited fields. */
-    private int position;
+    protected int position;
 
-    private final AnalysisType declaringClass;
-    private final AnalysisType fieldType;
+    protected final AnalysisType declaringClass;
+    protected final AnalysisType fieldType;
 
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
 
         this.position = -1;
-        this.isUnsafeAccessed = new AtomicBoolean();
-        this.unsafeFrozenTypeState = new AtomicBoolean();
 
         this.wrapped = wrappedField;
         this.id = universe.nextFieldId.getAndIncrement();
@@ -127,7 +143,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
             this.initialInstanceFieldFlow = null;
         } else {
             this.canBeNull = true;
-            this.instanceFieldFlow = new FieldSinkTypeFlow(this, getType());
+            this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
     }
@@ -152,31 +168,36 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return universe.lookup(resolvedType);
     }
 
+    @Override
+    public ResolvedJavaField getWrapped() {
+        return wrapped;
+    }
+
     public void copyAccessInfos(AnalysisField other) {
-        this.isAccessed = new AtomicBoolean(other.isAccessed.get());
-        this.isUnsafeAccessed = other.isUnsafeAccessed;
+        isAccessedUpdater.set(this, other.isAccessed);
+        isUnsafeAccessedUpdater.set(this, other.isUnsafeAccessed);
         this.canBeNull = other.canBeNull;
-        this.isWritten = new AtomicBoolean(other.isWritten.get());
-        this.isFolded = new AtomicBoolean(other.isFolded.get());
-        this.isRead = new AtomicBoolean(other.isRead.get());
+        isWrittenUpdater.set(this, other.isWritten);
+        isFoldedUpdater.set(this, other.isFolded);
+        isReadUpdater.set(this, other.isRead);
         notifyUpdateAccessInfo();
     }
 
     public void intersectAccessInfos(AnalysisField other) {
-        this.isAccessed = new AtomicBoolean(this.isAccessed.get() && other.isAccessed.get());
+        isAccessedUpdater.set(this, this.isAccessed & other.isAccessed);
         this.canBeNull = this.canBeNull && other.canBeNull;
-        this.isWritten = new AtomicBoolean(this.isWritten.get() && other.isWritten.get());
-        this.isFolded = new AtomicBoolean(this.isFolded.get() && other.isFolded.get());
-        this.isRead = new AtomicBoolean(this.isRead.get() && other.isRead.get());
+        isWrittenUpdater.set(this, this.isWritten & other.isWritten);
+        isFoldedUpdater.set(this, this.isFolded & other.isFolded);
+        isReadUpdater.set(this, this.isRead & other.isRead);
         notifyUpdateAccessInfo();
     }
 
     public void clearAccessInfos() {
-        this.isAccessed.set(false);
+        isAccessedUpdater.set(this, 0);
         this.canBeNull = true;
-        this.isWritten.set(false);
-        this.isFolded.set(false);
-        this.isRead.set(false);
+        isWrittenUpdater.set(this, 0);
+        isFoldedUpdater.set(this, 0);
+        isReadUpdater.set(this, 0);
         notifyUpdateAccessInfo();
     }
 
@@ -222,7 +243,8 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return staticFieldFlow;
     }
 
-    public FieldSinkTypeFlow getInstanceFieldFlow() {
+    /** Get the field type flow, stripped of any context. */
+    public ContextInsensitiveFieldTypeFlow getInstanceFieldFlow() {
         assert !Modifier.isStatic(this.getModifiers());
 
         return instanceFieldFlow;
@@ -238,22 +260,26 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     }
 
     public boolean registerAsAccessed() {
-        boolean firstAttempt = AtomicUtils.atomicMark(isAccessed);
+        boolean firstAttempt = AtomicUtils.atomicMark(this, isAccessedUpdater);
         notifyUpdateAccessInfo();
         if (firstAttempt) {
+            onReachable();
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }
 
-    public boolean registerAsRead(MethodTypeFlow method) {
-        boolean firstAttempt = AtomicUtils.atomicMark(isRead);
+    public boolean registerAsRead(AnalysisMethod method) {
+        boolean firstAttempt = AtomicUtils.atomicMark(this, isReadUpdater);
         notifyUpdateAccessInfo();
         if (readBy != null && method != null) {
             readBy.put(method, Boolean.TRUE);
         }
         if (firstAttempt) {
+            onReachable();
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }
@@ -264,21 +290,25 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
      * @param method The method where the field is written or null if the method is not known, e.g.
      *            for an unsafe accessed field.
      */
-    public boolean registerAsWritten(MethodTypeFlow method) {
-        boolean firstAttempt = AtomicUtils.atomicMark(isWritten);
+    public boolean registerAsWritten(AnalysisMethod method) {
+        boolean firstAttempt = AtomicUtils.atomicMark(this, isWrittenUpdater);
         notifyUpdateAccessInfo();
         if (writtenBy != null && method != null) {
             writtenBy.put(method, Boolean.TRUE);
         }
-        if (firstAttempt && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object)) {
-            getUniverse().onFieldAccessed(this);
+        if (firstAttempt) {
+            onReachable();
+            if (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object) {
+                getUniverse().onFieldAccessed(this);
+            }
         }
         return firstAttempt;
     }
 
     public void markFolded() {
-        if (AtomicUtils.atomicMark(isFolded)) {
+        if (AtomicUtils.atomicMark(this, isFoldedUpdater)) {
             getDeclaringClass().registerAsReachable();
+            onReachable();
         }
     }
 
@@ -286,7 +316,8 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         registerAsUnsafeAccessed(DefaultUnsafePartition.get());
     }
 
-    public void registerAsUnsafeAccessed(UnsafePartitionKind partitionKind) {
+    public boolean registerAsUnsafeAccessed(UnsafePartitionKind partitionKind) {
+        registerAsAccessed();
         /*
          * A field can potentially be registered as unsafe accessed multiple times. This is
          * especially true for the Graal nodes because FieldsOffsetsFeature.registerFields iterates
@@ -296,9 +327,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
          * only register fields as unsafe accessed with their declaring type once.
          */
 
-        if (!isUnsafeAccessed.getAndSet(true)) {
+        if (AtomicUtils.atomicMark(this, isUnsafeAccessedUpdater)) {
             /*
-             * The atomic boolean ensures that the field is registered as unsafe accessed with its
+             * The atomic updater ensures that the field is registered as unsafe accessed with its
              * declaring class only once. However, at the end of this call the registration might
              * still be in progress. The first thread that calls this methods enters the if and
              * starts the registration, the next threads return right away, while the registration
@@ -315,12 +346,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
                 AnalysisType declaringType = getDeclaringClass();
                 declaringType.registerUnsafeAccessedField(this, partitionKind);
             }
+            return true;
         }
         notifyUpdateAccessInfo();
+        return false;
     }
 
     public boolean isUnsafeAccessed() {
-        return isUnsafeAccessed.get();
+        return AtomicUtils.isSet(this, isUnsafeAccessedUpdater);
     }
 
     public void registerAsJNIAccessed() {
@@ -332,14 +365,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     }
 
     public void setUnsafeFrozenTypeState(boolean value) {
-        unsafeFrozenTypeState.getAndSet(value);
+        unsafeFrozenTypeStateUpdater.set(this, value ? 1 : 0);
     }
 
     public boolean hasUnsafeFrozenTypeState() {
-        return unsafeFrozenTypeState.get();
+        return AtomicUtils.isSet(this, unsafeFrozenTypeStateUpdater);
     }
 
-    public Set<MethodTypeFlow> getReadBy() {
+    public Set<AnalysisMethod> getReadBy() {
         return readBy.keySet();
     }
 
@@ -347,7 +380,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
      * Returns all methods where the field is written. It does not include the methods where the
      * field is written with unsafe access.
      */
-    public Set<MethodTypeFlow> getWrittenBy() {
+    public Set<AnalysisMethod> getWrittenBy() {
         return writtenBy.keySet();
     }
 
@@ -367,23 +400,31 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
      * DirectByteBuffer remains reachable.
      */
     public boolean isAccessed() {
-        return isAccessed.get() || isRead.get() || (isWritten.get() && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
+        return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater) ||
+                        (AtomicUtils.isSet(this, isWrittenUpdater) && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
     }
 
     public boolean isRead() {
-        return isAccessed.get() || isRead.get();
+        return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
 
     public boolean isWritten() {
-        return isAccessed.get() || isWritten.get();
+        return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
     public boolean isFolded() {
-        return isFolded.get();
+        return AtomicUtils.isSet(this, isFoldedUpdater);
     }
 
+    @Override
     public boolean isReachable() {
-        return isAccessed.get() || isRead.get() || isWritten.get() || isFolded.get();
+        return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater) ||
+                        AtomicUtils.isSet(this, isWrittenUpdater) || AtomicUtils.isSet(this, isFoldedUpdater);
+    }
+
+    @Override
+    public void onReachable() {
+        notifyReachabilityCallbacks(declaringClass.getUniverse());
     }
 
     public void setCanBeNull(boolean canBeNull) {
@@ -450,18 +491,8 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return GuardedAnnotationAccess.getAnnotations(wrapped);
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return GuardedAnnotationAccess.getDeclaredAnnotations(wrapped);
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return GuardedAnnotationAccess.getAnnotation(wrapped, annotationClass);
+    public AnnotatedElement getAnnotationRoot() {
+        return wrapped;
     }
 
     @Override

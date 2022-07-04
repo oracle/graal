@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -91,6 +91,11 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVMIVarBit doBoolean(boolean from) {
+            return from ? LLVMIVarBit.fromInt(getBits(), -1) : LLVMIVarBit.fromInt(getBits(), 0);
+        }
+
+        @Specialization
         protected LLVMIVarBit doI8(byte from) {
             return LLVMIVarBit.fromByte(getBits(), from);
         }
@@ -141,6 +146,11 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVMIVarBit doBoolean(boolean from) {
+            return from ? LLVMIVarBit.createZeroExt(getBits(), 1) : LLVMIVarBit.createZeroExt(getBits(), 0);
+        }
+
+        @Specialization
         protected LLVMIVarBit doI8(byte from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
@@ -183,6 +193,11 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         @Override
         protected LLVMToVarINode createRecursive() {
             return LLVMBitcastToIVarNodeGen.create(true, null, getBits());
+        }
+
+        @Specialization
+        protected LLVMIVarBit doBoolean(boolean from) {
+            return from ? LLVMIVarBit.fromInt(getBits(), 1) : LLVMIVarBit.fromInt(getBits(), 0);
         }
 
         @Specialization

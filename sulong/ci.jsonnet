@@ -20,24 +20,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  sulong_ruby_downstream_test:: {
-    job:: "ruby-downstream",
-    packages+: {
-      ruby: "==2.6.3",
-    },
-    run: [
-      [
-        "mx",
-        "testdownstream",
-        "--repo",
-        "https://github.com/graalvm/truffleruby.git",
-        "--mx-command",
-        "--dynamicimports /sulong ruby_testdownstream_sulong",
-      ],
-    ],
-    timelimit: "45:00",
-  },
-
   sulong_gate_generated_sources:: {
     job: "generated-sources",
     run: [
@@ -86,15 +68,15 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvm8 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-v80-jdk17-linux-amd64" },
 
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_amd64 + sc.llvm4 + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-v40-jdk17-darwin-amd64", timelimit: "0:45:00" },
-    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk17-darwin-amd64", timelimit: "0:45:00" },
+    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk17-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_sierra"] },
 
     sc.gate + $.sulong + sc.labsjdk_ce_11 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk11-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk17-linux-amd64" },
 
-    sc.Description("Run ruby downstream tests") +
-    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + $.sulong_ruby_downstream_test + { name: "gate-sulong-ruby-downstream-jdk17-linux-amd64" },
-
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk17-linux-aarch64", timelimit: "30:00" },
+
+    # TODO: "llvm" tag requires libgmp to be available
+    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_aarch64 + sc.llvmBundled + sc.gateTags("build,sulongBasic") + { name: "gate-sulong-basic-jdk17-darwin-aarch64", timelimit: "30:00" },
 
     sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + $.sulong_coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64" },
   ]],

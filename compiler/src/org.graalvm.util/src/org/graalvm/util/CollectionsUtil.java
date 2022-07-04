@@ -65,13 +65,13 @@ public final class CollectionsUtil {
         for (Iterable<T> iterable : iterables) {
             Objects.requireNonNull(iterable);
         }
-        return new Iterable<T>() {
+        return new Iterable<>() {
             @Override
             public Iterator<T> iterator() {
                 if (iterables.size() == 0) {
                     return Collections.emptyIterator();
                 }
-                return new Iterator<T>() {
+                return new Iterator<>() {
                     Iterator<Iterable<T>> cursor = iterables.iterator();
                     Iterator<T> currentIterator = cursor.next().iterator();
 

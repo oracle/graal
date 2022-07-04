@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -135,7 +135,7 @@ public class ImplicitCastTest {
 
         public abstract Object execute(int value);
 
-        // TODO: this should not be an error
+        // TODO:GR-38632 this should not be an error
         @ExpectError("Method signature (boolean) does not match to the expected signature: %")
         @Specialization
         public boolean op1(boolean value) {
@@ -192,7 +192,7 @@ public class ImplicitCastTest {
 
     @TypeSystemReference(ImplicitCast0Types.class)
     @NodeChildren({@NodeChild(value = "operand0", type = ImplicitCast2Node.class), @NodeChild(value = "operand1", type = ImplicitCast2Node.class, executeWith = "operand0")})
-    // TODO temporary workaround
+    // TODO GR-38632 temporary workaround
     abstract static class ImplicitCast2Node extends ValueNode {
 
         @Specialization

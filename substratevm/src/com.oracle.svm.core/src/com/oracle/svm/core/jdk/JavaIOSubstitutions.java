@@ -35,7 +35,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(java.io.FileDescriptor.class)
 final class Target_java_io_FileDescriptor {
@@ -56,13 +61,36 @@ final class Target_java_io_ObjectStreamClass {
 @TargetClass(value = java.io.ObjectStreamClass.class, innerClass = "Caches")
 final class Target_java_io_ObjectStreamClass_Caches {
 
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) static ConcurrentMap<?, ?> localDescs;
+    @TargetElement(onlyWith = JavaIOClassCachePresent.class, name = "localDescs") @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ConstructCopy.class) static Target_java_io_ClassCache localDescs0;
 
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) static ConcurrentMap<?, ?> reflectors;
+    @TargetElement(onlyWith = JavaIOClassCachePresent.class, name = "reflectors") @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ConstructCopy.class) static Target_java_io_ClassCache reflectors0;
 
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class) private static ReferenceQueue<Class<?>> localDescsQueue;
+    @TargetElement(onlyWith = JavaIOClassCacheAbsent.class) @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) static ConcurrentMap<?, ?> localDescs;
 
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class) private static ReferenceQueue<Class<?>> reflectorsQueue;
+    @TargetElement(onlyWith = JavaIOClassCacheAbsent.class) @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) static ConcurrentMap<?, ?> reflectors;
+
+    @TargetElement(onlyWith = JavaIOClassCacheAbsent.class) @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class) private static ReferenceQueue<Class<?>> localDescsQueue;
+
+    @TargetElement(onlyWith = JavaIOClassCacheAbsent.class) @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class) private static ReferenceQueue<Class<?>> reflectorsQueue;
+}
+
+@TargetClass(className = "java.io.ClassCache", onlyWith = JavaIOClassCachePresent.class)
+final class Target_java_io_ClassCache {
+}
+
+/**
+ * Creates a new instance by calling the no-args constructor of the original value's class.
+ */
+final class ConstructCopy implements RecomputeFieldValue.CustomFieldValueTransformer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
+    public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+        return ReflectionUtil.newInstance(originalValue.getClass());
+    }
 }
 
 /** Dummy class to have a class with the file's name. */

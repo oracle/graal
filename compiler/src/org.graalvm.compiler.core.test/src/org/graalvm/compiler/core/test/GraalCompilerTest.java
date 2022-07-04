@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,12 @@ import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -38,11 +44,14 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -89,6 +98,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.Builder;
@@ -108,9 +118,9 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -125,7 +135,6 @@ import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -169,7 +178,6 @@ import jdk.vm.ci.meta.SpeculationLog;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-@AddExports({"java.base/jdk.internal.org.objectweb.asm", "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
 
     /**
@@ -191,8 +199,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     /**
      * Exports the package named {@code packageName} declared in {@code moduleMember}'s module to
-     * this object's module. This must be called before accessing packages that are no longer public
-     * as of JDK 9.
+     * this object's module. This must be called before accessing non-public packages.
      */
     protected final void exportPackage(Class<?> moduleMember, String packageName) {
         ModuleSupport.exportPackageTo(moduleMember, packageName, getClass());
@@ -256,8 +263,19 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected static void shouldBeOptimizedAway() {
     }
 
+    protected static void safepoint() {
+    }
+
     protected Suites createSuites(OptionValues opts) {
         Suites ret = backend.getSuites().getDefaultSuites(opts).copy();
+
+        String phasePlanFile = System.getProperty("test.graal.phaseplan.file");
+        if (phasePlanFile != null) {
+            ret = loadPhasePlan(phasePlanFile, ret);
+        } else {
+            testPhasePlanSerialization(ret, opts);
+        }
+
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
         if (iter == null) {
             /*
@@ -279,7 +297,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -296,7 +314,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -313,11 +331,118 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
         return ret;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C> String phaseToString(BasePhase<? super C> phase, int level, String tier) {
+        Formatter buf = new Formatter();
+        String indent = level == 0 ? "" : new String(new char[level]).replace('\0', ' ');
+        buf.format("%s%s in %s with hashCode=%s", indent, phase.getClass().getName(), tier, phase.hashCode());
+        if (phase instanceof PhaseSuite) {
+            List<BasePhase<? super C>> subPhases = ((PhaseSuite<C>) phase).getPhases();
+            for (BasePhase<? super C> subPhase : subPhases) {
+                buf.format("%n%s", phaseToString(subPhase, level + 1, tier));
+            }
+        }
+        return buf.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C> void savePhaseSuite(PhaseSuite<C> phaseSuite, DataOutputStream out, String tier) throws IOException {
+        List<BasePhase<? super C>> phases = phaseSuite.getPhases();
+        out.writeInt(phases.size());
+        for (BasePhase<? super C> phase : phases) {
+            out.writeUTF(phaseToString(phase, 0, tier));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C> PhaseSuite<C> loadPhaseSuite(DataInputStream in, Map<String, BasePhase<? super C>> lookup) throws IOException {
+        PhaseSuite<C> phaseSuite = new PhaseSuite<>();
+        int size = in.readInt();
+        for (int i = 0; i < size; i++) {
+            String key = in.readUTF();
+            BasePhase<? super C> phase = lookup.get(key);
+            if (phase == null) {
+                GraalError.shouldNotReachHere("No phase could be found matching " + key);
+            }
+            phaseSuite.appendPhase(phase);
+        }
+        return phaseSuite;
+    }
+
+    private static <C> void collect(Map<String, BasePhase<? super C>> lookup, PhaseSuite<C> phaseSuite, String tier) {
+        for (BasePhase<? super C> phase : phaseSuite.getPhases()) {
+            String key = phaseToString(phase, 0, tier);
+            lookup.put(key, phase);
+        }
+    }
+
+    protected void savePhasePlan(String fileName, Suites phasePlan) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (DataOutputStream dos = new DataOutputStream(baos)) {
+                savePhasePlan(dos, phasePlan);
+            }
+            Files.write(Paths.get(fileName), baos.toByteArray());
+        } catch (IOException e) {
+            GraalError.shouldNotReachHere(e, "Error saving phase plan to " + fileName);
+        }
+    }
+
+    private static void savePhasePlan(DataOutputStream dos, Suites phasePlan) throws IOException {
+        savePhaseSuite(phasePlan.getHighTier(), dos, "high tier");
+        savePhaseSuite(phasePlan.getMidTier(), dos, "mid tier");
+        savePhaseSuite(phasePlan.getLowTier(), dos, "low tier");
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <C> Suites loadPhasePlan(String fileName, Suites originalSuites) {
+        try (DataInputStream in = new DataInputStream(new FileInputStream(fileName))) {
+            return loadPhasePlan(in, originalSuites);
+        } catch (IOException e) {
+            throw new GraalError(e, "Error loading phase plan from %s", fileName);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C> Suites loadPhasePlan(DataInputStream in, Suites originalSuites) throws IOException {
+        Map<String, BasePhase<? super C>> lookup = new HashMap<>();
+        collect(lookup, ((PhaseSuite<C>) originalSuites.getHighTier()), "high tier");
+        collect(lookup, ((PhaseSuite<C>) originalSuites.getMidTier()), "mid tier");
+        collect(lookup, ((PhaseSuite<C>) originalSuites.getLowTier()), "low tier");
+
+        PhaseSuite<HighTierContext> highTier = (PhaseSuite<HighTierContext>) loadPhaseSuite(in, lookup);
+        PhaseSuite<MidTierContext> midTier = (PhaseSuite<MidTierContext>) loadPhaseSuite(in, lookup);
+        PhaseSuite<LowTierContext> lowTier = (PhaseSuite<LowTierContext>) loadPhaseSuite(in, lookup);
+        return new Suites(highTier, midTier, lowTier);
+    }
+
+    private void testPhasePlanSerialization(Suites originalSuites, OptionValues opts) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Suites newSuites;
+        try {
+            try (DataOutputStream dos = new DataOutputStream(baos)) {
+                savePhasePlan(dos, originalSuites);
+            }
+            try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+                newSuites = loadPhasePlan(in, backend.getSuites().getDefaultSuites(opts).copy());
+            }
+        } catch (IOException e) {
+            throw new GraalError(e, "Error in phase plan serialization");
+        }
+        Assert.assertEquals(originalSuites.getHighTier().toString(), newSuites.getHighTier().toString());
+        Assert.assertEquals(originalSuites.getMidTier().toString(), newSuites.getMidTier().toString());
+        Assert.assertEquals(originalSuites.getLowTier().toString(), newSuites.getLowTier().toString());
+
+        Assert.assertEquals(originalSuites.getHighTier().getPhases(), newSuites.getHighTier().getPhases());
+        Assert.assertEquals(originalSuites.getMidTier().getPhases(), newSuites.getMidTier().getPhases());
+        Assert.assertEquals(originalSuites.getLowTier().getPhases(), newSuites.getLowTier().getPhases());
     }
 
     protected LIRSuites createLIRSuites(OptionValues opts) {
@@ -605,6 +730,15 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected final HighTierContext getDefaultHighTierContext() {
         return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations());
+    }
+
+    /**
+     * Returns a custom high tier context with custom {@link GraphBuilderPhase}.
+     */
+    protected final HighTierContext getEagerHighTierContext() {
+        return new HighTierContext(getProviders(),
+                        getEagerGraphBuilderSuite(),
+                        getOptimisticOptimizations());
     }
 
     protected final MidTierContext getDefaultMidTierContext() {
@@ -1072,6 +1206,28 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
+     * Set {@code stableDimension} of all array constants in the graph to {@code 1}.
+     */
+    protected StructuredGraph makeAllArraysStable(StructuredGraph graph) {
+        for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class).snapshot()) {
+            if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null && constantNode.getStableDimension() < 1) {
+                ConstantNode newConstantNode = graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
+                constantNode.replaceAndDelete(newConstantNode);
+            }
+        }
+        return graph;
+    }
+
+    /**
+     * Compiles a Java method.
+     *
+     * @param methodName the name of the method in {@code this.getClass()} to be compiled
+     */
+    protected final CompilationResult compile(String methodName) {
+        return compile(getResolvedJavaMethod(methodName), null);
+    }
+
+    /**
      * Compiles a given method.
      *
      * @param installedCodeOwner the method the compiled code will be associated with when installed
@@ -1181,6 +1337,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected ResolvedJavaMethod getResolvedJavaMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
         return asResolvedJavaMethod(getMethod(clazz, methodName, parameterTypes));
+    }
+
+    protected ResolvedJavaMethod getResolvedJavaMethod(Class<?> clazz, Class<?> returnType, String methodName, Class<?>... parameterTypes) {
+        return asResolvedJavaMethod(getMethod(clazz, returnType, methodName, parameterTypes));
     }
 
     /**
@@ -1408,27 +1568,34 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param invocationPlugins
      */
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        invocationPlugins.register(new InvocationPlugin() {
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("breakpoint") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new BreakpointNode());
                 return true;
             }
-        }, GraalCompilerTest.class, "breakpoint");
-        invocationPlugins.register(new InvocationPlugin() {
+        });
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("breakpoint", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
                 b.add(new BreakpointNode(arg0));
                 return true;
             }
-        }, GraalCompilerTest.class, "breakpoint", int.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        });
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("shouldBeOptimizedAway") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new NotOptimizedNode());
                 return true;
             }
-        }, GraalCompilerTest.class, "shouldBeOptimizedAway");
+        });
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("safepoint") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new SafepointNode());
+                return true;
+            }
+        });
     }
 
     /**

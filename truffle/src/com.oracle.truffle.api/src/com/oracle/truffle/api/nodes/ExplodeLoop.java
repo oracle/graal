@@ -46,8 +46,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies for a method that the loops with constant number of invocations should be fully
- * unrolled.
+ * Specifies that loops originating from within this method should be fully unrolled. This is only
+ * compatible with loops that have a partial-evaluation-constant number of iterations - loops
+ * without a constant number of iterations will cause the compiler to bailout due to the graph
+ * exceeding maximum size. The annotation does not apply to loops from within other methods that are
+ * inlined into this method.
  *
  * @since 0.8 or earlier
  */

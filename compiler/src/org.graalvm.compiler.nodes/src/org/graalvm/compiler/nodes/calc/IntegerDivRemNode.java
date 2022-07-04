@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_32;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
@@ -38,8 +39,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
-@NodeInfo(cycles = CYCLES_32, size = SIZE_1)
-public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lowerable, IterableNodeType {
+import jdk.vm.ci.meta.JavaConstant;
+
+@NodeInfo(allowedUsageTypes = Guard, cycles = CYCLES_32, size = SIZE_1)
+public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lowerable, IterableNodeType, GuardingNode {
 
     public static final NodeClass<IntegerDivRemNode> TYPE = NodeClass.create(IntegerDivRemNode.class);
 
@@ -53,23 +56,29 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         UNSIGNED
     }
 
-    @OptionalInput(InputType.Guard) private GuardingNode zeroCheck;
+    @OptionalInput(InputType.Guard) private GuardingNode zeroGuard;
 
     private final Op op;
     private final Type type;
     private boolean canDeopt;
+    protected JavaConstant deoptReasonAndAction;
+    protected JavaConstant deoptSpeculation;
 
-    protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode x, ValueNode y, GuardingNode zeroCheck) {
-        super(c, stamp, x, y);
-        this.zeroCheck = zeroCheck;
+    protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode dividend, ValueNode divisor, GuardingNode zeroGuard) {
+        super(c, stamp, dividend, divisor);
+        this.zeroGuard = zeroGuard;
         this.op = op;
         this.type = type;
-
         this.canDeopt = calculateCanDeoptimize();
     }
 
-    public final GuardingNode getZeroCheck() {
-        return zeroCheck;
+    public final GuardingNode getZeroGuard() {
+        return zeroGuard;
+    }
+
+    public void setZeroGuard(GuardingNode zeroCheck) {
+        updateUsagesInterface(this.zeroGuard, zeroCheck);
+        this.zeroGuard = zeroCheck;
     }
 
     public final Op getOp() {
@@ -82,7 +91,15 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
 
     private boolean calculateCanDeoptimize() {
         IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
-        return (yStamp.contains(0) && zeroCheck == null) || yStamp.contains(-1);
+        return (yStamp.contains(0) && zeroGuard == null) || yStamp.contains(-1);
+    }
+
+    public boolean canFloat() {
+        return false;
+    }
+
+    public void setCanDeopt(boolean canDeopt) {
+        this.canDeopt = canDeopt;
     }
 
     @Override
@@ -94,5 +111,19 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
          */
         canDeopt = canDeopt && calculateCanDeoptimize();
         return canDeopt;
+    }
+
+    public JavaConstant getDeoptReasonAndAction() {
+        return deoptReasonAndAction;
+    }
+
+    public JavaConstant getDeoptSpeculation() {
+        return deoptSpeculation;
+    }
+
+    public void setImplicitDeoptimization(JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
+        assert deoptReasonAndAction != null && deoptSpeculation != null;
+        this.deoptReasonAndAction = deoptReasonAndAction;
+        this.deoptSpeculation = deoptSpeculation;
     }
 }

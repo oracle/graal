@@ -34,30 +34,24 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
-public final class EspressoThreadRegistry implements ContextAccess {
+public final class EspressoThreadRegistry extends ContextAccessImpl {
     private static final int DEFAULT_THREAD_ARRAY_SIZE = 8;
 
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoThreadRegistry.class);
-    private final EspressoContext context;
 
     private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Object activeThreadLock = new Object() {
     };
 
-    @Override
-    public EspressoContext getContext() {
-        return context;
-    }
-
     public EspressoThreadRegistry(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     /**
@@ -107,6 +101,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             guestMainThread = self;
         }
         activeThreads.add(self);
+        getContext().registerCurrentThread(self);
     }
 
     public final AtomicLong createdThreadCount = new AtomicLong();
@@ -149,20 +144,27 @@ public final class EspressoThreadRegistry implements ContextAccess {
             }
         }
         pushThread(Math.toIntExact(host.getId()), guest);
+        if (host == Thread.currentThread()) {
+            getContext().registerCurrentThread(guest);
+        }
     }
 
     /**
-     * Once a thread terminates, remove it from the active set, and notify any thread waiting for VM
-     * teardown that it should check again for all non-daemon thread completion.
+     * Once a thread is truffle-disposed through {@code TruffleLanguage#disposeThread}, remove it
+     * from the active set, and notify any thread waiting for VM teardown that it should check again
+     * for all non-daemon thread completion.
      */
     @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
     public void unregisterThread(StaticObject thread) {
+        if (!activeThreads.remove(thread)) {
+            // Already unregistered
+            return;
+        }
         logger.fine(() -> {
             String guestName = getThreadAccess().getThreadName(thread);
             long guestId = getThreadAccess().getThreadId(thread);
             return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
         });
-        activeThreads.remove(thread);
         Thread hostThread = getThreadAccess().getHost(thread);
         int id = Math.toIntExact(hostThread.getId());
         synchronized (activeThreadLock) {
@@ -195,10 +197,8 @@ public final class EspressoThreadRegistry implements ContextAccess {
                 }
             }
         }
-        Object sync = context.getShutdownSynchronizer();
-        synchronized (sync) {
-            sync.notifyAll();
-        }
+        getLanguage().getThreadLocalState().clearCurrentThread(thread);
+        getContext().notifyShutdownSynchronizer();
     }
 
     /**
@@ -234,7 +234,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             // quick check if no registered threads yet
             return null;
         }
-        int index = id - (int) threads[0];
+        int index = getThreadIndex(id, threads);
         if (index <= 0 || index >= guestThreads.length) {
             // no guest thread created for this host thread
             return null;
@@ -246,11 +246,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
         return guestMainThread;
     }
 
-    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm) {
-        return createGuestThreadFromHost(hostThread, meta, vm, null, mainThreadGroup);
-    }
-
-    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm, String name, StaticObject threadGroup) {
+    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm, String name, StaticObject threadGroup, boolean managedByEspresso) {
         if (meta == null) {
             // initial thread used to initialize the context and spawn the VM.
             // Don't attempt guest thread creation
@@ -263,10 +259,10 @@ public final class EspressoThreadRegistry implements ContextAccess {
                 return exisitingThread;
             }
             vm.attachThread(hostThread);
-            StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
+            StaticObject guestThread = meta.java_lang_Thread.allocateInstance(getContext());
             // Allow guest Thread.currentThread() to work.
             meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
-            meta.HIDDEN_HOST_THREAD.setHiddenObject(guestThread, Thread.currentThread());
+            getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
@@ -296,16 +292,16 @@ public final class EspressoThreadRegistry implements ContextAccess {
      * HotSpot's implementation.
      */
     public void createMainThread(Meta meta) {
-        StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
+        StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
         meta.java_lang_ThreadGroup.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void) // private
                         // ThreadGroup()
                         .invokeDirect(systemThreadGroup);
         Thread hostThread = Thread.currentThread();
-        StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
+        StaticObject mainThread = meta.java_lang_Thread.allocateInstance(getContext());
         // Allow guest Thread.currentThread() to work.
         meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
-        meta.HIDDEN_HOST_THREAD.setHiddenObject(mainThread, hostThread);
-        mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
+        getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
+        mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
 
         registerMainThread(hostThread, mainThread);
 
@@ -396,7 +392,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
         int newOffset = minID - 1;
         newThreads[0] = newOffset;
         for (StaticObject guestThread : toRelocate) {
-            int hostId = (int) context.getThreadAccess().getHost(guestThread).getId();
+            int hostId = (int) getThreadAccess().getHost(guestThread).getId();
             newThreads[hostId - newOffset] = guestThread;
         }
         newThreads[id - newOffset] = self;

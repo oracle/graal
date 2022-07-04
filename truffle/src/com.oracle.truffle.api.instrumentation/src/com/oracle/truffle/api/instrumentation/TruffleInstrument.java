@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -1140,7 +1141,7 @@ public abstract class TruffleInstrument {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
+         * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
          * {@link Interruptible}. If the supplied context is already closed, the method returns a
@@ -1221,6 +1222,14 @@ public abstract class TruffleInstrument {
          */
         Class<?>[] services() default {
         };
+
+        /**
+         * A link to a website with more information about the instrument. Will be shown in the help
+         * text of GraalVM launchers.
+         * 
+         * @since 22.1.0
+         */
+        String website() default "";
     }
 
     /**

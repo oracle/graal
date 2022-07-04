@@ -73,6 +73,8 @@ import org.graalvm.component.installer.commands.PreRemoveCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.commands.UpgradeCommand;
+import org.graalvm.component.installer.gds.GdsCommands;
+import org.graalvm.component.installer.gds.rest.GDSTokenStorage;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.os.WindowsJVMWrapper;
 import org.graalvm.component.installer.persist.DirectoryStorage;
@@ -199,17 +201,17 @@ public class ComponentInstaller extends Launcher {
     private static void printHelp(Feedback output) {
         StringBuilder extra = new StringBuilder();
 
-        forSoftwareChannels(false, (ch) -> {
+        forSoftwareChannels(true, (ch) -> {
             ch.init(SIMPLE_ENV, output);
             String s = ch.globalOptionsHelp();
-            if (s != null) {
-                extra.append(s);
+            if (s != null && !s.isBlank()) {
+                extra.append(s).append("\n");
             }
         });
         String extraS;
 
         if (extra.length() != 0) {
-            extraS = output.l10n("INFO_UsageExtensions", extra.toString());
+            extraS = output.l10n("INFO_UsageExtensions", extra.substring(0, extra.length() - 1));
         } else {
             extraS = ""; // NOI18N
         }
@@ -353,6 +355,10 @@ public class ComponentInstaller extends Launcher {
         } else if (env.hasOption(Commands.OPTION_SHOW_VERSION)) {
             printVersion();
         }
+        if (env.hasOption(GdsCommands.OPTION_SHOW_TOKEN)) {
+            GDSTokenStorage.printToken(env, input);
+            return 0;
+        }
 
         // check only after the version option:
         if (cmdHandler == null) {
@@ -474,6 +480,8 @@ public class ComponentInstaller extends Launcher {
         } catch (UserAbortException ex) {
             feedback.error("ERROR_Aborted", ex, ex.getLocalizedMessage()); // NOI18N
             return 4;
+        } catch (NonInteractiveException ex) {
+            return 5;
         } catch (InstallerStopException ex) {
             feedback.error("INSTALLER_Error", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
@@ -759,7 +767,7 @@ public class ComponentInstaller extends Launcher {
 
     /**
      * Configures logging, based on `log.*' options passed on commandline.
-     * 
+     *
      * @param properties
      */
     void configureLogging(Map<String, String> properties) {
@@ -884,7 +892,7 @@ public class ComponentInstaller extends Launcher {
      * called in AOT mode</b>. Unlike the default implementation, this will not replace the existing
      * process, but rather execute a child process with env variables set up, then will perform the
      * post-processing.
-     * 
+     *
      * @param jvmArgs JVM arguments for the process
      * @param remainingArgs program arguments
      */

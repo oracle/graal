@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,30 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.Platform;
+import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
+import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
+import com.oracle.truffle.llvm.tests.interop.values.NullValue;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -48,28 +67,11 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
-import com.oracle.truffle.llvm.tests.CommonTestUtils;
-import com.oracle.truffle.llvm.tests.Platform;
-import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
-import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
-import com.oracle.truffle.llvm.tests.interop.values.NullValue;
-import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
+import java.io.File;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 @RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class LLVMInteropTest {
@@ -828,12 +830,88 @@ public class LLVMInteropTest {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static class TestManagedObject implements TruffleObject {
+
+        private final String value;
+
+        TestManagedObject(String value) {
+            this.value = value;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        public boolean isIdentical(Object o, @SuppressWarnings("unused") InteropLibrary otherInterop) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TestManagedObject that = (TestManagedObject) o;
+            return Objects.equals(value, that.value);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        public int identityHashCode() {
+            return Objects.hash(value);
+        }
+
+        @ExportMessage
+        static class IsIdenticalOrUndefined {
+
+            @Specialization
+            @TruffleBoundary
+            static TriState doTestManagedObject(TestManagedObject self, TestManagedObject other) {
+                return Objects.equals(self.value, other.value) ? TriState.TRUE : TriState.FALSE;
+            }
+
+            @Specialization
+            static TriState doOther(@SuppressWarnings("unused") TestManagedObject self, @SuppressWarnings("unused") Object other) {
+                return TriState.UNDEFINED;
+            }
+        }
+    }
+
     @Test
     public void testCreateTwoHandles() {
         try (Runner runner = new Runner("createTwoHandles.c")) {
             Object a = new Object();
-            runner.export(a, "object");
+            runner.export(a, "object1");
+            runner.export(a, "object2");
             Assert.assertEquals(0, runner.run());
+        }
+
+        try (Runner runner = new Runner("createTwoHandles.c")) {
+            Object a1 = new Object();
+            Object a2 = new Object();
+            runner.export(a1, "object1");
+            runner.export(a2, "object2");
+            Assert.assertEquals(1, runner.run());
+        }
+
+        try (Runner runner = new Runner("createTwoHandles.c")) {
+            Object a = new TestManagedObject("aaa");
+            runner.export(a, "object1");
+            runner.export(a, "object2");
+            Assert.assertEquals(0, runner.run());
+        }
+
+        try (Runner runner = new Runner("createTwoHandles.c")) {
+            Object a1 = new TestManagedObject("aaa");
+            Object a2 = new TestManagedObject("aaa");
+            runner.export(a1, "object1");
+            runner.export(a2, "object2");
+            Assert.assertEquals(0, runner.run());
+        }
+
+        try (Runner runner = new Runner("createTwoHandles.c")) {
+            Object a1 = new TestManagedObject("aaa");
+            Object a2 = new TestManagedObject("bbb");
+            runner.export(a1, "object1");
+            runner.export(a2, "object2");
+            Assert.assertEquals(1, runner.run());
         }
     }
 
@@ -1278,10 +1356,12 @@ public class LLVMInteropTest {
             Value a = strlenFunction.execute(new char[]{'a'});
             Value abcd = strlenFunction.execute(new char[]{'a', 'b', 'c', 'd'});
             Value abcdWithTerminator = strlenFunction.execute(new char[]{'a', 'b', 'c', 'd', '\0'});
+            Value abcdWithEmbeddedTerminator = strlenFunction.execute(new char[]{'a', 'b', 'c', '\0', 'd'});
             Assert.assertEquals(0, nullString.asInt());
             Assert.assertEquals(1, a.asInt());
             Assert.assertEquals(4, abcd.asInt());
-            Assert.assertEquals(5, abcdWithTerminator.asInt());
+            Assert.assertEquals(4, abcdWithTerminator.asInt());
+            Assert.assertEquals(3, abcdWithEmbeddedTerminator.asInt());
         }
     }
 

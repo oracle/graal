@@ -350,30 +350,41 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
     def extra_image_build_argument(self, benchmark, args):
-        return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
-                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
+        return ['-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
                 '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
-                '-J-Dvertx.disableDnsResolver=true,'
+                '-J-Dvertx.disableDnsResolver=true',
                 '-J-Dio.netty.leakDetection.level=DISABLED',
-                '-J-Dio.netty.allocator.maxOrder=1',
+                '-J-Dio.netty.allocator.maxOrder=3',
                 '-J-Duser.language=en',
                 '-J-Duser.country=US',
                 '-J-Dfile.encoding=UTF-8',
-                '--initialize-at-build-time=',
+                '-H:-ParseOnce',
+                '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+                '-J--add-opens=java.base/java.text=ALL-UNNAMED',
                 '-H:+JNI',
                 '-H:+AllowFoldMethods',
+                '-J-Djava.awt.headless=true',
                 '-H:FallbackThreshold=0',
                 '-H:+ReportExceptionStackTraces',
-                '-H:-AddAllCharsets',
+                '-H:+AddAllCharsets',
                 '-H:EnableURLProtocols=http',
                 '-H:NativeLinkerOption=-no-pie',
                 '-H:-UseServiceLoaderFeature',
+                '--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED',
+                '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
+                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk.localization=ALL-UNNAMED',
+                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED',
+                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED',
+                '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
                 '-H:+StackTrace'] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.6"
+        return "1.0.8"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
@@ -383,6 +394,14 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
 
     def serviceEndpoint(self):
         return 'parse'
+
+    def extra_image_build_argument(self, benchmark, args):
+        # Older JDK versions would need -H:NativeLinkerOption=libharfbuzz as an extra build argument.
+        expectedJdkVersion = mx.VersionSpec("11.0.13")
+        if mx.get_jdk().version < expectedJdkVersion:
+            mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
+
+        return super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
@@ -402,7 +421,7 @@ mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.1"
+        return "1.0.3"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
@@ -445,9 +464,14 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_units(self):
         return 'ms'
 
-    def skip_build_assertions(self, benchmark):
-        # This method overrides NativeImageMixin.skip_build_assertions
-        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+    def build_assertions(self, benchmark, is_gate):
+        # This method overrides NativeImageMixin.build_assertions
+        return []  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+
+    def extra_image_build_argument(self, benchmark, args):
+        return [
+                   '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+               ] + super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
@@ -455,14 +479,13 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.5"
+        return "0.3.6"
 
     def applicationDist(self):
-        shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
-        return os.path.join(shopcartCache, "shopcart-" + self.version())
+        return mx.library("SHOPCART_" + self.version(), True).get_path(True)
 
     def applicationPath(self):
-        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
+        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + ".jar")
 
     def serviceEndpoint(self):
         return 'clients'
@@ -504,7 +527,7 @@ mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "1.0.2"
+        return "1.0.3"
 
     def applicationDist(self):
         return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
@@ -591,7 +614,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
 
@@ -606,10 +629,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         otherArgs = ["-s", self.workloadSize()] + remaining
 
-        if args.n:
-            if args.n.isdigit():
-                return ["-n", args.n] + otherArgs
-            if args.n == "-1":
+        if args.iterations:
+            if args.iterations.isdigit():
+                return ["-n", args.iterations] + otherArgs
+            if args.iterations == "-1":
                 return None
         else:
             iterations = self.daCapoIterations()[benchname]
@@ -635,10 +658,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
-        if args.n and args.n.isdigit():
-            iterations = int(args.n)
+        if args.iterations and args.iterations.isdigit():
+            iterations = int(args.iterations)
         else:
             iterations = self.daCapoIterations()[benchmarks[0]]
             iterations = iterations + self.getExtraIterationCount(iterations)
@@ -1205,7 +1228,7 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
         return "large"
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
-        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        skip_patterns = super(ScalaDacapoLargeBenchmarkSuite, self).flakySuccessPatterns()
         if "specs" in benchmarks:
             skip_patterns += [
                 re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
@@ -1236,25 +1259,7 @@ mx_benchmark.add_bm_suite(ScalaDacapoGargantuanBenchmarkSuite())
 
 
 _allSpecJVM2008Benches = [
-    'startup.helloworld',
-    'startup.compiler.compiler',
-    # 'startup.compiler.sunflow', # disabled until timeout problem in jdk8 is resolved
-    'startup.compress',
-    'startup.crypto.aes',
-    'startup.crypto.rsa',
-    'startup.crypto.signverify',
-    'startup.mpegaudio',
-    'startup.scimark.fft',
-    'startup.scimark.lu',
-    'startup.scimark.monte_carlo',
-    'startup.scimark.sor',
-    'startup.scimark.sparse',
-    'startup.serial',
-    'startup.sunflow',
-    'startup.xml.transform',
-    'startup.xml.validation',
     'compiler.compiler',
-    # 'compiler.sunflow',
     'compress',
     'crypto.aes',
     'crypto.rsa',
@@ -1276,8 +1281,11 @@ _allSpecJVM2008Benches = [
     'xml.validation'
 ]
 _allSpecJVM2008BenchesJDK9 = list(_allSpecJVM2008Benches)
-_allSpecJVM2008BenchesJDK9.remove('compiler.compiler') # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9
-_allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
+if 'compiler.compiler' in _allSpecJVM2008BenchesJDK9:
+    # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9+
+    _allSpecJVM2008BenchesJDK9.remove('compiler.compiler')
+if 'startup.compiler.compiler' in _allSpecJVM2008BenchesJDK9:
+    _allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
 
 
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
@@ -1879,7 +1887,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
 
-        if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"] and mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
             # GR-33879
             # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
             del benchmarks["db-shootout"]
@@ -1893,14 +1901,13 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return benchmarks
 
     def completeBenchmarkList(self, bmSuiteArgs):
-        return sorted([bench for bench in _renaissanceConfig.keys()])
+        return sorted(bench for bench in _renaissanceConfig)
 
     def defaultSuiteVersion(self):
-        #  return self.availableSuiteVersions()[-1]
-        return "0.11.0"  # stick to 0.11.0 for both JIT and AOT until Native Image is compatible with 0.13.0 (GR-34147)
+        return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1926,7 +1933,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
     def vmArgs(self, bmSuiteArgs):
         vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
-        # The --add-opens flag will be available in the next Renaissance release (> 0.13.0).
+        # Those --add-opens flags are specified in the manifest as of renaissance 0.14.0
         if java_home_jdk().javaCompliance > '16' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0",
                                                                         "0.13.0"]:
             vm_args += ["--add-opens", "java.management/sun.management=ALL-UNNAMED"]
@@ -2351,7 +2358,7 @@ class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             mx.abort("Must specify exactly one benchmark to run.")
         elif benchmarks[0] not in self.benchmarkList(bmSuiteArgs):
             mx.abort("The specified benchmark doesn't exist. Possible values are: " + ", ".join(self.benchmarkList(bmSuiteArgs)))
-        vmArgs = self.runArgs(bmSuiteArgs)
+        vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         appArgs = self.appArgs(benchmarks[0])
         return vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs

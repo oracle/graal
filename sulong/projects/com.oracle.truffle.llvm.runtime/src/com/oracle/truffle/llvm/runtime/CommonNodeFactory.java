@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.Collection;
-
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugThreadLocalGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
@@ -221,8 +218,9 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMNegat
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessElemPtrSymbolNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessThreadLocalSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVM80BitFloatReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMDebugReadNode;
@@ -264,6 +262,10 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Collection;
+
 public class CommonNodeFactory {
 
     public CommonNodeFactory() {
@@ -276,9 +278,11 @@ public class CommonNodeFactory {
             } else if (LLVMManagedPointer.isInstance(value)) {
                 return LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.cast(value));
             } else if (value instanceof LLVMGlobal || value instanceof LLVMFunction) {
-                return LLVMAccessSymbolNodeGen.create((LLVMSymbol) value);
+                return LLVMAccessGlobalSymbolNodeGen.create((LLVMSymbol) value);
             } else if (value instanceof LLVMElemPtrSymbol) {
                 return LLVMAccessElemPtrSymbolNodeGen.create((LLVMElemPtrSymbol) value);
+            } else if (value instanceof LLVMThreadLocalSymbol) {
+                return LLVMAccessThreadLocalSymbolNodeGen.create((LLVMThreadLocalSymbol) value);
             } else {
                 throw new AssertionError(value.getClass());
             }
@@ -454,6 +458,8 @@ public class CommonNodeFactory {
             LLVMSymbol symbol = node.getSymbol();
             if (symbol.isGlobalVariable()) {
                 value = new LLVMDebugGlobalVariable(symbol.asGlobalVariable());
+            } else if (symbol.isThreadLocalSymbol()) {
+                value = new LLVMDebugThreadLocalGlobalVariable(symbol.asThreadLocalSymbol());
             } else {
                 throw new IllegalStateException(symbol.getKind() + " symbol: " + symbol.getName());
             }

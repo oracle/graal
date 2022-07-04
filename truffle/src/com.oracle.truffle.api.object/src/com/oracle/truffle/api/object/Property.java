@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,9 @@ public abstract class Property {
      * Constructor for subclasses.
      *
      * @since 0.8 or earlier
+     * @deprecated do not use.
      */
+    @Deprecated(since = "22.2")
     protected Property() {
     }
 
@@ -64,6 +66,7 @@ public abstract class Property {
      * @return new instance of the property
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     @SuppressWarnings("deprecation")
     public static Property create(Object key, Location location, int flags) {
         return Layout.getFactory().createProperty(key, location, flags);
@@ -84,46 +87,34 @@ public abstract class Property {
     public abstract int getFlags();
 
     /**
-     * Change the property's location.
-     *
-     * @return a Property with the new location (or {@code this} if the location is unchanged).
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated
-    public abstract Property relocate(Location newLocation);
-
-    /**
      * Gets the value of this property of the object.
-     *
-     * Planned to be deprecated.
      *
      * @param store the store that this property resides in
      * @param shape the current shape of the object, which must contain this location
      * @see DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)}.
      */
+    @Deprecated(since = "22.2")
     public abstract Object get(DynamicObject store, Shape shape);
 
     /**
      * Gets the value of this property of the object.
-     *
-     * Planned to be deprecated.
      *
      * @param store the store that this property resides in
      * @param condition the result of a shape check or {@code false}
      * @see DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)
      * @see #get(DynamicObject, Shape)
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)}.
      */
+    @Deprecated(since = "22.2")
     public abstract Object get(DynamicObject store, boolean condition);
 
     /**
      * Assigns value to this property of the object.
      *
      * Throws an exception if the value cannot be assigned to the property's current location.
-     *
-     * Planned to be deprecated.
      *
      * @param store the store that this property resides in
      * @param value the value to assign
@@ -132,7 +123,10 @@ public abstract class Property {
      * @throws FinalLocationException if the location is final and values differ
      * @see DynamicObjectLibrary#put(DynamicObject, Object, Object)
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated(since = "22.2")
     public abstract void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException;
 
     /**
@@ -140,68 +134,22 @@ public abstract class Property {
      *
      * Automatically relocates the property if the value cannot be assigned to its current location.
      *
-     * Planned to be deprecated.
-     *
      * @param shape the current shape of the object or {@code null}
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
      */
+    @Deprecated(since = "22.2")
     public abstract void setGeneric(DynamicObject store, Object value, Shape shape);
 
     /**
      * Like {@link #set(DynamicObject, Object, Shape)}, but throws an {@link IllegalStateException}
      * instead.
      *
-     * Planned to be deprecated.
-     *
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
      */
+    @Deprecated(since = "22.2")
     public abstract void setSafe(DynamicObject store, Object value, Shape shape);
-
-    /**
-     * Like {@link #setSafe}, but ignores the finalness of the property. For internal use only.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @since 0.8 or earlier
-     * @deprecated Properties can be set using {@link DynamicObjectLibrary#put}.
-     */
-    @Deprecated
-    public abstract void setInternal(DynamicObject store, Object value);
-
-    /**
-     * Assigns value to this property of the object, changing the object's shape.
-     *
-     * Combines {@code setShapeAndGrow} and {@link #set(DynamicObject, Object, Shape)} to an atomic
-     * operation.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @param oldShape the shape before the transition
-     * @param newShape the shape after the transition
-     * @throws IncompatibleLocationException if the value is incompatible with the property location
-     * @since 0.8 or earlier
-     * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
-     *             and {@link DynamicObjectLibrary#putWithFlags}.
-     */
-    @Deprecated
-    public abstract void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException;
-
-    /**
-     * Assigns value to this property of the object, changing the object's shape.
-     *
-     * Combines {@code setShapeAndGrow} and {@link #setGeneric(DynamicObject, Object, Shape)} to an
-     * atomic operation.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @param oldShape the shape before the transition
-     * @param newShape the shape after the transition
-     * @since 0.8 or earlier
-     * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
-     *             and {@link DynamicObjectLibrary#putWithFlags}.
-     */
-    @Deprecated
-    public abstract void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape);
 
     /**
      * Assigns value to this property of the object, changing the object's shape.
@@ -209,24 +157,15 @@ public abstract class Property {
      * Combines {@code setShapeAndGrow} and {@link #setSafe(DynamicObject, Object, Shape)} to an
      * atomic operation.
      *
-     * Planned to be deprecated.
-     *
      * @param store the store that this property resides in
      * @param value the value to assign
      * @param oldShape the shape before the transition
      * @param newShape the shape after the transition
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
      */
+    @Deprecated(since = "22.2")
     public abstract void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape);
-
-    /**
-     * Returns {@code true} if this property and some other property have the same key and flags.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Equivalent to comparing the property's key and flags.
-     */
-    @Deprecated
-    public abstract boolean isSame(Property other);
 
     /**
      * Get the property location.
@@ -244,21 +183,4 @@ public abstract class Property {
      * @since 0.8 or earlier
      */
     public abstract boolean isHidden();
-
-    /**
-     * Create a copy of the property with the given flags.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Property flags can be changed using
-     *             {@link DynamicObjectLibrary#setPropertyFlags(DynamicObject, Object, int)}.
-     */
-    @Deprecated
-    public abstract Property copyWithFlags(int newFlags);
-
-    /**
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated
-    public abstract Property copyWithRelocatable(boolean newRelocatable);
 }

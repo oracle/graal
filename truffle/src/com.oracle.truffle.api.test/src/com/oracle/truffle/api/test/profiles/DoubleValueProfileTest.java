@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
 import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -57,6 +54,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
@@ -79,7 +77,7 @@ public class DoubleValueProfileTest {
 
     @Before
     public void create() {
-        profile = (DoubleValueProfile) invokeStatic(loadRelative(DoubleValueProfileTest.class, "DoubleValueProfile$Enabled"), "create");
+        profile = ReflectionUtils.newInstance(DoubleValueProfile.class);
     }
 
     private static boolean isGeneric(DoubleValueProfile profile) {
@@ -161,7 +159,7 @@ public class DoubleValueProfileTest {
 
     @Test
     public void testDisabled() {
-        DoubleValueProfile p = (DoubleValueProfile) getStaticField(loadRelative(DoubleValueProfileTest.class, "DoubleValueProfile$Disabled"), "INSTANCE");
+        DoubleValueProfile p = DoubleValueProfile.getUncached();
         assertThat(p.profile(VALUE0), is(VALUE0));
         assertThat(p.profile(VALUE1), is(VALUE1));
         assertThat(p.profile(VALUE2), is(VALUE2));

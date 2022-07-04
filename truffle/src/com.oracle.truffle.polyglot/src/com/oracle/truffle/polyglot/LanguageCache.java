@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,9 +102,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final Set<String> services;
     private final ContextPolicy contextPolicy;
     private final TruffleLanguage.Provider provider;
+    private final String website;
     private volatile List<FileTypeDetector> fileTypeDetectors;
     private volatile Set<Class<? extends Tag>> providedTags;
-
     private int staticIndex;
 
     /*
@@ -116,7 +116,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private LanguageCache(String id, String name, String implementationName, String version, String className,
                     String languageHome, Set<String> characterMimeTypes, Set<String> byteMimeTypes, String defaultMimeType,
                     Set<String> dependentLanguages, boolean interactive, boolean internal, boolean needsAllEncodings, Set<String> services,
-                    ContextPolicy contextPolicy, TruffleLanguage.Provider provider) {
+                    ContextPolicy contextPolicy, TruffleLanguage.Provider provider, String website) {
         assert provider != null : "Provider must be non null";
         this.className = className;
         this.name = name;
@@ -136,14 +136,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.services = services;
         this.contextPolicy = contextPolicy;
         this.provider = provider;
-    }
-
-    /**
-     * Returns an index that allows to identify this language for the entire host process. This
-     * index can be used and cached statically.
-     */
-    int getStaticIndex() {
-        return staticIndex;
+        this.website = website;
     }
 
     /**
@@ -168,7 +161,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         null,
                         Collections.emptySet(),
                         false, false, false, hostLanguageProvider.getServicesClassNames(),
-                        ContextPolicy.SHARED, hostLanguageProvider);
+                        ContextPolicy.SHARED, hostLanguageProvider, "");
         cache.staticIndex = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
         return cache;
     }
@@ -246,7 +239,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                  * language since the Truffle API module descriptor only exports the packages to
                  * modules known at build time (such as the Graal module).
                  */
-                EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                ModuleUtils.exportTo(loader, null);
             }
             for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class, loader)) {
                 loadLanguageImpl(provider, caches);
@@ -307,7 +300,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
                 id = className.substring(lastIndex + 1);
             } else {
-                // TODO remove this hack for single character languages
+                // TODO GR-38632 remove this hack for single character languages
                 if (name.length() == 1) {
                     id = name;
                 } else {
@@ -346,7 +339,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
-                        servicesClassNames, reg.contextPolicy(), provider));
+                        servicesClassNames, reg.contextPolicy(), provider, reg.website()));
     }
 
     private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
@@ -394,65 +387,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return sb.toString();
     }
 
-    public int compareTo(LanguageCache o) {
-        return id.compareTo(o.id);
-    }
-
-    String getId() {
-        return id;
-    }
-
-    Set<String> getMimeTypes() {
-        return mimeTypes;
-    }
-
-    String getDefaultMimeType() {
-        return defaultMimeType;
-    }
-
-    boolean isCharacterMimeType(String mimeType) {
-        return characterMimeTypes.contains(mimeType);
-    }
-
-    String getName() {
-        return name;
-    }
-
-    String getImplementationName() {
-        return implementationName;
-    }
-
-    Set<String> getDependentLanguages() {
-        return dependentLanguages;
-    }
-
-    String getVersion() {
-        return version;
-    }
-
-    String getClassName() {
-        return className;
-    }
-
-    boolean isInternal() {
-        return internal;
-    }
-
-    boolean isInteractive() {
-        return interactive;
-    }
-
-    public boolean isNeedsAllEncodings() {
-        return needsAllEncodings;
-    }
-
-    String getLanguageHome() {
-        if (languageHome == null) {
-            languageHome = getLanguageHomeImpl(id);
-        }
-        return languageHome;
-    }
-
     private static String getLanguageHomeImpl(String languageId) {
         String home = System.getProperty("org.graalvm.language." + languageId + ".home");
         if (home == null) {
@@ -460,53 +394,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
             home = System.getProperty(languageId + ".home");
         }
         return home;
-    }
-
-    TruffleLanguage<?> loadLanguage() {
-        return provider.create();
-    }
-
-    @SuppressWarnings("unchecked")
-    Set<? extends Class<? extends Tag>> getProvidedTags() {
-        Set<Class<? extends Tag>> res = providedTags;
-        if (res == null) {
-            ProvidedTags tags = provider.getClass().getAnnotation(ProvidedTags.class);
-            if (tags == null) {
-                res = Collections.emptySet();
-            } else {
-                res = new HashSet<>();
-                Collections.addAll(res, (Class<? extends Tag>[]) tags.value());
-                res = Collections.unmodifiableSet(res);
-            }
-            providedTags = res;
-        }
-        return res;
-    }
-
-    ContextPolicy getPolicy() {
-        return contextPolicy;
-    }
-
-    Collection<String> getServices() {
-        return services;
-    }
-
-    boolean supportsService(Class<?> clazz) {
-        return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
-    }
-
-    List<? extends FileTypeDetector> getFileTypeDetectors() {
-        List<FileTypeDetector> result = fileTypeDetectors;
-        if (result == null) {
-            result = provider.createFileTypeDetectors();
-            fileTypeDetectors = result;
-        }
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + ", services=" + services + "]";
     }
 
     static boolean overridesPathContext(String languageId) {
@@ -588,6 +475,124 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
             }
         }
+    }
+
+    /**
+     * Returns an index that allows to identify this language for the entire host process. This
+     * index can be used and cached statically.
+     */
+    int getStaticIndex() {
+        return staticIndex;
+    }
+
+    public int compareTo(LanguageCache o) {
+        return id.compareTo(o.id);
+    }
+
+    String getId() {
+        return id;
+    }
+
+    Set<String> getMimeTypes() {
+        return mimeTypes;
+    }
+
+    String getDefaultMimeType() {
+        return defaultMimeType;
+    }
+
+    boolean isCharacterMimeType(String mimeType) {
+        return characterMimeTypes.contains(mimeType);
+    }
+
+    String getName() {
+        return name;
+    }
+
+    String getImplementationName() {
+        return implementationName;
+    }
+
+    Set<String> getDependentLanguages() {
+        return dependentLanguages;
+    }
+
+    String getVersion() {
+        return version;
+    }
+
+    String getClassName() {
+        return className;
+    }
+
+    boolean isInternal() {
+        return internal;
+    }
+
+    boolean isInteractive() {
+        return interactive;
+    }
+
+    public boolean isNeedsAllEncodings() {
+        return needsAllEncodings;
+    }
+
+    String getLanguageHome() {
+        if (languageHome == null) {
+            languageHome = getLanguageHomeImpl(id);
+        }
+        return languageHome;
+    }
+
+    TruffleLanguage<?> loadLanguage() {
+        return provider.create();
+    }
+
+    @SuppressWarnings("unchecked")
+    Set<? extends Class<? extends Tag>> getProvidedTags() {
+        Set<Class<? extends Tag>> res = providedTags;
+        if (res == null) {
+            ProvidedTags tags = provider.getClass().getAnnotation(ProvidedTags.class);
+            if (tags == null) {
+                res = Collections.emptySet();
+            } else {
+                res = new HashSet<>();
+                Collections.addAll(res, (Class<? extends Tag>[]) tags.value());
+                res = Collections.unmodifiableSet(res);
+            }
+            providedTags = res;
+        }
+        return res;
+    }
+
+    ContextPolicy getPolicy() {
+        return contextPolicy;
+    }
+
+    Collection<String> getServices() {
+        return services;
+    }
+
+    boolean supportsService(Class<?> clazz) {
+        return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
+    }
+
+    List<? extends FileTypeDetector> getFileTypeDetectors() {
+        List<FileTypeDetector> result = fileTypeDetectors;
+        if (result == null) {
+            result = provider.createFileTypeDetectors();
+            fileTypeDetectors = result;
+        }
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + ", services=" + services + "]";
+    }
+
+    String getWebsite() {
+        return website;
     }
 
     private static final class HostLanguageProvider implements TruffleLanguage.Provider {

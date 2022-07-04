@@ -29,10 +29,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 
@@ -80,7 +80,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
  * }
  * </pre>
  */
-public abstract class LookupAndInvokeKnownMethodNode extends Node {
+public abstract class LookupAndInvokeKnownMethodNode extends EspressoNode {
     static final int LIMIT = 3;
 
     protected final Klass declaringKlass;

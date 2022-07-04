@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.phases;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -43,6 +47,7 @@ import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -54,9 +59,10 @@ import org.graalvm.compiler.phases.contract.PhaseSizeContract;
 import jdk.vm.ci.meta.JavaMethod;
 
 /**
- * Base class for all compiler phases. Subclasses should be stateless. There will be one global
- * instance for each compiler phase that is shared for all compilations. VM-, target- and
- * compilation-specific data can be passed with a context object.
+ * Base class for all compiler phases. Subclasses should be stateless, except for subclasses of
+ * {@link SingleRunSubphase}. There will be one global instance for each compiler phase that is
+ * shared for all compilations. VM-, target- and compilation-specific data can be passed with a
+ * context object.
  */
 public abstract class BasePhase<C> implements PhaseSizeContract {
 
@@ -93,14 +99,15 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     private final CounterKey inputNodesCount;
 
     /**
+     * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of all
+     * graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     */
+    private final CounterKey edgeModificationCount;
+
+    /**
      * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
      */
     private final MemUseTrackerKey memUseTracker;
-
-    /** Lazy initialization to create pattern only when assertions are enabled. */
-    static class NamePatternHolder {
-        static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
-    }
 
     public static class BasePhaseStatistics {
         /**
@@ -120,6 +127,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         private final CounterKey inputNodesCount;
 
         /**
+         * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of
+         * all graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+         */
+        private final CounterKey edgeModificationCount;
+
+        /**
          * Records memory usage within {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
          */
         private final MemUseTrackerKey memUseTracker;
@@ -129,10 +142,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             executionCount = DebugContext.counter("PhaseCount_%s", clazz).doc("Number of phase executions.");
             memUseTracker = DebugContext.memUseTracker("PhaseMemUse_%s", clazz).doc("Memory allocated in phase.");
             inputNodesCount = DebugContext.counter("PhaseNodes_%s", clazz).doc("Number of nodes input to phase.");
+            edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
         }
     }
 
-    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<BasePhaseStatistics>() {
+    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<>() {
         @Override
         protected BasePhaseStatistics computeValue(Class<?> c) {
             return new BasePhaseStatistics(c);
@@ -149,6 +163,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         executionCount = statistics.executionCount;
         memUseTracker = statistics.memUseTracker;
         inputNodesCount = statistics.inputNodesCount;
+        edgeModificationCount = statistics.edgeModificationCount;
     }
 
     public final void apply(final StructuredGraph graph, final C context) {
@@ -191,6 +206,24 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
+    /**
+     * Similar to a {@link DebugCloseable} but the {@link #close} operation gets a {@link Throwable}
+     * argument indicating whether the call to {@link #run} completed normally or with an exception.
+     */
+    public interface ApplyScope {
+        void close(Throwable t);
+    }
+
+    /**
+     * Return an {@link ApplyScope} which will surround all the work performed by the call to
+     * {@link #run} in {@link #apply(StructuredGraph, Object, boolean)}. This allows subclaseses to
+     * inject work which will performed before and after the application of this phase.
+     */
+    @SuppressWarnings("unused")
+    protected ApplyScope applyScope(StructuredGraph graph, C context) {
+        return null;
+    }
+
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
@@ -199,12 +232,13 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         DebugContext debug = graph.getDebug();
-        try (CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+        try (DebugContext.Scope s = debug.scope(getName(), this);
+                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
-                        DebugContext.Scope s = debug.scope(getClass(), this);
-                        DebugCloseable c = memUseTracker.start(debug);) {
+                        DebugCloseable c = memUseTracker.start(debug)) {
 
             int sizeBefore = 0;
+            int edgesBefore = graph.getEdgeModificationCount();
             Mark before = null;
             OptionValues options = graph.getOptions();
             boolean verifySizeContract = PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract();
@@ -218,8 +252,24 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel);
             }
             inputNodesCount.add(debug, graph.getNodeCount());
-            this.run(graph, context);
+
+            // This is a manual version of a try/resource pattern since the close operation might
+            // want to know whether the run call completed with an exception or not.
+            ApplyScope applyScope = applyScope(graph, context);
+            Throwable throwable = null;
+            try {
+                this.run(graph, context);
+            } catch (Throwable t) {
+                throwable = t;
+                throw t;
+            } finally {
+                if (applyScope != null) {
+                    applyScope.close(throwable);
+                }
+            }
+
             executionCount.increment(debug);
+            edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {
                 if (!before.isCurrent()) {
                     int sizeAfter = NodeCostUtil.computeGraphSize(graph);
@@ -304,8 +354,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    protected CharSequence getName() {
-        return new ClassTypeSequence(BasePhase.this.getClass());
+    public CharSequence getName() {
+        return new ClassTypeSequence(this.getClass());
     }
 
     protected abstract void run(StructuredGraph graph, C context);
@@ -405,4 +455,41 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             this.filters = filters;
         }
     }
+
+    /**
+     * Marker interface for fields inside phase classes that capture some state that is shared
+     * across all compilations. Such fields must be declared {@code private static volatile}. They
+     * should only be used under exceptional circumstances, e.g., to guard code that adds a
+     * {@linkplain Runtime#addShutdownHook(Thread) runtime shutdown hook} for printing global phase
+     * statistics at VM shutdown.
+     */
+    @Target(value = {ElementType.FIELD})
+    @Retention(value = RetentionPolicy.RUNTIME)
+    public static @interface SharedGlobalPhaseState {
+
+    }
+
+    /**
+     * Hashing a phase is used to implement and test phase plan serialization. Hashing a phase
+     * should take into account any fields that configure a phase. This will be done properly once a
+     * {@code PhaseInfo} annotation is introduced (c.f. {@link NodeInfo}). The hash code returned
+     * needs to be stable across VM executions.
+     */
+    @Override
+    public int hashCode() {
+        return this.getClass().getName().hashCode();
+    }
+
+    /**
+     * @see #hashCode
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        return getClass().equals(obj.getClass());
+    }
+
 }

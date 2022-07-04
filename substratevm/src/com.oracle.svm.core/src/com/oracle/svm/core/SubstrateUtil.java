@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -55,12 +54,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
 
 public class SubstrateUtil {
@@ -162,7 +161,7 @@ public class SubstrateUtil {
      *
      * @return the command line argument strings in a Java string array.
      */
-    public static String[] getArgs(int argc, CCharPointerPointer argv) {
+    public static String[] convertCToJavaArgs(int argc, CCharPointerPointer argv) {
         String[] args = new String[argc - 1];
         for (int i = 1; i < argc; ++i) {
             args[i - 1] = CTypeConversion.toJavaString(argv.read(i));
@@ -248,11 +247,6 @@ public class SubstrateUtil {
 
         /** The method to be supplied by the implementor. */
         void invoke();
-    }
-
-    /** Prints extensive diagnostic information for a fatal error to the given log. */
-    public static boolean printDiagnostics(Log log, Pointer sp, CodePointer ip) {
-        return SubstrateDiagnostics.printFatalError(log, sp, ip, WordFactory.nullPointer(), false);
     }
 
     /**
@@ -384,5 +378,25 @@ public class SubstrateUtil {
             }
         }
         return false;
+    }
+
+    public static int arrayTypeDimension(Class<?> clazz) {
+        int dimension = 0;
+        Class<?> componentType = clazz;
+        while (componentType.isArray()) {
+            componentType = componentType.getComponentType();
+            dimension++;
+        }
+        return dimension;
+    }
+
+    public static int arrayTypeDimension(ResolvedJavaType arrayType) {
+        int dimension = 0;
+        ResolvedJavaType componentType = arrayType;
+        while (componentType.isArray()) {
+            componentType = componentType.getComponentType();
+            dimension++;
+        }
+        return dimension;
     }
 }

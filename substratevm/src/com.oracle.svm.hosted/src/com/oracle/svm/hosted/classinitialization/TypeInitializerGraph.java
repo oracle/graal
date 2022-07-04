@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -126,8 +127,13 @@ public class TypeInitializerGraph {
     }
 
     private boolean updateTypeInitializerSafety() {
+        Set<AnalysisType> unsafeOrProcessedTypes = types.entrySet().stream()
+                        .filter(t -> t.getValue() == Safety.UNSAFE)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
+
         return types.keySet().stream()
-                        .map(t -> tryPromoteToUnsafe(t, methodSafety))
+                        .map(t -> tryPromoteToUnsafe(t, unsafeOrProcessedTypes))
                         .reduce(false, (lhs, rhs) -> lhs || rhs);
     }
 
@@ -159,8 +165,12 @@ public class TypeInitializerGraph {
      * types unknown to points-to analysis (which sees only the substituted version.
      */
     private Safety initialMethodSafety(AnalysisMethod m) {
-        return m.getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
-                        hostVM.hasClassInitializerSideEffect(m) ||
+        for (var invoke : m.getInvokes()) {
+            if (isInvokeInitiallyUnsafe(invoke)) {
+                return Safety.UNSAFE;
+            }
+        }
+        return hostVM.hasClassInitializerSideEffect(m) ||
                         isSubstitutedMethod(m) ? Safety.UNSAFE : Safety.SAFE;
     }
 
@@ -171,7 +181,7 @@ public class TypeInitializerGraph {
     /**
      * Unsafe invokes (1) call native methods, and/or (2) can't be statically bound.
      */
-    private boolean isInvokeInitiallyUnsafe(InvokeInfo i) {
+    private static boolean isInvokeInitiallyUnsafe(InvokeInfo i) {
         return i.getTargetMethod().isNative() ||
                         !i.canBeStaticallyBound();
     }
@@ -182,16 +192,18 @@ public class TypeInitializerGraph {
      *
      * @return if pomotion to unsafe happened
      */
-    private boolean tryPromoteToUnsafe(AnalysisType type, Map<AnalysisMethod, Safety> safeMethods) {
-        if (types.get(type) == Safety.UNSAFE) {
+    private boolean tryPromoteToUnsafe(AnalysisType type, Set<AnalysisType> unsafeOrProcessed) {
+        if (unsafeOrProcessed.contains(type)) {
             return false;
-        } else if (type.getClassInitializer() != null && safeMethods.get(type.getClassInitializer()) == Safety.UNSAFE ||
-                        dependencies.get(type).stream().anyMatch(t -> types.get(t) == Safety.UNSAFE) ||
-                        dependencies.get(type).stream().anyMatch(t -> tryPromoteToUnsafe(t, safeMethods))) {
-            setUnsafe(type);
-            return true;
         } else {
-            return false;
+            unsafeOrProcessed.add(type);
+            if ((type.getClassInitializer() != null && methodSafety.get(type.getClassInitializer()) == Safety.UNSAFE) ||
+                            dependencies.get(type).stream().anyMatch(t -> types.get(t) == Safety.UNSAFE || tryPromoteToUnsafe(t, unsafeOrProcessed))) {
+                setUnsafe(type);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
@@ -201,9 +213,11 @@ public class TypeInitializerGraph {
      */
     private boolean updateMethodSafety(AnalysisMethod m) {
         assert methodSafety.get(m) == Safety.SAFE;
-        if (m.getInvokes().stream().anyMatch(this::isInvokeUnsafeIterative)) {
-            methodSafety.put(m, Safety.UNSAFE);
-            return true;
+        for (var invoke : m.getInvokes()) {
+            if (isInvokeUnsafeIterative(invoke)) {
+                methodSafety.put(m, Safety.UNSAFE);
+                return true;
+            }
         }
         if (hostVM.getInitializedClasses(m).stream().anyMatch(this::isUnsafe)) {
             methodSafety.put(m, Safety.UNSAFE);

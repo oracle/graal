@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,17 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.common;
 
+import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
+import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
+import com.oracle.truffle.llvm.toolchain.launchers.windows.WindowsLinker;
+
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-
-import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
-import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
-import com.oracle.truffle.llvm.toolchain.launchers.windows.WindowsLinker;
 
 public abstract class ClangLikeBase extends Driver {
 
@@ -173,6 +174,16 @@ public abstract class ClangLikeBase extends Driver {
     protected void getCompilerArgs(List<String> sulongArgs) {
         // use -gdwarf-5 instead of -g to enable source file checksums
         sulongArgs.addAll(Arrays.asList("-flto=full", "-gdwarf-5", "-O1"));
+        sulongArgs.addAll(getVectorInstructionSetFlags());
+    }
+
+    private static List<String> getVectorInstructionSetFlags() {
+        switch (Arch.getCurrent()) {
+            case X86_64:
+                return Arrays.asList("-mno-sse3", "-mno-avx");
+            default:
+                return Collections.emptyList();
+        }
     }
 
     private boolean isDefaultLinker(String useLdFlag) {

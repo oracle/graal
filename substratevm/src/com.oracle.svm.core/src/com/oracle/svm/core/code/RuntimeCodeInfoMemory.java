@@ -26,6 +26,8 @@ package com.oracle.svm.core.code;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -201,18 +203,23 @@ public class RuntimeCodeInfoMemory {
         assert VMOperation.isGCInProgress() : "otherwise, we would need to make sure that the CodeInfo is not freeded by the GC";
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
-            for (int i = 0; i < length;) {
-                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
-                if (info.isNonNull()) {
-                    visitor.visitCode(CodeInfoAccess.convert(info));
-                }
+            RuntimeCodeInfoAccess.acquireThreadWriteAccess();
+            try {
+                for (int i = 0; i < length;) {
+                    UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+                    if (info.isNonNull()) {
+                        visitor.visitCode(CodeInfoAccess.convert(info));
+                    }
 
-                // If the visitor removed the current entry from the table, then it is necessary to
-                // visit the now updated entry one more time. However, this could have the effect
-                // that some entries are visited more than once.
-                if (info == NonmovableArrays.getWord(table, i)) {
-                    i++;
+                    // If the visitor removed the current entry from the table, then it is necessary
+                    // to visit the now updated entry one more time. However, this could have the
+                    // effect that some entries are visited more than once.
+                    if (info == NonmovableArrays.getWord(table, i)) {
+                        i++;
+                    }
                 }
+            } finally {
+                RuntimeCodeInfoAccess.releaseThreadWriteAccess();
             }
         }
         return true;
@@ -268,14 +275,24 @@ public class RuntimeCodeInfoMemory {
              * uninterruptible code and pass those values to interruptible code that does the
              * printing.
              */
-            String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
-            printCodeInfo0(log, info, UntetheredCodeInfoAccess.getState(info), name, UntetheredCodeInfoAccess.getCodeStart(info), UntetheredCodeInfoAccess.getCodeEnd(info));
+            String name = null;
+            SubstrateInstalledCode installedCode = null;
+            HasInstalledCode hasInstalledCode = HasInstalledCode.Unknown;
+            if (allowJavaHeapAccess) {
+                name = UntetheredCodeInfoAccess.getName(info);
+                installedCode = UntetheredCodeInfoAccess.getInstalledCode(info);
+                hasInstalledCode = (installedCode != null) ? HasInstalledCode.Yes : HasInstalledCode.No;
+            }
+            printCodeInfo0(log, info, UntetheredCodeInfoAccess.getState(info), name, UntetheredCodeInfoAccess.getCodeStart(info), UntetheredCodeInfoAccess.getCodeEnd(info), hasInstalledCode,
+                            installedCode);
         }
     }
 
     @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
-    private static void printCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
-        CodeInfoAccess.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd);
+    private static void printCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd, HasInstalledCode hasInstalledCode,
+                    SubstrateInstalledCode installedCode) {
+        CodeInfoAccess.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd, hasInstalledCode, installedCode);
+        log.newline();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -313,7 +330,7 @@ public class RuntimeCodeInfoMemory {
                             return true;
                         }
 
-                        UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
+                        UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(CodeInfoAccess.getSizeOfCodeInfo());
                         if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
                             String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
                             printInsideCodeInfo(log, info, name);

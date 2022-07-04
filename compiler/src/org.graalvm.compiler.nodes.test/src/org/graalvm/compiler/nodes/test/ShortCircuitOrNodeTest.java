@@ -57,7 +57,7 @@ public class ShortCircuitOrNodeTest extends GraalCompilerTest {
 
     public static void registerShortCircuitOrPlugin(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, ShortCircuitOrNodeTest.class);
-        r.register2("shortCircuitOr", boolean.class, boolean.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("shortCircuitOr", boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode b1, ValueNode b2) {
                 LogicNode x = b.add(new IntegerEqualsNode(b1, b.add(ConstantNode.forInt(1))));

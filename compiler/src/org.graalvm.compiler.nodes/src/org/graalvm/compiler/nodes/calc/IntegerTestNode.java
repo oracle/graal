@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,16 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
                 return LogicConstantNode.tautology();
             } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
                 return LogicConstantNode.contradiction();
+            }
+            // this node is effectively an & operation x & y == 0 so part of the canonicalizations
+            // for AndNode apply
+            ValueNode newLHS = AndNode.eliminateRedundantBinaryArithmeticOp(forX, yStamp);
+            if (newLHS != null) {
+                return new IntegerTestNode(newLHS, forY);
+            }
+            ValueNode newRHS = AndNode.eliminateRedundantBinaryArithmeticOp(forY, xStamp);
+            if (newRHS != null) {
+                return new IntegerTestNode(forX, newRHS);
             }
         }
         return null;

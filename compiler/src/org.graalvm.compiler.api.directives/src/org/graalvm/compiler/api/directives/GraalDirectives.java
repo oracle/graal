@@ -127,7 +127,6 @@ public final class GraalDirectives {
      * effect killing all memory locations.
      */
     public static void sideEffect() {
-
     }
 
     /**
@@ -143,6 +142,14 @@ public final class GraalDirectives {
      * effect killing all memory locations.
      */
     public static int sideEffect(int a) {
+        return a;
+    }
+
+    /**
+     * A call to this method will force the compiler to assume this instruction has a visible memory
+     * effect killing all memory locations.
+     */
+    public static long sideEffect(long a) {
         return a;
     }
 
@@ -463,5 +470,116 @@ public final class GraalDirectives {
     @SuppressWarnings("unused")
     public static boolean isCompilationConstant(Object value) {
         return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(boolean value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(byte value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(short value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(char value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(int value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(float value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(long value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(double value) {
+        return false;
+    }
+
+    /**
+     * Prints a string to the log stream.
+     */
+    @SuppressWarnings("unused")
+    public static void log(String value) {
+        System.out.print(value);
+    }
+
+    /**
+     * Prints a formatted string to the log stream.
+     *
+     * @param format a C style printf format value that can contain at most one conversion specifier
+     *            (i.e., a sequence of characters starting with '%').
+     * @param value the value associated with the conversion specifier
+     */
+    @SuppressWarnings("unused")
+    public static void log(String format, long value) {
+        System.out.printf(format, value);
+    }
+
+    /**
+     * Prints a formatted string to the log stream.
+     *
+     * @param format a C style printf format value that can contain at most two conversion
+     *            specifiers (i.e., a sequence of characters starting with '%').
+     * @param v1 the value associated with the first conversion specifier
+     * @param v2 the value associated with the second conversion specifier
+     */
+    @SuppressWarnings("unused")
+    public static void log(String format, long v1, long v2) {
+        System.out.printf(format, v1, v2);
+    }
+
+    /**
+     * Prints a formatted string to the log stream.
+     *
+     * @param format a C style printf format value that can contain at most three conversion
+     *            specifiers (i.e., a sequence of characters starting with '%').
+     * @param v1 the value associated with the first conversion specifier
+     * @param v2 the value associated with the second conversion specifier
+     * @param v3 the value associated with the third conversion specifier
+     */
+    @SuppressWarnings("unused")
+    public static void log(String format, long v1, long v2, long v3) {
+        System.out.printf(format, v1, v2, v3);
     }
 }

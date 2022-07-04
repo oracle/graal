@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,15 +66,5 @@ public class GraalUnsafeAccess {
             sm.checkPermission(new RuntimePermission("accessUnsafe"));
         }
         return UNSAFE;
-    }
-
-    @SuppressWarnings("deprecation") // deprecated since JDK 15
-    public static boolean shouldBeInitialized(Class<?> c) {
-        return UNSAFE.shouldBeInitialized(c);
-    }
-
-    @SuppressWarnings("deprecation") // deprecated since JDK 15
-    public static void ensureClassInitialized(Class<?> c) {
-        UNSAFE.ensureClassInitialized(c);
     }
 }

@@ -2,12 +2,91 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 22.3.0
+
+* GR-39219 Removed several deprecated APIs:
+    * Removed deprecated `FrameSlot` API. The API was deprecated in 22.0.
+    * Removed deprecated `CompilerOptions` API. The API was deprecated in 22.1.
+    * Removed deprecated `TruffleRuntime.createCallTarget` and `RootNode.setCallTarget` API. The API was deprecated in 22.0.
+    * Removed deprecated `TruffleContext.enter` and `TruffleContext.leave` API. The API was deprecated in 20.3.
+    * Removed deprecated `MemoryFence` API. The API was deprecated in 22.1.
+    * Removed deprecated `TruffleRuntime.getCallerFrame` and `TruffleRuntime.getCurrentFrame` API. The API was deprecated in 22.1.
+    * Removed deprecated `@CachedContext` and `@CachedLibrary` API. The API was deprecated in 21.3.
+    * Removed deprecated `get()` method from `LanguageContext` and `ContextReference` API. The API was deprecated in 21.3.
+    * Removed deprecated equality `ValueProfile` . The API was deprecated in 21.2.
+    * Removed deprecated `UnionAssumption`, `AlwaysValidAssumption` and `NeverValidAssumption`. The API was deprecated in 22.1.
+    
+## Version 22.2.0
+
+* GR-33829 Added support on libgraal for caching encoded graphs across Truffle compilations to speedup partial evaluation. The cache is enabled by default and can be enabled/disabled with the `--engine.EncodedGraphCache` option.
+* GR-38925 Added `InteropLibrary.hasMetaParents(Object)` and `InteropLibrary.getMetaParents(Object)` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
+* GR-36557 Deprecated `--engine.MaximumGraalNodeCount` and introduced `--engine.MaximumGraalGraphSize` to control the maximum graal graph size during partial evaluation.
+* GR-37493 Added `@DenyReplace` to deny replacement of final node types. 
+* GR-37493 Potentially breaking: Disabled replace of all Truffle DSL generated uncached nodes. If you call `Node.replace()` on an uncached version of a generated node or library it will now fail with an `IllegalArgumentException`. As a rule of thumb, uncached versions of nodes should not ever be stored in `@Child` fields. Instead, they should always be used as singletons.
+* GR-37493 Removed long time deprecated API `NodeFieldAccessor` without replacement. Added a some utility methods in `NodeUtil` as a replacement for this API: `NodeUtil.collectFieldNames(Class)`, `NodeUtil.collectNodeChildren(Node)` and `NodeUtil.collectNodeProperties(Node)`.
+* GR-37100 Deprecated `BytecodeOSRNode.copyIntoOSRFrame(VirtualFrame, VirtualFrame, int)`, in favor of `BytecodeOSRNode.copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)`.
+* GR-36944 Added new static APIs to `com.oracle.truffle.api.frame.Frame`:
+    * Added new `Static` option to `com.oracle.truffle.api.frame.FrameSlotKind` for index-based slots. Frame slots using this kind cannot be changed to another kind later on. Static frame slots can simultaneously hold one primitive and one object value.
+    * Added new `get.../set...` methods postfixed by `Static` for exclusively accessing static frame slots.
+    * Added new `copy.../clear...` methods postfixed by `Static` for exclusively copying and clearing static frame slots.
+    * Static frame slots are intended for situations where the type of a variable in a frame slots is known ahead of time and does not need any type checks (e.g. in statically typed languages).
+* GR-36557 Introduced `--engine.InliningUseSize` which changes the code size approximation during inlining to an approximation of the size of the graph rather than just the node count. This option is false by default.
+* GR-37310 Add `BytecodeOSRNode.storeParentFrameInArguments` and `BytecodeOSRNode.restoreParentFrameFromArguments` to give languages more control over how frame arguments in bytecode OSR compilations are created.
+* GR-35280 Implemented new domain specific inlining phase for Truffle interpreter host compilation. 
+    * In native image hosts the new optimizations is applied to all methods annotated with `@BytecodeInterpreterSwitch` and methods which were detected to be used for runtime compilation. 
+    * On HotSpot hosts the new optimizations will be applied to methods annotated with `@BytecodeInterpreterSwitch` only.
+    * The annotation `@BytecodeInterpreterSwitchBoundary` was deprecated. Boundaries for the compilation are now inferred from directives like `CompilerDirective.transferToInterpreter()` and `@TruffleBoundary` automatically.
+    * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
+* GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
+* GR-38110 Added option to use `long` values as offsets for accessing memory through `ByteArraySupport`.
+* GR-39029 Fixed issue in `InteropLibrary` that required `asDate` to be implemented whenever `isTime` is exported; correct dependency is on `isDate`.
+* GR-38387 Updated the `InteropLibrary.getMembers()` message regarding ordering and determinism. 
+* GR-38945 Truffle IGV dumping with log level 5 (e.g. `-Dgraal.Dump=Truffle:5`) now dumps the graph after each method that was fully partially evaluated. This enables debugging of problems only visible during partial evaluation.
+* GR-34894 Removed deprecated `DynamicObject` APIs:
+    * `Shape`: `getKeyList(Pred)`, `getPropertyList(Pred)`, `Pred`, `getObjectType`, `getId`, `isRelated`, `createSeparateShape`, `append`, `reservePrimitiveExtensionArray`, `hasTransitionWithKey`
+    * `DynamicObject`: all deprecated constructors and methods (`get`, `set`, `contains`, `define`, `delete`, `size`, `isEmpty`, `setShapeAndGrow`, `setShapeAndResize`, `updateShape`, `copy`)
+    * `ShapeListener`
+    * `TypedLocation`
+    * `Layout.newInstance`, `Layout.createShape`
+    * `Property`: `copyWithRelocatable`, `copyWithFlags`, `isSame`, `relocate`, `set`, `setInternal`, `setGeneric`.
+    * `IncompatibleLocationException`, `FinalLocationException` constructors
+* GR-34894 Deprecated legacy and low-level `DynamicObject` APIs:
+    * `Shape`: `Allocator`, `allocator`, `createFactory`, `newInstance`, `defineProperty`, `addProperty`, `changeType`, `getMutex`
+    * `ObjectLocation`, `BooleanLocation`, `DoubleLocation`, `IntLocation`, `LongLocation`
+    * `Location`: `canSet`, `set`, `setInternal`, `get`, `getInternal`, `incompatibleLocation`, `finalLocation`
+    * `Property`: `create`, `get`, `set`, `setSafe`, `setGeneric`.
+    * `ObjectType`
+    * `DynamicObjectFactory`, `LocationModifier`, `LocationFactory`, `LayoutFactory`
+    * `IncompatibleLocationException`, `FinalLocationException`
+* GR-34894 Introduced `Location.isPrimitive()`, `Location.getConstantValue()`, and `Shape.makePropertyGetter(Object)`.
+* GR-39058 The Static Object Model offers preliminary support for field-based storage also on Native Image. 
+
 ## Version 22.1.0
 
 * GR-35924 Context preinitialization in combination with auxiliary engine caching now preinitializes a context for each sharing layer with the common configuration of previously created contexts.
 * Added [TruffleStrings](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleStrings.md), a flexible string implementation for all Truffle languages.
 * Added a `@GeneratePackagePrivate` annotation to change the visibility of generated nodes to package-private even if the template node is public.
 * Changed the default [`Object` target type mapping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-) for values that have both array elements and members from `Map` to `List`.
+* GR-36425 Truffle DSL assumption expressions are now always executed instead of cached if their return value can be proven a partial evaluation constant. For example, if an assumption is read from a field in the declared node or a `@Cached` parameter then the expression can be always executed instead of being cached. This improves memory footprint of the generated code as no fields for the assumption cache needs to be generated. Language implementations are encouraged to check all usages of `@Specialization(assumption=...)` and verify whether they can be expressed as a PE constant. Ensure that all fields accessed in the expression are either final or annotated with `@CompilationFinal` and do not bind any dynamic parameter. Note that the DSL cannot infer PE constantness from method bodies and is therefore limited to field accesses. The resolution works through an arbitrary number of field accesses, e.g. through other Node classes, if they are visible in the expression (e.g. `field1.field2.field3`). 
+* Added [TruffleLanguage.Env#createHostAdapter](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createHostAdapter-java.lang.Object:A-) accepting host symbols and host classes as the types to extend, replacing and deprecating the `java.lang.Class`-based version.
+* GR-10128 Added the `website` property to the [TruffleLanguage.Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html#website--) and [TruffleInstrument.Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration.html#website--) allowing language and instrument developers to specify a URL for a web site with further information about their language/tool.
+* GR-10128 Added the `usageSyntax` property to the [Option](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#usageSyntax--) allowing developers to specify the syntax their option expects. See the javadoc for more information.
+* Added `TruffleSafepoint.setAllowActions` to disable thread local actions temporarily for trusted internal guest code. Currently only allowed during the finalization of a context in `TruffleLanguage.finalizeContext(Object)`.
+* Added `FrameDescriptor.getInfo()` and `FrameDescriptor.Builder.info()` to associate a user-defined object with a frame descriptor.
+* GR-33851 Dropped Java 8 support.
+* Deprecated `MemoryFence`. Please use `VarHandle` directly.
+* Deprecated `TruffleSafepoint.setBlocked`, in favor of `TruffleSafepoint.setBlockedWithException`, which allows interception and handling of safepoint-thrown exceptions.
+* GR-36525 Deprecated `CompilerOptions`. They had no effect for several releases already. Deprecated for removal.
+* GR-22281 Deprecated `TruffleRuntime.getCurrentFrame()` and `TruffleRuntime.getCallerFrame()`. They were encouraging unsafe use of the `FrameInstance` class. Note that a `FrameInstance` instance must not be escaped outside the scope of the `FrameInstanceVisitor.visitFrame` method. Language implementers are encouraged to validate all usages of `TruffleRuntime.iterateFrames(...)`. We plan to enforce this rule in future versions of Truffle.
+* GR-22281 Added `TruffleRuntime.iterateFrames(FrameInstanceVisitor visitor, int skipFrames)` that allows to efficiently skip a number of frames before the visitor is invoked. This was added to allow efficient migration of usages from the deprecated `TruffleRuntime.getCallerFrame()` method.
+* Removed the deprecated `TruffleException` that was deprecated in the GraalVM 20.3.0. The `AbstractTruffleException` no longer implements `TruffleException`. `AbstractTruffleException` methods inherited from the `TruffleException` have been removed. As part of this removal, the recommendation for languages how to [handle exceptions](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isException-java.lang.Object-) has been updated.
+* Added methods to [TruffleContext.Builder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.Builder.html) that allow throwing custom guest exceptions when the new built context is cancelled, hard-exited, or closed and the corresponding exception is about to reach the outer context. In case the customization is not used and the new context is cancelled, hard-exited, or closed, Truffle newly throws an internal error.
+    * Added [TruffleContext.Builder#onCancelled](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.Builder.html#onCancelled-java.lang.Runnable-) that allows throwing a custom guest exception when the new context is cancelled.
+    * Added [TruffleContext.Builder#onExited](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.Builder.html#onExited-java.util.function.Consumer-) that allows throwing a custom guest exception when the new context is hard-exited.
+    * Added [TruffleContext.Builder#onClosed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.Builder.html#onClosed-java.lang.Runnable-) that allows throwing a custom guest exception when the new context is closed.
+* GR-35093 Deprecated `UnionAssumption`, use arrays of assumptions instead. Deprecated `NeverValidAssumption` and `AlwaysValidAssumption`, use `Assumption.NEVER_VALID` and `Assumption.ALWAYS_VALID` instead. Language implementations should avoid custom `Assumption` subclasses, they lead to performance degradation in the interpreter.
+* GR-35093 Added `create()` constructor methods to profiles in `com.oracle.truffle.api.profiles` where appropriate to simplify use with Truffle DSL.
+
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.

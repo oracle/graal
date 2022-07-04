@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,5 +47,7 @@
 #endif
 
 #endif
+
+extern void __sulong_exit(int status) __attribute__((__noreturn__));
 
 #endif // _EXIT_H_

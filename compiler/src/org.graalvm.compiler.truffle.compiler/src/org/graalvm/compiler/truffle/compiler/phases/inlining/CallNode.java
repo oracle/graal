@@ -45,14 +45,15 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil.InlineeReturnAction;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-@NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
+@NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node implements Comparable<CallNode> {
 
     private static final NodeClass<CallNode> TYPE = NodeClass.create(CallNode.class);
@@ -75,11 +76,15 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     // Effectively final, cannot be initialized in the constructor because needs getParent() to
     // calculate
     private int recursionDepth;
+    // Effectively final, populated only as part of expanded if debug dump level >= info
+    @SuppressWarnings("unused") private StructuredGraph irAfterPE;
     // Effectively final, populated only as part of expanded
     private StructuredGraph ir;
     // Effectively final, populated only as part of expanded (unless root, root does not have
     // invoke)
     private Invoke invoke;
+    // Only used if PolyglotCompilerOptions.InliningUseSize is true
+    private int graphSize;
 
     // Needs to be protected because of the @NodeInfo annotation
     protected CallNode(TruffleCallNode truffleCaller, CompilableTruffleAST directCallTarget, double rootRelativeFrequency, int depth, int id) {
@@ -99,14 +104,16 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     /**
      * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
      */
-    static CallNode makeRoot(CallTree callTree, PartialEvaluator.Request request) {
+    static CallNode makeRoot(CallTree callTree, TruffleTierContext context) {
         Objects.requireNonNull(callTree);
-        Objects.requireNonNull(request);
-        CallNode root = new CallNode(null, request.compilable, 1, 0, callTree.nextId());
+        Objects.requireNonNull(context);
+        CallNode root = new CallNode(null, context.compilable, 1, 0, callTree.nextId());
         callTree.add(root);
-        root.ir = request.graph;
+        root.ir = context.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
         final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
+        root.irAfterPE = entry.graphAfterPEForDebugDump;
+        root.graphSize = entry.graphSize;
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
         root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
@@ -148,6 +155,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         properties.put("Frequency", rootRelativeFrequency);
         properties.put("Recursion Depth", getRecursionDepth());
         properties.put("IR Nodes", ir == null ? 0 : ir.getNodeCount());
+        properties.put("Graph Size", graphSize);
         properties.put("Truffle Callees", truffleCallees.length);
         properties.put("Explore/inline ratio", exploreInlineRatio());
         properties.put("Depth", depth);
@@ -232,6 +240,8 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
         verifyTrivial(entry);
         ir = copyGraphAndAddChildren(entry);
+        graphSize = entry.graphSize;
+        irAfterPE = entry.graphAfterPEForDebugDump;
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
     }
@@ -362,6 +372,21 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     public boolean isTrivial() {
         return trivial;
+    }
+
+    public int getSize() {
+        if (getCallTree().useSize) {
+            return graphSize;
+        }
+        return ir.getNodeCount();
+    }
+
+    public int recalculateSize() {
+        if (getCallTree().useSize) {
+            graphSize = NodeCostUtil.computeGraphSize(ir);
+            return graphSize;
+        }
+        return ir.getNodeCount();
     }
 
     public Object getPolicyData() {

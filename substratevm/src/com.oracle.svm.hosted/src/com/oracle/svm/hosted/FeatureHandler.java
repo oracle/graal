@@ -43,7 +43,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -64,6 +64,10 @@ public class FeatureHandler {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+        private static List<String> userEnabledFeatures() {
+            return OptionUtils.flatten(",", Options.Features.getValue());
+        }
     }
 
     private final ArrayList<Feature> featureInstances = new ArrayList<>();
@@ -75,10 +79,10 @@ public class FeatureHandler {
         }
     }
 
-    public void forEachGraalFeature(Consumer<GraalFeature> consumer) {
+    public void forEachGraalFeature(Consumer<InternalFeature> consumer) {
         for (Feature feature : featureInstances) {
-            if (feature instanceof GraalFeature) {
-                consumer.accept((GraalFeature) feature);
+            if (feature instanceof InternalFeature) {
+                consumer.accept((InternalFeature) feature);
             }
         }
     }
@@ -124,7 +128,7 @@ public class FeatureHandler {
             registerFeature(featureClass, specificClassProvider, access);
         }
 
-        for (String featureName : OptionUtils.flatten(",", Options.Features.getValue())) {
+        for (String featureName : Options.userEnabledFeatures()) {
             try {
                 registerFeature(Class.forName(featureName, true, loader.getClassLoader()), specificClassProvider, access);
             } catch (ClassNotFoundException e) {
@@ -196,12 +200,12 @@ public class FeatureHandler {
         featureInstances.add(feature);
     }
 
-    public List<String> getUserFeatureNames() {
+    public List<Feature> getUserSpecificFeatures() {
         ClassLoaderSupport classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
+        List<String> userEnabledFeatures = Options.userEnabledFeatures();
         return featureInstances.stream()
-                        .filter(f -> classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()))
-                        .map(f -> f.getClass().getName())
-                        .sorted()
+                        .filter(f -> (!(f instanceof InternalFeature) || !((InternalFeature) f).isHidden()) &&
+                                        (classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()) || userEnabledFeatures.contains(f.getClass().getName())))
                         .collect(Collectors.toList());
     }
 }

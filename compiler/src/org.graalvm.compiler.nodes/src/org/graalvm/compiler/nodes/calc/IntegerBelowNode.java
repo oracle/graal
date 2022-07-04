@@ -30,12 +30,12 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -133,6 +133,31 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
             }
 
             return null;
+        }
+
+        @Override
+        protected boolean isMatchingBitExtendNode(ValueNode node) {
+            return node instanceof ZeroExtendNode;
+        }
+
+        @Override
+        protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
+            assert a.getBits() == b.getBits();
+            // a + b |<| a
+            if (a.getBits() == Long.SIZE) {
+                return Long.compareUnsigned(upperBound(a) + upperBound(b), upperBound(a)) < 0;
+            }
+            if (a.getBits() == Integer.SIZE) {
+                return Integer.compareUnsigned((int) upperBound(a) + (int) upperBound(b), (int) upperBound(a)) < 0;
+            }
+            return true;
+        }
+
+        @Override
+        protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
+            // leading zeros, adjusted to stamp bits
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            return leadingZeroForBits < shift;
         }
 
         @Override

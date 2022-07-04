@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.util.PhasePlan;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -194,7 +195,7 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
     }
 
     /**
-     * Removes the first instance of the given phase class, looking recursively into inner phase
+     * Replaces the first instance of the given phase class, looking recursively into inner phase
      * suites.
      */
     @SuppressWarnings("unchecked")
@@ -213,6 +214,30 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
             }
         }
         return false;
+    }
+
+    /**
+     * Replaces all instances of the given phase class, looking recursively into inner phase suites.
+     *
+     * @return {@code true} if at least one replacement was made, {@code false} otherwise.
+     */
+    @SuppressWarnings("unchecked")
+    public boolean replaceAllPhases(Class<? extends BasePhase<? super C>> phaseClass, Supplier<BasePhase<? super C>> newPhase) {
+        ListIterator<BasePhase<? super C>> it = phases.listIterator();
+        boolean replaced = false;
+        while (it.hasNext()) {
+            BasePhase<? super C> phase = it.next();
+            if (phaseClass.isInstance(phase)) {
+                it.set(newPhase.get());
+                replaced = true;
+            } else if (phase instanceof PhaseSuite) {
+                PhaseSuite<C> innerSuite = (PhaseSuite<C>) phase;
+                if (innerSuite.replaceAllPhases(phaseClass, newPhase)) {
+                    replaced = true;
+                }
+            }
+        }
+        return replaced;
     }
 
     @Override

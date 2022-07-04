@@ -26,49 +26,128 @@ package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Executable;
 
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.ValueAvailability;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @InternalVMMethod
-public final class SubstrateMethodAccessor implements MethodAccessor {
+public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor {
 
-    interface MethodInvokeFunctionPointer extends CFunctionPointer {
-        /** Must match the signature of {@link ReflectionAccessorHolder#invokePrototype}. */
-        @InvokeJavaFunctionPointer
-        Object invoke(boolean invokeSpecial, Object obj, Object[] args);
+    public static final int STATICALLY_BOUND = -1;
+    public static final int OFFSET_NOT_YET_COMPUTED = 0xdead0001;
+
+    /**
+     * The expected receiver type, which is checked before invoking the {@link #expandSignature}
+     * method, or null for static methods.
+     */
+    private final Class<?> receiverType;
+    /** The actual value is computed after static analysis by {@link ComputeVTableOffset}. */
+    int vtableOffset;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, int vtableOffset, DynamicHub initializeBeforeInvoke) {
+        super(member, expandSignature, directTarget, initializeBeforeInvoke);
+        this.receiverType = receiverType;
+        this.vtableOffset = vtableOffset;
     }
 
-    private final Executable member;
-    private final CFunctionPointer invokeFunctionPointer;
-
-    public SubstrateMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
-        this.member = member;
-        this.invokeFunctionPointer = invokeFunctionPointer;
+    private void preInvoke(Object obj) {
+        if (initializeBeforeInvoke != null) {
+            EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
+        }
+        if (receiverType != null) {
+            if (obj == null) {
+                /*
+                 * The specification explicitly demands a NullPointerException and not a
+                 * IllegalArgumentException when the receiver of a non-static method is null
+                 */
+                throw new NullPointerException();
+            } else if (!receiverType.isInstance(obj)) {
+                throw new IllegalArgumentException("Receiver type " + obj.getClass().getTypeName() + " is not an instance of the declaring class " + receiverType.getTypeName());
+            }
+        }
     }
 
     @Override
     public Object invoke(Object obj, Object[] args) {
-        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.invokeFunctionPointer;
-        if (functionPointer.isNull()) {
-            throw invokeError();
-        }
-        return functionPointer.invoke(false, obj, args);
-    }
+        preInvoke(obj);
 
-    private RuntimeException invokeError() {
-        throw VMError.shouldNotReachHere("No SubstrateMethodAccessor.invokeFunctionPointer for " + member);
+        /*
+         * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
+         * methods, the directTarget is only used when doing an invokeSpecial.
+         */
+        CFunctionPointer target;
+        if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
+            throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
+        } else if (vtableOffset != STATICALLY_BOUND) {
+            target = BarrieredAccess.readWord(obj.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
+        } else {
+            target = directTarget;
+        }
+        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
     }
 
     public Object invokeSpecial(Object obj, Object[] args) {
-        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.invokeFunctionPointer;
-        if (functionPointer.isNull()) {
-            throw invokeError();
+        preInvoke(obj);
+
+        CFunctionPointer target = directTarget;
+        if (target.isNull()) {
+            throw new IllegalArgumentException("Cannot do invokespecial for an abstract method");
         }
-        return functionPointer.invoke(true, obj, args);
+        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
+    }
+}
+
+/**
+ * The actual vtable offset is not available at the time the accessor is created, but only after
+ * static analysis when the layout of objects is known. Registering a field recomputation using an
+ * alias field is currently the only way to register a custom field value computer.
+ */
+@TargetClass(SubstrateMethodAccessor.class)
+final class Target_com_oracle_svm_core_reflect_SubstrateMethodAccessor {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeVTableOffset.class) //
+    private int vtableOffset;
+}
+
+final class ComputeVTableOffset implements CustomFieldValueComputer {
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
+    public Class<?>[] types() {
+        return new Class<?>[]{int.class};
+    }
+
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
+        if (accessor.vtableOffset == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
+            SharedMethod member = (SharedMethod) metaAccess.lookupJavaMethod(accessor.member);
+            return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex());
+        } else {
+            VMError.guarantee(accessor.vtableOffset == SubstrateMethodAccessor.STATICALLY_BOUND);
+            return accessor.vtableOffset;
+        }
     }
 }

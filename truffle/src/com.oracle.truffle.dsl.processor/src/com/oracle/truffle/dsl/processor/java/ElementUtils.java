@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -138,47 +137,12 @@ public class ElementUtils {
         }
     }
 
-    public static TypeMirror getType(ProcessingEnvironment processingEnv, Class<?> element) {
-        if (element.isArray()) {
-            return processingEnv.getTypeUtils().getArrayType(getType(processingEnv, element.getComponentType()));
-        }
-        if (element.isPrimitive()) {
-            if (element == void.class) {
-                return processingEnv.getTypeUtils().getNoType(TypeKind.VOID);
-            }
-            TypeKind typeKind;
-            if (element == boolean.class) {
-                typeKind = TypeKind.BOOLEAN;
-            } else if (element == byte.class) {
-                typeKind = TypeKind.BYTE;
-            } else if (element == short.class) {
-                typeKind = TypeKind.SHORT;
-            } else if (element == char.class) {
-                typeKind = TypeKind.CHAR;
-            } else if (element == int.class) {
-                typeKind = TypeKind.INT;
-            } else if (element == long.class) {
-                typeKind = TypeKind.LONG;
-            } else if (element == float.class) {
-                typeKind = TypeKind.FLOAT;
-            } else if (element == double.class) {
-                typeKind = TypeKind.DOUBLE;
-            } else {
-                assert false;
-                return null;
-            }
-            return processingEnv.getTypeUtils().getPrimitiveType(typeKind);
-        } else {
-            TypeElement typeElement = getTypeElement(processingEnv, element.getCanonicalName());
-            if (typeElement == null) {
-                return null;
-            }
-            return processingEnv.getTypeUtils().erasure(typeElement.asType());
-        }
+    public static TypeMirror getType(Class<?> element) {
+        return ProcessorContext.getInstance().getType(element);
     }
 
-    public static TypeElement getTypeElement(final ProcessingEnvironment processingEnv, final CharSequence typeName) {
-        return ModuleCache.getTypeElement(processingEnv, typeName);
+    public static TypeElement getTypeElement(final CharSequence typeName) {
+        return ProcessorContext.getInstance().getTypeElement(typeName);
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
@@ -504,7 +468,7 @@ public class ElementUtils {
             }
         }
 
-        // TODO more spec
+        // TODO GR-38632 more spec
         return false;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -49,6 +50,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 
 public abstract class RegexASTVisitor {
 
@@ -62,6 +64,8 @@ public abstract class RegexASTVisitor {
 
     protected abstract void leave(Sequence sequence);
 
+    protected abstract void visit(SubexpressionCall subexpressionCall);
+
     protected abstract void visit(PositionAssertion assertion);
 
     protected abstract void visit(LookBehindAssertion assertion);
@@ -71,6 +75,10 @@ public abstract class RegexASTVisitor {
     protected abstract void visit(LookAheadAssertion assertion);
 
     protected abstract void leave(LookAheadAssertion assertion);
+
+    protected abstract void visit(AtomicGroup atomicGroup);
+
+    protected abstract void leave(AtomicGroup atomicGroup);
 
     protected abstract void visit(CharacterClass characterClass);
 
@@ -85,10 +93,14 @@ public abstract class RegexASTVisitor {
             visit((LookBehindAssertion) cur);
         } else if (cur instanceof LookAheadAssertion) {
             visit((LookAheadAssertion) cur);
+        } else if (cur instanceof AtomicGroup) {
+            visit((AtomicGroup) cur);
         } else if (cur instanceof CharacterClass) {
             visit((CharacterClass) cur);
         } else if (cur instanceof BackReference) {
             visit((BackReference) cur);
+        } else if (cur instanceof SubexpressionCall) {
+            visit((SubexpressionCall) cur);
         } else {
             throw CompilerDirectives.shouldNotReachHere();
         }
@@ -103,6 +115,8 @@ public abstract class RegexASTVisitor {
             leave((LookBehindAssertion) cur);
         } else if (cur instanceof LookAheadAssertion) {
             leave((LookAheadAssertion) cur);
+        } else if (cur instanceof AtomicGroup) {
+            leave((AtomicGroup) cur);
         } else {
             throw CompilerDirectives.shouldNotReachHere();
         }

@@ -59,6 +59,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
 import static org.graalvm.jniutils.JNIUtil.GetArrayLength;
 import static org.graalvm.jniutils.JNIUtil.GetByteArrayElements;
@@ -70,7 +71,6 @@ import static org.graalvm.jniutils.JNIUtil.createHSString;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.HashMap;
@@ -85,7 +85,6 @@ import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
@@ -105,9 +104,6 @@ import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.graphio.GraphOutput;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.jni.FromLibGraalCalls;
-import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JArray;
 import org.graalvm.jniutils.JNI.JByteArray;
@@ -119,6 +115,9 @@ import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.jni.FromLibGraalCalls;
+import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -276,10 +275,15 @@ final class TruffleToLibGraalEntryPoints {
             } finally {
                 compilable.release(env);
                 HSObject.cleanHandles(env);
+                doReferenceHandling();
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
+    }
+
+    private static void doReferenceHandling() {
+        // Substituted in LibGraalFeature.
     }
 
     @TruffleToLibGraal(Shutdown)
@@ -700,9 +704,8 @@ final class TruffleToLibGraalEntryPoints {
             WritableByteChannel channel = LibGraalObjectHandles.resolve(channelHandle, WritableByteChannel.class);
             VoidPointer baseAddr = JNIUtil.GetDirectBufferAddress(env, hsSource);
             ByteBuffer source = CTypeConversion.asByteBuffer(baseAddr, capacity);
-            Buffer baseBuffer = BufferUtil.asBaseBuffer(source);
-            baseBuffer.position(position);
-            baseBuffer.limit(limit);
+            source.position(position);
+            source.limit(limit);
             return channel.write(source);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
@@ -716,6 +719,20 @@ final class TruffleToLibGraalEntryPoints {
     public static void dumpChannelClose(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle) {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, IsDumpChannelOpen, env)) {
             LibGraalObjectHandles.resolve(channelHandle, WritableByteChannel.class).close();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+        }
+    }
+
+    @TruffleToLibGraal(PurgePartialEvaluationCaches)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_purgePartialEvaluationCaches")
+    @SuppressWarnings({"unused", "try"})
+    public static void purgePartialEvaluationCaches(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle) {
+        try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, PurgePartialEvaluationCaches, env)) {
+            HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
+            if (compiler != null) {
+                compiler.purgePartialEvaluationCaches();
+            }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }

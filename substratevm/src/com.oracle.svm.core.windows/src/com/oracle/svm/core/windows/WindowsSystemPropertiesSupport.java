@@ -125,7 +125,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     }
 
     @Override
-    protected String tmpdirValue() {
+    protected String javaIoTmpdirValue() {
         int maxLength = WinBase.MAX_PATH + 1;
         WCharPointer tmpdir = StackValue.get(maxLength, WCharPointer.class);
         int length = FileAPI.GetTempPathW(maxLength, tmpdir);

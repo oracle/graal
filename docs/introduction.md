@@ -7,7 +7,7 @@ permalink: /docs/introduction/
 
 # Introduction to GraalVM
 
-GraalVM is a high-performance JDK distribution designed to accelerate the execution of applications written in Java and other JVM languages along with support for JavaScript, Ruby, Python, and a number of other popular languages.
+GraalVM is a high-performance JDK distribution designed to accelerate the execution of applications written in Java and other JVM languages while also providing runtimes for JavaScript, Python, and a number of other popular languages. 
 GraalVM’s polyglot capabilities make it possible to mix multiple programming languages in a single application while eliminating foreign language call costs.
 
 This page provides an architectural overview of GraalVM and its runtime modes, supported platforms, available distributions, core and additional functionalities, and support levels for various features.
@@ -53,7 +53,7 @@ It is a complete Java VM that includes all core components, implements the same 
 GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** editions and includes support for Java 11 and Java 17.
 GraalVM Enterprise is based on Oracle JDK while GraalVM Community is based on OpenJDK.
 
-GraalVM is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
+GraalVM is available for Linux and macOS on x86 64-bit and ARM 64-bit systems, and for Windows on x86 64-bit systems.
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 See the [Getting Started guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
 
@@ -88,7 +88,7 @@ Tools/Utilities:
 Runtimes:
 
 * [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Node.js](reference-manual/js/README.md) -- the Node.js 14.18.1 runtime for JavaScript
+* [Node.js](reference-manual/js/README.md) -- the Node.js 16.14.2 runtime for JavaScript
 * [Python](reference-manual/python/README.md) -- Python 3.8.5 compatible
 * [Ruby](reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
 * [R](reference-manual/r/README.md) -- GNU R 4.0.3 compatible
@@ -107,20 +107,20 @@ GraalVM technologies are distributed as production-ready and experimental.
 Experimental features are being considered for future versions of GraalVM and are not meant to be used in production.
 The development team welcomes feedback on experimental features, but users should be aware that experimental features might never be included in a final version, or might change significantly before being considered production-ready.
 
-The following table lists production-ready and experimental features in GraalVM Community Edition 21 by platform.
+The following table lists production-ready and experimental features in GraalVM Community Edition 22.1 by platform.
 
-| Feature | Linux AMD64 | Linux ARM64 | macOS | Windows |
-|--------------------|---------------|---------------|---------------|
-| Native Image | stable | stable | stable | stable |
-| LLVM runtime | stable | stable | stable | not available |
-| LLVM toolchain | stable | stable | stable | not available |
-| JavaScript | stable | stable | stable | stable |
-| Node.js  | stable | stable | stable | stable |
-| Java on Truffle | experimental | experimental | experimental | experimental |
-| Python | experimental | not available | experimental | not available |
-| Ruby | experimental | experimental | experimental | not available |
-| R | experimental | not available | experimental | not available |
-| WebAssembly | experimental | experimental | experimental | experimental |
+| Feature         | Linux AMD64  | Linux ARM64   | macOS        | macOS ARM64   | Windows       |
+|-----------------|--------------|---------------|--------------|---------------|---------------|
+| Native Image    | stable       | stable        | stable       | experimental  | stable        |
+| LLVM runtime    | stable       | stable        | stable       | not available | not available |
+| LLVM toolchain  | stable       | stable        | stable       | not available | not available |
+| JavaScript      | stable       | stable        | stable       | experimental  | stable        |
+| Node.js         | stable       | stable        | stable       | not available | stable        |
+| Java on Truffle | experimental | experimental  | experimental | experimental  | experimental  |
+| Python          | experimental | not available | experimental | not available | not available |
+| Ruby            | experimental | experimental  | experimental | not available | not available |
+| R               | experimental | not available | experimental | not available | not available |
+| WebAssembly     | experimental | experimental  | experimental | not available | experimental  |
 
 ## What to Read Next
 

@@ -29,7 +29,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -39,6 +38,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -74,6 +75,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -82,6 +84,7 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -113,19 +116,36 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         super(bb, converter);
     }
 
+    private PointsToAnalysis getAnalysis() {
+        return ((PointsToAnalysis) bb);
+    }
+
     @Override
     @SuppressWarnings("try")
-    public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
-        StructuredGraph graph = method.getAnalyzedGraph();
+    public StaticAnalysisResults makeOrApplyResults(AnalysisMethod m) {
+        PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
+        MethodTypeFlow methodTypeFlow = method.getTypeFlow();
+        if (!methodTypeFlow.flowsGraphCreated()) {
+            return StaticAnalysisResults.NO_RESULTS;
+        }
+        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
+        StructuredGraph graph = method.decodeAnalyzedGraph(debug, methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getKeys());
         if (graph != null) {
-            DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
                             DebugContext.Activation a = debug.activate()) {
-                CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(PointsToAnalysis.assertPointsToAnalysisMethod(method), graph)).apply(graph, bb.getProviders());
+                CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(method, graph)).apply(graph, bb.getProviders());
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
+
+            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
+        }
+
+        /* Ensure that the temporarily decoded graph is not kept alive via the node references. */
+        var cursor = methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getEntries();
+        while (cursor.advance()) {
+            cursor.getKey().clear();
         }
         /*
          * All information from the static analysis has been incorporated into the graph. There is
@@ -171,15 +191,30 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
         private final StructuredGraph graph;
         private final MethodTypeFlow methodFlow;
-        private final MethodFlowsGraph originalFlows;
 
         private final NodeBitMap createdPiNodes;
+
+        private final TypeFlow<?>[] parameterFlows;
+        private final NodeMap<TypeFlow<?>> nodeFlows;
 
         StrengthenSimplifier(PointsToAnalysisMethod method, StructuredGraph graph) {
             this.graph = graph;
             this.methodFlow = method.getTypeFlow();
-            this.originalFlows = methodFlow.getOriginalMethodFlows();
             this.createdPiNodes = new NodeBitMap(graph);
+
+            MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
+            parameterFlows = originalFlows.getParameters();
+            nodeFlows = new NodeMap<>(graph);
+            var cursor = originalFlows.getNodeFlows().getEntries();
+            while (cursor.advance()) {
+                Node node = cursor.getKey().getNode();
+                assert nodeFlows.get(node) == null : "overwriting existing entry for " + node;
+                nodeFlows.put(node, cursor.getValue());
+            }
+        }
+
+        private TypeFlow<?> getNodeFlow(Node node) {
+            return nodeFlows.isNew(node) ? null : nodeFlows.get(node);
         }
 
         @Override
@@ -206,12 +241,12 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             if (n instanceof ParameterNode) {
                 ParameterNode node = (ParameterNode) n;
                 StartNode anchorPoint = graph.start();
-                Stamp newStamp = strengthenStampFromTypeFlow(node, originalFlows.getParameter(node.index()), anchorPoint, tool);
+                Stamp newStamp = strengthenStampFromTypeFlow(node, parameterFlows[node.index()], anchorPoint, tool);
                 updateStampUsingPiNode(node, newStamp, anchorPoint, tool);
 
             } else if (n instanceof LoadFieldNode || n instanceof LoadIndexedNode) {
                 FixedWithNextNode node = (FixedWithNextNode) n;
-                Stamp newStamp = strengthenStampFromTypeFlow(node, originalFlows.getNodeFlows().get(node), node, tool);
+                Stamp newStamp = strengthenStampFromTypeFlow(node, getNodeFlow(node), node, tool);
                 /*
                  * Even though the memory load will be a floating node later, we can update the
                  * stamp directly because the type information maintained by the static analysis
@@ -284,10 +319,11 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
+            PointsToAnalysis pta = getAnalysis();
             FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
-            InvokeTypeFlow invokeFlow = originalFlows.getInvokeFlow(invoke);
+            InvokeTypeFlow invokeFlow = (InvokeTypeFlow) getNodeFlow(node);
             Collection<AnalysisMethod> callees = invokeFlow.getCallees();
             if (callees.isEmpty()) {
                 unreachableInvoke(invoke, tool);
@@ -322,8 +358,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             } else {
                 TypeState receiverTypeState = null;
                 /* If the receiver flow is saturated, its exact type state does not matter. */
-                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(bb, invokeFlow.getReceiver())) {
-                    receiverTypeState = methodFlow.foldTypeFlow(bb, invokeFlow.getReceiver());
+                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(pta, invokeFlow.getReceiver())) {
+                    receiverTypeState = methodFlow.foldTypeFlow(pta, invokeFlow.getReceiver());
                 }
 
                 JavaTypeProfile typeProfile = makeTypeProfile(receiverTypeState);
@@ -359,12 +395,11 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                      */
                     return;
                 }
-                ParameterNode returnedCalleeParameter = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getReturnedParameter();
-                if (returnedCalleeParameter == null) {
+                int returnedCalleeParameterIndex = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getReturnedParameterIndex();
+                if (returnedCalleeParameterIndex == -1) {
                     /* This callee does not return a parameter. */
                     return;
                 }
-                int returnedCalleeParameterIndex = returnedCalleeParameter.index();
                 if (returnedParameterIndex == -1) {
                     returnedParameterIndex = returnedCalleeParameterIndex;
                 } else if (returnedParameterIndex != returnedCalleeParameterIndex) {
@@ -416,10 +451,11 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private boolean isUnreachable(Node branch) {
-            TypeFlow<?> branchFlow = originalFlows.getNodeFlows().get(branch);
+            PointsToAnalysis pta = getAnalysis();
+            TypeFlow<?> branchFlow = getNodeFlow(branch);
             return branchFlow != null &&
-                            !methodFlow.isSaturated(bb, branchFlow) &&
-                            methodFlow.foldTypeFlow(bb, branchFlow).isEmpty();
+                            !methodFlow.isSaturated(pta, branchFlow) &&
+                            methodFlow.foldTypeFlow(pta, branchFlow).isEmpty();
         }
 
         private void updateStampInPlace(ValueNode node, Stamp newStamp, SimplifierTool tool) {
@@ -468,6 +504,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private Stamp strengthenStampFromTypeFlow(ValueNode node, TypeFlow<?> nodeFlow, FixedWithNextNode anchorPoint, SimplifierTool tool) {
+            PointsToAnalysis pta = getAnalysis();
             if (node.getStackKind() != JavaKind.Object) {
                 return null;
             }
@@ -478,12 +515,12 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                  */
                 return null;
             }
-            if (methodFlow.isSaturated(bb, nodeFlow)) {
+            if (methodFlow.isSaturated(pta, nodeFlow)) {
                 /* The type flow is saturated, its type state does not matter. */
                 return null;
             }
 
-            TypeState nodeTypeState = methodFlow.foldTypeFlow(bb, nodeFlow);
+            TypeState nodeTypeState = methodFlow.foldTypeFlow(pta, nodeFlow);
             node.inferStamp();
             ObjectStamp oldStamp = (ObjectStamp) node.stamp(NodeView.DEFAULT);
             AnalysisType oldType = (AnalysisType) oldStamp.type();
@@ -496,7 +533,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              * stamp is already more precise than the static analysis results.
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
-            for (AnalysisType typeStateType : nodeTypeState.types(bb)) {
+            for (AnalysisType typeStateType : nodeTypeState.types(pta)) {
                 if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }

@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl.test.processor;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 
@@ -86,14 +87,21 @@ public class TruffleProcessorTest {
     }
 
     abstract class IncorrectChildrenType extends Node {
-        @ExpectError("@Children field must be an array of NodeInerface sub-types") @Children String[] first;
+        @ExpectError("@Children field must be an array of NodeInterface sub-types") @Children String[] first;
     }
 
     abstract class IncorrectChildrenType2 extends Node {
-        @ExpectError("@Children field must be an array of NodeInerface sub-types") @Children Object[] first;
+        @ExpectError("@Children field must be an array of NodeInterface sub-types") @Children Object[] first;
     }
 
     class IncorrectChildrenOwner {
         @ExpectError("@Children field is allowed only in Node sub-class") @Node.Children MyNode[] first;
     }
+
+    @DenyReplace
+    @ExpectError("@DenyReplace may only be used for final classes.")
+    class DenyReplaceNode extends Node {
+
+    }
+
 }

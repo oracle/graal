@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
@@ -197,6 +198,12 @@ abstract class HostToTypeNode extends Node {
                 return convertedValue;
             }
             // no default conversion available but we can still try target type mappings.
+        } else if (value instanceof TruffleString && targetType.isAssignableFrom(String.class)) {
+            try {
+                return interop.asString(value);
+            } catch (UnsupportedMessageException e) {
+                throw shouldNotReachHere(e);
+            }
         }
         if (targetType.isInstance(value)) {
             convertedValue = value;

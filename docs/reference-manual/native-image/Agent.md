@@ -39,7 +39,7 @@ It is advisable to manually review the generated configuration files. Because th
 
 The generated configuration files can be supplied to the `native-image` tool by placing them in a `META-INF/native-image/` directory on the class path, for example, in a JAR file used in the image build. This directory (or any of its subdirectories) is searched for files with the names `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`, which are then automatically included in the build. Not all of those files must be present. When multiple files with the same name are found, all of them are included.
 
-## Building Native Image with Java Reflection Example
+## Build a Native Executable with Java Reflection Example
 
 For demonstration purposes, save the following code as _ReflectionExample.java_ file:
 
@@ -155,6 +155,10 @@ Filter files have the following structure:
     {"excludeClasses": "com.oracle.svm.**"},
     {"includeClasses": "com.oracle.svm.tutorial.*"},
     {"excludeClasses": "com.oracle.svm.tutorial.HostedHelper"}
+  ],
+  "regexRules": [
+    {"includeClasses": ".*"},
+    {"excludeClasses": ".*\\$\\$Generated[0-9]+"}
   ]
 }
 ```
@@ -171,6 +175,12 @@ In the next rule however, lookups from those classes that are directly in packag
 Finally, lookups from the `HostedHelper` class is excluded again. Each of these rules partially overrides the previous ones.
 For example, if the rules were in the reverse order, the exclusion of `com.oracle.svm.**` would be the last rule and would override all other rules.
 
+The `regexRules` section also contains a sequence of rules.
+Its structure is the same as that of the `rules` section, but rules are specified as regular expression patterns which are matched against the entire fully qualified class identifier.
+The `regexRules` section is optional.
+If a `regexRules` section is specified, a class will be considered included if (and only if) both `rules` and `regexRules` include the class and neither of them exclude it.
+With no `regexRules` section, only the `rules` section determines whether a class is included or excluded.
+
 For testing purposes, the built-in filter for Java class library lookups can be disabled by adding the `no-builtin-caller-filter` option, but the resulting configuration files are generally unsuitable for a native image build.
 Similarly, the built-in filter for Java VM-internal accesses based on heuristics can be disabled with `no-builtin-heuristic-filter` and will also generally lead to less usable configuration files.
 For example: `-agentlib:native-image-agent=no-builtin-caller-filter,no-builtin-heuristic-filter,config-output-dir=...`
@@ -185,7 +195,7 @@ Using the `access-filter-file` option, a custom filter file that follows the fil
 The option can be specified more than once to add multiple filter files and can be combined with the other filter options.
 For example: `-agentlib:access-filter-file=/path/to/access-filter-file,caller-filter-file=/path/to/caller-filter-file,config-output-dir=...`
 
-### Specifying Configuration Files as Native Image Arguments
+### Specify Configuration Files as Native Image Arguments
 
 A directory containing configuration files that is not part of the class path can be specified to `native-image` via `-H:ConfigurationFileDirectories=/path/to/config-dir/`.
 This directory must directly contain all four files: `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`.
@@ -229,19 +239,22 @@ In this case, it is necessary to provide the absolute path of the agent:
 
 ### Native Image Configure Tool
 
-When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files. The `native-image-configure-launcher` tool can be used to merge these configuration files.
+When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files.
+The `native-image-configure` tool can be used to merge these configuration files.
 This tool must first be built with:
 ```shell
 native-image --macro:native-image-configure-launcher
 ```
 
-> Note: The Native Image Configure Tool is only available if [`native-image` is built via `mx`](https://github.com/oracle/graal/blob/master/substratevm/SubstrateVM.md). This configuration tool is not part of any GraalVM distribution by default.
-
 Then, the tool can be used to merge sets of configuration files as follows:
 ```shell
-native-image-configure-launcher generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
+native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
 ```
 
 This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`.
+An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure help` for all options.
 
-An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure-launcher help` for all options.
+### Experimental Options
+
+The native-image-agent has options which are currently experimental and might be enabled in future releases, but can also be changed or removed entirely.
+See the [ExperimentalAgentOptions.md](ExperimentalAgentOptions.md) guide.

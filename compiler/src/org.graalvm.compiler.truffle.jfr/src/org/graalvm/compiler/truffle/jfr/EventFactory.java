@@ -34,8 +34,6 @@ public interface EventFactory {
 
     void addInitializationListener(Runnable listener);
 
-    void removeInitializationListener(Runnable listener);
-
     CompilationEvent createCompilationEvent();
 
     DeoptimizationEvent createDeoptimizationEvent();

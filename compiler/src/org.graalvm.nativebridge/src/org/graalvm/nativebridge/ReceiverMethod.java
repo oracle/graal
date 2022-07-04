@@ -29,6 +29,28 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * The {@link ReceiverMethod} allows you to provide a custom method implementation in the generated
+ * type but still generate the over the boundary call. It's useful when pre-code or post-code is
+ * needed before or after over the boundary call. The annotated method must have the same parameter
+ * types as the receiver method.
+ *
+ * Example showing a method {@code execute} with custom pre-code and post-code.
+ *
+ * <pre>
+ * &#64;Override
+ * public final boolean execute() {
+ *     preCode();
+ *     boolean result = executeImpl();
+ *     postCode();
+ *     return result;
+ * }
+ *
+ * &#64;ReceiverMethod("execute")
+ * abstract boolean executeImpl();
+ * </pre>
+ *
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface ReceiverMethod {

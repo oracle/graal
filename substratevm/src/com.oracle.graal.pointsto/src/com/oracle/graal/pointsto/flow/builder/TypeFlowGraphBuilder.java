@@ -152,19 +152,16 @@ public class TypeFlowGraphBuilder {
                     if (!processed.contains(useDependency)) {
                         workQueue.addLast(useDependency);
                     }
-                    TypeFlow<?> useFlow = useDependency.get();
                     /* Convert the use dependency into a use data flow. */
-                    useFlow.addOriginalUse(bb, flow);
+                    bb.analysisPolicy().addOriginalUse(bb, useDependency.get(), flow);
                 }
                 for (TypeFlowBuilder<?> observerDependency : builder.getObserverDependencies()) {
                     if (!processed.contains(observerDependency)) {
                         workQueue.addLast(observerDependency);
                     }
-                    TypeFlow<?> observerFlow = observerDependency.get();
                     /* Convert the observer dependency into an observer data flow. */
-                    observerFlow.addOriginalObserver(bb, flow);
+                    bb.analysisPolicy().addOriginalObserver(bb, observerDependency.get(), flow);
                 }
-
             }
         }
     }

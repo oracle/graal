@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -818,7 +818,10 @@ public final class Context implements AutoCloseable {
      *            {@link PolyglotException#isCancelled() cancelled}, else an
      *            {@link IllegalStateException} is thrown.
      * @see Engine#close() close an engine.
-     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws PolyglotException in case the close failed due to a guest language error, or, if
+     *             cancelIfExecuting is <code>false</code>, the exception is also thrown when the
+     *             context was {@link PolyglotException#isCancelled() cancelled} or the context was
+     *             {@link PolyglotException#isExit() exited} at request of the guest application.
      * @throws IllegalStateException if the context is still running and cancelIfExecuting is
      *             <code>false</code>
      * @since 19.0
@@ -843,7 +846,9 @@ public final class Context implements AutoCloseable {
      * For convenience, before the actual closing process begins, the close method leaves the
      * context on the current thread, if it was entered {@link #enter() explicitly}.
      *
-     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws PolyglotException in case the close failed due to a guest language error, or the
+     *             context was {@link PolyglotException#isCancelled() cancelled} or the context was
+     *             {@link PolyglotException#isExit() exited} at request of the guest application.
      * @throws IllegalStateException if the context is currently executing on another thread.
      * @see Engine#close() close an engine.
      * @since 19.0
@@ -858,7 +863,7 @@ public final class Context implements AutoCloseable {
      * executed during interrupt. A context thread may not be interruptiple if it uses
      * non-interruptible waiting or executes non-interruptible host code.
      *
-     * This method may be used as a "soft exit", meaning that it can be used before
+     * This method may be used as a "soft cancel", meaning that it can be used before
      * {@link #close(boolean) close(true)} is executed.
      *
      * @param timeout specifies the duration the interrupt method will wait for the active threads
@@ -990,19 +995,19 @@ public final class Context implements AutoCloseable {
 
     private static final Context EMPTY = new Context();
 
-    static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<String>() {
+    static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<>() {
         public boolean test(String t) {
             return false;
         }
     };
 
-    static final Predicate<String> NO_HOST_CLASSES = new Predicate<String>() {
+    static final Predicate<String> NO_HOST_CLASSES = new Predicate<>() {
         public boolean test(String t) {
             return false;
         }
     };
 
-    static final Predicate<String> ALL_HOST_CLASSES = new Predicate<String>() {
+    static final Predicate<String> ALL_HOST_CLASSES = new Predicate<>() {
         public boolean test(String t) {
             return true;
         }
@@ -1119,7 +1124,7 @@ public final class Context implements AutoCloseable {
          * @deprecated use {@link #allowHostAccess(HostAccess)} or
          *             {@link #allowHostClassLookup(Predicate)} instead.
          */
-        @Deprecated
+        @Deprecated(since = "19.0")
         public Builder allowHostAccess(boolean enabled) {
             this.allowHostAccess = enabled;
             return this;
@@ -1383,7 +1388,7 @@ public final class Context implements AutoCloseable {
          * @since 19.0
          * @deprecated use {@link #allowHostClassLookup(Predicate)} instead.
          */
-        @Deprecated
+        @Deprecated(since = "19.0")
         public Builder hostClassFilter(Predicate<String> classFilter) {
             Objects.requireNonNull(classFilter);
             this.hostClassFilter = classFilter;

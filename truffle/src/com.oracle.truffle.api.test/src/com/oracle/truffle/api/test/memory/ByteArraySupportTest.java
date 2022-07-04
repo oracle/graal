@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,9 +65,23 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void putByteBigEndianWithLongAddress() {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().putByte(buffer, 0L, (byte) 0x42);
+        assertBytesEqual(buffer, "42");
+    }
+
+    @Test
     public void putByteLittleEndian() {
         byte[] buffer = new byte[1];
         ByteArraySupport.littleEndian().putByte(buffer, 0, (byte) 0x42);
+        assertBytesEqual(buffer, "42");
+    }
+
+    @Test
+    public void putByteLittleEndianWithLongAddress() {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().putByte(buffer, 0L, (byte) 0x42);
         assertBytesEqual(buffer, "42");
     }
 
@@ -78,9 +92,21 @@ public class ByteArraySupportTest {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
+    public void putByteBigEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().putByte(buffer, 1L, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
     public void putByteLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[1];
         ByteArraySupport.littleEndian().putByte(buffer, 1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putByteLittleEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().putByte(buffer, 1L, (byte) 1);
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
@@ -90,9 +116,21 @@ public class ByteArraySupportTest {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
+    public void putByteBigEndianOutOfBoundsNegativeWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().putByte(buffer, -1L, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
     public void putByteLittleEndianOutOfBoundsNegative() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[1];
         ByteArraySupport.littleEndian().putByte(buffer, -1, (byte) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putByteLittleEndianOutOfBoundsNegativeWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().putByte(buffer, -1L, (byte) 1);
     }
 
     @Test
@@ -102,9 +140,21 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getByteBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.bigEndian().getByte(buffer, 0L));
+    }
+
+    @Test
     public void getByteLittleEndian() {
         byte[] buffer = hexToBytes("42");
         Assert.assertEquals(0x42, ByteArraySupport.littleEndian().getByte(buffer, 0));
+    }
+
+    @Test
+    public void getByteLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("42");
+        Assert.assertEquals(0x42, ByteArraySupport.littleEndian().getByte(buffer, 0L));
     }
 
     @Test
@@ -115,9 +165,23 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void putShortBigEndianWithLongAddress() {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().putShort(buffer, 0L, (short) 0x4241);
+        assertBytesEqual(buffer, "4241");
+    }
+
+    @Test
     public void putShortLittleEndian() {
         byte[] buffer = new byte[2];
         ByteArraySupport.littleEndian().putShort(buffer, 0, (short) 0x4241);
+        assertBytesEqual(buffer, "4142");
+    }
+
+    @Test
+    public void putShortLittleEndianWithLongAddress() {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.littleEndian().putShort(buffer, 0L, (short) 0x4241);
         assertBytesEqual(buffer, "4142");
     }
 
@@ -128,9 +192,21 @@ public class ByteArraySupportTest {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
+    public void putShortBigEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[2];
+        ByteArraySupport.bigEndian().putShort(buffer, 1L, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
     public void putShortLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[2];
         ByteArraySupport.littleEndian().putShort(buffer, 1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putShortLittleEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().putShort(buffer, 1L, (short) 1);
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
@@ -140,9 +216,21 @@ public class ByteArraySupportTest {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
+    public void putShortBigEndianOutOfBoundsNegativeWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.bigEndian().putShort(buffer, -1L, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
     public void putShortLittleEndianOutOfBoundsNegative() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[1];
         ByteArraySupport.littleEndian().putShort(buffer, -1, (short) 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putShortLittleEndianOutOfBoundsNegativeWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[1];
+        ByteArraySupport.littleEndian().putShort(buffer, -1L, (short) 1);
     }
 
     @Test
@@ -152,9 +240,21 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getShortBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("4241");
+        Assert.assertEquals(0x4241, ByteArraySupport.bigEndian().getShort(buffer, 0L));
+    }
+
+    @Test
     public void getShortLittleEndian() {
         byte[] buffer = hexToBytes("4142");
         Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().getShort(buffer, 0));
+    }
+
+    @Test
+    public void getShortLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("4142");
+        Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().getShort(buffer, 0L));
     }
 
     @Test
@@ -165,9 +265,23 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void intBigEndianWithLongAddress() {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().putInt(buffer, 0L, 0x42414039);
+        assertBytesEqual(buffer, "42414039");
+    }
+
+    @Test
     public void intLittleEndian() {
         byte[] buffer = new byte[4];
         ByteArraySupport.littleEndian().putInt(buffer, 0, 0x42414039);
+        assertBytesEqual(buffer, "39404142");
+    }
+
+    @Test
+    public void intLittleEndianWithLongAddress() {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().putInt(buffer, 0L, 0x42414039);
         assertBytesEqual(buffer, "39404142");
     }
 
@@ -178,9 +292,21 @@ public class ByteArraySupportTest {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
+    public void intBigEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.bigEndian().putInt(buffer, 1L, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
     public void intLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[4];
         ByteArraySupport.littleEndian().putInt(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void intLittleEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[4];
+        ByteArraySupport.littleEndian().putInt(buffer, 1L, 1);
     }
 
     @Test
@@ -190,9 +316,21 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getIntBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("42414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getInt(buffer, 0L));
+    }
+
+    @Test
     public void getIntLittleEndian() {
         byte[] buffer = hexToBytes("39404142");
         Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getInt(buffer, 0));
+    }
+
+    @Test
+    public void getIntLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("39404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getInt(buffer, 0L));
     }
 
     @Test
@@ -203,9 +341,23 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void putLongBigEndianWithLongAddress() {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.bigEndian().putLong(buffer, 1L, 0x4241403938373635L);
+        assertBytesEqual(buffer, "00424140393837363500");
+    }
+
+    @Test
     public void putLongLittleEndian() {
         byte[] buffer = new byte[10];
         ByteArraySupport.littleEndian().putLong(buffer, 2, 0x4241403938373635L);
+        assertBytesEqual(buffer, "00003536373839404142");
+    }
+
+    @Test
+    public void putLongLittleEndianWithLongAddress() {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.littleEndian().putLong(buffer, 2L, 0x4241403938373635L);
         assertBytesEqual(buffer, "00003536373839404142");
     }
 
@@ -216,9 +368,21 @@ public class ByteArraySupportTest {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
+    public void putLongBigEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().putLong(buffer, 1L, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
     public void putLongLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[8];
         ByteArraySupport.littleEndian().putLong(buffer, 1, 1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putLongLittleEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.littleEndian().putLong(buffer, 1L, 1);
     }
 
     @Test
@@ -228,9 +392,21 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getLongBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("004241403938373635");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.bigEndian().getLong(buffer, 1L));
+    }
+
+    @Test
     public void getLongLittleEndian() {
         byte[] buffer = hexToBytes("00003536373839404142");
         Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getLong(buffer, 2));
+    }
+
+    @Test
+    public void getLongLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("00003536373839404142");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getLong(buffer, 2L));
     }
 
     @Test
@@ -241,9 +417,23 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void putFloatBigEndianWithLongAddress() {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.bigEndian().putFloat(buffer, 3L, Float.intBitsToFloat(0x42414039));
+        assertBytesEqual(buffer, "00000042414039000000");
+    }
+
+    @Test
     public void putFloatLittleEndian() {
         byte[] buffer = new byte[10];
         ByteArraySupport.littleEndian().putFloat(buffer, 2, Float.intBitsToFloat(0x42414039));
+        assertBytesEqual(buffer, "00003940414200000000");
+    }
+
+    @Test
+    public void putFloatLittleEndianWithLongAddress() {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.littleEndian().putFloat(buffer, 2L, Float.intBitsToFloat(0x42414039));
         assertBytesEqual(buffer, "00003940414200000000");
     }
 
@@ -254,9 +444,21 @@ public class ByteArraySupportTest {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
+    public void putFloatBigEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.bigEndian().putFloat(buffer, 7L, 1.7f);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
     public void putFloatLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[10];
         ByteArraySupport.littleEndian().putFloat(buffer, 9, 1.7f);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putFloatLittleEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.littleEndian().putFloat(buffer, 9L, 1.7f);
     }
 
     @Test
@@ -266,40 +468,83 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getFloatBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("42414039");
+        Assert.assertEquals(Float.intBitsToFloat(0x42414039), ByteArraySupport.bigEndian().getFloat(buffer, 0L), 0);
+    }
+
+    @Test
     public void getFloatLittleEndian() {
         byte[] buffer = hexToBytes("39404142");
         Assert.assertEquals(Float.intBitsToFloat(0x42414039), ByteArraySupport.littleEndian().getFloat(buffer, 0), 0);
     }
 
     @Test
-    public void doubleBigEndian() {
+    public void getFloatLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("39404142");
+        Assert.assertEquals(Float.intBitsToFloat(0x42414039), ByteArraySupport.littleEndian().getFloat(buffer, 0L), 0);
+    }
+
+    @Test
+    public void putDoubleBigEndian() {
         byte[] buffer = new byte[10];
         ByteArraySupport.bigEndian().putDouble(buffer, 1, Double.longBitsToDouble(0x4241403938373635L));
         assertBytesEqual(buffer, "00424140393837363500");
     }
 
     @Test
-    public void doubleLittleEndian() {
+    public void putDoubleBigEndianWithLongAddress() {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.bigEndian().putDouble(buffer, 1L, Double.longBitsToDouble(0x4241403938373635L));
+        assertBytesEqual(buffer, "00424140393837363500");
+    }
+
+    @Test
+    public void putDoubleLittleEndian() {
         byte[] buffer = new byte[10];
         ByteArraySupport.littleEndian().putDouble(buffer, 2, Double.longBitsToDouble(0x4241403938373635L));
         assertBytesEqual(buffer, "00003536373839404142");
     }
 
+    @Test
+    public void putDoubleLittleEndianWithLongAddress() {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.littleEndian().putDouble(buffer, 2L, Double.longBitsToDouble(0x4241403938373635L));
+        assertBytesEqual(buffer, "00003536373839404142");
+    }
+
     @Test(expected = IndexOutOfBoundsException.class)
-    public void doubleBigEndianOutOfBounds() throws IndexOutOfBoundsException {
+    public void putDoubleBigEndianOutOfBounds() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[8];
         ByteArraySupport.bigEndian().putDouble(buffer, 1, 1.7);
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
-    public void doubleLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
+    public void putDoubleBigEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[8];
+        ByteArraySupport.bigEndian().putDouble(buffer, 1L, 1.7);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putDoubleLittleEndianOutOfBounds() throws IndexOutOfBoundsException {
         byte[] buffer = new byte[10];
         ByteArraySupport.littleEndian().putDouble(buffer, 3, 1.7);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void putDoubleLittleEndianOutOfBoundsWithLongAddress() throws IndexOutOfBoundsException {
+        byte[] buffer = new byte[10];
+        ByteArraySupport.littleEndian().putDouble(buffer, 3L, 1.7);
     }
 
     @Test
     public void inBoundsNegativeLength() {
         Assert.assertFalse(ByteArraySupport.littleEndian().inBounds(new byte[5], 11, -5));
+    }
+
+    @Test
+    public void inBoundsNegativeLengthWithLongAddress() {
+        Assert.assertFalse(ByteArraySupport.littleEndian().inBounds(new byte[5], 11L, -5L));
     }
 
     @Test
@@ -309,9 +554,21 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getDoubleBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("004241403938373635");
+        Assert.assertEquals(Double.longBitsToDouble(0x4241403938373635L), ByteArraySupport.bigEndian().getDouble(buffer, 1L), 0);
+    }
+
+    @Test
     public void getDoubleLittleEndian() {
         byte[] buffer = hexToBytes("00003536373839404142");
         Assert.assertEquals(Double.longBitsToDouble(0x4241403938373635L), ByteArraySupport.littleEndian().getDouble(buffer, 2), 0);
+    }
+
+    @Test
+    public void getDoubleLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("00003536373839404142");
+        Assert.assertEquals(Double.longBitsToDouble(0x4241403938373635L), ByteArraySupport.littleEndian().getDouble(buffer, 2L), 0);
     }
 
     private static void assertBytesEqual(byte[] actual, String expected) {

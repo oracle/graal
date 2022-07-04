@@ -22,6 +22,18 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoProperties;
+import com.oracle.truffle.espresso.substitutions.Collect;
+import org.graalvm.options.OptionValues;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,19 +41,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.graalvm.options.OptionValues;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.ffi.NativeAccess;
-import com.oracle.truffle.espresso.ffi.Pointer;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import com.oracle.truffle.espresso.substitutions.Collect;
-
 public final class NFISulongNativeAccess extends NFINativeAccess {
+
+    @Override
+    protected String nfiStringSignature(NativeSignature nativeSignature, boolean fromJava) {
+        String res = super.nfiStringSignature(nativeSignature, fromJava);
+        if (fromJava) {
+            return "with llvm " + res;
+        }
+        return res;
+    }
 
     NFISulongNativeAccess(TruffleLanguage.Env env) {
         super(env);
@@ -124,7 +133,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
                             .sorted() //
                             .collect(Collectors.toList());
         } catch (IOException e) {
-            throw EspressoError.unexpected(e.getMessage(), e);
+            throw EspressoError.shouldNotReachHere(e.getMessage(), e);
         }
 
         for (Path llvmImpl : sortedPaths) {

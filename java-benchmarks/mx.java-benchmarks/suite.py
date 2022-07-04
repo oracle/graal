@@ -1,13 +1,13 @@
 suite = {
-  "mxversion" : "5.316.15",
+  "mxversion" : "6.0.1",
   "name": "java-benchmarks",
 
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "TIKA_1.0.6": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.6.zip"],
-      "sha1": "bf34a3b2ef72025125a4925b6327506076110537",
+    "TIKA_1.0.8": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.8.zip"],
+      "sha1": "d58de29912461193e158e4bbe9dc369f335f05eb",
       "packedResource": True,
     },
 
@@ -17,9 +17,9 @@ suite = {
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.5": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.5.zip"],
-      "sha1": "da961b7b81c161fda51ac1939a983cbfc95a5b28",
+    "SHOPCART_0.3.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.6.zip"],
+      "sha1": "b06f90af9e10e7484f024995127cde0e44d4f32e",
       "packedResource": True,
     },
 
@@ -29,15 +29,15 @@ suite = {
       "packedResource": True,
     },
 
-    "QUARKUS_HW_1.0.1": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.1.zip"],
-      "sha1": "3b647ae68654264745bb32d09422a0c3c45f850a",
+    "QUARKUS_HW_1.0.3": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.3.zip"],
+      "sha1": "49492f4b5041b16858e2117a8002d1210559d353",
       "packedResource": True,
     },
 
-    "MICRONAUT_HW_1.0.2": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.2.zip"],
-      "sha1": "daba8f34099dfd884b59fe73855e74d139efe18d",
+    "MICRONAUT_HW_1.0.3": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.3.zip"],
+      "sha1": "171ad0f847dea91505f3db77fe5c0291ffbc3785",
       "packedResource": True,
     },
 
@@ -85,6 +85,16 @@ suite = {
     "RENAISSANCE_0.13.0" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.13.0.jar"],
       "sha1" : "65eaca6ec6ba4c7293b82644bbdefd5cb2178825",
+    },
+
+    "RENAISSANCE_0.14.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.14.0.jar"],
+      "sha1" : "d83a508c593a2389880936cbf9aa034bc86e7ef2",
+    },
+
+    "RENAISSANCE_0.14.1" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.14.1.jar"],
+      "sha1" : "69cd6017692fc477bf5007d1d67d912961d52d37",
     },
 
     "UBENCH_AGENT_DIST" : {
@@ -343,7 +353,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -356,7 +366,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -369,7 +379,7 @@ suite = {
       "dependencies" : [
         "SCALAFMT"
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "workingSets" : "Graal,Bench",
       "testProject" : True,

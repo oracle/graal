@@ -173,7 +173,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     private Map<String, Set<Service>> availableServices;
 
     /** All providers deemed to be used by this feature. */
-    private final Set<Provider> usedProviders = new HashSet<>();
+    private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
 
     /** Providers marked as used by the user. */
     private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
@@ -191,10 +191,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     private boolean shouldFilterProviders = true;
 
+    private Field verificationResultsField;
+    private Field providerListField;
+    private Field oidTableField;
+    private Field oidMapField;
+    private Field classCacheField;
+    private Field constructorCacheField;
+    private Field classRefField;
+
+    private Class<?> jceSecurityClass;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
-        ModuleSupport.openModuleByClass(Security.class, getClass());
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         disableExperimentalFipsMode(a);
         ImageSingletons.add(SecurityProvidersFilter.class, this);
     }
@@ -219,6 +229,19 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         addManuallyConfiguredUsedProviders(a);
+
+        verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
+        providerListField = access.findField("sun.security.jca.Providers", "providerList");
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
+        }
+        oidMapField = access.findField(OIDMap.class, "oidMap");
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            classCacheField = access.findField(Service.class, "classCache");
+            constructorCacheField = access.findField(Service.class, "constructorCache");
+        } else {
+            classRefField = access.findField(Service.class, "classRef");
+        }
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
@@ -284,9 +307,40 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        loader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
-        verificationCacheCleaner = constructVerificationCacheCleaner();
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        loader = access.getImageClassLoader();
+        jceSecurityClass = loader.findClassOrFail("javax.crypto.JceSecurity");
+        verificationCacheCleaner = constructVerificationCacheCleaner(jceSecurityClass);
+
+        /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
+        access.ensureInitialized("java.security.cert.TrustAnchor");
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSpecAccess is initialized before
+         * scanning.
+         */
+        access.ensureInitialized("javax.crypto.spec.SecretKeySpec");
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSealedObjectAccess is initialized
+         * before scanning.
+         */
+        access.ensureInitialized("javax.crypto.SealedObject");
+
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaIOAccess is initialized before scanning.
+         */
+        access.ensureInitialized("java.io.Console");
+
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaSecuritySignatureAccess is initialized
+         * before scanning.
+         */
+        access.ensureInitialized("java.security.Signature");
+
+        /*
+         * Ensure all X509Certificate caches are initialized.
+         */
+        access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         if (Options.EnableSecurityServicesFeature.getValue()) {
             registerServiceReachabilityHandlers(access);
@@ -538,7 +592,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
             for (Service service : services) {
-                registerService(service);
+                registerService(access, service);
             }
         }
     }
@@ -633,12 +687,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     private void registerProvider(Provider provider) {
-        if (!usedProviders.contains(provider)) {
-            usedProviders.add(provider);
+        if (usedProviders.add(provider)) {
             registerForReflection(provider.getClass());
-
+            /* Trigger initialization of lazy field java.security.Provider.entrySet. */
+            provider.entrySet();
             try {
-                Method getVerificationResult = ReflectionUtil.lookupMethod(loader.findClassOrFail("javax.crypto.JceSecurity"), "getVerificationResult", Provider.class);
+                Method getVerificationResult = ReflectionUtil.lookupMethod(jceSecurityClass, "getVerificationResult", Provider.class);
                 /*
                  * Trigger initialization of JceSecurity.verificationResults used by
                  * JceSecurity.canUseProvider() at runtime to check whether a provider is properly
@@ -653,7 +707,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @SuppressWarnings("try")
-    private void registerService(Service service) {
+    private void registerService(DuringAnalysisAccess a, Service service) {
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable ignored = trace(service)) {
@@ -674,7 +728,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                     registerJks(loader);
                 }
                 if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
-                    registerX509Extensions();
+                    registerX509Extensions(a);
                 }
                 registerProvider(service.getProvider());
             }
@@ -698,7 +752,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     /**
      * Register the x509 certificate extension classes for reflection.
      */
-    private static void registerX509Extensions() {
+    private void registerX509Extensions(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         /*
          * The OIDInfo class which represents the values in the map is not visible. Get the list of
          * extension names through reflection, i.e., the keys in the map, and use the
@@ -713,6 +768,29 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                 trace("Registered X.509 extension class: %s", extensionClass.getName());
             } catch (CertificateException e) {
                 throw VMError.shouldNotReachHere(e);
+            }
+        }
+        access.rescanRoot(oidMapField);
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        access.rescanRoot(verificationResultsField);
+        access.rescanRoot(providerListField);
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            access.rescanRoot(oidTableField);
+        }
+        if (filteredProviderList != null) {
+            for (Provider provider : filteredProviderList.providers()) {
+                for (Service service : provider.getServices()) {
+                    if (JavaVersionUtil.JAVA_SPEC >= 17) {
+                        access.rescanField(service, classCacheField);
+                        access.rescanField(service, constructorCacheField);
+                    } else {
+                        access.rescanField(service, classRefField);
+                    }
+                }
             }
         }
     }
@@ -730,15 +808,29 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @SuppressWarnings("unchecked")
-    private Function<Object, Object> constructVerificationCacheCleaner() {
+    private Function<Object, Object> constructVerificationCacheCleaner(Class<?> jceSecurity) {
         /*
          * For JDK 11, the verification cache is a Provider -> Verification result IdentityHashMap.
          */
         if (JavaVersionUtil.JAVA_SPEC <= 11) {
             return obj -> {
-                Map<Provider, Object> original = (Map<Provider, Object>) obj;
-                Map<Provider, Object> verificationResults = new IdentityHashMap<>(original);
-
+                Map<Provider, Object> verificationResults;
+                synchronized (jceSecurity) {
+                    /*
+                     * Need to synchronize the iteration of JceSecurity.verificationResults. In the
+                     * original implementation verificationResults is always accessed and modified
+                     * via the static synchronized JceSecurity.getVerificationResult().
+                     * 
+                     * Note that even if the value of the JceSecurity.verificationResults may be
+                     * modified concurrently it doesn't affect the correctness of the substitution.
+                     * Its value is never cached (by using RecomputeFieldValue.disableCaching) and
+                     * it will eventually reach a stable state, and it will be snapshotted. The
+                     * synchronization ensures that early reads of the field, that may happen
+                     * concurrently while verification results are still being added to the cache,
+                     * don't result in a ConcurrentModificationException.
+                     */
+                    verificationResults = new IdentityHashMap<>((Map<Provider, Object>) obj);
+                }
                 verificationResults.keySet().removeIf(this::shouldRemoveProvider);
 
                 return verificationResults;

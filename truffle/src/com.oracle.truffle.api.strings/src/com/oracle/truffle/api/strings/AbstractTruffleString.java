@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -232,7 +232,8 @@ public abstract class AbstractTruffleString {
     }
 
     final boolean isCompatibleTo(int enc, int maxCompatibleCodeRange) {
-        return this.encoding() == enc || !DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && ((TruffleString) this).codeRange() < maxCompatibleCodeRange;
+        // GR-31985: workaround: the binary OR avoids unnecessary loop unswitching on this check
+        return (this.encoding() == enc) | ((!DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && ((TruffleString) this).codeRange() < maxCompatibleCodeRange));
     }
 
     /**
@@ -400,6 +401,12 @@ public abstract class AbstractTruffleString {
 
     final void boundsCheckRaw(int index) {
         boundsCheckI(index, length());
+    }
+
+    final void boundsCheckRawLength(int index) {
+        if (index < 0 || index > length()) {
+            throw InternalErrors.indexOutOfBounds();
+        }
     }
 
     final void boundsCheckRaw(int fromIndex, int toIndex) {
@@ -600,6 +607,17 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final int byteLengthOfCodePointUncached(int byteIndex, TruffleString.Encoding expectedEncoding) {
         return TruffleString.ByteLengthOfCodePointNode.getUncached().execute(this, byteIndex, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of
+     * {@link TruffleString.ByteIndexToCodePointIndexNode}.
+     *
+     * @since 22.2
+     */
+    @TruffleBoundary
+    public final int byteIndexToCodePointIndexUncached(int byteOffset, int byteIndex, TruffleString.Encoding expectedEncoding) {
+        return TruffleString.ByteIndexToCodePointIndexNode.getUncached().execute(this, byteOffset, byteIndex, expectedEncoding);
     }
 
     /**
@@ -1055,7 +1073,7 @@ public abstract class AbstractTruffleString {
         return TruffleString.EqualNode.checkContentEquals(this, codeRangeA, b, codeRangeB,
                         TruffleString.ToIndexableNode.getUncached(),
                         TruffleString.ToIndexableNode.getUncached(),
-                        TStringOpsNodes.RawEqualsNode.getUncached());
+                        TruffleString.EqualNode.getUncached());
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -55,6 +56,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 
 public final class ASTDotExportVisitor extends DepthFirstTraversalRegexASTVisitor {
@@ -139,23 +141,34 @@ public final class ASTDotExportVisitor extends DepthFirstTraversalRegexASTVisito
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
-        visitLookAround(assertion);
+        visitSubtreeRootNode(assertion, "lb", "ass");
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
-        visitLookAround(assertion);
+        visitSubtreeRootNode(assertion, "la", "ass");
     }
 
-    private void visitLookAround(RegexASTSubtreeRootNode assertion) {
-        writeln(String.format("%s [label=la, shape=box%s];", nodeName(assertion), deadStyle(assertion)));
-        printParentNextPrev(assertion);
-        writeln(String.format("%s -> %s [label=ass];", nodeName(assertion), nodeName(assertion.getGroup())));
+    @Override
+    protected void visit(AtomicGroup atomicGroup) {
+        visitSubtreeRootNode(atomicGroup, "atom", "grp");
+    }
+
+    private void visitSubtreeRootNode(RegexASTSubtreeRootNode subtreeRootNode, String nodeLabel, String edgeLabel) {
+        writeln(String.format("%s [label=%s, shape=box%s];", nodeName(subtreeRootNode), nodeLabel, deadStyle(subtreeRootNode)));
+        printParentNextPrev(subtreeRootNode);
+        writeln(String.format("%s -> %s [label=%s];", nodeName(subtreeRootNode), nodeName(subtreeRootNode.getGroup()), edgeLabel));
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
         writeln(String.format("%s [label=\"%s\", shape=box%s];", nodeName(characterClass), characterClass.toString().replace("\\", "\\\\"), deadStyle(characterClass)));
         printParentNextPrev(characterClass);
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        writeln(String.format("%s [label=\"%s\", shape=box%s];", nodeName(subexpressionCall), subexpressionCall.toString().replace("\\", "\\\\"), deadStyle(subexpressionCall)));
+        printParentNextPrev(subexpressionCall);
     }
 }

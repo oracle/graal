@@ -27,11 +27,11 @@ package com.oracle.svm.hosted.jdk;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 
 @AutomaticFeature
-class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
+class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
 
     /**
      * Registrations of class re-initialization at run time. This is independent whether the JNI
@@ -63,5 +63,8 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
          * members and do not allow instantiation.
          */
         rerunClassInit(a, "java.lang.ApplicationShutdownHooks", "java.io.DeleteOnExitHook");
+
+        /* Trigger initialization of java.net.URLConnection.fileNameMap. */
+        java.net.URLConnection.getFileNameMap();
     }
 }

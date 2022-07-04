@@ -57,11 +57,7 @@ public class FrozenFieldFilterTypeFlow extends TypeFlow<AnalysisField> {
          * through normal writes and non frozen unsafe writes, if any.
          */
         TypeState fieldState = this.source.getInstanceFieldFlow().getState();
-        /*
-         * Strip the context, if any, of the field state.
-         */
-        TypeState filter = TypeState.forContextInsensitiveTypeState(bb, fieldState);
-        return TypeState.forIntersection(bb, update, filter);
+        return TypeState.forIntersection(bb, update, fieldState);
     }
 
     @Override

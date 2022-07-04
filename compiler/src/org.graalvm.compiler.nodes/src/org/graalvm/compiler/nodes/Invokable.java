@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 
@@ -58,11 +57,13 @@ public interface Invokable extends DeoptBciSupplier {
      */
     default void updateInliningLogAfterRegister(StructuredGraph newGraph) {
         InliningLog log = newGraph.getInliningLog();
-        if (log.getUpdateScope() != null) {
-            log.getUpdateScope().accept(null, this);
-        } else {
-            assert !log.containsLeafCallsite(this);
-            log.trackNewCallsite(this);
+        if (log != null) {
+            if (log.getUpdateScope() != null) {
+                log.getUpdateScope().accept(null, this);
+            } else {
+                assert !log.containsLeafCallsite(this);
+                log.trackNewCallsite(this);
+            }
         }
     }
 
@@ -76,10 +77,10 @@ public interface Invokable extends DeoptBciSupplier {
      */
     default void updateInliningLogAfterClone(Node other) {
         StructuredGraph graph = asFixedNodeOrNull().graph();
-        if (GraalOptions.TraceInlining.getValue(graph.getOptions())) {
+        InliningLog log = graph.getInliningLog();
+        if (log != null) {
             // At this point, the invokable node was already added to the inlining log
             // in the call to updateInliningLogAfterRegister, so we need to remove it.
-            InliningLog log = graph.getInliningLog();
             assert other instanceof Invokable;
             if (log.getUpdateScope() != null) {
                 // InliningLog.UpdateScope determines how to update the log.

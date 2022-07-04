@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -116,17 +115,17 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract ExecutionListener newExecutionListener(AbstractManagementDispatch dispatch, Object receiver);
+        public abstract ExecutionListener newExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver);
 
-        public abstract ExecutionEvent newExecutionEvent(AbstractManagementDispatch dispatch, Object event);
+        public abstract ExecutionEvent newExecutionEvent(AbstractExecutionEventDispatch dispatch, Object event);
 
         public abstract Object getReceiver(ExecutionListener executionListener);
 
-        public abstract AbstractManagementDispatch getDispatch(ExecutionListener executionListener);
+        public abstract AbstractExecutionListenerDispatch getDispatch(ExecutionListener executionListener);
 
         public abstract Object getReceiver(ExecutionEvent executionEvent);
 
-        public abstract AbstractManagementDispatch getDispatch(ExecutionEvent executionEvent);
+        public abstract AbstractExecutionEventDispatch getDispatch(ExecutionEvent executionEvent);
     }
 
     public abstract static class IOAccess {
@@ -152,7 +151,7 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver);
+        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver, boolean registerInActiveEngines);
 
         public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine);
 
@@ -230,6 +229,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isMapAccessible(HostAccess access);
 
+        public abstract boolean allowsPublicAccess(HostAccess hostAccess);
+
+        public abstract boolean allowsAccessInheritance(HostAccess hostAccess);
+
         public abstract Object getHostAccessImpl(HostAccess conf);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
@@ -241,6 +244,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
         public abstract String validatePolyglotAccess(PolyglotAccess access, Set<String> language);
+
+        public abstract void engineClosed(Engine engine);
 
     }
 
@@ -313,9 +318,10 @@ public abstract class AbstractPolyglotImpl {
 
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
                     boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
+                    AbstractPolyglotHostService polyglotHostService) {
         return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
-                        hostLanguageOnly);
+                        hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 
     public abstract int getPriority();
@@ -368,9 +374,19 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractManagementDispatch extends AbstractDispatchClass {
+    public abstract static class AbstractExecutionListenerDispatch extends AbstractDispatchClass {
 
-        protected AbstractManagementDispatch(AbstractPolyglotImpl polyglotImpl) {
+        protected AbstractExecutionListenerDispatch(AbstractPolyglotImpl polyglotImpl) {
+            Objects.requireNonNull(polyglotImpl);
+        }
+
+        public abstract void closeExecutionListener(Object impl);
+
+    }
+
+    public abstract static class AbstractExecutionEventDispatch extends AbstractDispatchClass {
+
+        protected AbstractExecutionEventDispatch(AbstractPolyglotImpl polyglotImpl) {
             Objects.requireNonNull(polyglotImpl);
         }
 
@@ -387,8 +403,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isExecutionEventStatement(Object impl);
 
         public abstract boolean isExecutionEventRoot(Object impl);
-
-        public abstract void closeExecutionListener(Object impl);
 
         public abstract PolyglotException getExecutionEventException(Object impl);
 
@@ -567,6 +581,8 @@ public abstract class AbstractPolyglotImpl {
                         boolean roots,
                         Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
+        public abstract void shutdown(Object engine);
+
     }
 
     public abstract static class AbstractExceptionDispatch extends AbstractDispatchClass {
@@ -649,6 +665,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> T lookup(Object receiver, Class<T> type);
 
+        public abstract String getWebsite(Object receiver);
     }
 
     public abstract static class AbstractLanguageDispatch extends AbstractDispatchClass {
@@ -672,6 +689,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Set<String> getMimeTypes(Object receiver);
 
         public abstract String getDefaultMimeType(Object receiver);
+
+        public abstract String getWebsite(Object receiver);
     }
 
     public abstract static class AbstractHostAccess extends AbstractDispatchClass {
@@ -718,11 +737,30 @@ public abstract class AbstractPolyglotImpl {
         public abstract RuntimeException unboxEngineException(RuntimeException e);
     }
 
-    public abstract static class AbstractHostService extends AbstractDispatchClass {
+    public abstract static class AbstractPolyglotHostService extends AbstractDispatchClass {
 
-        protected AbstractHostService(AbstractPolyglotImpl polyglot) {
+        protected AbstractPolyglotHostService(AbstractPolyglotImpl polyglot) {
             Objects.requireNonNull(polyglot);
         }
+
+        public abstract void patch(AbstractPolyglotHostService otherService);
+
+        public abstract void notifyClearExplicitContextStack(Object contextReceiver);
+
+        public abstract void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message);
+
+        public abstract void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message);
+
+        public abstract void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting);
+    }
+
+    public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {
+
+        protected AbstractHostLanguageService(AbstractPolyglotImpl polyglot) {
+            Objects.requireNonNull(polyglot);
+        }
+
+        public abstract void release();
 
         public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
                         boolean hostLookupAllowed);
@@ -763,7 +801,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isHostSymbol(Object obj);
 
-        public abstract Object createHostAdapter(Object hostContextObject, Class<?>[] types, Object classOverrides);
+        public abstract Object createHostAdapter(Object hostContextObject, Object[] types, Object classOverrides);
 
         public abstract boolean isHostProxy(Object value);
 
@@ -774,6 +812,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
         public abstract void pin(Object receiver);
+
+        public abstract void hostExit(int exitCode);
 
     }
 
@@ -1005,6 +1045,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isMetaInstance(Object context, Object receiver, Object instance);
 
+        public abstract boolean hasMetaParents(Object context, Object receiver);
+
+        public abstract Value getMetaParents(Object context, Object receiver);
+
         public abstract boolean equalsImpl(Object context, Object receiver, Object obj);
 
         public abstract int hashCodeImpl(Object context, Object receiver);
@@ -1058,10 +1102,6 @@ public abstract class AbstractPolyglotImpl {
         return getNext().getCurrentContext();
     }
 
-    public Collection<? extends Object> findActiveEngines() {
-        return getNext().findActiveEngines();
-    }
-
     public Value asValue(Object o) {
         return getNext().asValue(o);
     }
@@ -1076,6 +1116,26 @@ public abstract class AbstractPolyglotImpl {
 
     public FileSystem newDefaultFileSystem() {
         return getNext().newDefaultFileSystem();
+    }
+
+    public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+        return getNext().allowLanguageHomeAccess(fileSystem);
+    }
+
+    public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
+        return getNext().newReadOnlyFileSystem(fileSystem);
+    }
+
+    public ProcessHandler newDefaultProcessHandler() {
+        return getNext().newDefaultProcessHandler();
+    }
+
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return getNext().isDefaultProcessHandler(processHandler);
+    }
+
+    public ThreadScope createThreadScope() {
+        return getNext().createThreadScope();
     }
 
     /**
@@ -1101,6 +1161,24 @@ public abstract class AbstractPolyglotImpl {
      */
     protected OptionDescriptors createEngineOptionDescriptors() {
         return OptionDescriptors.EMPTY;
+    }
+
+    public final AbstractPolyglotImpl getRootImpl() {
+        AbstractPolyglotImpl current = this;
+        while (current.prev != null) {
+            current = current.prev;
+        }
+        return current;
+    }
+
+    public abstract static class ThreadScope implements AutoCloseable {
+
+        protected ThreadScope(AbstractPolyglotImpl engineImpl) {
+            Objects.requireNonNull(engineImpl);
+        }
+
+        @Override
+        public abstract void close();
     }
 
 }

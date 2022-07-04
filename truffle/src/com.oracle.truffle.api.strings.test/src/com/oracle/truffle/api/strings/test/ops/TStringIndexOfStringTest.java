@@ -45,7 +45,6 @@ import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -67,9 +66,7 @@ public class TStringIndexOfStringTest extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            testIndexOfString(a, array, isValid, encoding, codepoints, byteIndices, false, false, (b, expectedIndex) -> {
-                Assert.assertEquals(expectedIndex, node.execute(a, b, 0, codepoints.length, encoding));
-            });
+            testIndexOfString(a, array, isValid, encoding, codepoints, byteIndices, false, false, (b, fromIndex, toIndex) -> node.execute(a, b, fromIndex, toIndex, encoding));
         });
     }
 

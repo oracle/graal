@@ -66,7 +66,6 @@ import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallTrampolines;
-import com.oracle.svm.jni.JNISupport;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
@@ -125,10 +124,12 @@ public class JNIAccessFeature implements Feature {
     }
 
     private class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry implements JNIRuntimeAccess.JNIRuntimeAccessibilitySupport, ReflectionRegistry {
+
         @Override
-        public void register(ConfigurationCondition condition, Class<?>... classes) {
+        public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+            assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newClasses.addAll(Arrays.asList(classes)));
+            registerConditionalConfiguration(condition, () -> newClasses.add(clazz));
         }
 
         @Override
@@ -157,8 +158,8 @@ public class JNIAccessFeature implements Feature {
         if (!ImageSingletons.contains(JNIFieldAccessorMethod.Factory.class)) {
             ImageSingletons.add(JNIFieldAccessorMethod.Factory.class, new JNIFieldAccessorMethod.Factory());
         }
-        if (!ImageSingletons.contains(JNISupport.class)) {
-            ImageSingletons.add(JNISupport.class, new JNISupport());
+        if (!ImageSingletons.contains(JNIJavaCallWrapperMethod.Factory.class)) {
+            ImageSingletons.add(JNIJavaCallWrapperMethod.Factory.class, new JNIJavaCallWrapperMethod.Factory());
         }
 
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
@@ -184,7 +185,7 @@ public class JNIAccessFeature implements Feature {
         access.registerAsAccessed(access.getUniverse().lookup(field));
         String name = JNIJavaCallTrampolines.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, name);
-        access.registerAsCompiled(method);
+        access.registerAsRoot(method, true);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {
@@ -213,6 +214,7 @@ public class JNIAccessFeature implements Feature {
                         "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
                         declaringClass, name, descriptor);
 
+        assert declaringClass.startsWith("L") && declaringClass.endsWith(";") : declaringClass;
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 
         if (JNIAccessFeature.Options.PrintJNIMethods.getValue()) {
@@ -267,7 +269,7 @@ public class JNIAccessFeature implements Feature {
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
                 analysisClass.registerAsReachable();
             } else {
-                analysisClass.registerAsAllocated(null);
+                access.getBigBang().markTypeInstantiated(analysisClass);
             }
             return new JNIAccessibleClass(classObj);
         });
@@ -280,20 +282,21 @@ public class JNIAccessFeature implements Feature {
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
         jniClass.addMethodIfAbsent(descriptor, d -> {
+            JNIJavaCallWrapperMethod.Factory factory = ImageSingletons.lookup(JNIJavaCallWrapperMethod.Factory.class);
             MetaAccessProvider wrappedMetaAccess = access.getMetaAccess().getWrapped();
 
-            JNIJavaCallWrapperMethod varargsCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VARARGS, false, wrappedMetaAccess, nativeLibraries);
-            JNIJavaCallWrapperMethod arrayCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.ARRAY, false, wrappedMetaAccess, nativeLibraries);
-            JNIJavaCallWrapperMethod valistCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VA_LIST, false, wrappedMetaAccess, nativeLibraries);
+            JNIJavaCallWrapperMethod varargsCallWrapper = factory.create(method, CallVariant.VARARGS, false, wrappedMetaAccess, nativeLibraries);
+            JNIJavaCallWrapperMethod arrayCallWrapper = factory.create(method, CallVariant.ARRAY, false, wrappedMetaAccess, nativeLibraries);
+            JNIJavaCallWrapperMethod valistCallWrapper = factory.create(method, CallVariant.VA_LIST, false, wrappedMetaAccess, nativeLibraries);
             Stream<JNIJavaCallWrapperMethod> wrappers = Stream.of(varargsCallWrapper, arrayCallWrapper, valistCallWrapper);
 
             JNIJavaCallWrapperMethod varargsNonvirtualCallWrapper = null;
             JNIJavaCallWrapperMethod arrayNonvirtualCallWrapper = null;
             JNIJavaCallWrapperMethod valistNonvirtualCallWrapper = null;
             if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isAbstract(method.getModifiers())) {
-                varargsNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VARARGS, true, wrappedMetaAccess, nativeLibraries);
-                arrayNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.ARRAY, true, wrappedMetaAccess, nativeLibraries);
-                valistNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VA_LIST, true, wrappedMetaAccess, nativeLibraries);
+                varargsNonvirtualCallWrapper = factory.create(method, CallVariant.VARARGS, true, wrappedMetaAccess, nativeLibraries);
+                arrayNonvirtualCallWrapper = factory.create(method, CallVariant.ARRAY, true, wrappedMetaAccess, nativeLibraries);
+                valistNonvirtualCallWrapper = factory.create(method, CallVariant.VA_LIST, true, wrappedMetaAccess, nativeLibraries);
                 wrappers = Stream.concat(wrappers, Stream.of(varargsNonvirtualCallWrapper, arrayNonvirtualCallWrapper, valistNonvirtualCallWrapper));
             }
 
@@ -302,7 +305,7 @@ public class JNIAccessFeature implements Feature {
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
-                access.getBigBang().addRootMethod(analysisWrapper);
+                access.getBigBang().addRootMethod(analysisWrapper, true);
                 analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
             });
             return jniMethod;
@@ -325,7 +328,7 @@ public class JNIAccessFeature implements Feature {
             if (fieldType.isArray() && !access.isReachable(fieldType)) {
                 // For convenience, make the array type reachable if its elemental type becomes
                 // such, allowing the array creation via JNI without an explicit reflection config.
-                access.registerReachabilityHandler(a -> fieldType.registerAsAllocated(null),
+                access.registerReachabilityHandler(a -> access.getBigBang().markTypeInstantiated(fieldType),
                                 ((AnalysisType) fieldType.getElementalType()).getJavaClass());
             }
         } else if (field.isStatic() && field.isFinal()) {

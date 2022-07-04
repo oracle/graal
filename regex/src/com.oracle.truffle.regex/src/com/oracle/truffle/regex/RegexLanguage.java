@@ -58,7 +58,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TruffleNull;
 
@@ -118,11 +117,21 @@ import com.oracle.truffle.regex.util.TruffleNull;
  * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
+ * 
+ * Debug loggers: {@link com.oracle.truffle.regex.tregex.util.Loggers}.
  *
  * @see RegexOptions
  * @see RegexObject
+ * @see com.oracle.truffle.regex.tregex.util.Loggers
  */
-@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
+@TruffleLanguage.Registration(name = RegexLanguage.NAME, //
+                id = RegexLanguage.ID, //
+                characterMimeTypes = RegexLanguage.MIME_TYPE, //
+                version = "0.1", //
+                contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
+                internal = true, //
+                interactive = false, //
+                website = "https://github.com/oracle/graal/tree/master/regex")
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
 
@@ -173,13 +182,8 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     private Object createRegexObject(RegexSource source) {
         if (source.getOptions().isValidate()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
-            if (flavor == ECMAScriptFlavor.INSTANCE) {
-                RegexValidator validator = new RegexValidator(source);
-                validator.validate();
-            } else {
-                RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
-                flavorProcessor.validate();
-            }
+            RegexValidator validator = flavor.createValidator(source);
+            validator.validate();
             return TruffleNull.INSTANCE;
         }
         try {

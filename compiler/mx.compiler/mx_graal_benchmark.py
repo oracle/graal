@@ -55,20 +55,19 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def post_process_command_line_args(self, args):
         return [arg if not callable(arg) else arg() for arg in self.extra_args] + args
 
-    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+    def get_jdk(self):
         tag = mx.get_jdk_option().tag
         if tag and tag != mx_compiler._JVMCI_JDK_TAG:
             mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
                 self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
-            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False, command_mapper_hooks=self.command_mapper_hooks)
+        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG)
+
+    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+        return self.get_jdk().run_java(
+            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, command_mapper_hooks=self.command_mapper_hooks)
 
     def generate_java_command(self, args):
-        tag = mx.get_jdk_option().tag
-        if tag and tag != mx_compiler._JVMCI_JDK_TAG:
-            mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
-                self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).generate_java_command(self.post_process_command_line_args(args))
+        return self.get_jdk().generate_java_command(self.post_process_command_line_args(args))
 
 
     def rules(self, output, benchmarks, bmSuiteArgs):
@@ -122,9 +121,6 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return rules
 
 
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler']), _suite, 2)
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
-
 def add_or_replace_arg(option_key, value, vm_option_list):
     """
     Determines if an option with the same key as option_key is already present in vm_option_list.
@@ -172,8 +168,11 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
             mx_benchmark.add_java_vm(
                 JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, variant_args), suite, var_priority)
 
+
 _graal_variants = [
+    ('no-tiered-comp', ['-XX:-TieredCompilation'], 0),
     ('economy', [], 0, 'economy'),
+    ('economy-no-tiered-comp', ['-XX:-TieredCompilation'], 0, 'economy'),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
@@ -192,6 +191,12 @@ build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', 
 # This behavior is the closest we can get to the -client vm configuration.
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
+
+
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-no-tiered-comp', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler', '-XX:-TieredCompilation']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
+
 
 class DebugValueBenchmarkMixin(object):
 
@@ -483,7 +488,10 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMH
         return "graal-compiler"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
+        if mx_compiler.isJDK8:
+            return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
+        else:
+            return super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
 
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
@@ -549,15 +557,12 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativ
 
 
     def extraVmArgs(self):
-        if mx_compiler.isJDK8:
-            extra = ['-XX:-UseJVMCIClassLoader']
-        else:
-            # This is required to use jdk.internal.module.Modules for doing arbitrary exports
-            extra = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
+        # This is required to use jdk.internal.module.Modules for doing arbitrary exports
+        extra = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
         return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
     def getJMHEntry(self, bmSuiteArgs):

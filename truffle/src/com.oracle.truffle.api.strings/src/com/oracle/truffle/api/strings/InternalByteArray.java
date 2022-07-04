@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,5 +96,18 @@ public final class InternalByteArray {
      */
     public int getEnd() {
         return offset + length;
+    }
+
+    /**
+     * Read the byte at {@code getArray()[getOffset() + index]} and return it as a byte, similar to
+     * {@link TruffleString.ReadByteNode}. Consider using {@link TruffleString.ReadByteNode} (and
+     * {@link TruffleString.MaterializeNode} before) instead if not needing the byte[] for other
+     * purposes, as that will avoid extra copying if the string {@link TruffleString#isNative() is
+     * stored in native memory}.
+     *
+     * @since 22.2
+     */
+    public byte get(int index) {
+        return array[offset + index];
     }
 }

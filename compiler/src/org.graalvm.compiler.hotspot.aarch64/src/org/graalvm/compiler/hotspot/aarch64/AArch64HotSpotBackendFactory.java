@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,7 +28,6 @@ package org.graalvm.compiler.hotspot.aarch64;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.core.aarch64.AArch64AddressLoweringByUse;
@@ -55,7 +54,6 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
@@ -100,7 +98,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         replacements,
                         options,
                         target);
-        AArch64GraphBuilderPlugins.register(plugins, replacements, /* registerForeignCallMath */true, config.useFMAIntrinsics, options);
+        AArch64GraphBuilderPlugins.register(plugins, replacements, /* registerForeignCallMath */true, options);
         return plugins;
     }
 
@@ -123,7 +121,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     @Override
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
-        AArch64SuitesCreator suitesCreator = new AArch64SuitesCreator(compilerConfiguration, plugins, Arrays.asList(SchedulePhase.class));
+        AArch64SuitesCreator suitesCreator = new AArch64SuitesCreator(compilerConfiguration, plugins);
         BasePhase<CoreProviders> addressLoweringPhase = new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(new AArch64LIRKindTool(), true));
         return new AddressLoweringHotSpotSuitesProvider(suitesCreator, config, runtime, addressLoweringPhase);
     }

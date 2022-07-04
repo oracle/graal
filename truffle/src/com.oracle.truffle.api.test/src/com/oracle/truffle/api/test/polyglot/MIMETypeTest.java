@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,10 @@ public class MIMETypeTest {
     // default configuration
     @Registration(id = "MimeTypeLanguage1", name = "")
     public static class MIMETypeLanguage1 extends ProxyLanguage {
+
+        public MIMETypeLanguage1() {
+            wrapper = false;
+        }
     }
 
     @Test
@@ -84,6 +88,10 @@ public class MIMETypeTest {
 
     @Registration(id = "MIMETypeLanguage2", name = "", defaultMimeType = TEXT_MIMETYPE, characterMimeTypes = {TEXT_MIMETYPE, APPLICATION_MIMETYPE})
     public static class MIMETypeLanguage2 extends ProxyLanguage {
+
+        public MIMETypeLanguage2() {
+            wrapper = false;
+        }
     }
 
     @Test
@@ -98,6 +106,10 @@ public class MIMETypeTest {
 
     @Registration(id = "MIMETypeLanguage3", name = "", characterMimeTypes = TEXT_MIMETYPE)
     public static class MIMETypeLanguage3 extends ProxyLanguage {
+
+        public MIMETypeLanguage3() {
+            wrapper = false;
+        }
     }
 
     @Test
@@ -112,6 +124,10 @@ public class MIMETypeTest {
 
     @Registration(id = "MIMETypeLanguage4", name = "", byteMimeTypes = TEXT_MIMETYPE)
     public static class MIMETypeLanguage4 extends ProxyLanguage {
+
+        public MIMETypeLanguage4() {
+            wrapper = false;
+        }
     }
 
     @Test
@@ -160,6 +176,11 @@ public class MIMETypeTest {
 
     @Registration(id = "MIMETypeLanguage5", name = "", byteMimeTypes = APPLICATION_MIMETYPE)
     public static class MIMETypeLanguage5 extends ProxyLanguage {
+
+        public MIMETypeLanguage5() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return RootNode.createConstantNode(42).getCallTarget();
@@ -212,6 +233,10 @@ public class MIMETypeTest {
     @Registration(id = "MIMETypeLanguage6", name = "", characterMimeTypes = APPLICATION_MIMETYPE)
     public static class MIMETypeLanguage6 extends ProxyLanguage {
 
+        public MIMETypeLanguage6() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return RootNode.createConstantNode(42).getCallTarget();
@@ -238,6 +263,10 @@ public class MIMETypeTest {
 
     @Registration(id = "MIMETypeLanguage7", name = "", defaultMimeType = TEXT_MIMETYPE, characterMimeTypes = TEXT_MIMETYPE, byteMimeTypes = APPLICATION_MIMETYPE)
     public static class MIMETypeLanguage7 extends ProxyLanguage {
+
+        public MIMETypeLanguage7() {
+            wrapper = false;
+        }
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -266,6 +295,10 @@ public class MIMETypeTest {
     @Registration(id = "MIMETypeLanguage8", name = "", defaultMimeType = APPLICATION_MIMETYPE, characterMimeTypes = TEXT_MIMETYPE, byteMimeTypes = APPLICATION_MIMETYPE)
     public static class MIMETypeLanguage8 extends ProxyLanguage {
 
+        public MIMETypeLanguage8() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return RootNode.createConstantNode(42).getCallTarget();
@@ -276,71 +309,127 @@ public class MIMETypeTest {
     @ExpectError("Invalid MIME type '' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError1", name = "", byteMimeTypes = {""})
     public static class MIMETypeLanguageError1 extends ProxyLanguage {
+
+        public MIMETypeLanguageError1() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Invalid MIME type '/' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError2", name = "", byteMimeTypes = {"/"})
     public static class MIMETypeLanguageError2 extends ProxyLanguage {
+
+        public MIMETypeLanguageError2() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Invalid MIME type 'a/' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError3", name = "", byteMimeTypes = {"a/"})
     public static class MIMETypeLanguageError3 extends ProxyLanguage {
+
+        public MIMETypeLanguageError3() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Invalid MIME type '/a' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError4", name = "", byteMimeTypes = {"/a"})
     public static class MIMETypeLanguageError4 extends ProxyLanguage {
+
+        public MIMETypeLanguageError4() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Invalid MIME type '' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError5", name = "", characterMimeTypes = {""})
     public static class MIMETypeLanguageError5 extends ProxyLanguage {
+
+        public MIMETypeLanguageError5() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Invalid MIME type '/' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError6", name = "", characterMimeTypes = {"/"})
     public static class MIMETypeLanguageError6 extends ProxyLanguage {
+
+        public MIMETypeLanguageError6() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Invalid MIME type 'a/' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError7", name = "", characterMimeTypes = {"a/"})
     public static class MIMETypeLanguageError7 extends ProxyLanguage {
+
+        public MIMETypeLanguageError7() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Invalid MIME type '/a' provided. MIME types consist of a type and a subtype separated by '/'.")
     @Registration(id = "MIMETypeLanguageError8", name = "", characterMimeTypes = {"/a"})
     public static class MIMETypeLanguageError8 extends ProxyLanguage {
+
+        public MIMETypeLanguageError8() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("No defaultMimeType attribute specified. The defaultMimeType attribute needs to be specified if more than one MIME type was specified.")
     @Registration(id = "MIMETypeLanguageError9", name = "", characterMimeTypes = {TEXT_MIMETYPE, APPLICATION_MIMETYPE})
     public static class MIMETypeLanguageError9 extends ProxyLanguage {
+
+        public MIMETypeLanguageError9() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("No defaultMimeType attribute specified. The defaultMimeType attribute needs to be specified if more than one MIME type was specified.")
     @Registration(id = "MIMETypeLanguageError10", name = "", byteMimeTypes = {TEXT_MIMETYPE, APPLICATION_MIMETYPE})
     public static class MIMETypeLanguageError10 extends ProxyLanguage {
+
+        public MIMETypeLanguageError10() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("The defaultMimeType is not contained in the list of supported characterMimeTypes or byteMimeTypes. Add the specified default MIME type to character or byte MIME types to resolve this.")
     @Registration(id = "MIMETypeLanguageError11", name = "", defaultMimeType = "text/invalid", byteMimeTypes = {TEXT_MIMETYPE, APPLICATION_MIMETYPE})
     public static class MIMETypeLanguageError11 extends ProxyLanguage {
+
+        public MIMETypeLanguageError11() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Duplicate MIME type specified '" + TEXT_MIMETYPE + "'. MIME types must be unique.")
     @Registration(id = "MIMETypeLanguageError12", name = "", byteMimeTypes = {TEXT_MIMETYPE, TEXT_MIMETYPE})
     public static class MIMETypeLanguageError12 extends ProxyLanguage {
+
+        public MIMETypeLanguageError12() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Duplicate MIME type specified '" + TEXT_MIMETYPE + "'. MIME types must be unique.")
     @Registration(id = "MIMETypeLanguageError13", name = "", characterMimeTypes = {TEXT_MIMETYPE, TEXT_MIMETYPE})
     public static class MIMETypeLanguageError13 extends ProxyLanguage {
+
+        public MIMETypeLanguageError13() {
+            wrapper = false;
+        }
     }
 
     @ExpectError("Duplicate MIME type specified '" + TEXT_MIMETYPE + "'. MIME types must be unique.")
     @Registration(id = "MIMETypeLanguageError14", name = "", byteMimeTypes = TEXT_MIMETYPE, characterMimeTypes = {TEXT_MIMETYPE})
     public static class MIMETypeLanguageError14 extends ProxyLanguage {
+
+        public MIMETypeLanguageError14() {
+            wrapper = false;
+        }
     }
 
 }

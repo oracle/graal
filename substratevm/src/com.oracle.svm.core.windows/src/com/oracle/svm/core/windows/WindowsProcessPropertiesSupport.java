@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
@@ -61,6 +62,11 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public void exec(Path executable, String[] args) {
+        exec(executable, args, null);
+    }
+
+    @Override
+    public void exec(Path executable, String[] args, Map<String, String> env) {
         if (!Files.isExecutable(executable)) {
             throw new RuntimeException("Path " + executable + " does not point to executable file");
         }
@@ -69,7 +75,13 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
         cmd.addAll(Arrays.asList(args).subList(1, args.length));
         java.lang.Process process = null;
         try {
-            process = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+            ProcessBuilder pb = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT);
+            if (env != null) {
+                // set a new environment
+                pb.environment().clear();
+                pb.environment().putAll(env);
+            }
+            process = pb.start();
         } catch (IOException e) {
             throw VMError.shouldNotReachHere();
         }

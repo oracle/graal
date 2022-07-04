@@ -1,6 +1,6 @@
 ---
 layout: docs-experimental
-toc_group: tools
+toc_group: insight
 link_title: Insight Manual
 permalink: /tools/graalvm-insight/manual/
 ---
@@ -24,6 +24,7 @@ This provides ultimate insights into execution and behavior of one's application
 - [Insight into C Code](#insight-into-c-code)
 - [Inspecting Values](#inspecting-values)
 - [Modifying Local Variables](#modifying-local-variables)
+- [Insight to a Specific Location](#insight-to-a-specific-location)
 - [Delaying Insight Initialization in Node.JS](#delaying-insight-initialization-in-nodejs)
 - [Handling Exceptions](#handling-exceptions)
 - [Intercepting and Altering Execution](#intercepting-and-altering-execution)
@@ -190,7 +191,7 @@ insight.on('enter', function(ev) {
 });
 ```
 
-Run it on top of [sieve.js](../../vm/benchmarks/agentscript/sieve.js).
+Run it on top of [sieve.js](../../../vm/benchmarks/agentscript/sieve.js).
 It is a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers:
 
 ```bash
@@ -216,7 +217,23 @@ It is possible to write GraalVM Insight scripts in Python.
 Such insights can be applied to programs written in Python or any other language.
 
 Here is an example of a script that prints out value of variable `n` when a function `minusOne` is called.
-Save this code to the `agent-fib.js` file:
+Save this code to the `agent.py` file:
+
+```python
+def onEnter(ctx, frame):
+    print(f"minusOne {frame.n}")
+
+class At:
+    sourcePath = ".*agent-fib.js"
+
+class Roots:
+    roots = True
+    at = At()
+    rootNameFilter = "minusOne"
+
+insight.on("enter", onEnter, Roots())
+```
+This code uses a declarative specification of source location introduced in GraalVM 22.2. Use a dynamic `sourceFilter` with older GraalVM versions:
 
 ```python
 def onEnter(ctx, frame):
@@ -224,16 +241,14 @@ def onEnter(ctx, frame):
 
 class Roots:
     roots = True
+    rootNameFilter = "minusOne"
 
     def sourceFilter(self, src):
         return src.name == "agent-fib.js"
 
-    def rootNameFilter(self, n):
-        return n == "minusOne"
-
 insight.on("enter", onEnter, Roots())
 ```
-Apply this script to, for example, a JavaScript application using the following command:
+Apply this script to [agent-fib.js](../../../vm/tests/all/agentscript/agent-fib.js) using the following command:
 
 ```bash
 `js --polyglot --insight=agent.py agent-fib.js`
@@ -257,35 +272,55 @@ insight.on("source", -> (env) {
   puts "Ruby: observed loading of #{env.name}"
 })
 puts("Ruby: Hooks are ready!")
+```
 
+Launch a Node.js application and instrument it with the Ruby script:
+
+```bash
+graalvm/bin/node --js.print --experimental-options --polyglot --insight=source-tracing.rb agent-fib.js
+Ruby: Initializing GraalVM Insight script
+Ruby: Hooks are ready!
+Ruby: observed loading of node:internal/errors
+Ruby: observed loading of node:internal/util
+Ruby: observed loading of node:events
+....
+Ruby: observed loading of node:internal/modules/run_main
+Ruby: observed loading of <...>/agent-fib.js
+Three is the result 3
+```
+
+To track variable values, create `agent.rb` script:
+```ruby
+insight.on("enter", -> (ctx, frame) {
+    puts("minusOne #{frame.n}")
+}, {
+  roots: true,
+  rootNameFilter: "minusOne",
+  at: {
+    sourcePath: ".*agent-fib.js"
+  }
+})
+```
+This code uses a declarative specification of source location introduced in GraalVM 22.2. Use a dynamic `sourceFilter` with older GraalVM versions:
+```ruby
 insight.on("enter", -> (ctx, frame) {
     puts("minusOne #{frame.n}")
 }, {
   roots: true,
   rootNameFilter: "minusOne",
   sourceFilter: -> (src) {
-    return src.name == "agent-fib.js"
+    return src.name == Dir.pwd+"/agent-fib.js"
   }
 })
 ```
 
-The above Ruby script example prints out value of variable `n` when a function `minusOne` in the `agent-fib.js` program is called.
-Launch a Node.js application and instrument it with the Ruby script:
-
+The above Ruby script example prints out value of variable `n` when a function `minusOne` in the [agent-fib.js](../../../vm/tests/all/agentscript/agent-fib.js) program is called:
 ```bash
-graalvm/bin/node --js.print --polyglot --insight=agent-ruby.rb agent-fib.js
-Ruby: Initializing GraalVM Insight script
-Ruby: Hooks are ready!
-Ruby: observed loading of internal/per_context/primordials.js
-Ruby: observed loading of internal/per_context/setup.js
-Ruby: observed loading of internal/per_context/domexception.js
-....
-Ruby: observed loading of internal/modules/cjs/loader.js
-Ruby: observed loading of vm.js
-Ruby: observed loading of fs.js
-Ruby: observed loading of internal/fs/utils.js
-Ruby: observed loading of [eval]-wrapper
-Ruby: observed loading of [eval]
+graalvm/bin/node --js.print --experimental-options --polyglot --insight=agent.rb agent-fib.js
+minusOne 4
+minusOne 3
+minusOne 2
+minusOne 2
 Three is the result 3
 ```
 
@@ -318,7 +353,7 @@ The only change is the R language. All the other GraalVM Insight features and [A
 
 ## Insight into C Code
 
-Not only it is possible to interpret dynamic languages, but with the help of the [GraalVM's LLI implementation](../../reference-manual/polyglot-programming.md/llvm/README.md), one can mix in even statically compiled programs written in **C**, **C++**, **Fortran**, **Rust**, etc.
+Not only it is possible to interpret dynamic languages, but with the help of the [GraalVM's LLI implementation](../../reference-manual/llvm/README.md), one can mix in even statically compiled programs written in **C**, **C++**, **Fortran**, **Rust**, etc.
 
 Take, for examle, a long running program like [sieve.c](https://github.com/oracle/graal/blob/master/vm/tests/all/agentscript/agent-sieve.c), which contains never-ending `for` loop in `main` method. You would like to give it some execution quota.
 
@@ -461,6 +496,58 @@ When launched with `js --insight=erase.js sumarray.js`, only the value `20` gets
 GraalVM Insight `enter` and `return` hooks can only modify existing variables.
 They cannot introduce new ones.
 Attempts to do so yield an exception.
+
+## Insight to a Specific Location
+
+To get to variables at a specific code location, the `at` object may have not only one of the mandatory source specifications:
+a `sourcePath` property with the regular expression matching the source file path, or `sourceURI` property with string representation of the source URI.
+There can also be an optional `line` and/or `column` specified. Let's have a `distance.js` source file:
+```js
+(function(x, y) {
+    let x2 = x*x;
+    let y2 = y*y;
+    let d = Math.sqrt(x2 + y2);
+    for (let i = 0; i < d; i++) {
+        // ...
+    }
+    return d;
+})(3, 4);
+```
+
+Then we can apply following `distance-trace.js` insight script to get values of variables:
+```js
+insight.on('enter', function(ctx, frame) {
+    print("Squares: " + frame.x2 + ", " + frame.y2);
+}, {
+    statements: true,
+    at: {
+        sourcePath: ".*distance.js",
+        line: 4
+    }
+});
+
+insight.on('enter', function(ctx, frame) {
+    print("Loop var i = " + frame.i);
+}, {
+    expressions: true,
+    at: {
+        sourcePath: ".*distance.js",
+        line: 5,
+        column: 21
+    }
+});
+```
+That gives us:
+```bash
+graalvm/bin/js --insight=distance-trace.js distance.js
+Squares: 9, 16
+Loop var i = 0
+Loop var i = 1
+Loop var i = 2
+Loop var i = 3
+Loop var i = 4
+Loop var i = 5
+```
 
 ## Delaying Insight Initialization in Node.JS
 
@@ -608,7 +695,7 @@ insight.on('enter', function(ev) {
 insight.on('close', dumpCount);
 ```
 
-Use the script on fifty iterations of the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
+Use the script on fifty iterations of the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
 Repeating the computation fifty times gives the runtime a chance to warm up and properly optimize.
 Here is the optimal run:
 
@@ -638,7 +725,7 @@ The `count++` invocation becomes a natural part of the application at all the pl
 GraalVM Insight is capable to access local variables, almost "for free".
 GraalVM Insight code, accessing local variables, blends with the actual function code defining them and there is no visible slowdown.
 
-This can be demonstrated with this [sieve.js](../../vm/benchmarks/agentscript/sieve.js) algorithm to compute hundred thousand of prime numbers.
+This can be demonstrated with this [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) algorithm to compute hundred thousand of prime numbers.
 It keeps the found prime numbers in a linked list constructed via following function:
 
 ```js
@@ -757,7 +844,7 @@ insight.on('return', (ctx, frame) => {
 ```
 
 Save the code snippet as a `dump.js` file.
-Get the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) file and launch it as:
+Get the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) file and launch it as:
 
 ```bash
 graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
@@ -770,11 +857,21 @@ Inspect the generated `.hprof` file with regular tools like [VisualVM](https://w
 
 ![Heap Inspect](img/Insight-HeapInspect.png)
 
-The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) script.
+The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) script.
 The function has just computed one hundred thousand (count available in variable `cnt`) prime numbers.
 The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
 The rest of the linked list is hidden (only references up to depth `10` were requested) behind `unreachable` object.
 Last variable `x` shows the number of searched natural numbers to compute all the prime numbers.
+
+### Heap Dumping Cache
+
+To speed up the heap dumping process and optimize the resulting dump, it's possible to enable a memory cache.
+Objects whose properties are not changed between dumps to the cache are stored only once, reducing the resulting heap dump size.
+Add e.g. `--heap.cacheSize=1000` option to use a memory cache for 1000 events. By default, the cache is dumped to the file and cleared when full.
+That policy can be changed by `--heap.cacheReplacement=lru` option, which keeps the most recent dump events in the cache and drops the oldest ones when
+the cache size limit is reached.
+
+To flush the cache to the heap dump file, `heap.flush()` needs to be called explicitly.
 
 ## Note on GraalVM Insight API
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 /**
@@ -59,7 +60,7 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
          */
         @Option(help = "Milliseconds to delay initialization of the libgraal JMX interface. " +
                         "Specify a negative value to disable the interface altogether.", type = OptionType.Expert)//
-        static final OptionKey<Integer> LibGraalManagementDelay = new OptionKey<>(1000);
+        static final OptionKey<Integer> LibGraalManagementDelay = new OptionKey<>(-1);
     }
 
     /**
@@ -76,6 +77,10 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
         int delay = Options.LibGraalManagementDelay.getValue(runtime.getOptions());
         if (delay < 0) {
             return;
+        }
+        Pointer warningShown = MBeanProxy.getOptionWarningStatePointer();
+        if (warningShown.compareAndSwapInt(0, 0, 1, LocationIdentity.ANY_LOCATION) == 0) {
+            TTY.printf("The %s option is deprecated and will be removed in the next GraalVM version.%n", Options.LibGraalManagementDelay.getName());
         }
         Pointer defineClassesStatePointer = getDefineClassesStatePointer();
         long defineClassesState = defineClassesStatePointer.readLong(0);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -86,12 +87,16 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
     private final BitcodeID bitcodeID;
 
     @Child private StaticInitsNode constructor;
+    @Child private InitObjcSelectorsNode selectors;
 
     public InitializeModuleNode(LLVMLanguage language, LLVMParserResult parserResult, String moduleName) {
         this.destructor = createDestructor(parserResult, moduleName, language);
         this.dataLayout = parserResult.getDataLayout();
         this.bitcodeID = parserResult.getRuntime().getBitcodeID();
         this.constructor = createConstructor(parserResult, moduleName);
+        if (language.getCapability(PlatformCapability.class).getOS() == PlatformCapability.OS.Darwin) {
+            this.selectors = InitObjcSelectorsNodeGen.create(parserResult);
+        }
     }
 
     public void execute(VirtualFrame frame, LLVMContext ctx) {
@@ -99,6 +104,10 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
             ctx.registerDestructorFunctions(bitcodeID, destructor);
         }
         constructor.execute(frame);
+
+        if (selectors != null) {
+            selectors.execute(frame);
+        }
     }
 
     @Override

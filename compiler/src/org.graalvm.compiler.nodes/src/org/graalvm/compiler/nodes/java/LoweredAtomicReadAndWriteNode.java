@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.Value;
 
 /**
  * Represents the lowered version of an atomic read-and-write operation like
- * {@link sun.misc.Unsafe#getAndSetInt(Object, long, int)}.
+ * {@code sun.misc.Unsafe.getAndSetInt(Object, long, int)}.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_8, size = SIZE_2)
 public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerableAccess, SingleMemoryKill {

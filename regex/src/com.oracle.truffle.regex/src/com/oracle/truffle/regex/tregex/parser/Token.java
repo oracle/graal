@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+
+import java.util.Objects;
 
 public class Token implements JsonConvertible {
 
@@ -119,7 +121,7 @@ public class Token implements JsonConvertible {
         return GROUP_END;
     }
 
-    public static Token createBackReference(int groupNr) {
+    public static BackReference createBackReference(int groupNr) {
         return new BackReference(groupNr);
     }
 
@@ -127,11 +129,11 @@ public class Token implements JsonConvertible {
         return new Quantifier(min, max, greedy);
     }
 
-    public static Token createCharClass(CodePointSet codePointSet) {
+    public static CharacterClass createCharClass(CodePointSet codePointSet) {
         return new CharacterClass(codePointSet, false);
     }
 
-    public static Token createCharClass(CodePointSet codePointSet, boolean wasSingleChar) {
+    public static CharacterClass createCharClass(CodePointSet codePointSet, boolean wasSingleChar) {
         return new CharacterClass(codePointSet, wasSingleChar);
     }
 
@@ -243,7 +245,11 @@ public class Token implements JsonConvertible {
 
         @Override
         public int hashCode() {
-            return 31 * min + 31 * max + (greedy ? 1 : 0);
+            return Objects.hash(min, max, greedy, index, zeroWidthIndex);
+        }
+
+        public boolean equalsSemantic(Quantifier o) {
+            return min == o.min && max == o.max && greedy == o.greedy;
         }
 
         @Override
@@ -255,7 +261,7 @@ public class Token implements JsonConvertible {
                 return false;
             }
             Quantifier o = (Quantifier) obj;
-            return min == o.min && max == o.max && greedy == o.greedy;
+            return min == o.min && max == o.max && greedy == o.greedy && index == o.index && zeroWidthIndex == o.zeroWidthIndex;
         }
 
         @TruffleBoundary

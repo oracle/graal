@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 
 @AutomaticFeature
-class SubstrateLIRBackendFeature implements Feature, GraalFeature {
+class SubstrateLIRBackendFeature implements Feature, InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return !SubstrateOptions.useLLVMBackend();
@@ -58,7 +58,7 @@ class SubstrateLIRBackendFeature implements Feature, GraalFeature {
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
-                return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
+                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
             }
         });
     }

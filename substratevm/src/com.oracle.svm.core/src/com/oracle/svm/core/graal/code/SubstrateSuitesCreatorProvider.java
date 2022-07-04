@@ -28,12 +28,23 @@ package com.oracle.svm.core.graal.code;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
 import org.graalvm.compiler.java.DefaultSuitesCreator;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
+
+import com.oracle.svm.core.SubstrateOptions;
 
 public class SubstrateSuitesCreatorProvider {
     private final SuitesCreator suitesCreator;
 
     private final SuitesCreator firstTierSuitesCreator;
+
+    protected static CompilerConfiguration getHostedCompilerConfiguration() {
+        if (SubstrateOptions.useEconomyCompilerConfig()) {
+            return new EconomyCompilerConfiguration();
+        } else {
+            return new CommunityCompilerConfiguration();
+        }
+    }
 
     protected SubstrateSuitesCreatorProvider(SuitesCreator suitesCreator, SuitesCreator firstTierSuitesCreator) {
         this.suitesCreator = suitesCreator;
@@ -41,7 +52,7 @@ public class SubstrateSuitesCreatorProvider {
     }
 
     public SubstrateSuitesCreatorProvider() {
-        this(new DefaultSuitesCreator(new CommunityCompilerConfiguration()), new DefaultSuitesCreator(new EconomyCompilerConfiguration()));
+        this(new DefaultSuitesCreator(getHostedCompilerConfiguration()), new DefaultSuitesCreator(new EconomyCompilerConfiguration()));
     }
 
     public final SuitesCreator getSuitesCreator() {

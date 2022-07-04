@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public class PureNFAMarkLookBehindEntries {
         if (!nfa.getAst().getProperties().hasLookBehindAssertions()) {
             return;
         }
-        for (PureNFA subTree : nfa.getLookArounds()) {
+        for (PureNFA subTree : nfa.getSubtrees()) {
             markEntriesInSubtree(subTree, false);
         }
         markEntriesInSubtree(nfa.getRoot(), true);
@@ -75,7 +75,7 @@ public class PureNFAMarkLookBehindEntries {
         for (PureNFAState s : subtree.getStates()) {
             if (s.isLookBehind(nfa.getAst())) {
                 LookBehindAssertion lb = (LookBehindAssertion) s.getAstNode(nfa.getAst());
-                PureNFA lookBehindNFA = nfa.getLookArounds().get(lb.getSubTreeId());
+                PureNFA lookBehindNFA = nfa.getSubtrees().get(lb.getSubTreeId());
                 if (subtreeIsRoot && lb.getGroup().isLiteral()) {
                     markLiteral(s, lookBehindNFA);
                 } else {

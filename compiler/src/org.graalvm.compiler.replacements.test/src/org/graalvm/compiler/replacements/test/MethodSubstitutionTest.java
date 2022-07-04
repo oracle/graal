@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements.test;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -35,9 +34,9 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 
@@ -46,9 +45,9 @@ import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tests if {@link MethodSubstitution}s are inlined correctly. Most test cases only assert that
- * there are no remaining invocations in the graph. This is sufficient if the method that is being
- * substituted is a native method. For Java methods, additional checks are necessary.
+ * Tests if method substitutions are inlined correctly. Most test cases only assert that there are
+ * no remaining invocations in the graph. This is sufficient if the method that is being substituted
+ * is a native method. For Java methods, additional checks are necessary.
  */
 public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 
@@ -92,10 +91,10 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
             new DeadCodeEliminationPhase().apply(graph);
             // Try to ensure any macro nodes are lowered to expose any resulting invokes
             if (graph.getNodes().filter(MacroNode.class).isNotEmpty()) {
-                new LoweringPhase(this.createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+                new HighTierLoweringPhase(this.createCanonicalizerPhase()).apply(graph, context);
             }
             if (graph.getNodes().filter(MacroNode.class).isNotEmpty()) {
-                new LoweringPhase(this.createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, context);
+                new MidTierLoweringPhase(this.createCanonicalizerPhase()).apply(graph, context);
             }
             assertNotInGraph(graph, MacroNode.class);
             if (name != null) {

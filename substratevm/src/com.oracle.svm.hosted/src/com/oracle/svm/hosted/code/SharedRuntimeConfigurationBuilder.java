@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.code;
 import java.util.EnumMap;
 import java.util.function.Function;
 
+import com.oracle.svm.hosted.HostedConfiguration;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -44,11 +45,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -59,19 +58,9 @@ import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.stack.JavaFrameAnchor;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.c.info.AccessorInfo;
-import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.config.HybridLayout;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.thread.VMThreadMTFeature;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -101,6 +90,10 @@ public abstract class SharedRuntimeConfigurationBuilder {
         this.originalLoopsDataProvider = originalLoopsDataProvider;
     }
 
+    public NativeLibraries getNativeLibraries() {
+        return nativeLibraries;
+    }
+
     public SharedRuntimeConfigurationBuilder build() {
         EnumMap<ConfigKind, RegisterConfig> registerConfigs = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
@@ -120,7 +113,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null, null);
         BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(metaAccess);
         PlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
-        MetaAccessExtensionProvider metaAccessExtensionProvider = new SubstrateMetaAccessExtensionProvider();
+        MetaAccessExtensionProvider metaAccessExtensionProvider = HostedConfiguration.instance().createCompilationMetaAccessExtensionProvider(metaAccess);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
         LoweringProvider lowerer = createLoweringProvider(p);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
@@ -136,7 +129,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
                             snippetReflection, platformConfig, metaAccessExtensionProvider, loopsDataProvider);
-            backends.put(config, GraalConfiguration.instance().createBackend(newProviders));
+            backends.put(config, GraalConfiguration.runtimeInstance().createBackend(newProviders));
         }
 
         runtimeConfig = new RuntimeConfiguration(p, snippetReflection, backends, wordTypes);
@@ -175,42 +168,10 @@ public abstract class SharedRuntimeConfigurationBuilder {
     }
 
     protected LoweringProvider createLoweringProvider(Providers p) {
-        return SubstrateLoweringProvider.create(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
+        return SubstrateLoweringProvider.createForRuntime(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
     }
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
 
     protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
-
-    public void updateLazyState(HostedMetaAccess hMetaAccess) {
-        HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);
-        int vtableBaseOffset = hubLayout.getArrayBaseOffset();
-        int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int typeIDSlotsOffset = HybridLayout.getTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
-
-        int componentHubOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentType")).getLocation();
-
-        int javaFrameAnchorLastSPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaSP");
-        int javaFrameAnchorLastIPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaIP");
-
-        int vmThreadStatusOffset = -1;
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
-        }
-
-        int imageCodeInfoCodeStartOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart")).getLocation();
-
-        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, typeIDSlotsOffset, componentHubOffset,
-                        javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset, imageCodeInfoCodeStartOffset);
-    }
-
-    private int findStructOffset(Class<?> clazz, String accessorName) {
-        try {
-            AccessorInfo accessorInfo = (AccessorInfo) nativeLibraries.findElementInfo(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(accessorName)));
-            StructFieldInfo structFieldInfo = (StructFieldInfo) accessorInfo.getParent();
-            return structFieldInfo.getOffsetInfo().getProperty();
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
 }

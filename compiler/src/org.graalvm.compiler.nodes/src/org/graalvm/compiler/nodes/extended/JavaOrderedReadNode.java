@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
@@ -57,7 +58,10 @@ public class JavaOrderedReadNode extends JavaReadNode implements SingleMemoryKil
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
     }
 
     @Override

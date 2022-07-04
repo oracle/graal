@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -95,10 +99,15 @@ final class LibFFISignature {
         } else {
             cif = context.prepareSignatureVarargs(realRetType, argCount, fixedArgCount, argTypes);
         }
+        if (cif == 0) {
+            throw CompilerDirectives.shouldNotReachHere(String.format("invalid signature (ret: %s, argCount: %d, fixedArgCount: %d, args: %s)",
+                            retType, argCount, fixedArgCount, Arrays.toString(argTypes)));
+        }
         return create(cif, info);
     }
 
     private static LibFFISignature create(long cif, CachedSignatureInfo info) {
+        assert cif > 0;
         LibFFISignature ret = new LibFFISignature(cif, info);
         NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new FreeDestructor(cif));
         return ret;
@@ -292,7 +301,7 @@ final class LibFFISignature {
             if (retType instanceof LibFFIType.ObjectType) {
                 Object ret = ctx.executeObject(signature.cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
                 if (ret == null) {
-                    return NativePointer.create(ctx.language, 0);
+                    return NativePointer.NULL;
                 } else {
                     return ret;
                 }
@@ -410,6 +419,14 @@ final class LibFFISignature {
             state = newState;
         }
 
+        LibFFIType maybePromote(Node node, LibFFIType argType) {
+            if (fixedArgCount == NOT_VARARGS) {
+                return argType;
+            } else {
+                return argType.varargsPromoteType(node);
+            }
+        }
+
         @ExportMessage
         static class SetReturnType {
 
@@ -423,19 +440,23 @@ final class LibFFISignature {
         @ExportMessage
         static class AddArgument {
 
-            @Specialization(guards = {"builder.state == oldState", "argType.typeInfo == cachedTypeInfo"})
-            static void doCached(SignatureBuilder builder, LibFFIType argType,
+            @Specialization(guards = {"builder.state == oldState", "promotedType.typeInfo == cachedTypeInfo"})
+            static void doCached(SignatureBuilder builder, @SuppressWarnings("unused") LibFFIType argType,
+                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
+                            @Bind("builder.maybePromote(self, argType)") LibFFIType promotedType,
                             @Cached("builder.state") ArgsState oldState,
-                            @Cached("argType.typeInfo") CachedTypeInfo cachedTypeInfo,
+                            @Cached("promotedType.typeInfo") CachedTypeInfo cachedTypeInfo,
                             @Cached("oldState.addArg(cachedTypeInfo)") ArgsState newState) {
-                assert builder.state == oldState && argType.typeInfo == cachedTypeInfo;
-                builder.addArg(argType, newState);
+                assert builder.state == oldState && promotedType.typeInfo == cachedTypeInfo;
+                builder.addArg(promotedType, newState);
             }
 
             @Specialization(replaces = "doCached")
-            static void doGeneric(SignatureBuilder builder, LibFFIType argType) {
-                ArgsState newState = builder.state.addArg(argType.typeInfo);
-                builder.addArg(argType, newState);
+            static void doGeneric(SignatureBuilder builder, LibFFIType argType,
+                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
+                LibFFIType promotedType = builder.maybePromote(self, argType);
+                ArgsState newState = builder.state.addArg(promotedType.typeInfo);
+                builder.addArg(promotedType, newState);
             }
         }
 

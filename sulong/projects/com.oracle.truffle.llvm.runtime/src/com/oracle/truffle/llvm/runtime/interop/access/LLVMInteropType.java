@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,11 +42,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.Pair;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,7 +51,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -76,6 +71,11 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -212,8 +212,19 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Buffer extends LLVMInteropType {
 
-        private Buffer() {
-            super(0);
+        private final boolean isWritable;
+
+        public Buffer() {
+            this(true, 0L);
+        }
+
+        public Buffer(boolean isWritable, long length) {
+            super(length);
+            this.isWritable = isWritable;
+        }
+
+        public boolean isWritable() {
+            return isWritable;
         }
 
         @Override
@@ -303,6 +314,84 @@ public abstract class LLVMInteropType implements TruffleObject {
         @Override
         protected String toString(EconomicSet<LLVMInteropType> visited) {
             return name;
+        }
+    }
+
+    public abstract static class SpecialStruct extends Structured {
+        final Struct struct;
+        final String name;
+        final SpecialStructAccessor[] accessors;
+
+        protected SpecialStruct(String name, Struct struct, SpecialStructAccessor[] accessors) {
+            super(struct.getSize());
+            this.struct = struct;
+            this.name = name;
+            this.accessors = accessors;
+        }
+
+        public Struct getStruct() {
+            return struct;
+        }
+
+        SpecialStructAccessor findAccessor(long offset) {
+            for (SpecialStructAccessor accessor : accessors) {
+                if (accessor.contains(offset)) {
+                    return accessor;
+                }
+            }
+            return null;
+        }
+
+        protected static SpecialStructAccessor accessorForField(Struct struct, String memberName, SpecialStructGetter getter) {
+            StructMember field = struct.findMember(memberName);
+            return new SpecialStructAccessor(memberName, field.startOffset, field.endOffset, field.type, getter);
+        }
+
+        @Override
+        protected String toString(EconomicSet<LLVMInteropType> visited) {
+            return name;
+        }
+    }
+
+    public static class Instant extends SpecialStruct {
+        public Instant(Struct struct) {
+            super("Instant", struct, new SpecialStructAccessor[]{
+                            accessorForField(struct, "seconds", (foreign, interop) -> interop.asInstant(foreign).getEpochSecond())
+            });
+        }
+    }
+
+    public static class TimeInfo extends SpecialStruct {
+        public TimeInfo(Struct struct) {
+            super("TimeInfo", struct, new SpecialStructAccessor[]{
+                            accessorForField(struct, "tm_hour",
+                                            (foreign, interop) -> interop.asTime(foreign).getHour()),
+                            accessorForField(struct, "tm_min",
+                                            (foreign, interop) -> interop.asTime(foreign).getMinute()),
+                            accessorForField(struct, "tm_sec",
+                                            (foreign, interop) -> interop.asTime(foreign).getSecond()),
+                            accessorForField(struct, "tm_mday",
+                                            (foreign, interop) -> interop.asDate(foreign).getDayOfMonth()),
+                            accessorForField(struct, "tm_mon",
+                                            (foreign, interop) -> interop.asDate(foreign).getMonthValue() - 1),
+                            accessorForField(struct, "tm_year",
+                                            (foreign, interop) -> interop.asDate(foreign).getYear() - 1900),
+                            accessorForField(struct, "tm_wday",
+                                            (foreign, interop) -> getWDay(interop.asDate(foreign))),
+                            accessorForField(struct, "tm_yday",
+                                            (foreign, interop) -> getYDay(interop.asDate(foreign))),
+                            // accessorForField(struct, "tm_isdst", (foreign, interop) -> 0)
+            });
+        }
+
+        @TruffleBoundary
+        static int getWDay(LocalDate date) {
+            return date.getDayOfWeek().ordinal() % 7;
+        }
+
+        @TruffleBoundary
+        static int getYDay(LocalDate date) {
+            return date.getDayOfYear() - 1;
         }
     }
 
@@ -673,6 +762,31 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     }
 
+    @FunctionalInterface
+    public interface SpecialStructGetter {
+        Object get(Object foreign, InteropLibrary library) throws UnsupportedMessageException;
+    }
+
+    public static class SpecialStructAccessor {
+        public final String name;
+        public final long startOffset;
+        public final long endOffset;
+        public final LLVMInteropType type;
+        public final SpecialStructGetter getter;
+
+        public SpecialStructAccessor(String name, long startOffset, long endOffset, LLVMInteropType type, SpecialStructGetter getter) {
+            this.name = name;
+            this.startOffset = startOffset;
+            this.endOffset = endOffset;
+            this.type = type;
+            this.getter = getter;
+        }
+
+        boolean contains(long offset) {
+            return startOffset <= offset && ((startOffset == endOffset) | offset < endOffset);
+        }
+    }
+
     public static class Function extends Structured {
         final LLVMInteropType returnType;
         @CompilationFinal(dimensions = 1) final LLVMInteropType[] parameterTypes;
@@ -828,7 +942,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             } else if (type instanceof LLVMSourceClassLikeType) {
                 return convertClass((LLVMSourceClassLikeType) type);
             } else if (type instanceof LLVMSourceStructLikeType) {
-                return convertStruct((LLVMSourceStructLikeType) type);
+                return convertStructuredStruct((LLVMSourceStructLikeType) type);
             } else if (type instanceof LLVMSourceFunctionType) {
                 return convertFunction((LLVMSourceFunctionType) type);
             } else {
@@ -841,8 +955,28 @@ public abstract class LLVMInteropType implements TruffleObject {
             return new Array(new Register(type, base), base.getSize() / 8, type.getLength());
         }
 
+        private Structured convertStructuredStruct(LLVMSourceStructLikeType type) {
+            Struct struct = convertStruct(type);
+            Structured ret = struct;
+
+            if (struct.name.equals("struct polyglot_instant")) {
+                ret = new Instant(struct);
+            } else if (struct.name.equals("struct tm")) {
+                ret = new TimeInfo(struct);
+            }
+
+            if (ret != struct) {
+                // If we have changed the structure, then we need to also update
+                // the type cache
+                typeCache.put(type, ret);
+            }
+
+            return ret;
+        }
+
         private Struct convertStruct(LLVMSourceStructLikeType type) {
-            Struct ret = new Struct(type.getName(), new StructMember[type.getDynamicElementCount()], type.getSize() / 8);
+
+            Struct ret = new Struct(type.getName(), new StructMember[type.getDynamicElementCount()], type.getSize() / Byte.SIZE);
             typeCache.put(type, ret);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);

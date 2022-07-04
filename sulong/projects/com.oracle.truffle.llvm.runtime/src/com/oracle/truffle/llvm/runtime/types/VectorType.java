@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ public final class VectorType extends AggregateType {
     private final int length;
 
     public VectorType(Type elementType, int length) {
-        if (elementType != null && !(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
+        if (elementType != null && !(elementType instanceof PrimitiveType || elementType instanceof PointerType || elementType instanceof VariableBitWidthType)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new AssertionError("Invalid ElementType of Vector: " + elementType.getClass().getSimpleName());
         }
@@ -76,7 +76,7 @@ public final class VectorType extends AggregateType {
 
     public void setElementType(Type elementType) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
+        if (!(elementType instanceof PrimitiveType || elementType instanceof PointerType || elementType instanceof VariableBitWidthType)) {
             throw new AssertionError("Invalid ElementType of Vector: " + (elementType == null ? "null" : elementType.getClass().getSimpleName()));
         }
         verifyCycleFree(elementType);
@@ -100,7 +100,15 @@ public final class VectorType extends AggregateType {
 
     @Override
     public long getSize(DataLayout targetDataLayout) throws TypeOverflowException {
-        return multiplyUnsignedExact(getElementType().getSize(targetDataLayout), Integer.toUnsignedLong(length));
+        // See https://llvm.org/docs/LangRef.html#vector-type
+        long bitSize = getElementType().getBitSize();
+        long vecBitSize = multiplyUnsignedExact(bitSize, Integer.toUnsignedLong(length));
+        long size = vecBitSize / Byte.SIZE;
+        if (vecBitSize % Byte.SIZE != 0) {
+            size += 1;
+        }
+        long hiBitSize = Long.highestOneBit(size);
+        return hiBitSize == size ? hiBitSize : hiBitSize << 1;
     }
 
     @Override

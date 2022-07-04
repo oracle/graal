@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import java.lang.annotation.Repeatable;
@@ -53,6 +54,7 @@ import java.lang.reflect.Method;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -274,16 +276,22 @@ public class NodeFieldTest {
     }
 
     @Test
-    public void testUncachedNodeSettableIntFieldRef() {
+    public void testUncachedNodeSettableIntFieldRef() throws Exception {
         UncachedNodeSettableIntFieldRef cached = UncachedNodeSettableIntFieldRefNodeGen.create();
         assertEquals(0, cached.execute());
         assertEquals(0, cached.getFoo());
         cached.setFoo(42);
         assertEquals(42, cached.execute());
         assertEquals(42, cached.getFoo());
-        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().execute(), UnsupportedOperationException.class);
-        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().getFoo(), UnsupportedOperationException.class);
-        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().setFoo(42), UnsupportedOperationException.class);
+        assertNull(cached.getClass().getDeclaredMethod("getFoo").getAnnotation(TruffleBoundary.class));
+        assertNull(cached.getClass().getDeclaredMethod("setFoo", int.class).getAnnotation(TruffleBoundary.class));
+
+        UncachedNodeSettableIntFieldRef uncached = UncachedNodeSettableIntFieldRefNodeGen.getUncached();
+        assertFails(() -> uncached.execute(), UnsupportedOperationException.class);
+        assertFails(() -> uncached.getFoo(), UnsupportedOperationException.class);
+        assertFails(() -> uncached.setFoo(42), UnsupportedOperationException.class);
+        assertNotNull(uncached.getClass().getDeclaredMethod("getFoo").getAnnotation(TruffleBoundary.class));
+        assertNotNull(uncached.getClass().getDeclaredMethod("setFoo", int.class).getAnnotation(TruffleBoundary.class));
     }
 
     @GenerateUncached

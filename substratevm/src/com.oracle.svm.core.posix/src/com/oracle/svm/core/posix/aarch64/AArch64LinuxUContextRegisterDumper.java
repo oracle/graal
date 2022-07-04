@@ -46,7 +46,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 
-@Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
+@Platforms({Platform.LINUX_AARCH64_BASE.class})
 @AutomaticFeature
 class AArch64LinuxUContextRegisterDumperFeature implements Feature {
     @Override
@@ -112,12 +112,14 @@ class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         mcontext_linux_aarch64_t sigcontext = uContext.uc_mcontext_linux_aarch64();
         return WordFactory.pointer(sigcontext.sp());
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(ucontext_t uContext) {
         mcontext_linux_aarch64_t sigcontext = uContext.uc_mcontext_linux_aarch64();
         return WordFactory.pointer(sigcontext.pc());

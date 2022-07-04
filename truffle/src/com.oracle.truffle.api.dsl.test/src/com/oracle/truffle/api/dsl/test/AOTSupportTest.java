@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,7 +97,6 @@ import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 /**
  * Note that this test is also used in AOTSupportCompilationTest.
@@ -317,15 +316,12 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         }
 
         @Specialization(guards = "arg == 4")
-        int languageReferenceLookup1(int arg,
-                        @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1) {
+        int languageReferenceLookup1(int arg) {
             return arg;
         }
 
-        @Specialization(guards = "arg == 5", limit = "1")
-        int languageReferenceLookup2(int arg,
-                        @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1,
-                        @CachedLibrary("lang1.getValue()") InteropLibrary lib) {
+        @Specialization(guards = "arg == 5")
+        int languageReferenceLookup2(int arg) {
             return arg;
         }
 
@@ -469,7 +465,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
     public static final class AOTInitializable {
 
         @ExportMessage
-        static boolean accepts(AOTInitializable receiver, @Cached("43") int cachedValue) {
+        static boolean accepts(AOTInitializable receiver) {
             return true;
         }
 
@@ -517,15 +513,12 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             }
 
             @Specialization(guards = "arg == 4")
-            static int languageReferenceLookup1(AOTInitializable receiver, int arg,
-                            @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1) {
+            static int languageReferenceLookup1(AOTInitializable receiver, int arg) {
                 return arg;
             }
 
-            @Specialization(guards = "arg == 5", limit = "1")
-            static int languageReferenceLookup2(AOTInitializable receiver, int arg,
-                            @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1,
-                            @CachedLibrary("lang1.getValue()") InteropLibrary lib) {
+            @Specialization(guards = "arg == 5")
+            static int languageReferenceLookup2(AOTInitializable receiver, int arg) {
                 return arg;
             }
 
@@ -612,9 +605,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             }
 
             @Specialization(guards = {"arg == 10"})
-            static int nop2(AOTInitializable receiver, int arg,
-                            @com.oracle.truffle.api.dsl.CachedContext(ProxyLanguage.class) ProxyLanguage.LanguageContext context,
-                            @com.oracle.truffle.api.dsl.CachedLanguage ProxyLanguage language) {
+            static int nop2(AOTInitializable receiver, int arg) {
                 return arg;
             }
 

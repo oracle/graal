@@ -59,6 +59,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class SpecializationData extends TemplateMethod {
@@ -119,6 +120,54 @@ public final class SpecializationData extends TemplateMethod {
         copy.limitExpression = limitExpression;
         copy.aotReachable = aotReachable;
         return copy;
+    }
+
+    /**
+     * Returns true if an expression can always be folded to a constant during PE. Method calls are
+     * natural boundaries as we cannot look into them at annotation processing time. The passed
+     * expression must be resolved.
+     */
+    public boolean isCompilationFinalExpression(DSLExpression expression) {
+        if (!(expression instanceof Variable)) {
+            // fast-path check
+            return false;
+        }
+
+        if (expression.resolveConstant() != null) {
+            return true;
+        }
+
+        /*
+         * Check whether the expression is of form a.b.c with final or compilation final values.
+         */
+        DSLExpression current = expression;
+        while (current != null) {
+            if (!(current instanceof Variable)) {
+                return false;
+            }
+
+            Variable variable = (Variable) current;
+            // if not a final field
+            if (!variable.isCompilationFinalField()) {
+                Parameter boundParameter = findByVariable(variable.getResolvedVariable());
+                // and not a bound parameter
+                if (boundParameter == null) {
+                    // it cannot be compilation final
+                    return false;
+                }
+            }
+
+            current = variable.getReceiver();
+        }
+
+        // do a more thorough analysis of whether a dynamic parameter is bound, possibly indirectly
+        // e.g. through @Bind.
+        if (isDynamicParameterBound(expression, true)) {
+            // dynamic parameters cannot be known to be PE final (they might be though).
+            return false;
+        }
+
+        return true;
     }
 
     public boolean isPrepareForAOT() {
@@ -308,18 +357,6 @@ public final class SpecializationData extends TemplateMethod {
         }
     }
 
-    public boolean isOnlyLanguageReferencesBound(DSLExpression expression) {
-        boolean onlyLanguageReferences = true;
-        Set<CacheExpression> boundCaches = getBoundCaches(expression, false);
-        for (CacheExpression bound : boundCaches) {
-            if (!bound.isCachedLanguage()) {
-                onlyLanguageReferences = false;
-                break;
-            }
-        }
-        return onlyLanguageReferences && expression.findBoundVariableElements().size() == boundCaches.size();
-    }
-
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {
@@ -344,9 +381,6 @@ public final class SpecializationData extends TemplateMethod {
                     if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
                         return true;
                     }
-                }
-                if ((cache.isCachedContext() || cache.isCachedLanguage()) && !cache.isReference()) {
-                    return true;
                 }
             }
         }

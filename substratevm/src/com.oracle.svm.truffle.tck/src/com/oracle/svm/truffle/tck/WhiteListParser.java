@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.truffle.tck;
 
-import java.io.IOException;
-import java.io.Reader;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,7 +42,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
 
@@ -74,12 +72,10 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
+    public void parseAndRegister(Object json, URI origin) {
         if (whiteList == null) {
             whiteList = new HashSet<>();
         }
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
         parseClassArray(castList(json, "First level of document must be an array of class descriptors"));
     }
 

@@ -69,7 +69,11 @@ public class TStringCodePointIndexToByteIndexTest extends TStringTestBase {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             for (int i = 0; i < codepoints.length; i++) {
                 Assert.assertEquals(byteIndices[i], node.execute(a, 0, i, encoding));
+                if (i > 0) {
+                    Assert.assertEquals(byteIndices[i] - byteIndices[1], node.execute(a, byteIndices[1], i - 1, encoding));
+                }
             }
+            Assert.assertEquals(array.length, node.execute(a, 0, codepoints.length, encoding));
         });
     }
 
@@ -80,7 +84,7 @@ public class TStringCodePointIndexToByteIndexTest extends TStringTestBase {
 
     @Test
     public void testOutOfBounds() throws Exception {
-        checkOutOfBounds(true, false, (a, i, encoding) -> node.execute(a, i, 0, encoding));
-        checkOutOfBounds(false, false, (a, i, encoding) -> node.execute(a, 0, i, encoding));
+        checkOutOfBounds(true, true, (a, i, encoding) -> node.execute(a, i, 0, encoding));
+        checkOutOfBounds(false, true, (a, i, encoding) -> node.execute(a, 0, i, encoding));
     }
 }

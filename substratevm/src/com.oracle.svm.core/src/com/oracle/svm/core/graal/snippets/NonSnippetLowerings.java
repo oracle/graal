@@ -84,6 +84,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
@@ -108,6 +109,7 @@ public abstract class NonSnippetLowerings {
                     NonSnippetLowerings.class, "reportVerifyTypesError", false, LocationIdentity.any());
 
     private final RuntimeConfiguration runtimeConfig;
+    private final KnownOffsets knownOffsets;
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
     final boolean verifyTypes = SubstrateOptions.VerifyTypes.getValue();
@@ -116,6 +118,7 @@ public abstract class NonSnippetLowerings {
     protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
                     Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         this.runtimeConfig = runtimeConfig;
+        this.knownOffsets = KnownOffsets.singleton();
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
         lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
@@ -348,7 +351,7 @@ public abstract class NonSnippetLowerings {
                          */
                         JavaConstant codeInfo = SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache());
                         ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
-                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), runtimeConfig.getImageCodeInfoCodeStartOffset(), graph);
+                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
                         AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));
                         // Not constant because runtime code can be persisted and loaded in a
                         // process where image code is located elsewhere:
@@ -373,9 +376,9 @@ public abstract class NonSnippetLowerings {
                     loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
 
                 } else {
-                    int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
+                    int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex());
 
-                    hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.maybeAddOrUnique(PiNode.create(receiver, nullCheck))));
+                    hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
                     AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), vtableEntryOffset, graph)));
                     ReadNode entry = graph.add(new ReadNode(address, NamedLocationIdentity.FINAL_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE));
                     loweredCallTarget = graph.add(

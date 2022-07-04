@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.lir.gen;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.ValueKind;
  */
 public interface ArithmeticLIRGeneratorTool {
 
-    Value emitNegate(Value input);
+    Value emitNegate(Value input, boolean setFlags);
 
     Value emitAdd(Value a, Value b, boolean setFlags);
 
@@ -105,9 +106,9 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitBitScanReverse(Value operand);
 
-    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
+    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryExtendKind extendKind);
 
-    Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder);
+    Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind);
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
 
@@ -160,6 +161,11 @@ public interface ArithmeticLIRGeneratorTool {
 
     @SuppressWarnings("unused")
     default Value emitRound(Value operand, RoundingMode mode) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitRoundFloatToInteger(Value operand) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

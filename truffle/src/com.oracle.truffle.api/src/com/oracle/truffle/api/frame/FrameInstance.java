@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,7 +115,7 @@ public interface FrameInstance {
     /**
      * Returns whether or not the current frame is a compilation root. A compilation root is a
      * compiled {@link CallTarget} which was itself compiled i.e. not inlined into another target.
-     * 
+     *
      * @since 21.3.0
      */
     default boolean isCompilationRoot() {
@@ -129,9 +129,9 @@ public interface FrameInstance {
      *
      * <pre>
      *                      ===============
-     *  {@link TruffleRuntime#getCurrentFrame() Current}:         ,>|  CallTarget   | FrameInstance
+     *  Current:         ,>|  CallTarget   | FrameInstance
      *                   |  ===============
-     *  {@link TruffleRuntime#getCallerFrame() Caller}:          '-|  CallNode     | FrameInstance
+     *  Caller:          '-|  CallNode     | FrameInstance
      *                   ,>|  CallTarget   |
      *                   |  ===============
      *                   '-|  CallNode     | FrameInstance

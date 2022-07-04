@@ -165,6 +165,7 @@ public class EngineAPITest {
         assertEquals(EngineAPITestLanguage.Option1_CATEGORY, descriptor1.getCategory());
         assertEquals(EngineAPITestLanguage.Option1_DEPRECATED, descriptor1.isDeprecated());
         assertEquals(EngineAPITestLanguage.Option1_HELP, descriptor1.getHelp());
+        assertEquals(EngineAPITestLanguage.Option1_UsageSyntax, descriptor1.getUsageSyntax());
 
         if (TruffleTestAssumptions.isWeakEncapsulation()) {
             assertSame(EngineAPITestLanguage.Option2, descriptor2.getKey());
@@ -182,7 +183,28 @@ public class EngineAPITest {
         assertEquals(EngineAPITestLanguage.Option3_DEPRECATED, descriptor3.isDeprecated());
         assertEquals(EngineAPITestLanguage.Option3_HELP, descriptor3.getHelp());
 
+        // Usage syntax defaults
+        assertNull(language.getOptions().get(EngineAPITestLanguage.BooleanFalseOptionName).getUsageSyntax());
+        assertEquals("true|false", language.getOptions().get(EngineAPITestLanguage.BooleanTrueOptionName).getUsageSyntax());
+        assertEquals("two|one|three", language.getOptions().get(EngineAPITestLanguage.EnumOptionName).getUsageSyntax());
+        assertEquals("<value>", language.getOptions().get(EngineAPITestLanguage.MapOptionName).getUsageSyntax());
+
         engine.close();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testFailedEnumConvert() {
+        EngineAPITestLanguage.EnumOption.getType().convert("foo");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testFailedEnumConvertUppercase() {
+        EngineAPITestLanguage.EnumOption.getType().convert("ONE");
+    }
+
+    @Test()
+    public void testEnumConvert() {
+        Assert.assertEquals(EngineAPITestLanguage.OptionEnum.ONE, EngineAPITestLanguage.EnumOption.getType().convert("one"));
     }
 
     @Test

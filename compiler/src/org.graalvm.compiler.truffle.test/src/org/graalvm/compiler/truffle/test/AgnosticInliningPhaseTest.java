@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -61,7 +63,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return "";
             }
         };
-        final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+        final TruffleTierContext context = new TruffleTierContext(partialEvaluator, callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
                             private TruffleInliningData inlining = new TruffleInlining();
@@ -85,10 +87,10 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             public boolean hasNextTier() {
                                 return false;
                             }
-                        }));
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
-        agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
-        return request.graph;
+                        }), null);
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, new PostPartialEvaluationSuite(false));
+        agnosticInliningPhase.apply(context.graph, context);
+        return context.graph;
     }
 
     protected static final OptimizedCallTarget createDummyNode() {

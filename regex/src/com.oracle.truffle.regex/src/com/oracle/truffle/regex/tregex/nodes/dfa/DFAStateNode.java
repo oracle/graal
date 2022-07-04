@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,12 +64,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * This node is used when all except a very small set of code points will loop back to the
-     * current DFA state. This node's {@link #execute(Object, int, int, Encoding)} method will
-     * search for the given small set of code points in an optimized, possibly vectorized loop.
+     * current DFA state. This node's {@link #execute(Object, int, int, Encoding, boolean)} method
+     * will search for the given small set of code points in an optimized, possibly vectorized loop.
      */
     public abstract static class LoopOptimizationNode extends Node {
 
-        public abstract int execute(Object input, int preLoopIndex, int maxIndex, Encoding encoding);
+        public abstract int execute(Object input, int preLoopIndex, int maxIndex, Encoding encoding, boolean tString);
 
         public abstract int encodedLength();
 
@@ -95,6 +95,32 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     /**
+     * Optimized search for a set of up to 4 {@code int} values.
+     */
+    public static final class LoopOptIndexOfAnyIntNode extends LoopOptIndexOfAnyNode {
+
+        @CompilationFinal(dimensions = 1) private final int[] ints;
+
+        public LoopOptIndexOfAnyIntNode(int[] ints) {
+            this.ints = ints;
+        }
+
+        private LoopOptIndexOfAnyIntNode(LoopOptIndexOfAnyIntNode copy) {
+            this.ints = copy.ints;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, ints, encoding);
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfAnyIntNode(this);
+        }
+    }
+
+    /**
      * Optimized search for a set of up to 4 {@code char} values.
      */
     public static final class LoopOptIndexOfAnyCharNode extends LoopOptIndexOfAnyNode {
@@ -110,7 +136,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
 
         @Override
-        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding) {
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
             return getIndexOfNode().execute(input, fromIndex, maxIndex, chars, encoding);
         }
 
@@ -136,7 +162,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
 
         @Override
-        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding) {
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
             return getIndexOfNode().execute(input, fromIndex, maxIndex, bytes, encoding);
         }
 
@@ -166,8 +192,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
 
         @Override
-        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, literal.getLiteralContent(input), literal.getMaskContent(input), encoding);
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, literal.getLiteralContent(tString), literal.getMaskContent(tString), encoding);
         }
 
         @Override
@@ -303,7 +329,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called after every call to
-     * {@link LoopOptimizationNode#execute(Object, int, int, Encoding)}, which we call an
+     * {@link LoopOptimizationNode#execute(Object, int, int, Encoding, boolean)}, which we call an
      * {@code indexOf}-operation.
      *
      * @param preLoopIndex the starting index of the {@code indexOf}-operation.

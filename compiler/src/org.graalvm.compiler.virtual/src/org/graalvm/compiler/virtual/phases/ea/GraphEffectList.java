@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -236,7 +236,7 @@ public final class GraphEffectList extends EffectList {
                     WithExceptionNode withExceptionNode = (WithExceptionNode) node;
                     AbstractBeginNode next = withExceptionNode.next();
                     GraphUtil.unlinkAndKillExceptionEdge(withExceptionNode);
-                    if (next.hasNoUsages() && next instanceof MemoryKill) {
+                    if (next.hasNoUsages() && MemoryKill.isMemoryKill(next)) {
                         // This is a killing begin which is no longer needed.
                         graph.replaceFixedWithFixed(next, graph.add(new BeginNode()));
                     }

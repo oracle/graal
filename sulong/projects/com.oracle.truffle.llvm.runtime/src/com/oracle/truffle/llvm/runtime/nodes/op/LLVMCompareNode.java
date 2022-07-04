@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -146,6 +146,12 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
         protected boolean slt(byte val1, byte val2) {
             return val1 < val2;
         }
+
+        @Specialization
+        protected boolean slt(boolean val1, boolean val2) {
+            // true < false, since true==-1 and false==0
+            return val1 && !val2;
+        }
     }
 
     public abstract static class LLVMSignedLeNode extends LLVMCompareNode {
@@ -172,6 +178,12 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
         @Specialization
         protected boolean sle(byte val1, byte val2) {
             return val1 <= val2;
+        }
+
+        @Specialization
+        protected boolean slt(boolean val1, boolean val2) {
+            // true <= false, since true==-1 and false==0
+            return val1 || !val2;
         }
     }
 
@@ -200,6 +212,12 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
         protected boolean ult(byte val1, byte val2) {
             return Integer.compareUnsigned(val1, val2) < 0;
         }
+
+        @Specialization
+        protected boolean ult(boolean val1, boolean val2) {
+            // false < true
+            return !val1 && val2;
+        }
     }
 
     public abstract static class LLVMUnsignedLeNode extends LLVMCompareNode {
@@ -226,6 +244,12 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
         @Specialization
         protected boolean ule(byte val1, byte val2) {
             return Integer.compareUnsigned(val1, val2) <= 0;
+        }
+
+        @Specialization
+        protected boolean ule(boolean val1, boolean val2) {
+            // false <= true
+            return !val1 || val2;
         }
     }
 

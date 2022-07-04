@@ -28,10 +28,10 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -42,15 +42,16 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.util.Timer;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import org.graalvm.compiler.nodes.spi.Replacements;
 
 /**
  * Central static analysis interface that groups together the functionality of reachability analysis
  * and heap scanning and adds utility methods and lifecycle hooks that should be used to query and
  * change the state of the analysis.
- * 
+ *
  * In long term, all mutable accesses that change the state of the analysis should go through this
  * interface.
  *
@@ -73,21 +74,6 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     List<DebugHandlersFactory> getDebugHandlerFactories();
 
     /**
-     * @return the timer for measuring the overall duration of the analysis
-     */
-    Timer getAnalysisTimer();
-
-    /**
-     * @return the timer for measuring the time spent in features
-     */
-    Timer getProcessFeaturesTimer();
-
-    /**
-     * Prints all analysis timers.
-     */
-    void printTimers();
-
-    /**
      * Prints more detailed information about all analysis timers.
      */
     void printTimerStatistics(PrintWriter out);
@@ -104,9 +90,13 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
+    boolean strengthenGraalGraphs();
+
+    Replacements getReplacements();
+
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
-    default boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, NodeSourcePosition srcPosition) {
+    default boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, BytecodePosition srcPosition) {
         return true;
     }
 
@@ -122,4 +112,19 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     default void onTypeInstantiated(AnalysisType type, UsageKind usageKind) {
     }
 
+    @SuppressWarnings("unused")
+    default void onTypeInitialized(AnalysisType type) {
+    }
+
+    void postTask(CompletionExecutor.DebugContextRunnable task);
+
+    void initializeMetaData(AnalysisType type);
+
+    /**
+     * Callback executed after the analysis finished. The cleanupAfterAnalysis is executed after the
+     * universe builder, which can be too late for some tasks.
+     */
+    default void afterAnalysis() {
+
+    }
 }

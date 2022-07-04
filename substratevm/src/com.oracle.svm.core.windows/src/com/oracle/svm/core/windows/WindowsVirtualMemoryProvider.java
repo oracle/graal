@@ -134,7 +134,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment) {
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }

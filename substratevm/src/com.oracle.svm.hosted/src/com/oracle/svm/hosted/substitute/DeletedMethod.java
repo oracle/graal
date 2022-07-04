@@ -43,6 +43,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -60,32 +61,11 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return AnnotatedField.appendAnnotationTo(original.getAnnotations(), deleteAnnotation);
+    public Annotation[] getInjectedAnnotations() {
+        return new Annotation[]{deleteAnnotation};
     }
 
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return AnnotatedField.appendAnnotationTo(original.getDeclaredAnnotations(), deleteAnnotation);
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass.isInstance(deleteAnnotation)) {
-            return annotationClass.cast(deleteAnnotation);
-        }
-        return original.getAnnotation(annotationClass);
-    }
-
-    public static final Method reportErrorMethod;
-
-    static {
-        try {
-            reportErrorMethod = VMError.class.getDeclaredMethod("unsupportedFeature", String.class);
-        } catch (NoSuchMethodException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
+    public static final Method reportErrorMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
     @Override
     public int getModifiers() {

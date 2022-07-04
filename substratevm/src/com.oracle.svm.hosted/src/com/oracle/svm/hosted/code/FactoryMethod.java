@@ -29,7 +29,6 @@ import java.util.Objects;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -80,20 +79,7 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
                     ReflectionUtil.lookupMethod(FactoryMethod.class, "annotationHolder").getAnnotation(NeverInlineTrivial.class));
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass.isInstance(INLINE_ANNOTATION)) {
-            return annotationClass.cast(INLINE_ANNOTATION);
-        }
-        return null;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return new Annotation[]{INLINE_ANNOTATION};
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
+    public Annotation[] getInjectedAnnotations() {
         return new Annotation[]{INLINE_ANNOTATION};
     }
 
@@ -107,14 +93,11 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
 
         AbstractNewObjectNode newInstance = support.createNewInstance(kit, universeTargetConstructor.getDeclaringClass(), true);
 
-        ValueNode[] originalArgs = kit.loadArguments(method.toParameterTypes()).toArray(new ValueNode[0]);
+        ValueNode[] originalArgs = kit.loadArguments(method.toParameterTypes()).toArray(ValueNode.EMPTY_ARRAY);
         ValueNode[] invokeArgs = new ValueNode[originalArgs.length + 1];
         invokeArgs[0] = newInstance;
         System.arraycopy(originalArgs, 0, invokeArgs, 1, originalArgs.length);
-        InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(universeTargetConstructor, InvokeKind.Special, kit.getFrameState(), kit.bci(), invokeArgs);
-        if (support.inlineConstructor(universeTargetConstructor)) {
-            kit.inline(invoke, "Constructor in FactoryMethod", "FactoryMethod");
-        }
+        kit.createInvokeWithExceptionAndUnwind(universeTargetConstructor, InvokeKind.Special, kit.getFrameState(), kit.bci(), invokeArgs);
 
         if (throwAllocatedObject) {
             kit.append(new UnwindNode(newInstance));

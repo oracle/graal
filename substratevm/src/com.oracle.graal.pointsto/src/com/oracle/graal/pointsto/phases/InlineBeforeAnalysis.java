@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -45,14 +46,12 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.util.ClassUtil;
@@ -62,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Inlining before the static analysis improves the precision of the analysis especially when
  * constants are propagated. So the goal is to inline callees that are folded to constants.
- * 
+ *
  * Sometimes, constant folding of callees requires quite deep inlining, when constants are
  * propagated through chains of wrapper methods. So we want to be able to look deep for potential
  * inlining. On the other hand, only very small methods can be inlined before analysis in order to
@@ -82,7 +81,7 @@ public class InlineBeforeAnalysis {
     }
 
     @SuppressWarnings("try")
-    public static StructuredGraph decodeGraph(PointsToAnalysis bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
+    public static StructuredGraph decodeGraph(BigBang bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
@@ -152,10 +151,10 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         }
     }
 
-    private final PointsToAnalysis bb;
+    private final BigBang bb;
     private final InlineBeforeAnalysisPolicy<S> policy;
 
-    InlineBeforeAnalysisGraphDecoder(PointsToAnalysis bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
+    InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
         super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
                         bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
@@ -176,8 +175,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                    boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         return aMethod.ensureGraphParsed(bb).getEncodedGraph();
     }
@@ -217,7 +215,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             if (graph.getDebug().isLogEnabled()) {
                 graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
             }
-            if (!policy.processNode(methodScope.policyScope, node)) {
+            if (!policy.processNode(bb.getMetaAccess(), methodScope.method, methodScope.policyScope, node)) {
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "    abort!");
                 }
@@ -256,8 +254,10 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             if (callerScope.policyScope != null) {
                 policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
             }
-            killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
-            assert invokeData.invokePredecessor.next() == null : "Successor must have been a fixed node created in the aborted scope, which is deleted now";
+            if (invokeData.invokePredecessor.next() != null) {
+                killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
+                assert invokeData.invokePredecessor.next() == null : "Successor must have been a fixed node created in the aborted scope, which is deleted now";
+            }
             invokeData.invokePredecessor.setNext(invokeData.invoke.asFixedNode());
 
             if (inlineScope.exceptionPlaceholderNode != null) {
@@ -295,7 +295,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
     /**
      * Kill fixed nodes of structured control flow. Not as generic, but faster, than
      * {@link GraphUtil#killCFG}.
-     * 
+     *
      * We cannot kill unused floating nodes at this point, because we are still in the middle of
      * decoding caller graphs, so floating nodes of the caller that have no usage yet can get used
      * when decoding of the caller continues. Unused floating nodes are cleaned up by the next run

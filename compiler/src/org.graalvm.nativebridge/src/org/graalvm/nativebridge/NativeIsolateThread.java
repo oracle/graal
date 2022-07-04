@@ -29,6 +29,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.graalvm.nativebridge.NativeIsolate.CLOSED;
 
+/**
+ * Represents an entered isolate thread.
+ *
+ * @see NativeIsolate#enter()
+ */
 public final class NativeIsolateThread {
 
     private static final int CLOSING_MASK = 0b1;
@@ -48,6 +53,11 @@ public final class NativeIsolateThread {
         this.enteredCount = new AtomicInteger();
     }
 
+    /**
+     * Returns the isolate thread address.
+     *
+     * @throws IllegalStateException when the {@link NativeIsolateThread} is no more entered.
+     */
     public long getIsolateThreadId() {
         assert verifyThread();
         if (!isActive()) {
@@ -56,14 +66,17 @@ public final class NativeIsolateThread {
         return isolateThread;
     }
 
+    /**
+     * Leaves the {@link NativeIsolate} on the current thread.
+     */
     public void leave() {
         assert verifyThread();
         decrementAttached();
     }
 
-    void enter() {
+    boolean enter() {
         assert verifyThread();
-        incrementAttached();
+        return incrementAttached();
     }
 
     boolean invalidate() {
@@ -105,14 +118,14 @@ public final class NativeIsolateThread {
         return true;
     }
 
-    private void incrementAttached() {
+    private boolean incrementAttached() {
         while (true) {
             int value = enteredCount.get();
             if (value == CLOSED) {
                 if (executesShutDown) {
-                    return;
+                    return true;
                 } else {
-                    throw isolate.throwClosedException();
+                    return false;
                 }
             }
             int closing = (value & CLOSING_MASK);
@@ -121,6 +134,7 @@ public final class NativeIsolateThread {
                 break;
             }
         }
+        return true;
     }
 
     private void decrementAttached() {

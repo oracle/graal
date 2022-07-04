@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -229,7 +230,9 @@ public class Field extends Member<Type> implements FieldRef {
             case Long: return getLong(obj, forceVolatile);
             case Double: return getDouble(obj, forceVolatile);
             case Object: return getObject(obj, forceVolatile);
-            default: throw EspressoError.shouldNotReachHere();
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
@@ -250,7 +253,9 @@ public class Field extends Member<Type> implements FieldRef {
             case Long: setLong(obj, (long) value, forceVolatile); break;
             case Double: setDouble(obj, (double) value, forceVolatile); break;
             case Object: setObject(obj, value, forceVolatile); break;
-            default: throw EspressoError.shouldNotReachHere();
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
@@ -340,7 +345,7 @@ public class Field extends Member<Type> implements FieldRef {
     // region Object
 
     // region helper methods
-    private Object getObjectHelper(StaticObject obj, boolean forceVolatile) {
+    private Object getHiddenObjectHelper(StaticObject obj, boolean forceVolatile) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isVolatile() || forceVolatile) {
@@ -350,13 +355,71 @@ public class Field extends Member<Type> implements FieldRef {
         }
     }
 
+    private Object getObjectHelper(StaticObject obj, boolean forceVolatile) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+
+        if (!getDeclaringKlass().getContext().anyHierarchyChanged()) {
+            if (isVolatile() || forceVolatile) {
+                return linkedField.getObjectVolatile(obj);
+            } else {
+                return linkedField.getObject(obj);
+            }
+        } else {
+            // class hierarchy changes have been made, so enable
+            // additional type checks to guard against reading
+            // a now invalid value
+            StaticObject result;
+            if (isVolatile() || forceVolatile) {
+                result = (StaticObject) linkedField.getObjectVolatile(obj);
+            } else {
+                result = (StaticObject) linkedField.getObject(obj);
+            }
+            if (result == StaticObject.NULL) {
+                return result;
+            }
+            return checkGetValueValidity(result);
+        }
+    }
+
+    protected StaticObject checkGetValueValidity(StaticObject object) {
+        StaticObject result = object;
+        try {
+            Klass klass = resolveTypeKlass();
+            if (klass != null && !klass.isAssignableFrom((result).getKlass())) {
+                result = StaticObject.NULL;
+            }
+        } catch (EspressoException e) {
+            // ignore if type klass cannot be resolved
+        }
+        return result;
+    }
+
     private void setObjectHelper(StaticObject obj, Object value, boolean forceVolatile) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+
+        if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
+            checkSetValueValifity(value);
+        }
         if (isVolatile() || forceVolatile) {
             linkedField.setObjectVolatile(obj, value);
         } else {
             linkedField.setObject(obj, value);
+        }
+    }
+
+    protected void checkSetValueValifity(Object value) {
+        if (value != StaticObject.NULL && value instanceof StaticObject) {
+            Klass klass = null;
+            try {
+                klass = resolveTypeKlass();
+            } catch (EspressoException e) {
+                // ignore if type klass cannot be resolved
+            }
+            if (klass != null && !klass.isAssignableFrom(((StaticObject) value).getKlass())) {
+                throw getDeclaringKlass().getMeta().throwException(getDeclaringKlass().getMeta().java_lang_IncompatibleClassChangeError);
+            }
         }
     }
     // endregion helper methods
@@ -408,7 +471,7 @@ public class Field extends Member<Type> implements FieldRef {
 
     public final Object getHiddenObject(StaticObject obj, boolean forceVolatile) {
         assert isHidden() : this + " is not hidden, use getObject";
-        return getObjectHelper(obj, forceVolatile);
+        return getHiddenObjectHelper(obj, forceVolatile);
     }
 
     public final void setHiddenObject(StaticObject obj, Object value) {
@@ -661,6 +724,12 @@ public class Field extends Member<Type> implements FieldRef {
         }
     }
 
+    public int getAndSetInt(StaticObject obj, int value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+        return linkedField.getAndSetInt(obj, value);
+    }
+
     public boolean compareAndSwapInt(StaticObject obj, int before, int after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
@@ -703,6 +772,13 @@ public class Field extends Member<Type> implements FieldRef {
         } else {
             linkedField.setLong(obj, value);
         }
+    }
+
+    public long getAndSetLong(StaticObject obj, long value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+        assert getKind().needsTwoSlots();
+        return linkedField.getAndSetLong(obj, value);
     }
 
     public boolean compareAndSwapLong(StaticObject obj, long before, long after) {

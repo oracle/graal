@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,95 +24,156 @@
  */
 package com.oracle.truffle.tools.chromeinspector.server;
 
-import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.PushbackInputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
+import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
+import java.security.SecureRandom;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLServerSocketFactory;
-
-import com.oracle.truffle.tools.chromeinspector.instrument.Token;
-import org.nanohttpd.protocols.http.ClientHandler;
-import org.nanohttpd.protocols.http.IHTTPSession;
-import org.nanohttpd.protocols.http.NanoHTTPD;
-import org.nanohttpd.protocols.http.content.ContentType;
-import org.nanohttpd.protocols.http.request.Method;
-import org.nanohttpd.protocols.http.response.Response;
-import org.nanohttpd.protocols.http.response.Status;
-import org.nanohttpd.protocols.websockets.CloseCode;
-import org.nanohttpd.protocols.websockets.NanoWSD;
-import org.nanohttpd.protocols.websockets.WebSocket;
-import org.nanohttpd.protocols.websockets.WebSocketFrame;
-import org.nanohttpd.util.IHandler;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.graalvm.polyglot.io.MessageEndpoint;
 
-import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
+import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
+import com.oracle.truffle.tools.chromeinspector.instrument.Token;
+import com.oracle.truffle.tools.utils.java_websocket.WebSocket;
+import com.oracle.truffle.tools.utils.java_websocket.WebSocketAdapter;
+import com.oracle.truffle.tools.utils.java_websocket.WebSocketImpl;
+import com.oracle.truffle.tools.utils.java_websocket.WebSocketServerFactory;
+import com.oracle.truffle.tools.utils.java_websocket.drafts.Draft;
+import com.oracle.truffle.tools.utils.java_websocket.handshake.ClientHandshake;
+import com.oracle.truffle.tools.utils.java_websocket.server.DefaultSSLWebSocketServerFactory;
+import com.oracle.truffle.tools.utils.java_websocket.server.DefaultWebSocketServerFactory;
+import com.oracle.truffle.tools.utils.java_websocket.server.WebSocketServer;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
-
-import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
-import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
-import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
 
 /**
  * Server of the
  * <a href="https://chromium.googlesource.com/v8/v8/+/master/src/inspector/js_protocol.json">Chrome
  * inspector protocol</a>.
  */
-public final class InspectorServer extends NanoWSD implements InspectorWSConnection {
+public final class InspectorServer extends WebSocketServer implements InspectorWSConnection {
 
     private static final String WS_PREFIX = "ws://";
     private static final String WS_PREFIX_SECURE = "wss://";
     private static final String DEV_TOOLS_PREFIX = "devtools://devtools/bundled/js_app.html?";
     private static final Map<InetSocketAddress, InspectorServer> SERVERS = new HashMap<>();
 
-    private final int port;
     private final boolean secure;
     private final Map<Token, ServerPathSession> sessions = new ConcurrentHashMap<>();
+    private final Map<WebSocket, InspectWebSocketHandler> socketConnectionHandlers = new ConcurrentHashMap<>();
+    private final CountDownLatch started = new CountDownLatch(1);
 
     private InspectorServer(InetSocketAddress isa, KeyStoreOptions keyStoreOptions) throws IOException {
-        super(isa.getAddress().getHostAddress(), isa.getPort());
-        this.port = isa.getPort();
+        super(isa, 2); // 2 websocket workers to process the network data
         // Note that the DNS rebind attack protection does not apply to WebSockets, because they are
         // handled with a higher-priority HTTP interceptor. We probably could add the protection in
         // openWebSocket method, but it is not needed, because WebSockets are already protected by
         // secret URLs. Also, protecting WebSockets from DNS rebind attacks is not much useful,
         // since they are not protected by same-origin policy.
-        addHTTPInterceptor(new DNSRebindProtectionHandler());
-        addHTTPInterceptor(new JSONHandler());
+        // See DNSRebindProtectionHandler in WrappingSocketServerFactory
+        WebSocketServerFactory wssf;
         if (keyStoreOptions != null) {
-            if (TruffleOptions.AOT) {
-                throw new IOException("Secure connection is not available in the native-image yet.");
-            } else {
-                makeSecure(createSSLFactory(keyStoreOptions), null);
-            }
+            wssf = new WrappingSocketServerFactory(new DefaultSSLWebSocketServerFactory(sslContext(keyStoreOptions)));
+        } else {
+            wssf = new WrappingSocketServerFactory(new DefaultWebSocketServerFactory());
         }
+        setWebSocketFactory(wssf);
+        setReuseAddr(true);
         secure = keyStoreOptions != null;
+    }
+
+    private static SSLContext sslContext(KeyStoreOptions keyStoreOptions) throws IOException {
+        String keyStoreFile = keyStoreOptions.getKeyStore();
+        if (keyStoreFile != null) {
+            String filePasswordProperty = keyStoreOptions.getKeyStorePassword();
+            char[] filePassword = filePasswordProperty == null ? "".toCharArray() : filePasswordProperty.toCharArray();
+            SSLContext sslContext;
+            try {
+                KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+                try (InputStream in = new FileInputStream(keyStoreFile)) {
+                    keystore.load(in, filePassword);
+                }
+                KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                keyManagerFactory.init(keystore, filePassword);
+
+                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init(keystore);
+
+                sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(keyManagerFactory.getKeyManagers(),
+                                trustManagerFactory.getTrustManagers(),
+                                new SecureRandom());
+            } catch (GeneralSecurityException ex) {
+                throw new IOException(ex);
+            }
+            return sslContext;
+        } else {
+            throw new IOException("Use options to specify the keystore");
+        }
+    }
+
+    private class WrappingSocketServerFactory implements WebSocketServerFactory {
+
+        private final WebSocketServerFactory delegate;
+
+        WrappingSocketServerFactory(WebSocketServerFactory delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public WebSocketImpl createWebSocket(WebSocketAdapter wsa, Draft draft) {
+            return delegate.createWebSocket(wsa, draft);
+        }
+
+        @Override
+        public WebSocketImpl createWebSocket(WebSocketAdapter wsa, List<Draft> list) {
+            return delegate.createWebSocket(wsa, list);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public ByteChannel wrapChannel(SocketChannel channel, SelectionKey key) throws IOException {
+            return new HTTPChannelWrapper(channel, new DNSRebindProtectionHandler(), new JSONHandler());
+        }
+
+        @Override
+        public void close() {
+            delegate.close();
+        }
+
     }
 
     public static InspectorServer get(InetSocketAddress isa, Token token, String pathContainingToken, InspectorExecutionContext context, boolean debugBrk,
@@ -135,38 +196,9 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
             wss.sessions.put(token, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher, pathContainingToken));
         }
         if (startServer) {
-            wss.start(Integer.MAX_VALUE);
+            wss.start();
         }
         return wss;
-    }
-
-    private static SSLServerSocketFactory createSSLFactory(KeyStoreOptions keyStoreOptions) throws IOException {
-        String keyStoreFile = keyStoreOptions.getKeyStore();
-        if (keyStoreFile != null) {
-            try {
-                String filePasswordProperty = keyStoreOptions.getKeyStorePassword();
-                // obtaining password for unlock keystore
-                char[] filePassword = filePasswordProperty == null ? "".toCharArray() : filePasswordProperty.toCharArray();
-                String keystoreType = keyStoreOptions.getKeyStoreType();
-                if (keystoreType == null) {
-                    keystoreType = KeyStore.getDefaultType();
-                }
-                KeyStore keystore = KeyStore.getInstance(keystoreType);
-                File keyFile = new File(keyStoreFile);
-                try (FileInputStream keyIn = new FileInputStream(keyFile)) {
-                    keystore.load(keyIn, filePassword);
-                }
-                String keyRecoverPasswordProperty = keyStoreOptions.getKeyPassword();
-                char[] keyRecoverPassword = keyRecoverPasswordProperty == null ? filePassword : keyRecoverPasswordProperty.toCharArray();
-                final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                kmf.init(keystore, keyRecoverPassword);
-                return NanoHTTPD.makeSSLSocketFactory(keystore, kmf);
-            } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | UnrecoverableKeyException ex) {
-                throw new IOException(ex);
-            }
-        } else {
-            throw new IOException("Use options to specify the keystore");
-        }
     }
 
     /**
@@ -195,28 +227,25 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
      * <li>For everything else (including missing host header), we deny the request.</li>
      * </ul>
      */
-    private class DNSRebindProtectionHandler implements IHandler<IHTTPSession, Response> {
+    private class DNSRebindProtectionHandler implements Function<HttpRequest, HttpResponse> {
 
         @Override
-        public Response handle(IHTTPSession ihttpSession) {
-            return handleDnsRebind(ihttpSession);
+        public HttpResponse apply(HttpRequest request) {
+            return handleDnsRebind(request);
         }
 
     }
 
-    private Response handleDnsRebind(IHTTPSession ihttpSession) {
-        String host = ihttpSession.getHeaders().get("host");
+    private HttpResponse handleDnsRebind(HttpRequest request) {
+        String host = request.getHeaders().get("host");
         if (!isHostOk(host)) {
             String badHost = host != null ? "Bad host " + host + ". Please use IP address." : "Missing host header. Use an up-to-date client.";
             String message = badHost + " This request cannot be served because it looks like DNS rebind attack.";
             Iterator<ServerPathSession> sessionIterator = sessions.values().iterator();
             if (sessionIterator.hasNext()) {
-                sessionIterator.next().getContext().getErr().println("Bad connection from " + ihttpSession.getRemoteIpAddress() + ". " + message);
+                sessionIterator.next().getContext().getErr().println("Bad connection from " + request.getRemoteAddress() + ". " + message);
             }
-            return Response.newFixedLengthResponse(
-                            Status.BAD_REQUEST,
-                            "text/plain; charset=UTF-8",
-                            message);
+            return new HttpResponse("400 Bad Request", "text/plain", "UTF-8", message);
         } else {
             return null;
         }
@@ -253,7 +282,12 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
 
     private String getWSAddress(ServerPathSession serverSession) {
         String prefix = secure ? WS_PREFIX_SECURE : WS_PREFIX;
-        return prefix + getHostname() + ":" + getPort() + serverSession.pathContainingToken;
+        try {
+            // Wait for the server to start to be able to provide the actual port number.
+            started.await();
+        } catch (InterruptedException ex) {
+        }
+        return prefix + getAddress().getAddress().getHostAddress() + ":" + getPort() + serverSession.pathContainingToken;
     }
 
     public String getDevtoolsAddress(Token token) {
@@ -264,12 +298,12 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         return DEV_TOOLS_PREFIX + wsAddress.replace("://", "=");
     }
 
-    private class JSONHandler implements IHandler<IHTTPSession, Response> {
+    private class JSONHandler implements Function<HttpRequest, HttpResponse> {
 
         @Override
-        public Response handle(IHTTPSession session) {
-            if (Method.GET == session.getMethod()) {
-                String uri = session.getUri();
+        public HttpResponse apply(HttpRequest request) {
+            if ("GET".equals(request.getMethod())) {
+                String uri = request.getUri();
                 String responseJson = null;
                 if ("/json/version".equals(uri)) {
                     JSONObject version = new JSONObject();
@@ -295,9 +329,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
                     responseJson = json.toString();
                 }
                 if (responseJson != null) {
-                    Response response = Response.newFixedLengthResponse(Status.OK,
-                                    "application/json; charset=UTF-8",
-                                    responseJson);
+                    HttpResponse response = new HttpResponse("200", "application/json", "UTF-8", responseJson);
                     response.addHeader("Cache-Control", "no-cache,no-store,must-revalidate");
                     response.addHeader("Pragma", "no-cache");
                     response.addHeader("X-Content-Type-Options", "nosniff");
@@ -309,8 +341,13 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
     }
 
     @Override
-    protected WebSocket openWebSocket(IHTTPSession handshake) {
-        final String uri = handshake.getUri();
+    public void onStart() {
+        started.countDown();
+    }
+
+    @Override
+    public void onOpen(WebSocket conn, ClientHandshake handshake) {
+        String uri = handshake.getResourceDescriptor();
         final Token token = Token.createHashedTokenFromString(uri);
         ServerPathSession session;
         session = sessions.get(token);
@@ -321,98 +358,45 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
                 boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
                 iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher());
             }
-            InspectWebSocket iws = new InspectWebSocket(handshake, iss, session.getConnectionWatcher());
+            InspectWebSocketHandler iws = new InspectWebSocketHandler(token, conn, iss, session.getConnectionWatcher());
             session.activeWS = iws;
             iss.context.logMessage("CLIENT ws connection opened, token = ", token);
-            return iws;
+            socketConnectionHandlers.put(conn, iws);
         } else {
-            return new ClosedWebSocket(handshake);
+            conn.close(1003 /* Unsupported Data */, "Bad path.");
         }
     }
 
     @Override
-    protected ClientHandler createClientHandler(Socket finalAccept, InputStream inputStream) {
-        PushbackInputStream pbInputStream = new PushbackInputStream(inputStream, 3);
-        try {
-            byte[] buf = new byte[3];
-            pbInputStream.read(buf);
-            String text;
-            try {
-                text = new String(buf, "US-ASCII");
-            } catch (UnsupportedEncodingException ex) {
-                text = null;
-            } finally {
-                pbInputStream.unread(buf);
-            }
-            if (!"GET".equals(text)) {
-                return new ClientHandler(this, pbInputStream, finalAccept) {
-                    @Override
-                    public void run() {
-                        try (OutputStream outputStream = finalAccept.getOutputStream()) {
-                            ContentType contentType = new ContentType(NanoHTTPD.MIME_PLAINTEXT);
-                            PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream, contentType.getEncoding())), false);
-                            pw.append("HTTP/1.1 ").append(Status.BAD_REQUEST.getDescription()).append(" \r\n");
-                            String mimeType = contentType.getContentTypeHeader();
-                            if (mimeType != null) {
-                                pw.append("Content-Type: ").append(mimeType).append("\r\n");
-                            }
-                            pw.append("\r\n");
-                            pw.append("WebSockets request was expected");
-                            pw.flush();
-                        } catch (IOException ex) {
-                            // The handler is not associated with any particular session,
-                            // log to some of the sessions:
-                            Iterator<ServerPathSession> sessionIterator = sessions.values().iterator();
-                            if (sessionIterator.hasNext()) {
-                                sessionIterator.next().context.logException(ex);
-                            }
-                        } finally {
-                            NanoHTTPD.safeClose(pbInputStream);
-                            NanoHTTPD.safeClose(finalAccept);
-                        }
-                    }
-                };
-            }
-        } catch (IOException ex) {
-        }
-        return new ClientHandler(this, pbInputStream, finalAccept);
-    }
-
-    @Override
-    public int getPort() {
-        int p = getListeningPort();
-        if (p == -1) {
-            p = this.port;
-        }
-        return p;
-    }
-
-    @Override
-    public void closing(Token token) {
-        ServerPathSession sps = sessions.get(token);
-        if (sps != null) {
-            InspectWebSocket iws = sps.activeWS;
-            if (iws != null) {
-                iws.iss.notifyClosing();
-            }
+    public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.remove(conn);
+        if (iws != null) {
+            iws.didClose();
         }
     }
 
-    /**
-     * Close the web socket server on the specific path. No web socket connection is active on the
-     * path already, this is called after the {@link ConnectionWatcher#waitForClose()} is done.
-     */
     @Override
-    public void close(Token token) throws IOException {
-        ServerPathSession sps = sessions.remove(token);
-        if (sps != null) {
-            InspectWebSocket iws = sps.activeWS;
-            if (iws != null) {
-                iws.close(CloseCode.GoingAway, "", false);
-            }
+    public void onMessage(WebSocket conn, String message) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onMessage(message);
         }
-        if (sessions.isEmpty()) {
-            stop();
+    }
+
+    @Override
+    public void onError(WebSocket conn, Exception ex) {
+        if (conn == null) {
+            Iterator<ServerPathSession> sessionIterator = sessions.values().iterator();
+            if (sessionIterator.hasNext()) {
+                PrintWriter err = sessionIterator.next().getContext().getErr();
+                err.println("WebSocket Error:");
+                ex.printStackTrace(err);
+            }
+            return;
+        }
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onException(ex);
         }
     }
 
@@ -420,7 +404,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
     public void consoleAPICall(Token token, String type, Object text) {
         ServerPathSession sps = sessions.get(token);
         if (sps != null) {
-            InspectWebSocket iws = sps.activeWS;
+            InspectWebSocketHandler iws = sps.activeWS;
             if (iws != null) {
                 iws.iss.consoleAPICall(type, text);
             }
@@ -428,8 +412,25 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
     }
 
     @Override
-    public void stop() {
-        super.stop();
+    public void close(Token token) throws IOException {
+        ServerPathSession sps = sessions.remove(token);
+        if (sps != null) {
+            InspectWebSocketHandler iws = sps.activeWS;
+            if (iws != null) {
+                iws.connection.close(1001 /* Going Away */);
+            }
+        }
+        if (sessions.isEmpty()) {
+            try {
+                stop();
+            } catch (InterruptedException ex) {
+                throw new IOException(ex);
+            }
+        }
+    }
+
+    @Override
+    public void stop() throws InterruptedException {
         synchronized (SERVERS) {
             Iterator<Map.Entry<InetSocketAddress, InspectorServer>> entries = SERVERS.entrySet().iterator();
             while (entries.hasNext()) {
@@ -439,6 +440,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
                 }
             }
         }
+        super.stop();
     }
 
     private static class ServerPathSession {
@@ -448,7 +450,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         private final AtomicBoolean debugBrk;
         private final ConnectionWatcher connectionWatcher;
         private final String pathContainingToken;
-        volatile InspectWebSocket activeWS;
+        volatile InspectWebSocketHandler activeWS;
 
         ServerPathSession(InspectorExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher, String pathContainingToken) {
             this.context = context;
@@ -475,29 +477,29 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         }
     }
 
-    private class InspectWebSocket extends WebSocket {
+    private class InspectWebSocketHandler {
 
         private final Token token;
+        private final WebSocket connection;
         private final InspectServerSession iss;
         private final ConnectionWatcher connectionWatcher;
 
-        InspectWebSocket(IHTTPSession handshake, InspectServerSession iss,
-                        ConnectionWatcher connectionWatcher) {
-            super(handshake);
-            this.token = Token.createHashedTokenFromString(handshake.getUri());
+        InspectWebSocketHandler(Token token, WebSocket connection, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
+            this.token = token;
+            this.connection = connection;
             this.iss = iss;
             this.connectionWatcher = connectionWatcher;
+            init();
         }
 
-        @Override
-        public void onOpen() {
+        private void init() {
             iss.context.logMessage("CLIENT web socket connection opened.", "");
             connectionWatcher.notifyOpen();
             iss.open(new MessageEndpoint() {
                 @Override
                 public void sendText(String message) throws IOException {
                     iss.context.logMessage("SERVER: ", message);
-                    send(message);
+                    connection.send(message);
                 }
 
                 @Override
@@ -515,13 +517,12 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
 
                 @Override
                 public void sendClose() throws IOException {
-                    close(CloseCode.NormalClosure, "", true);
+                    connection.close(1000 /* Normal Closure */);
                 }
             });
         }
 
-        @Override
-        public void onClose(CloseCode code, String reason, boolean initiatedByRemote) {
+        void didClose() {
             iss.context.logMessage("CLIENT web socket connection closed.", "");
             connectionWatcher.notifyClosing();
             ServerPathSession sps = sessions.get(token);
@@ -535,18 +536,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
             }
         }
 
-        @Override
-        public void close(CloseCode code, String reason, boolean initiatedByRemote) throws IOException {
-            try {
-                super.close(code, reason, initiatedByRemote);
-            } catch (SocketException ex) {
-                // The socket is broken already.
-            }
-        }
-
-        @Override
-        public void onMessage(WebSocketFrame frame) {
-            String message = frame.getTextPayload();
+        void onMessage(String message) {
             iss.context.logMessage("CLIENT: ", message);
             try {
                 iss.sendText(message);
@@ -555,47 +545,211 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
             }
         }
 
-        @Override
-        protected void onPong(WebSocketFrame pong) {
-            iss.context.logMessage("CLIENT PONG: ", pong);
-        }
-
-        @Override
-        protected void onException(IOException exception) {
+        void onException(Exception exception) {
             iss.context.logException("CLIENT: ", exception);
         }
 
     }
 
-    private class ClosedWebSocket extends WebSocket {
+    private static class HTTPChannelWrapper implements ByteChannel {
 
-        ClosedWebSocket(IHTTPSession handshakeRequest) {
-            super(handshakeRequest);
-            try {
-                close(CloseCode.UnsupportedData, "Bad path.", false);
-            } catch (IOException ioex) {
+        private final Function<HttpRequest, HttpResponse>[] interceptors;
+        private final SocketChannel channel;
+        private final ByteBuffer buffer = ByteBuffer.allocate(16384);
+        private boolean wsUpgraded = false;
+
+        @SafeVarargs
+        @SuppressWarnings("varargs")
+        HTTPChannelWrapper(SocketChannel channel, Function<HttpRequest, HttpResponse>... interceptors) {
+            this.channel = channel;
+            this.interceptors = interceptors;
+        }
+
+        @Override
+        public int read(ByteBuffer dst) throws IOException {
+            if (wsUpgraded) {
+                return channel.read(dst);
+            }
+
+            buffer.clear();
+            int r = channel.read(buffer);
+            if (r > 0) {
+                buffer.flip();
+                HttpRequest httpRequest = readHttpRequest();
+                if ("Upgrade".equalsIgnoreCase(httpRequest.getHeaders().get("connection")) && httpRequest.getHeaders().get("sec-websocket-key") != null) {
+                    assert !httpRequest.getVersion().isEmpty();
+                    wsUpgraded = true;
+                    buffer.rewind();
+                    dst.put(buffer);
+                    return r;
+                }
+                writeHttpResponse(httpRequest);
+                close();
+                r = 0;
+            }
+            return r;
+        }
+
+        private HttpRequest readHttpRequest() throws IOException {
+            String line = Draft.readStringLine(buffer);
+            StringTokenizer tokens = new StringTokenizer(line);
+            if (!tokens.hasMoreTokens()) {
+                HttpResponse.write400(channel, "Bad Request: method is missing");
+            }
+            String method = tokens.nextToken();
+            if (!tokens.hasMoreTokens()) {
+                HttpResponse.write400(channel, "Bad Request: URI is missing");
+            }
+            String uri = tokens.nextToken();
+            if (!tokens.hasMoreTokens()) {
+                HttpResponse.write400(channel, "Bad Request: protocol version is missing");
+            }
+            String version = tokens.nextToken();
+            HttpRequest request = new HttpRequest((InetSocketAddress) channel.getRemoteAddress(), method, uri, version);
+
+            while ((line = Draft.readStringLine(buffer)) != null && !line.trim().isEmpty()) {
+                int p = line.indexOf(':');
+                if (p >= 0) {
+                    request.addHeader(line.substring(0, p).trim().toLowerCase(Locale.ENGLISH), line.substring(p + 1).trim());
+                }
+            }
+            return request;
+        }
+
+        private void writeHttpResponse(HttpRequest request) throws IOException {
+            for (Function<HttpRequest, HttpResponse> interceptor : interceptors) {
+                HttpResponse response = interceptor.apply(request);
+                if (response != null) {
+                    response.writeTo(channel);
+                    return;
+                }
+            }
+            HttpResponse.write404(channel);
+        }
+
+        @Override
+        public int write(ByteBuffer src) throws IOException {
+            if (wsUpgraded) {
+                return channel.write(src);
+            } else {
+                throw new IOException("Unexpected write of " + src);
             }
         }
 
         @Override
-        protected void onOpen() {
+        public boolean isOpen() {
+            return channel.isOpen();
         }
 
         @Override
-        protected void onClose(CloseCode cc, String string, boolean bln) {
+        public void close() throws IOException {
+            channel.close();
         }
 
-        @Override
-        protected void onMessage(WebSocketFrame wsf) {
+    }
+
+    public static final class HttpRequest {
+
+        private final InetSocketAddress remoteAddress;
+        private final String method;
+        private final String uri;
+        private final String version;
+        private final Map<String, String> headers = new LinkedHashMap<>();
+
+        HttpRequest(InetSocketAddress remoteAddress, String method, String uri, String version) {
+            this.remoteAddress = remoteAddress;
+            this.method = method;
+            this.uri = uri;
+            this.version = version;
         }
 
-        @Override
-        protected void onPong(WebSocketFrame wsf) {
+        private void addHeader(String name, String value) {
+            headers.put(name, value);
         }
 
-        @Override
-        protected void onException(IOException ioe) {
+        public InetSocketAddress getRemoteAddress() {
+            return remoteAddress;
         }
 
+        private Object getMethod() {
+            return method;
+        }
+
+        private String getUri() {
+            return uri;
+        }
+
+        private String getVersion() {
+            return version;
+        }
+
+        private Map<String, String> getHeaders() {
+            return headers;
+        }
+    }
+
+    public static final class HttpResponse {
+
+        private final String status;
+        private final String contentType;
+        private final String encoding;
+        private final String content;
+        private final Map<String, String> headers = new LinkedHashMap<>();
+
+        HttpResponse(String status, String contentType, String encoding, String content) {
+            this.status = status;
+            this.contentType = contentType;
+            this.encoding = encoding;
+            this.content = content;
+        }
+
+        public void addHeader(String name, String value) {
+            headers.put(name, value);
+        }
+
+        public void writeTo(ByteChannel channel) throws IOException {
+            write(channel, status, contentType, encoding, headers, content);
+        }
+
+        public static void write404(ByteChannel channel) throws IOException {
+            write(channel, "404", "text/plain", StandardCharsets.US_ASCII.name(), Collections.emptyMap(), "");
+        }
+
+        public static void write400(ByteChannel channel, String text) throws IOException {
+            write(channel, "400 Bad Request", "text/plain", StandardCharsets.US_ASCII.name(), Collections.emptyMap(), text);
+        }
+
+        private static void write(ByteChannel channel, String status, String contentType, String encodingOrig, Map<String, String> headers, String content) throws IOException {
+            // To prevent from "parameter encoding should not be assigned" warning.
+            String encoding = encodingOrig;
+            byte[] bytes;
+            try {
+                Charset charset = Charset.forName(encoding);
+                CharsetEncoder newEncoder = charset.newEncoder();
+                if (!newEncoder.canEncode(content)) {
+                    charset = StandardCharsets.UTF_8;
+                    encoding = charset.name();
+                }
+                bytes = content.getBytes(charset);
+            } catch (IllegalCharsetNameException | UnsupportedCharsetException e) {
+                bytes = new byte[0];
+            }
+            write(channel, ("HTTP/1.1 " + status + " \r\n").getBytes(StandardCharsets.US_ASCII));
+            writeHeader(channel, "Content-Type", contentType + "; charset=" + encoding);
+            for (Map.Entry<String, String> header : headers.entrySet()) {
+                writeHeader(channel, header.getKey(), header.getValue());
+            }
+            writeHeader(channel, "Content-Length", Integer.toString(bytes.length));
+            write(channel, "\r\n".getBytes(StandardCharsets.US_ASCII));
+            channel.write(ByteBuffer.wrap(bytes));
+        }
+
+        private static void write(ByteChannel channel, byte[] bytes) throws IOException {
+            channel.write(ByteBuffer.wrap(bytes));
+        }
+
+        private static void writeHeader(ByteChannel channel, String name, String value) throws IOException {
+            write(channel, (name + ": " + value + "\r\n").getBytes(StandardCharsets.US_ASCII));
+        }
     }
 }

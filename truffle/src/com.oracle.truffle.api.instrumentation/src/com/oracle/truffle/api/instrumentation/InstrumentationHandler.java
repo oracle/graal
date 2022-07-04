@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1140,7 +1140,6 @@ final class InstrumentationHandler {
         }
     }
 
-    @SuppressWarnings("deprecation")
     static void removeWrapper(ProbeNode node) {
         if (TRACE) {
             trace("Remove wrapper for %s%n", node.getContext().getInstrumentedSourceSection());
@@ -1149,7 +1148,6 @@ final class InstrumentationHandler {
         ((Node) wrapperNode).replace(wrapperNode.getDelegateNode());
     }
 
-    @SuppressWarnings("deprecation")
     private static void invalidateWrapper(Node node) {
         Node parent = node.getParent();
         if (!(parent instanceof WrapperNode)) {
@@ -1996,7 +1994,6 @@ final class InstrumentationHandler {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static void traceFilterCheck(String result, Node instrumentableNode, SourceSection sourceSection) {
         trace("  Filter %4s node:%s section:%s %n", result, instrumentableNode, sourceSection);
     }
@@ -2371,8 +2368,8 @@ final class InstrumentationHandler {
             return InstrumentationHandler.this.attachListener(this, filter, inputFilter, listener);
         }
 
-        @Override
         @SuppressWarnings("deprecation")
+        @Override
         public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean includeExistingSources) {
             verifySourceOnly(filter);
             verifyFilter(filter);
@@ -2476,7 +2473,7 @@ final class InstrumentationHandler {
 
         @Override
         public Iterator<E> iterator() {
-            return new Iterator<E>() {
+            return new Iterator<>() {
                 private final E[] snapshot = getArray();
                 private int cursor = 0;
 
@@ -2665,7 +2662,7 @@ final class InstrumentationHandler {
          */
         @Override
         public Iterator<R> iterator() {
-            return new Iterator<R>() {
+            return new Iterator<>() {
 
                 /*
                  * We need to capture the values field in the iterator to have a consistent view on

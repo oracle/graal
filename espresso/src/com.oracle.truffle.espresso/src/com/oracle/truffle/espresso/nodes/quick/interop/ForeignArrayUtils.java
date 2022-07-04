@@ -30,24 +30,23 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class ForeignArrayUtils {
     private ForeignArrayUtils() {
-        CompilerDirectives.transferToInterpreter();
         throw EspressoError.shouldNotReachHere("Must not instantiate the utils class");
     }
 
-    public static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,
-                    Meta meta, BranchProfile exceptionProfile) {
+    public static Object readForeignArrayElement(StaticObject array, int index, EspressoLanguage language, Meta meta, InteropLibrary interop, BranchProfile exceptionProfile) {
         assert array.isForeignObject();
-        assert interop.hasArrayElements(array.rawForeignObject());
+        assert interop.hasArrayElements(array.rawForeignObject(language));
         try {
-            return interop.readArrayElement(array.rawForeignObject(), index);
+            return interop.readArrayElement(array.rawForeignObject(language), index);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("readArrayElement on a non-array foreign object", e);
         } catch (InvalidArrayIndexException e) {
             exceptionProfile.enter();
@@ -55,12 +54,11 @@ public final class ForeignArrayUtils {
         }
     }
 
-    public static void writeForeignArrayElement(StaticObject array, int index, Object value, InteropLibrary interop,
-                    Meta meta, BranchProfile exceptionProfile) {
+    public static void writeForeignArrayElement(StaticObject array, int index, Object value, EspressoLanguage language, Meta meta, InteropLibrary interop, BranchProfile exceptionProfile) {
         assert array.isForeignObject();
-        assert interop.hasArrayElements(array.rawForeignObject());
+        assert interop.hasArrayElements(array.rawForeignObject(language));
         try {
-            interop.writeArrayElement(array.rawForeignObject(), index, value);
+            interop.writeArrayElement(array.rawForeignObject(language), index, value);
         } catch (UnsupportedMessageException e) {
             // Read-only interop array.
             exceptionProfile.enter();

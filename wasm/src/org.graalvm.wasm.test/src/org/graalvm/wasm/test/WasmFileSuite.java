@@ -280,7 +280,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             contextBuilder.allowEnvironmentAccess(EnvironmentAccess.NONE);
             contextBuilder.out(TEST_OUT);
             contextBuilder.allowExperimentalOptions(true);
-            contextBuilder.option("engine.EncodedGraphCacheCapacity", "-1");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
@@ -290,7 +289,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
                 System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
             }
-
+            contextBuilder.option("wasm.KeepDataSections", "true");
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {

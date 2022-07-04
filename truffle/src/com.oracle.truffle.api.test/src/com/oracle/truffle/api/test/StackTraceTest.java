@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,9 +60,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -71,7 +73,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@SuppressWarnings("deprecation")
 public class StackTraceTest {
 
     @BeforeClass
@@ -81,7 +82,9 @@ public class StackTraceTest {
 
     @Test
     public void testFirstFrameIsCurrentFrame() {
-        CallTarget callTarget = createCallTarget(new ReturnStackTraceNode());
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget callTarget = createCallTarget(new ReturnStackTraceNode(), builder.build(), demoIndex);
         StackTrace stack = (StackTrace) callTarget.call();
         Assert.assertEquals(1, stack.frames.size());
         assertFrameEquals(stack.currentFrame, stack.frames.get(0));
@@ -97,7 +100,9 @@ public class StackTraceTest {
 
     @Test
     public void testSingleStackTrace() {
-        CallTarget callTarget = createCallTarget(new ReturnStackTraceNode());
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget callTarget = createCallTarget(new ReturnStackTraceNode(), builder.build(), demoIndex);
         StackTrace stack = (StackTrace) callTarget.call();
 
         Assert.assertEquals(1, stack.frames.size());
@@ -108,8 +113,10 @@ public class StackTraceTest {
 
     @Test
     public void testDirectStackTrace() {
-        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode());
-        CallTarget call = createCallTarget(new TestCallWithDirectTargetNode(createStackTrace));
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode(), builder.build(), demoIndex);
+        CallTarget call = createCallTarget(new TestCallWithDirectTargetNode(createStackTrace), builder.build(), demoIndex);
         StackTrace stack = (StackTrace) call.call();
 
         assertInvariants(stack);
@@ -122,8 +129,10 @@ public class StackTraceTest {
 
     @Test
     public void testIndirectStackTrace() {
-        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode());
-        CallTarget call = createCallTarget(new TestCallWithIndirectTargetNode(createStackTrace));
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode(), builder.build(), demoIndex);
+        CallTarget call = createCallTarget(new TestCallWithIndirectTargetNode(createStackTrace), builder.build(), demoIndex);
         StackTrace stack = (StackTrace) call.call();
 
         Assert.assertEquals(2, stack.frames.size());
@@ -136,8 +145,10 @@ public class StackTraceTest {
 
     @Test
     public void testCallTargetStackTrace() {
-        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode());
-        CallTarget call = createCallTarget(new TestCallWithCallTargetNode(createStackTrace));
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode(), builder.build(), demoIndex);
+        CallTarget call = createCallTarget(new TestCallWithCallTargetNode(createStackTrace), builder.build(), demoIndex);
         StackTrace stack = (StackTrace) call.call();
 
         assertInvariants(stack);
@@ -150,10 +161,12 @@ public class StackTraceTest {
 
     @Test
     public void testCombinedStackTrace() {
-        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode());
-        CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(createStackTrace));
-        CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget));
-        CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect));
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode(), builder.build(), demoIndex);
+        CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(createStackTrace), builder.build(), demoIndex);
+        CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget), builder.build(), demoIndex);
+        CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect), builder.build(), demoIndex);
         StackTrace stack = (StackTrace) direct.call();
 
         assertInvariants(stack);
@@ -173,52 +186,54 @@ public class StackTraceTest {
 
     @Test
     public void testFrameAccess() {
-        CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(null));
-        CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget));
-        CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect));
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(null), builder.build(), demoIndex);
+        CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget), builder.build(), demoIndex);
+        CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect), builder.build(), demoIndex);
         CallTarget test = createCallTarget(new TestCallNode(null) {
             @Override
             Object execute(VirtualFrame frame) {
-                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
-                    @SuppressWarnings("deprecation")
+                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     public Object visitFrame(FrameInstance frameInstance) {
 
                         Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-                        com.oracle.truffle.api.frame.FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
-                        Assert.assertEquals(42, readOnlyFrame.getValue(slot));
+                        Assert.assertEquals(42, readOnlyFrame.getValue(demoIndex));
 
                         Frame readWriteFrame = frameInstance.getFrame(FrameAccess.READ_WRITE);
-                        Assert.assertEquals(42, readWriteFrame.getValue(slot));
-                        readWriteFrame.setObject(slot, 43);
+                        Assert.assertEquals(42, readWriteFrame.getValue(demoIndex));
+                        readWriteFrame.setObject(demoIndex, 43);
 
                         Frame materializedFrame = frameInstance.getFrame(FrameAccess.MATERIALIZE);
-                        Assert.assertEquals(43, materializedFrame.getValue(slot));
+                        Assert.assertEquals(43, materializedFrame.getValue(demoIndex));
 
-                        materializedFrame.setObject(slot, 44);
-                        Assert.assertEquals(44, readOnlyFrame.getValue(slot));
-                        Assert.assertEquals(44, readWriteFrame.getValue(slot));
+                        materializedFrame.setObject(demoIndex, 44);
+                        Assert.assertEquals(44, readOnlyFrame.getValue(demoIndex));
+                        Assert.assertEquals(44, readWriteFrame.getValue(demoIndex));
 
                         return null;
                     }
                 });
                 return null;
             }
-        });
+        }, builder.build(), demoIndex);
         findTestCallNode(callTarget).setNext(test);
         direct.call();
     }
 
     @Test
     public void testStackTraversal() {
-        CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(null));
-        CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget));
-        CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect));
+        var builder = FrameDescriptor.newBuilder();
+        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+        CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(null), builder.build(), demoIndex);
+        CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget), builder.build(), demoIndex);
+        CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect), builder.build(), demoIndex);
         CallTarget test = createCallTarget(new TestCallNode(null) {
             int visitCount = 0;
 
             @Override
             Object execute(VirtualFrame frame) {
-                Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     public Object visitFrame(FrameInstance frameInstance) {
                         visitCount++;
                         return "foobar";
@@ -228,7 +243,7 @@ public class StackTraceTest {
                 Assert.assertEquals("foobar", result);
 
                 visitCount = 0;
-                result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                     public Object visitFrame(FrameInstance frameInstance) {
                         visitCount++;
                         if (visitCount == 2) {
@@ -243,7 +258,7 @@ public class StackTraceTest {
 
                 return null;
             }
-        });
+        }, builder.build(), demoIndex);
         findTestCallNode(callTarget).setNext(test);
         direct.call();
     }
@@ -259,10 +274,13 @@ public class StackTraceTest {
                 callables.add(new Callable<Void>() {
                     @Override
                     public Void call() {
-                        final CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode());
-                        final CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(createStackTrace));
-                        final CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget));
-                        final CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect));
+                        var builder = FrameDescriptor.newBuilder();
+                        int demoIndex = builder.addSlot(FrameSlotKind.Illegal, "demo", null);
+
+                        final CallTarget createStackTrace = createCallTarget(new ReturnStackTraceNode(), builder.build(), demoIndex);
+                        final CallTarget callTarget = createCallTarget(new TestCallWithCallTargetNode(createStackTrace), builder.build(), demoIndex);
+                        final CallTarget indirect = createCallTarget(new TestCallWithIndirectTargetNode(callTarget), builder.build(), demoIndex);
+                        final CallTarget direct = createCallTarget(new TestCallWithDirectTargetNode(indirect), builder.build(), demoIndex);
 
                         for (int j = 0; j < 10; j++) {
                             StackTrace stack = (StackTrace) direct.call();
@@ -332,8 +350,8 @@ public class StackTraceTest {
         Assert.assertSame(expected.getCallTarget(), other.getCallTarget());
     }
 
-    private static CallTarget createCallTarget(TestCallNode callNode) {
-        return new TestRootNode(callNode).getCallTarget();
+    private static CallTarget createCallTarget(TestCallNode callNode, FrameDescriptor descriptor, int demoIndex) {
+        return new TestRootNode(callNode, descriptor, demoIndex).getCallTarget();
     }
 
     private static class TestCallWithCallTargetNode extends TestCallNode {
@@ -411,6 +429,7 @@ public class StackTraceTest {
         final FrameInstance currentFrame;
         final FrameInstance callerFrame;
 
+        @SuppressWarnings("deprecation")
         StackTrace() {
             frames = new ArrayList<>();
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
@@ -420,8 +439,8 @@ public class StackTraceTest {
                 }
             });
 
-            currentFrame = Truffle.getRuntime().getCurrentFrame();
-            callerFrame = Truffle.getRuntime().getCallerFrame();
+            currentFrame = Truffle.getRuntime().iterateFrames((f) -> f, 0);
+            callerFrame = Truffle.getRuntime().iterateFrames((f) -> f, 1);
         }
 
     }
@@ -449,11 +468,12 @@ public class StackTraceTest {
     private static class TestRootNode extends RootNode {
 
         @Child private TestCallNode callNode;
+        final int demoIndex;
 
-        TestRootNode(TestCallNode callNode) {
-            super(null);
+        TestRootNode(TestCallNode callNode, FrameDescriptor descriptor, int demoIndex) {
+            super(null, descriptor);
             this.callNode = callNode;
-            getFrameDescriptor().addFrameSlot("demo");
+            this.demoIndex = demoIndex;
         }
 
         @Override
@@ -464,7 +484,7 @@ public class StackTraceTest {
 
         @CompilerDirectives.TruffleBoundary
         private void prepareFrame(MaterializedFrame frame) {
-            frame.setObject(getFrameDescriptor().findFrameSlot("demo"), 42);
+            frame.setObject(demoIndex, 42);
         }
 
     }

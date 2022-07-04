@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,10 @@ import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -57,13 +58,17 @@ import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 
-public class HostLanguageService extends AbstractHostService {
+public class HostLanguageService extends AbstractHostLanguageService {
 
     final HostLanguage language;
 
     HostLanguageService(AbstractPolyglotImpl polyglot, HostLanguage language) {
         super(polyglot);
         this.language = language;
+    }
+
+    @Override
+    public void release() {
     }
 
     @Override
@@ -218,9 +223,22 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public Object createHostAdapter(Object context, Class<?>[] types, Object classOverrides) {
+    public Object createHostAdapter(Object context, Object[] hostTypes, Object classOverrides) {
+        CompilerAsserts.neverPartOfCompilation();
         HostContext hostContext = (HostContext) context;
-        AdapterResult adapter = HostAdapterFactory.getAdapterClassFor(hostContext, types, classOverrides);
+        Class<?>[] javaTypes = new Class<?>[hostTypes.length];
+        for (int i = 0; i < hostTypes.length; i++) {
+            Object type = hostTypes[i];
+            if (type instanceof HostObject) {
+                HostObject hostType = (HostObject) type;
+                if (hostType.isDefaultClass()) {
+                    javaTypes[i] = hostType.asClass();
+                    continue;
+                }
+            }
+            throw HostEngineException.illegalArgument(hostContext.getHostClassCache().polyglotHostAccess, "Types must be host symbols or host classes.");
+        }
+        AdapterResult adapter = HostAdapterFactory.getAdapterClassFor(hostContext, javaTypes, classOverrides);
         if (!adapter.isSuccess()) {
             throw adapter.throwException();
         }
@@ -285,6 +303,11 @@ public class HostLanguageService extends AbstractHostService {
     @Override
     public void pin(Object receiver) {
         HostMethodScope.pin(receiver);
+    }
+
+    @Override
+    public void hostExit(int exitCode) {
+        System.exit(exitCode);
     }
 
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {

@@ -41,7 +41,7 @@ import com.oracle.truffle.api.Truffle;
 
 public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
-    private static final Consumer<CompilationTask> COMPILATION_ACTION = new Consumer<CompilationTask>() {
+    private static final Consumer<CompilationTask> COMPILATION_ACTION = new Consumer<>() {
         @Override
         public void accept(CompilationTask task) {
             OptimizedCallTarget callTarget = task.targetRef.get();
@@ -84,7 +84,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastTime = System.nanoTime();
         lastWeight = target != null ? target.getCallAndLoopCount() : -1;
         engineData = target != null ? target.engine : null;
-        isOSR = target != null ? target.isOSR() : false;
+        isOSR = target != null && target.isOSR();
     }
 
     static CompilationTask createInitializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
@@ -236,7 +236,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             // Any non-compilation action (e.g. compiler init) is higher priority.
             return true;
         }
-        if (this.isOSR && !other.isOSR) {
+        if (this.isOSR && other.isLastTier()) {
             return true;
         }
         int tier = tier();

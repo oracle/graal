@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,8 +51,9 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
@@ -185,15 +186,10 @@ public final class ReflectionPlugins {
                         "parameterType", "parameterCount", "returnType", "lastParameterType");
 
         Registration r = new Registration(plugins, MethodHandles.class);
-        r.register0("lookup", new InvocationPlugin() {
+        r.register(new RequiredInlineOnlyInvocationPlugin("lookup") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processMethodHandlesLookup(b, targetMethod);
-            }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
             }
         });
     }
@@ -204,13 +200,13 @@ public final class ReflectionPlugins {
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
         Registration r = new Registration(plugins, Class.class);
-        r.register1("forName", String.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("forName", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode) {
                 return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true));
             }
         });
-        r.register3("forName", String.class, boolean.class, ClassLoader.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode, ValueNode initializeNode, ValueNode classLoaderNode) {
                 /*
@@ -222,7 +218,7 @@ public final class ReflectionPlugins {
                 return processClassForName(b, targetMethod, nameNode, initializeNode);
             }
         });
-        r.register1("getClassLoader", Receiver.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getClassLoader", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processClassGetClassLoader(b, targetMethod, receiver);
@@ -323,7 +319,7 @@ public final class ReflectionPlugins {
      */
     private void registerFoldInvocationPlugins(InvocationPlugins plugins, Class<?> declaringClass, String... methodNames) {
         Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
-        ModuleSupport.openModuleByClass(declaringClass, ReflectionPlugins.class);
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionPlugins.class, declaringClass);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
                 registerFoldInvocationPlugin(plugins, method);
@@ -343,14 +339,12 @@ public final class ReflectionPlugins {
         }
         parameterTypes.addAll(Arrays.asList(reflectionMethod.getParameterTypes()));
 
-        InvocationPlugin foldInvocationPlugin = new InvocationPlugin() {
+        plugins.register(reflectionMethod.getDeclaringClass(), new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
                 return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args);
             }
-        };
-
-        plugins.register(foldInvocationPlugin, reflectionMethod.getDeclaringClass(), reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0]));
+        });
     }
 
     private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args) {

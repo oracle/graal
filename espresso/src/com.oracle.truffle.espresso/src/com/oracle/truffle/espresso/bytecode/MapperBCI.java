@@ -24,11 +24,12 @@ package com.oracle.truffle.espresso.bytecode;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
 /**
  * lightweight map from BCI to array index. The contract is easy, upon lookup, returns the index of
@@ -40,7 +41,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * <p>
  * Lookups done after a jump instruction is done through binary search, yielding a O(log) query.
  */
-public class MapperBCI extends Node {
+public class MapperBCI extends EspressoNode {
     @CompilationFinal(dimensions = 1) //
     private final int[] bcis;
 
@@ -96,6 +97,7 @@ public class MapperBCI extends Node {
         if (res >= 0) {
             return res;
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
 

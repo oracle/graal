@@ -29,19 +29,26 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
+import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+/** Checks that {@linkplain Uninterruptible} has been used consistently. */
 public final class UninterruptibleAnnotationChecker {
 
     public static class Options {
@@ -49,27 +56,68 @@ public final class UninterruptibleAnnotationChecker {
         public static final HostedOptionKey<Boolean> PrintUninterruptibleCalleeDOTGraph = new HostedOptionKey<>(false);
     }
 
-    private final Collection<HostedMethod> methodCollection;
-    private final Set<String> violations;
-
-    public UninterruptibleAnnotationChecker(Collection<HostedMethod> methodCollection) {
-        this.methodCollection = methodCollection;
-        this.violations = new TreeSet<>();
+    private static UninterruptibleAnnotationChecker singleton() {
+        return ImageSingletons.lookup(UninterruptibleAnnotationChecker.class);
     }
 
-    /** Check that {@linkplain Uninterruptible} has been used consistently. */
-    public void check() {
-        checkUninterruptibleOverrides();
-        checkUninterruptibleCallees();
-        checkUninterruptibleCallers();
-        checkUninterruptibleAllocations();
+    private final Set<String> violations = new TreeSet<>();
 
+    UninterruptibleAnnotationChecker() {
+    }
+
+    public static void checkAfterParsing(ResolvedJavaMethod method, StructuredGraph graph) {
+        singleton().checkAllocations(method, graph);
+    }
+
+    public static void checkBeforeCompilation(Collection<HostedMethod> methods) {
+        if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
+            System.out.println("/* DOT */ digraph uninterruptible {");
+        }
+
+        UninterruptibleAnnotationChecker c = singleton();
+        for (HostedMethod method : methods) {
+            Uninterruptible annotation = method.getAnnotation(Uninterruptible.class);
+            CompilationGraph graph = method.compilationInfo.getCompilationGraph();
+            c.checkSpecifiedOptions(method, annotation);
+            c.checkOverrides(method, annotation);
+            c.checkCallees(method, annotation, graph);
+            c.checkCallers(method, annotation, graph);
+        }
+
+        if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
+            System.out.println("/* DOT */ }");
+        }
+
+        c.reportViolations();
+    }
+
+    private void reportViolations() {
         if (!violations.isEmpty()) {
             String message = "Found " + violations.size() + " violations of @Uninterruptible usage:";
             for (String violation : violations) {
                 message = message + System.lineSeparator() + violation;
             }
             throw UserError.abort("%s", message);
+        }
+    }
+
+    /**
+     * Check that each method annotated with {@linkplain Uninterruptible} doesn't contain
+     * "calleeMustBe == false" and "mayBeInlined == true" at the same time.
+     *
+     * The combination does not make much sense because "mayBeInlined = true" means that the
+     * annotated method itself actually has no need to be uninterruptible, it is just a "benign
+     * utility method" that is used from within and outside uninterruptible code. But then
+     * "calleeMustBe = false" actually means that the method is actually doing something to switch
+     * from uninterruptible to "normal" code.
+     */
+    private void checkSpecifiedOptions(HostedMethod method, Uninterruptible methodAnnotation) {
+        if (methodAnnotation == null) {
+            return;
+        }
+        if (methodAnnotation.mayBeInlined() && !methodAnnotation.calleeMustBe()) {
+            violations.add("method " + method.format("%H.%n(%p)") + " is annotated with 'calleeMustBe == false' " +
+                            "and 'mayBeInlined == true' at the same time.");
         }
     }
 
@@ -81,27 +129,22 @@ public final class UninterruptibleAnnotationChecker {
      * The reverse need not be true: An overriding method can be annotated with
      * {@linkplain Uninterruptible} even though the overridden method is not annotated with
      * {@linkplain Uninterruptible}.
-     *
-     * TODO: The check for the same values might be too strict.
      */
-    @SuppressWarnings("try")
-    private void checkUninterruptibleOverrides() {
-        for (HostedMethod method : methodCollection) {
-            Uninterruptible methodAnnotation = method.getAnnotation(Uninterruptible.class);
-            if (methodAnnotation != null) {
-                for (HostedMethod impl : method.getImplementations()) {
-                    Uninterruptible implAnnotation = impl.getAnnotation(Uninterruptible.class);
-                    if (implAnnotation != null) {
-                        if (methodAnnotation.callerMustBe() != implAnnotation.callerMustBe()) {
-                            violations.add("callerMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
-                        }
-                        if (methodAnnotation.calleeMustBe() != implAnnotation.calleeMustBe()) {
-                            violations.add("calleeMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
-                        }
-                    } else {
-                        violations.add("method " + method.format("%H.%n(%p)") + " is annotated but " + impl.format("%H.%n(%p)" + " is not"));
-                    }
+    private void checkOverrides(HostedMethod method, Uninterruptible methodAnnotation) {
+        if (methodAnnotation == null) {
+            return;
+        }
+        for (HostedMethod impl : method.getImplementations()) {
+            Uninterruptible implAnnotation = impl.getAnnotation(Uninterruptible.class);
+            if (implAnnotation != null) {
+                if (methodAnnotation.callerMustBe() != implAnnotation.callerMustBe()) {
+                    violations.add("callerMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
                 }
+                if (methodAnnotation.calleeMustBe() != implAnnotation.calleeMustBe()) {
+                    violations.add("calleeMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
+                }
+            } else {
+                violations.add("method " + method.format("%H.%n(%p)") + " is annotated but " + impl.format("%H.%n(%p)" + " is not"));
             }
         }
     }
@@ -114,55 +157,39 @@ public final class UninterruptibleAnnotationChecker {
      * A caller can be annotated with "calleeMustBe = false" to allow calls to methods that are not
      * annotated with {@link Uninterruptible}, to allow the few cases where that should be allowed.
      */
-    @SuppressWarnings("try")
-    private void checkUninterruptibleCallees() {
-        if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
-            System.out.println("/* DOT */ digraph uninterruptible {");
+    private void checkCallees(HostedMethod caller, Uninterruptible callerAnnotation, CompilationGraph graph) {
+        if (callerAnnotation == null || graph == null) {
+            return;
         }
-        for (HostedMethod caller : methodCollection) {
-            Uninterruptible callerAnnotation = caller.getAnnotation(Uninterruptible.class);
-            if (callerAnnotation != null) {
-                StructuredGraph graph = caller.compilationInfo.getGraph();
-                if (graph != null) {
-                    for (Invoke invoke : graph.getInvokes()) {
-                        HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
-                        if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
-                            printDotGraphEdge(caller, callee);
-                        }
-
-                        Uninterruptible directCallerAnnotation = invoke.stateAfter().getMethod().getAnnotation(Uninterruptible.class);
-                        if (directCallerAnnotation == null) {
-                            violations.add("Unannotated callee: " + invoke.stateAfter().getMethod().format("%H.%n(%p)") + " inlined into annotated caller " + caller.format("%H.%n(%p)") +
-                                            System.lineSeparator() + FrameState.toSourcePosition(invoke.stateAfter()));
-                        } else if (directCallerAnnotation.calleeMustBe() && !isNotInterruptible(callee)) {
-                            violations.add("Unannotated callee: " + callee.format("%H.%n(%p)") + " called by annotated caller " + caller.format("%H.%n(%p)") +
-                                            System.lineSeparator() + FrameState.toSourcePosition(invoke.stateAfter()));
-                        }
-                    }
-                }
+        for (CompilationGraph.InvokeInfo invoke : graph.getInvokeInfos()) {
+            HostedMethod callee = invoke.getTargetMethod();
+            if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
+                printDotGraphEdge(caller, callee);
             }
-        }
-        if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
-            System.out.println("/* DOT */ }");
+
+            Uninterruptible directCallerAnnotation = invoke.getDirectCaller().getAnnotation(Uninterruptible.class);
+            if (directCallerAnnotation == null) {
+                violations.add("Unannotated callee: " + invoke.getDirectCaller().format("%H.%n(%p)") + " inlined into annotated caller " + caller.format("%H.%n(%p)") +
+                                System.lineSeparator() + invoke.getNodeSourcePosition());
+            } else if (directCallerAnnotation.calleeMustBe() && !isNotInterruptible(callee)) {
+                violations.add("Unannotated callee: " + callee.format("%H.%n(%p)") + " called by annotated caller " + caller.format("%H.%n(%p)") +
+                                System.lineSeparator() + invoke.getNodeSourcePosition());
+            }
         }
     }
 
     /**
      * Check that each method that calls a method annotated with {@linkplain Uninterruptible} that
-     * has "callerMustBeUninterrutible = true" is also annotated with {@linkplain Uninterruptible}.
+     * has "callerMustBe = true" is also annotated with {@linkplain Uninterruptible}.
      */
-    @SuppressWarnings("try")
-    private void checkUninterruptibleCallers() {
-        for (HostedMethod caller : methodCollection) {
-            Uninterruptible callerAnnotation = caller.getAnnotation(Uninterruptible.class);
-            StructuredGraph graph = caller.compilationInfo.getGraph();
-            if (callerAnnotation == null && graph != null) {
-                for (Invoke invoke : graph.getInvokes()) {
-                    HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
-                    if (isCallerMustBe(callee)) {
-                        violations.add("Unannotated caller: " + caller.format("%H.%n(%p)") + " calls annotated callee " + callee.format("%H.%n(%p)"));
-                    }
-                }
+    private void checkCallers(HostedMethod caller, Uninterruptible callerAnnotation, CompilationGraph graph) {
+        if (callerAnnotation != null || graph == null) {
+            return;
+        }
+        for (CompilationGraph.InvokeInfo invoke : graph.getInvokeInfos()) {
+            HostedMethod callee = invoke.getTargetMethod();
+            if (isCallerMustBe(callee)) {
+                violations.add("Unannotated caller: " + caller.format("%H.%n(%p)") + " calls annotated callee " + callee.format("%H.%n(%p)"));
             }
         }
     }
@@ -171,19 +198,19 @@ public final class UninterruptibleAnnotationChecker {
      * Check that each method that is annotated with {@linkplain Uninterruptible} contains no
      * allocations.
      */
-    @SuppressWarnings("try")
-    private void checkUninterruptibleAllocations() {
-        for (HostedMethod method : methodCollection) {
-            Uninterruptible methodAnnotation = method.getAnnotation(Uninterruptible.class);
-            StructuredGraph graph = method.compilationInfo.getGraph();
-            if (methodAnnotation != null && graph != null) {
-                for (Node node : graph.getNodes()) {
-                    if (RestrictHeapAccessAnnotationChecker.isAllocationNode(node)) {
-                        violations.add("Annotated method: " + method.format("%H.%n(%p)") + " allocates.");
-                    }
+    private void checkAllocations(ResolvedJavaMethod method, StructuredGraph graph) {
+        Uninterruptible methodAnnotation = method.getAnnotation(Uninterruptible.class);
+        if (methodAnnotation != null && graph != null) {
+            for (Node node : graph.getNodes()) {
+                if (isAllocationNode(node)) {
+                    violations.add("Annotated method: " + method.format("%H.%n(%p)") + " allocates.");
                 }
             }
         }
+    }
+
+    public static boolean isAllocationNode(Node node) {
+        return node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode;
     }
 
     private static boolean isNotInterruptible(HostedMethod method) {
@@ -212,9 +239,8 @@ public final class UninterruptibleAnnotationChecker {
     }
 
     private static void printDotGraphEdge(HostedMethod caller, HostedMethod callee) {
-        // The default color is black.
         String callerColor = " [color=black]";
-        String calleeColor = " [color=black]";
+        String calleeColor;
         if (isUninterruptible(caller)) {
             callerColor = " [color=blue]";
             if (!isCalleeMustBe(caller)) {
@@ -235,5 +261,13 @@ public final class UninterruptibleAnnotationChecker {
         System.out.println("/* DOT */    " + caller.format("<%h.%n>") + callerColor);
         System.out.println("/* DOT */    " + callee.format("<%h.%n>") + calleeColor);
         System.out.println("/* DOT */    " + caller.format("<%h.%n>") + " -> " + callee.format("<%h.%n>") + calleeColor);
+    }
+}
+
+@AutomaticFeature
+final class UninterruptibleAnnotationCheckerFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(UninterruptibleAnnotationChecker.class, new UninterruptibleAnnotationChecker());
     }
 }

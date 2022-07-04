@@ -29,7 +29,6 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -38,13 +37,13 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
 import com.oracle.graal.pointsto.flow.SourceTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
@@ -56,12 +55,13 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
-    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodFlow) {
-        super(bb, methodFlow);
+    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+        super(bb, method);
     }
 
     public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
@@ -142,7 +142,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * if it was properly intercepted or not is LoadFieldNode.
          */
 
-        NodeSourcePosition pos = offsetNode.getNodeSourcePosition();
+        BytecodePosition pos = sourcePosition(offsetNode);
         if (offsetNode instanceof LoadFieldNode) {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
@@ -173,7 +173,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     }
 
     @Override
-    protected void delegateNodeProcessing(FixedNode n, MethodTypeFlowBuilder.TypeFlowsOfNodes state) {
+    protected boolean delegateNodeProcessing(FixedNode n, TypeFlowsOfNodes state) {
         if (n instanceof LoadVMThreadLocalNode) {
             LoadVMThreadLocalNode node = (LoadVMThreadLocalNode) n;
             Stamp stamp = node.stamp(NodeView.DEFAULT);
@@ -189,28 +189,32 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                      * writing the objects to the all-instantiated.
                      */
                     result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                        SourceTypeFlow src = new SourceTypeFlow(node, TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
-                        methodFlow.addMiscEntry(src);
+                        SourceTypeFlow src = new SourceTypeFlow(sourcePosition(node), TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
+                        flowsGraph.addMiscEntryFlow(src);
                         return src;
                     });
                 } else {
                     /* Use a type state which consists of the entire node's type hierarchy. */
                     AnalysisType type = (AnalysisType) (objStamp.type() == null ? bb.getObjectType() : objStamp.type());
-                    result = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
-                        ProxyTypeFlow proxy = new ProxyTypeFlow(node, type.getTypeFlow(bb, true));
-                        methodFlow.addMiscEntry(proxy);
+                    result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
+                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), type.getTypeFlow(bb, true));
+                        flowsGraph.addMiscEntryFlow(proxy);
                         return proxy;
                     });
                 }
                 state.add(node, result);
+                return true;
             }
         } else if (n instanceof StoreVMThreadLocalNode) {
             StoreVMThreadLocalNode node = (StoreVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getValue());
+            return true;
         } else if (n instanceof CompareAndSetVMThreadLocalNode) {
             CompareAndSetVMThreadLocalNode node = (CompareAndSetVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getUpdate());
+            return true;
         }
+        return super.delegateNodeProcessing(n, state);
     }
 
     private void storeVMThreadLocal(TypeFlowsOfNodes state, ValueNode storeNode, ValueNode value) {
@@ -221,9 +225,9 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             ObjectStamp valueStamp = (ObjectStamp) stamp;
             AnalysisType valueType = (AnalysisType) (valueStamp.type() == null ? bb.getObjectType() : valueStamp.type());
 
-            TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, storeNode, ProxyTypeFlow.class, () -> {
-                ProxyTypeFlow proxy = new ProxyTypeFlow(storeNode, valueType.getTypeFlow(bb, false));
-                methodFlow.addMiscEntry(proxy);
+            TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, storeNode, TypeFlow.class, () -> {
+                TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(storeNode), valueType.getTypeFlow(bb, false));
+                flowsGraph.addMiscEntryFlow(proxy);
                 return proxy;
             });
             storeBuilder.addUseDependency(valueBuilder);

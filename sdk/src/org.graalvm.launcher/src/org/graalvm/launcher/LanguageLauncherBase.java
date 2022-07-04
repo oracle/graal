@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,22 @@
  */
 package org.graalvm.launcher;
 
-import java.io.IOException;
 import static java.lang.Integer.max;
+
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -63,11 +67,97 @@ import org.graalvm.polyglot.PolyglotException;
  * help items, prints installed engine's options.
  */
 public abstract class LanguageLauncherBase extends Launcher {
+
+    private static final String ID_HEADER = "[id]";
+    private static final String NAME_HEADER = "[name]";
+    private static final String WEBSITE_HEADER = "[website]";
+
     private static Engine tempEngine;
     private boolean seenPolyglot;
-    private boolean helpTools;
-    private boolean helpLanguages;
     private VersionAction versionAction = VersionAction.None;
+
+    static Engine getTempEngine() {
+        if (tempEngine == null) {
+            tempEngine = Engine.newBuilder().useSystemProperties(false).build();
+        }
+        return tempEngine;
+    }
+
+    private static String website(Instrument instrument) {
+        String website = instrument.getWebsite();
+        return website.isEmpty() ? "" : " (" + website + ")";
+    }
+
+    private static String title(Language language) {
+        final StringBuilder title = new StringBuilder("  " + language.getName());
+        final String website = language.getWebsite();
+        if (!"".equals(website)) {
+            title.append(" (");
+            title.append(website);
+            title.append(")");
+        }
+        title.append(":");
+        return title.toString();
+    }
+
+    private static List<PrintableOption> filterOptions(OptionDescriptors descriptors, OptionCategory optionCategory) {
+        List<PrintableOption> options = new ArrayList<>();
+        for (OptionDescriptor descriptor : descriptors) {
+            if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
+                options.add(asPrintableOption(descriptor));
+            }
+        }
+        options.sort(PrintableOption::compareTo);
+        return options;
+    }
+
+    private static boolean sameCategory(OptionDescriptor descriptor, OptionCategory optionCategory) {
+        return descriptor.getCategory().ordinal() == optionCategory.ordinal();
+    }
+
+    private static Launcher.PrintableOption asPrintableOption(OptionDescriptor descriptor) {
+        StringBuilder key = new StringBuilder("--");
+        final String name = descriptor.getName();
+        key.append(name);
+        if (descriptor.isOptionMap()) {
+            key.append(".<key>");
+        }
+        String usageSyntax = descriptor.getUsageSyntax();
+        if (usageSyntax != null) {
+            key.append("=");
+            key.append(usageSyntax);
+        }
+        String help = descriptor.getHelp();
+        if (descriptor.isDeprecated()) {
+            help = help + " [Deprecated]";
+        }
+        return new PrintableOption(name, key.toString(), help, descriptor.getStability() == OptionStability.EXPERIMENTAL);
+    }
+
+    private static void addOptions(OptionDescriptors descriptors, Set<String> target) {
+        for (OptionDescriptor descriptor : descriptors) {
+            target.add("--" + descriptor.getName());
+        }
+    }
+
+    static List<Language> sortedLanguages(Engine engine) {
+        List<Language> languages = new ArrayList<>(engine.getLanguages().values());
+        languages.sort(Comparator.comparing(Language::getId));
+        return languages;
+    }
+
+    static List<Instrument> sortedInstruments(Engine engine) {
+        List<Instrument> instruments = new ArrayList<>();
+        for (Instrument instrument : engine.getInstruments().values()) {
+            // no options not accessible to the user.
+            if (!instrument.getOptions().iterator().hasNext()) {
+                continue;
+            }
+            instruments.add(instrument);
+        }
+        instruments.sort(Comparator.comparing(Instrument::getId));
+        return instruments;
+    }
 
     final boolean isPolyglot() {
         return seenPolyglot;
@@ -92,13 +182,6 @@ public abstract class LanguageLauncherBase extends Launcher {
         if (System.out != getOutput()) {
             builder.out(getOutput());
         }
-    }
-
-    static Engine getTempEngine() {
-        if (tempEngine == null) {
-            tempEngine = Engine.newBuilder().useSystemProperties(false).build();
-        }
-        return tempEngine;
     }
 
     protected void argumentsProcessingDone() {
@@ -126,12 +209,6 @@ public abstract class LanguageLauncherBase extends Launcher {
     @Override
     protected boolean parseCommonOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
         switch (arg) {
-            case "--help:tools":
-                helpTools = true;
-                break;
-            case "--help:languages":
-                helpLanguages = true;
-                break;
             case "--polyglot":
                 seenPolyglot = true;
                 break;
@@ -170,25 +247,70 @@ public abstract class LanguageLauncherBase extends Launcher {
     @Override
     protected void printDefaultHelp(OptionCategory helpCategory) {
         super.printDefaultHelp(helpCategory);
+        launcherOption("--help:engine", "Print engine options.");
+        launcherOption("--help:all", "Print all options.");
         launcherOption("--version:graalvm", "Print GraalVM version information and exit.");
         launcherOption("--show-version:graalvm", "Print GraalVM version information and continue execution.");
-        launcherOption("--help:languages", "Print options for all installed languages.");
-        launcherOption("--help:tools", "Print options for all installed tools.");
-        launcherOption("--help:expert", "Print additional options for experts.");
-        launcherOption("--help:internal", "Print internal options for debugging language implementations and tools.");
-        printEngineOptions(getTempEngine(), helpCategory);
+        println("");
+        printInstalledComponents();
+        println("");
+        println("  Use --help:[id] for component options.");
+    }
+
+    private void printInstalledComponents() {
+        List<Language> languages = sortedLanguages(getTempEngine());
+        int maxId = ID_HEADER.length();
+        int maxName = NAME_HEADER.length();
+        for (Language language : languages) {
+            maxId = Math.max(maxId, language.getId().length());
+            maxName = max(maxName, language.getName().length());
+        }
+        List<Instrument> instruments = sortedInstruments(getTempEngine());
+        for (Instrument instrument : instruments) {
+            maxId = max(maxId, instrument.getId().length());
+            maxName = max(maxName, instrument.getName().length());
+        }
+        if (!languages.isEmpty()) {
+            println("Languages:");
+            printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
+            for (Language language : languages) {
+                printInstalled(maxId, maxName, language.getId(), language.getName(), language.getWebsite());
+            }
+        }
+        println("");
+        if (!instruments.isEmpty()) {
+            println("Tools:");
+            printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
+            for (Instrument instrument : instruments) {
+                printInstalled(maxId, maxName, instrument.getId(), instrument.getName(), instrument.getWebsite());
+            }
+        }
+    }
+
+    private void printInstalled(int maxId, int maxName, String id, String name, String website) {
+        println(String.format("  %-" + maxId + "s %-" + maxName + "s %s", id, name, website, id));
     }
 
     @Override
     protected void maybePrintAdditionalHelp(OptionCategory helpCategory) {
-        if (helpLanguages) {
-            printLanguageOptions(getTempEngine(), helpCategory);
-            printOtherHelpCategory("language", "--help:languages");
+        if (helpArg == null || "".equals(helpArg)) {
+            return;
         }
-        if (helpTools) {
-            printInstrumentOptions(getTempEngine(), helpCategory);
-            printOtherHelpCategory("tool", "--help:tools");
+        final boolean all = "all".equals(helpArg);
+        if (all || "languages".equals(helpArg)) {
+            helpPrinted = printLanguageOptions(getTempEngine(), null);
         }
+        if (all || "tools".equals(helpArg)) {
+            helpPrinted = printInstrumentOptions(getTempEngine(), null);
+        }
+        if (all || "engine".equals(helpArg)) {
+            helpPrinted = printEngineOptions(getTempEngine());
+        }
+        if (helpPrinted) {
+            return;
+        }
+        helpPrinted = printLanguageOptions(getTempEngine(), helpArg);
+        helpPrinted |= printInstrumentOptions(getTempEngine(), helpArg);
     }
 
     /**
@@ -232,53 +354,103 @@ public abstract class LanguageLauncherBase extends Launcher {
 
     }
 
-    private void printEngineOptions(Engine engine, OptionCategory optionCategory) {
-        List<PrintableOption> engineOptions = filterOptions(engine.getOptions(), optionCategory);
-        if (!engineOptions.isEmpty()) {
-            println();
-            printOptions(engineOptions, optionsTitle("engine", optionCategory), 2);
+    private boolean printEngineOptions(Engine engine) {
+        final Map<OptionCategory, List<PrintableOption>> options = getCategories(engine.getOptions());
+        if (options != null) {
+            println(optionsTitle("Engine", null));
+            printCategory(options, OptionCategory.USER, "User options:");
+            printCategory(options, OptionCategory.EXPERT, "Expert options:");
+            printCategory(options, OptionCategory.INTERNAL, "Internal options:");
+            return true;
         }
+        return false;
     }
 
-    private void printInstrumentOptions(Engine engine, OptionCategory optionCategory) {
-        Map<Instrument, List<PrintableOption>> instrumentsOptions = new HashMap<>();
+    private boolean printInstrumentOptions(Engine engine, String id) {
+        Map<Instrument, Map<OptionCategory, List<PrintableOption>>> instrumentsOptions = new HashMap<>();
         List<Instrument> instruments = sortedInstruments(engine);
         for (Instrument instrument : instruments) {
-            List<PrintableOption> options = filterOptions(instrument.getOptions(), optionCategory);
-            if (!options.isEmpty()) {
-                instrumentsOptions.put(instrument, options);
+            if (id == null || instrument.getId().equals(id)) {
+                Map<OptionCategory, List<PrintableOption>> categories = getCategories(instrument.getOptions());
+                if (categories != null) {
+                    instrumentsOptions.put(instrument, categories);
+                }
             }
         }
         if (!instrumentsOptions.isEmpty()) {
             println();
-            println(optionsTitle("tool", optionCategory));
+            println(optionsTitle("Tool", null));
             for (Instrument instrument : instruments) {
-                List<PrintableOption> options = instrumentsOptions.get(instrument);
-                if (options != null) {
-                    printOptions(options, "  " + instrument.getName() + ":", 4);
+                Map<OptionCategory, List<PrintableOption>> options = instrumentsOptions.get(instrument);
+                if (options == null) {
+                    continue;
                 }
+                println("");
+                println("  " + instrument.getName() + website(instrument) + ":");
+                printCategory(options, OptionCategory.USER, "User options:");
+                printCategory(options, OptionCategory.EXPERT, "Expert options:");
+                printCategory(options, OptionCategory.INTERNAL, "Internal options:");
+                println("");
+                println("   Use --help:" + instrument.getId() + ":internal to also show internal options.");
             }
+            return true;
         }
+        return false;
     }
 
-    private void printLanguageOptions(Engine engine, OptionCategory optionCategory) {
-        Map<Language, List<PrintableOption>> languagesOptions = new HashMap<>();
+    private boolean printLanguageOptions(Engine engine, String id) {
+        Map<Language, Map<OptionCategory, List<PrintableOption>>> languagesOptions = new HashMap<>();
         List<Language> languages = sortedLanguages(engine);
         for (Language language : languages) {
-            List<PrintableOption> options = filterOptions(language.getOptions(), optionCategory);
-            if (!options.isEmpty()) {
-                languagesOptions.put(language, options);
+            if (id == null || language.getId().equals(id)) {
+                Map<OptionCategory, List<PrintableOption>> categories = getCategories(language.getOptions());
+                if (categories != null) {
+                    languagesOptions.put(language, categories);
+                }
             }
         }
         if (!languagesOptions.isEmpty()) {
             println();
-            println(optionsTitle("language", optionCategory));
+            println(optionsTitle("Language", null));
             for (Language language : languages) {
-                List<PrintableOption> options = languagesOptions.get(language);
-                if (options != null) {
-                    printOptions(options, "  " + language.getName() + ":", 4);
+                Map<OptionCategory, List<PrintableOption>> options = languagesOptions.get(language);
+                if (options == null) {
+                    continue;
+                }
+                println("");
+                println(title(language));
+                printCategory(options, OptionCategory.USER, "User options:");
+                printCategory(options, OptionCategory.EXPERT, "Expert options:");
+                printCategory(options, OptionCategory.INTERNAL, "Internal options:");
+                println("");
+                if (options.get(OptionCategory.INTERNAL).isEmpty()) {
+                    println("   Use --help:" + language.getId() + ":internal to also show internal options.");
                 }
             }
+            return true;
+        }
+        return false;
+    }
+
+    private Map<OptionCategory, List<PrintableOption>> getCategories(OptionDescriptors options) {
+        List<PrintableOption> userOptions = filterOptions(options, OptionCategory.USER);
+        List<PrintableOption> expertOptions = filterOptions(options, OptionCategory.EXPERT);
+        List<PrintableOption> internalOptions = helpInternal ? filterOptions(options, OptionCategory.INTERNAL) : Collections.emptyList();
+        Map<OptionCategory, List<PrintableOption>> categories = null;
+        if (!userOptions.isEmpty() || !expertOptions.isEmpty() || !internalOptions.isEmpty()) {
+            categories = new HashMap<>();
+            categories.put(OptionCategory.USER, userOptions);
+            categories.put(OptionCategory.EXPERT, expertOptions);
+            categories.put(OptionCategory.INTERNAL, internalOptions);
+        }
+        return categories;
+    }
+
+    private void printCategory(Map<OptionCategory, List<PrintableOption>> options, OptionCategory category, String title) {
+        final List<PrintableOption> printableOptions = options.get(category);
+        if (printableOptions != null && !printableOptions.isEmpty()) {
+            println();
+            printOptions(printableOptions, title, 3);
         }
     }
 
@@ -332,40 +504,6 @@ public abstract class LanguageLauncherBase extends Launcher {
         }
     }
 
-    private static List<PrintableOption> filterOptions(OptionDescriptors descriptors, OptionCategory optionCategory) {
-        List<PrintableOption> options = new ArrayList<>();
-        for (OptionDescriptor descriptor : descriptors) {
-            if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
-                options.add(asPrintableOption(descriptor));
-            }
-        }
-        return options;
-    }
-
-    private static boolean sameCategory(OptionDescriptor descriptor, OptionCategory optionCategory) {
-        return descriptor.getCategory().ordinal() == optionCategory.ordinal();
-    }
-
-    void printOption(OptionCategory optionCategory, OptionDescriptor descriptor) {
-        if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
-            printOption(asPrintableOption(descriptor));
-        }
-    }
-
-    private static Launcher.PrintableOption asPrintableOption(OptionDescriptor descriptor) {
-        StringBuilder key = new StringBuilder("--");
-        key.append(descriptor.getName());
-        Object defaultValue = descriptor.getKey().getDefaultValue();
-        if (defaultValue instanceof Boolean && defaultValue == Boolean.FALSE) {
-            // nothing to print
-        } else {
-            key.append("=<");
-            key.append(descriptor.getKey().getType().getName());
-            key.append(">");
-        }
-        return new PrintableOption(key.toString(), descriptor.getHelp());
-    }
-
     @Override
     protected void collectArguments(Set<String> options) {
         options.add("--help:languages");
@@ -391,30 +529,5 @@ public abstract class LanguageLauncherBase extends Launcher {
             }
             addOptions(language.getOptions(), options);
         }
-    }
-
-    private static void addOptions(OptionDescriptors descriptors, Set<String> target) {
-        for (OptionDescriptor descriptor : descriptors) {
-            target.add("--" + descriptor.getName());
-        }
-    }
-
-    static List<Language> sortedLanguages(Engine engine) {
-        List<Language> languages = new ArrayList<>(engine.getLanguages().values());
-        languages.sort(Comparator.comparing(Language::getId));
-        return languages;
-    }
-
-    static List<Instrument> sortedInstruments(Engine engine) {
-        List<Instrument> instruments = new ArrayList<>();
-        for (Instrument instrument : engine.getInstruments().values()) {
-            // no options not accessible to the user.
-            if (!instrument.getOptions().iterator().hasNext()) {
-                continue;
-            }
-            instruments.add(instrument);
-        }
-        instruments.sort(Comparator.comparing(Instrument::getId));
-        return instruments;
     }
 }

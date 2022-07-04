@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -255,71 +255,17 @@ final class TStringOpsNodes {
         }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawRegionEqualsNode extends Node {
-
-        abstract boolean execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndexA, int fromIndexB, int length, byte[] mask);
-
-        @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        boolean cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndexA, int fromIndexB, int length, byte[] mask,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            return TStringOps.regionEqualsWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndexA, b, arrayB, cachedStrideB, fromIndexB, mask, length);
-        }
+    static int memcmp(Node location, AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB) {
+        int cmp = TStringOps.memcmpWithStride(location, a, arrayA, a.stride(), b, arrayB, b.stride(), Math.min(a.length(), b.length()));
+        return memCmpTail(cmp, a.length(), b.length());
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawEqualsNode extends Node {
-
-        abstract boolean execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB);
-
-        @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        boolean cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            return a.length() == b.length() && TStringOps.regionEqualsWithOrMaskWithStride(
-                            this, a, arrayA, cachedStrideA, 0,
-                            b, arrayB, cachedStrideB, 0, null, a.length());
-        }
-
-        static RawEqualsNode getUncached() {
-            return TStringOpsNodesFactory.RawEqualsNodeGen.getUncached();
-        }
+    static int memcmpBytes(Node location, AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB) {
+        int cmp = TStringOps.memcmpBytesWithStride(location, a, arrayA, a.stride(), b, arrayB, b.stride(), Math.min(a.length(), b.length()));
+        return memCmpTail(cmp, a.length(), b.length());
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawMemCmpNode extends Node {
-
-        abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB);
-
-        @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            int cmp = TStringOps.memcmpWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, Math.min(a.length(), b.length()));
-            return memCmpTail(cmp, a.length(), b.length());
-        }
-    }
-
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawMemCmpBytesNode extends Node {
-
-        abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB);
-
-        @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            int cmp = TStringOps.memcmpBytesWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, Math.min(a.length(), b.length()));
-            return memCmpTail(cmp, a.length(), b.length());
-        }
-    }
-
-    private static int memCmpTail(int cmp, int lengthA, int lengthB) {
+    static int memCmpTail(int cmp, int lengthA, int lengthB) {
         if (cmp == 0) {
             if (lengthA == lengthB) {
                 return 0;
@@ -328,46 +274,6 @@ final class TStringOpsNodes {
             }
         } else {
             return cmp > 0 ? 1 : -1;
-        }
-    }
-
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawArrayCopyNode extends Node {
-
-        abstract void execute(AbstractTruffleString a, Object arrayA, int srcPos, byte[] dst, int dstPos, int dstStride, int length);
-
-        @Specialization(guards = {"stride(a) == cachedStrideA", "dstStride == cachedStrideDst"}, limit = LIMIT_STRIDE)
-        void cached(AbstractTruffleString a, Object arrayA, int srcPos, byte[] dst, int dstPos, @SuppressWarnings("unused") int dstStride, int length,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "dstStride", allowUncached = true) int cachedStrideDst) {
-            TStringOps.arraycopyWithStride(
-                            this, arrayA, a.offset(), cachedStrideA, srcPos,
-                            dst, 0, cachedStrideDst, dstPos, length);
-        }
-
-        static RawArrayCopyNode getUncached() {
-            return TStringOpsNodesFactory.RawArrayCopyNodeGen.getUncached();
-        }
-    }
-
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawArrayCopyBytesNode extends Node {
-
-        abstract void execute(
-                        Object src, int offsetSrc, int strideSrc,
-                        byte[] dst, int offsetDst, int strideDst, int length);
-
-        @Specialization(guards = {"strideSrc == cachedStrideSrc", "strideDst == cachedStrideDst"}, limit = LIMIT_STRIDE)
-        void cached(
-                        Object src, int offsetSrc, @SuppressWarnings("unused") int strideSrc,
-                        byte[] dst, int offsetDst, @SuppressWarnings("unused") int strideDst, int length,
-                        @Cached(value = "strideSrc", allowUncached = true) int cachedStrideSrc,
-                        @Cached(value = "strideDst", allowUncached = true) int cachedStrideDst) {
-            TStringOps.arraycopyWithStride(this,
-                            src, offsetSrc, cachedStrideSrc, 0,
-                            dst, offsetDst, cachedStrideDst, 0, length);
         }
     }
 

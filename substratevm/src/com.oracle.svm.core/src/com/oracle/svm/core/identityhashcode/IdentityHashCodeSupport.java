@@ -30,7 +30,6 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
 
@@ -39,6 +38,8 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.misc.Unsafe;
 
 public final class IdentityHashCodeSupport {
     public static final LocationIdentity IDENTITY_HASHCODE_LOCATION = NamedLocationIdentity.mutable("identityHashCode");
@@ -62,7 +63,7 @@ public final class IdentityHashCodeSupport {
 
         // generate a new hashcode and try to store it into the object
         int newHashCode = generateHashCode();
-        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), 0, newHashCode)) {
+        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), 0, newHashCode)) {
             newHashCode = ObjectAccess.readInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), IDENTITY_HASHCODE_LOCATION);
         }
         VMError.guarantee(newHashCode != 0, "Missing identity hash code");

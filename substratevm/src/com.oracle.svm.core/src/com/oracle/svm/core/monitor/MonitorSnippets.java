@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
@@ -54,7 +55,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.nodes.KillMemoryNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -86,7 +86,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @Snippet
     protected static void monitorEnterSnippet(Object obj) {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
-        KillMemoryNode.killMemory(LocationIdentity.any());
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             callSlowPath(SLOW_PATH_MONITOR_ENTER, obj);
@@ -96,7 +96,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @Snippet
     protected static void monitorExitSnippet(Object obj) {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
-        KillMemoryNode.killMemory(LocationIdentity.any());
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             callSlowPath(SLOW_PATH_MONITOR_EXIT, obj);
@@ -142,7 +142,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
                  * can be replaced with an assertion once the issue is fixed.
                  */
                 GuardingNode nullCheck = tool.createGuard(node, node.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
+                node.setObject(node.graph().addOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
             }
         }
 

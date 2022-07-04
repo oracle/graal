@@ -25,8 +25,13 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.Method;
 
+/*
+ All methods in this class that can be overridden in subclasses must be abstract.
+ If a generic implementation should be provided it should be in EspressoMethodNode.
+ */
 @GenerateWrapper
 public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode {
     abstract Object executeBody(VirtualFrame frame);
@@ -35,7 +40,13 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
 
     public abstract Method.MethodVersion getMethodVersion();
 
-    public abstract boolean shouldSplit();
+    // the wrapper must delegate this
+    @Override
+    public abstract SourceSection getSourceSection();
+
+    public abstract boolean canSplit();
+
+    public abstract EspressoBaseMethodNode split();
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -48,7 +59,5 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
         return new EspressoBaseMethodNodeWrapper(this, probeNode);
     }
 
-    protected boolean isTrivial() {
-        return false;
-    }
+    protected abstract boolean isTrivial();
 }

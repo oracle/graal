@@ -77,6 +77,8 @@ public class PolyglotNativeAPITypes {
         @CField("error_message")
         void setErrorMessage(CCharPointer errorMessage);
 
+        @CField("error_message")
+        CCharPointer getErrorMessage();
     }
 
     @CPointerTo(value = PolyglotExtendedErrorInfo.class)

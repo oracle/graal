@@ -22,6 +22,7 @@ This source repository is the main repository for GraalVM and includes the follo
 
 Directory | Description
 ------------ | -------------
+[`.devcontainer/`](.devcontainer/) | Configuration files for GitHub dev containers.
 [`.github/`](.github/) | Configuration files for GitHub issues, workflows, ….
 [`compiler/`](compiler/) | [Graal compiler][reference-compiler], a modern, versatile compiler written in Java.
 [`espresso/`](espresso/) | [Espresso][java-on-truffle], a meta-circular Java bytecode interpreter for the GraalVM.

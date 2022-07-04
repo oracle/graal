@@ -188,6 +188,17 @@ public final class CoverageTest {
     }
 
     @Test
+    public void rootSourceSectionChanges() {
+        try (Context c = Context.newBuilder().in(System.in).out(out).err(err).build();
+                        CoverageTracker tracker = CoverageInstrument.getTracker(c.getEngine())) {
+            tracker.start(new CoverageTracker.Config(SourceSectionFilter.ANY, false));
+            c.eval(RootSourceChanges.ID, "");
+            final SourceCoverage[] coverage = tracker.getCoverage();
+            Assert.assertTrue(coverage.length > 0);
+        }
+    }
+
+    @Test
     public void testResetCoverage() {
         try (Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").build();
                         CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine())) {
@@ -242,10 +253,14 @@ public final class CoverageTest {
         static final com.oracle.truffle.api.source.Source statementSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in statement",
                         "statement").build();
 
+        public RootAndStatementInDifferentSources() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return new RootNode(this) {
-                @Child SuperclassNode child = new TestRootNode(new TestStatementNode());
+                @Child CoverageTest.SuperclassNode child = new CoverageTest.TestRootNode(new CoverageTest.TestStatementNode());
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -254,55 +269,131 @@ public final class CoverageTest {
             }.getCallTarget();
         }
 
-        @GenerateWrapper
-        static class SuperclassNode extends Node implements InstrumentableNode {
+    }
 
-            @Child SuperclassNode node;
+    @TruffleLanguage.Registration(id = RootSourceChanges.ID, name = "RootSourceChanges", version = "0")
+    @ProvidedTags({StandardTags.RootTag.class})
+    public static class RootSourceChanges extends ProxyLanguage {
+        public static final String ID = "RootSourceChanges";
 
-            @Override
-            public boolean isInstrumentable() {
-                return true;
-            }
+        static final com.oracle.truffle.api.source.Source rootNodeSource = com.oracle.truffle.api.source.Source.newBuilder(
+                        RootSourceChanges.ID, "for use in root", "root").build();
+        static final com.oracle.truffle.api.source.Source rootNodeSource2 = com.oracle.truffle.api.source.Source.newBuilder(
+                        RootAndStatementInDifferentSources.ID, "Another root", "root2").build();
 
-            @Override
-            public WrapperNode createWrapper(ProbeNode probe) {
-                return new SuperclassNodeWrapper(this, probe);
-            }
+        public RootSourceChanges() {
+            this.wrapper = false;
+        }
 
-            public Object execute(VirtualFrame frame) {
-                if (node == null) {
-                    return 1;
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(this) {
+                final SourceSection sourceSection = rootNodeSource.createSection(1);
+
+                @Override
+                public SourceSection getSourceSection() {
+                    return sourceSection;
                 }
-                return node.execute(frame);
-            }
+
+                @Child SuperclassNode child = new TestChangesSourceRootNode(new TestStatementNode());
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return child.execute(frame);
+                }
+            }.getCallTarget();
+        }
+    }
+
+    public static class TestChangesSourceRootNode extends SuperclassNode {
+        static boolean otherSource = false;
+
+        private final SourceSection section = RootSourceChanges.rootNodeSource.createSection(1);
+        private final SourceSection section2 = RootSourceChanges.rootNodeSource2.createSection(1);
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.RootTag.class;
         }
 
-        class TestRootNode extends SuperclassNode {
-            TestRootNode(TestStatementNode testStatementNode) {
-                node = testStatementNode;
-            }
-
-            @Override
-            public boolean hasTag(Class<? extends Tag> tag) {
-                return tag == StandardTags.RootTag.class;
-            }
-
-            @Override
-            public SourceSection getSourceSection() {
-                return rootSource.createSection(1);
-            }
+        TestChangesSourceRootNode(TestStatementNode testStatementNode) {
+            node = testStatementNode;
         }
 
-        class TestStatementNode extends SuperclassNode {
-            @Override
-            public boolean hasTag(Class<? extends Tag> tag) {
-                return tag == StandardTags.StatementTag.class;
+        @Override
+        public SourceSection getSourceSection() {
+            if (otherSource) {
+                return section2;
             }
+            otherSource = true;
+            return section;
+        }
 
-            @Override
-            public SourceSection getSourceSection() {
-                return statementSource.createSection(1);
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return super.execute(frame);
+        }
+    }
+
+    @GenerateWrapper
+    static class SuperclassNode extends Node implements InstrumentableNode {
+
+        @Child SuperclassNode node;
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return new SuperclassNodeWrapper(this, probe);
+        }
+
+        public Object execute(VirtualFrame frame) {
+            if (node == null) {
+                return 1;
             }
+            return node.execute(frame);
+        }
+    }
+
+    static class TestRootNode extends SuperclassNode {
+
+        private final SourceSection section;
+
+        TestRootNode(TestStatementNode testStatementNode) {
+            node = testStatementNode;
+            section = RootAndStatementInDifferentSources.rootSource.createSection(1);
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.RootTag.class;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return section;
+        }
+    }
+
+    static class TestStatementNode extends SuperclassNode {
+
+        TestStatementNode() {
+            this.section = RootAndStatementInDifferentSources.statementSource.createSection(1);
+        }
+
+        private final SourceSection section;
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.StatementTag.class;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return section;
         }
     }
 }

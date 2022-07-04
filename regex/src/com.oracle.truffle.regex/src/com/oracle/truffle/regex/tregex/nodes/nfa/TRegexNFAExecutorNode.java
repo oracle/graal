@@ -101,7 +101,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
-    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange) {
+    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
 

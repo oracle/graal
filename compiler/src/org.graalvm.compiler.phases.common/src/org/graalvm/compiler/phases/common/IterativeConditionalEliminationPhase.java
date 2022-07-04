@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package org.graalvm.compiler.phases.common;
+
+import java.util.Objects;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -69,5 +71,25 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
     @Override
     public float codeSizeIncrease() {
         return 2.0f;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof IterativeConditionalEliminationPhase)) {
+            return false;
+        }
+
+        IterativeConditionalEliminationPhase phase = (IterativeConditionalEliminationPhase) obj;
+
+        return this.getClass().equals(phase.getClass()) && this.fullSchedule == phase.fullSchedule && this.canonicalizer.equals(phase.canonicalizer);
     }
 }

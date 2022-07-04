@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,12 +47,16 @@ import org.graalvm.compiler.nodes.spi.StampInverter;
  * The {@code NegateNode} node negates its operand.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode, StampInverter {
+public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode, StampInverter {
 
     public static final NodeClass<NegateNode> TYPE = NodeClass.create(NegateNode.class);
 
     public NegateNode(ValueNode value) {
-        super(TYPE, getArithmeticOpTable(value).getNeg(), value);
+        this(TYPE, value);
+    }
+
+    protected NegateNode(NodeClass<? extends NegateNode> c, ValueNode value) {
+        super(c, getArithmeticOpTable(value).getNeg(), value);
     }
 
     public static ValueNode create(ValueNode value, NodeView view) {
@@ -108,7 +112,7 @@ public final class NegateNode extends UnaryArithmeticNode<Neg> implements Narrow
 
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        nodeValueMap.setResult(this, gen.emitNegate(nodeValueMap.operand(getValue())));
+        nodeValueMap.setResult(this, gen.emitNegate(nodeValueMap.operand(getValue()), false));
     }
 
     @Override

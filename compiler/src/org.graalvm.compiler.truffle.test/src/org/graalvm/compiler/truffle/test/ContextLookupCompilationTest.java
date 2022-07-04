@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,6 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.Truffle;
@@ -488,16 +486,12 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static RootNode createContextNotUsed(TruffleLanguage<?> sourceLanguage, TruffleLanguage<LanguageContext> accessLanguage, int lookups) {
         RootNode root = new RootNode(sourceLanguage) {
-            @CompilationFinal ContextReference<LanguageContext> ref;
+            @SuppressWarnings("unchecked") final ContextReference<LanguageContext> ref = ContextReference.create(accessLanguage.getClass());
 
             @Override
             @ExplodeLoop
             @SuppressWarnings({"unused", "unchecked"})
             public Object execute(VirtualFrame frame) {
-                if (ref == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ref = lookupContextReference(accessLanguage.getClass());
-                }
                 int sum = 0;
                 for (int i = 0; i < lookups; i++) {
                     sum += ref.get(this).magicNumber;
@@ -529,15 +523,10 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static RootNode createAssertConstantContextFromLookup(TruffleLanguage<?> sourceLanguage, TruffleLanguage<?> accessLanguage) {
         RootNode root = new RootNode(sourceLanguage) {
-            @CompilationFinal ContextReference<?> ref;
+            @SuppressWarnings("unchecked") final ContextReference<?> ref = ContextReference.create(accessLanguage.getClass());
 
-            @SuppressWarnings("unchecked")
             @Override
             public Object execute(VirtualFrame frame) {
-                if (ref == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ref = lookupContextReference(accessLanguage.getClass());
-                }
                 Object ctx = ref.get(this);
                 CompilerAsserts.partialEvaluationConstant(ctx);
                 return ctx;
@@ -548,16 +537,12 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static RootNode createContextFromLookup(TruffleLanguage<?> sourceLanguage, TruffleLanguage<LanguageContext> accessLanguage, int lookups) {
         RootNode root = new RootNode(sourceLanguage) {
-            @CompilationFinal ContextReference<LanguageContext> ref;
+            @SuppressWarnings("unchecked") final ContextReference<LanguageContext> ref = ContextReference.create(accessLanguage.getClass());
 
             @SuppressWarnings("unchecked")
             @Override
             @ExplodeLoop
             public Object execute(VirtualFrame frame) {
-                if (ref == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ref = lookupContextReference(accessLanguage.getClass());
-                }
                 int sum = 0;
                 for (int i = 0; i < lookups; i++) {
                     LanguageContext ctx = ref.get(this);
@@ -571,15 +556,11 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static RootNode createAssertConstantLanguageFromLookup(TruffleLanguage<?> sourceLanguage, TruffleLanguage<?> accessLanguage) {
         RootNode root = new RootNode(sourceLanguage) {
-            @CompilationFinal LanguageReference<?> ref;
+            @SuppressWarnings("unchecked") final LanguageReference<?> ref = LanguageReference.create(accessLanguage.getClass());
 
             @SuppressWarnings("unchecked")
             @Override
             public Object execute(VirtualFrame frame) {
-                if (ref == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ref = lookupLanguageReference(accessLanguage.getClass());
-                }
                 Object ctx = ref.get(this);
                 CompilerAsserts.partialEvaluationConstant(ctx);
                 return ctx;

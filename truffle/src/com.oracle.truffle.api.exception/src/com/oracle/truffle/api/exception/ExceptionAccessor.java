@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.exception;
 
-import static com.oracle.truffle.api.exception.AbstractTruffleException.isTruffleException;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -60,9 +58,6 @@ import java.util.Collections;
 import java.util.List;
 
 final class ExceptionAccessor extends Accessor {
-
-    static final ExceptionAccessor ACCESSOR = new ExceptionAccessor();
-    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
 
     private ExceptionAccessor() {
     }
@@ -111,13 +106,13 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         public boolean hasExceptionCause(Object receiver) {
-            return isTruffleException(((AbstractTruffleException) receiver).getCause());
+            return isException(((AbstractTruffleException) receiver).getCause());
         }
 
         @Override
         public Object getExceptionCause(Object receiver) {
             Throwable throwable = ((AbstractTruffleException) receiver).getCause();
-            if (isTruffleException(throwable)) {
+            if (isException(throwable)) {
                 return throwable;
             } else {
                 throw throwUnsupportedMessageException();
@@ -174,6 +169,16 @@ final class ExceptionAccessor extends Accessor {
                 throw throwUnsupportedMessageException();
             }
             return sourceSection;
+        }
+
+        @Override
+        public int getStackTraceElementLimit(Object receiver) {
+            return ((AbstractTruffleException) receiver).getStackTraceElementLimit();
+        }
+
+        @Override
+        public Node getLocation(Object receiver) {
+            return ((AbstractTruffleException) receiver).getLocation();
         }
 
         @Override

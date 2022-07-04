@@ -203,7 +203,7 @@ final class GraphNode implements Comparable<GraphNode> {
     }
 
     Iterable<GraphNode> getSuccessors(StateIndex<GraphNode> index) {
-        return () -> new Iterator<GraphNode>() {
+        return () -> new Iterator<>() {
 
             private int i = 0;
 
@@ -224,7 +224,7 @@ final class GraphNode implements Comparable<GraphNode> {
     }
 
     Iterable<GraphNode> getDomChildren(StateIndex<GraphNode> index) {
-        return () -> new Iterator<GraphNode>() {
+        return () -> new Iterator<>() {
 
             private int i = 0;
 

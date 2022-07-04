@@ -220,6 +220,15 @@ public final class ReferenceInternals {
         assert !VMOperation.isInProgress() : "could cause a deadlock";
         assert !ReferenceHandlerThread.isReferenceHandlerThread() : "would cause a deadlock";
 
+        if (ReferenceHandler.isExecutedManually()) {
+            /*
+             * When the reference handling is executed manually, then we don't know when pending
+             * references will be processed. So, we must not block when there are pending references
+             * as this could cause deadlocks.
+             */
+            return false;
+        }
+
         synchronized (processPendingLock) {
             if (processPendingActive || Heap.getHeap().hasReferencePendingList()) {
                 processPendingLock.wait(); // Wait for progress, not necessarily completion

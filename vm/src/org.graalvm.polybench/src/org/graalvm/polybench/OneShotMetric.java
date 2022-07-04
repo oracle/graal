@@ -34,7 +34,7 @@ import java.util.Optional;
  *
  * See ci_common/benchmark-forks.json
  */
-final class OneShotMetric implements Metric {
+final class OneShotMetric extends Metric {
     long startTime;
     long endTime;
 

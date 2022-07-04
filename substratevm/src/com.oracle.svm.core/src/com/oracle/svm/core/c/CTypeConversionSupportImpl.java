@@ -136,6 +136,14 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
     }
 
     @Override
+    public CCharPointerHolder toCBytes(byte[] bytes) {
+        if (bytes == null) {
+            return NULL_HOLDER;
+        }
+        return new CCharPointerHolderImpl(bytes);
+    }
+
+    @Override
     public ByteBuffer asByteBuffer(PointerBase address, int size) {
         ByteBuffer byteBuffer = SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(address.rawValue(), size), ByteBuffer.class);
         return byteBuffer.order(ConfigurationValues.getTarget().arch.getByteOrder());
@@ -150,6 +158,10 @@ final class CCharPointerHolderImpl implements CCharPointerHolder {
         byte[] bytes = javaString.toString().getBytes();
         /* Append the terminating 0. */
         bytes = Arrays.copyOf(bytes, bytes.length + 1);
+        cstring = PinnedObject.create(bytes);
+    }
+
+    CCharPointerHolderImpl(byte[] bytes) {
         cstring = PinnedObject.create(bytes);
     }
 

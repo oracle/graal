@@ -49,6 +49,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 
 import com.oracle.truffle.api.Truffle;
@@ -84,6 +85,8 @@ public abstract class AbstractPolyglotTest {
     protected boolean enterContext = true;
     protected boolean needsInstrumentEnv = false;
     protected boolean needsLanguageEnv = false;
+    protected boolean ignoreCancelOnClose = false;
+    protected boolean ignoreExitOnClose = false;
 
     protected final void setupEnv(Context.Builder contextBuilder, ProxyInstrument instrument) {
         setupEnv(null, contextBuilder, null, instrument);
@@ -110,16 +113,16 @@ public abstract class AbstractPolyglotTest {
     }
 
     private void setupEnv(Context originalContext, Context.Builder builder, ProxyLanguage language, ProxyInstrument instrument) {
-        if (language != null && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (language != null && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "custom proxy language"));
         }
-        if (instrument != null && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (instrument != null && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "custom proxy instrument"));
         }
-        if (needsLanguageEnv && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (needsLanguageEnv && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "language env"));
         }
-        if (needsInstrumentEnv && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (needsInstrumentEnv && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "instrument env"));
         }
 
@@ -232,7 +235,13 @@ public abstract class AbstractPolyglotTest {
                 context.leave();
             }
 
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if ((!ignoreCancelOnClose || !pe.isCancelled()) && (!ignoreExitOnClose || !pe.isExit())) {
+                    throw pe;
+                }
+            }
             context = null;
         }
         // restore static state

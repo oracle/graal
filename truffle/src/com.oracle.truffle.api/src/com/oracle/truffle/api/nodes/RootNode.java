@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -61,7 +60,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -267,7 +265,7 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * Returns <code>true</code> if a TruffleException leaving this node should capture
+     * Returns <code>true</code> if an AbstractTruffleException leaving this node should capture
      * {@link Frame} objects in its stack trace in addition to the default information. This is
      * <code>false</code> by default to avoid the attached overhead. The captured frames are then
      * accessible through {@link TruffleStackTraceElement#getFrame()}
@@ -388,17 +386,23 @@ public abstract class RootNode extends ExecutableNode {
         // Check isLoaded to avoid returning a CallTarget before notifyOnLoad() is done
         if (target == null || !NodeAccessor.RUNTIME.isLoaded(target)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ReentrantLock l = getLazyLock();
-            l.lock();
-            try {
-                target = this.callTarget;
-                if (target == null) {
-                    target = NodeAccessor.RUNTIME.newCallTarget(null, this);
-                    this.setupCallTarget(target, "callTarget was set by newCallTarget but should not");
-                }
-            } finally {
-                l.unlock();
+            target = initializeTarget();
+        }
+        return target;
+    }
+
+    private RootCallTarget initializeTarget() {
+        RootCallTarget target;
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            target = this.callTarget;
+            if (target == null) {
+                target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                this.setupCallTarget(target, "callTarget was set by newCallTarget but should not");
             }
+        } finally {
+            l.unlock();
         }
         return target;
     }
@@ -425,28 +429,6 @@ public abstract class RootNode extends ExecutableNode {
     /** @since 0.8 or earlier */
     public final FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
-    }
-
-    /**
-     * @throws UnsupportedOperationException if a call target already exists.
-     * @since 19.0
-     * @deprecated in 22.0, call targets are lazily initialized in {@link #getCallTarget()} now.
-     */
-    @Deprecated
-    protected final void setCallTarget(RootCallTarget callTarget) {
-        if (this.callTarget != null) {
-            throw new UnsupportedOperationException();
-        }
-        this.callTarget = callTarget;
-    }
-
-    /**
-     * Get compiler options specific to this <code>RootNode</code>.
-     *
-     * @since 0.8 or earlier
-     */
-    public CompilerOptions getCompilerOptions() {
-        return DefaultCompilerOptions.INSTANCE;
     }
 
     /**

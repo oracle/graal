@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -53,7 +52,7 @@ public class ReinterpretUtils {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[c.getSerializedSize()]).order(ByteOrder.nativeOrder());
         c.serialize(buffer);
 
-        BufferUtil.asBaseBuffer(buffer).rewind();
+        buffer.rewind();
         SerializableConstant ret = ((ArithmeticStamp) resultStamp).deserialize(buffer);
 
         assert !buffer.hasRemaining();

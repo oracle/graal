@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -181,7 +181,6 @@ final class NumberConversion {
             if (firstChar == '-') {
                 negative = true;
                 limit = min;
-                i++;
             } else if (firstChar != '+') {
                 errorProfile.enter();
                 throw numberFormatException();
@@ -190,6 +189,7 @@ final class NumberConversion {
                 errorProfile.enter();
                 throw numberFormatException();
             }
+            i++;
         }
         long multmin = limit / radix;
         while (i < a.length()) {

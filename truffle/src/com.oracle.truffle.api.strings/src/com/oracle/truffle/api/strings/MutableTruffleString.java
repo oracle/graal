@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -819,7 +819,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 codePointLength = length;
             } else {
                 if (utf8Profile.profile(isUTF8(encoding))) {
-                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false);
+                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false, false);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 } else if (asciiBytesLatinProfile.profile(TStringGuards.isAsciiBytesOrLatin1(encoding))) {

@@ -26,7 +26,6 @@ To inform `native-image` of a guest language used by an application, specify `--
 * [Prerequisites](#prerequisites)
 * [Build a Native Image](#build-a-native-image)
 * [Build a Shared Library](#build-a-shared-library)
-* [How to Determine What Version of GraalVM a Native Image is Generated with](#how-to-determine-what-version-of-graalvm-a-native-image-is-generated-with)
 * [Ahead-of-time Compilation Limitations](#ahead-of-time-compilation-limitations)
 
 ### License
@@ -77,14 +76,16 @@ xcode-select --install
 
 #### Prerequisites for Using Native Image on Windows
 
-To start using Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++(MSVC). There are two installation options:
-  * Install the Visual Studio Code Build Tools with the Windows 10 SDK
-  * Install Visual Studio Code with the Windows 10 SDK
+To start using Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++ (MSVC).
+There are two installation options:
+
+* Install the Visual Studio Build Tools with the Windows 10 SDK
+* Install Visual Studio with the Windows 10 SDK
 
 You can use Visual Studio 2017 version 15.9 or later.
 
 Lastly, on Windows, the `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
-The command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS Code 2019 installed.
+The command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS 2019 installed.
 Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for step-by-step instructions.
 
 ## Build a Native Image
@@ -183,7 +184,7 @@ int add(graal_isolatethread_t* thread, int a, int b);
 
 Shared library images and executable images alike can have an arbitrary number of entry points, for example, to implement callbacks or APIs.
 
-## How to Determine What Version of GraalVM an Image Is Generated with
+### How to Determine What Version of GraalVM an Image Is Generated with
 
 Assuming you have a Java class file, _EmptyHello.class_ , containing an empty main method and have generated an empty shared object emptyhello with the Native Image builder:
 ```shell
@@ -230,6 +231,6 @@ com.oracle.svm.core.VM=GraalVM <version> Java 11 EE
 ## Ahead-of-time Compilation Limitations
 
 There is a small portion of Java features are not susceptible to ahead-of-time compilation, and will therefore miss out on the performance advantages.
-To be able to build a highly optimized native executable, GraalVM runs an aggressive static analysis that requires a closed-world assumption, which means that all classes and all bytecodes that are reachable at run time must be known at build time. 
+To be able to build a highly optimized native executable, GraalVM runs an aggressive static analysis that requires a closed-world assumption, which means that all classes and all bytecodes that are reachable at run time must be known at build time.
 Therefore, it is not possible to load new data that have not been available during ahead-of-time compilation.
 Continue reading to [GraalVM Native Image Compatibility and Optimization](Limitations.md).

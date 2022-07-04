@@ -31,6 +31,7 @@ import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicSet;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -78,6 +80,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
@@ -87,7 +90,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {
+public abstract class Klass extends ContextAccessImpl implements ModifiersProvider, KlassRef, TruffleObject {
 
     // region Interop
 
@@ -131,7 +134,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (field != null) {
             Object result = field.get(this.tryInitializeAndGetStatics());
             if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-                return ((StaticObject) result).rawForeignObject();
+                EspressoLanguage language = EspressoLanguage.get(lookupFieldNode);
+                return ((StaticObject) result).rawForeignObject(language);
             }
             return result;
         }
@@ -326,15 +330,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
             EspressoContext context = EspressoContext.get(toEspressoNode);
             int length = getLength(arguments, toEspressoNode, context.getMeta());
-            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
+            GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
+            return context.getAllocator().createNewPrimitiveArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)")
         static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws UnsupportedTypeException, ArityException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
-            int length = getLength(arguments, toEspressoNode, EspressoContext.get(toEspressoNode).getMeta());
-            return InterpreterToVM.newReferenceArray(arrayKlass.getComponentType(), length);
+            EspressoContext context = EspressoContext.get(toEspressoNode);
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
+            return context.getAllocator().createNewReferenceArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
@@ -350,8 +357,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             for (int i = 0; i < dimensions.length; ++i) {
                 dimensions[i] = convertLength(arguments[i], toEspressoNode, context.getMeta());
             }
-
-            return context.getInterpreterToVM().newMultiArray(arrayKlass.getComponentType(), dimensions);
+            GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(context.getMeta(), arrayKlass.getComponentType(), dimensions);
+            return context.getAllocator().createNewMultiArray(arrayKlass.getComponentType(), dimensions);
         }
 
         static final String INIT_NAME = Name._init_.toString();
@@ -365,7 +372,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             if (init != null) {
                 Method initMethod = init.getMethod();
                 assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
-                StaticObject newObject = StaticObject.createNew(objectKlass);
+                initMethod.getDeclaringKlass().safeInitialize();
+                EspressoContext context = EspressoContext.get(invoke);
+                GuestAllocator.AllocationChecks.checkCanAllocateNewReference(context.getMeta(), objectKlass, false);
+                StaticObject newObject = context.getAllocator().createNew(objectKlass);
                 invoke.execute(initMethod, newObject, arguments);
                 return newObject;
             }
@@ -452,14 +462,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     // Threshold for using binary search instead of linear search for interface lookup.
     private static final int LINEAR_SEARCH_THRESHOLD = 8;
 
-    static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
+    static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(Klass k1, Klass k2) {
             return Integer.compare(k1.id, k2.id);
         }
     };
 
-    static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<ObjectKlass.KlassVersion>() {
+    static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(ObjectKlass.KlassVersion k1, ObjectKlass.KlassVersion k2) {
             return Integer.compare(k1.getKlass().getId(), k2.getKlass().getId());
@@ -475,13 +485,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     protected Symbol<Name> name;
     protected Symbol<Type> type;
-    private final EspressoContext context;
-    private final ObjectKlass superKlass;
 
     private final int id;
-
-    @CompilationFinal(dimensions = 1) //
-    private final ObjectKlass[] superInterfaces;
 
     @CompilationFinal //
     private volatile ArrayKlass arrayClass;
@@ -491,8 +496,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal //
     private Class<?> dispatch;
-
-    @CompilationFinal private int hierarchyDepth = -1;
 
     protected Object prepareThread;
 
@@ -591,20 +594,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return packageTo.isQualifiedExportTo(moduleFrom);
     }
 
-    public final ObjectKlass[] getSuperInterfaces() {
-        return superInterfaces;
+    public ObjectKlass[] getSuperInterfaces() {
+        return ObjectKlass.EMPTY_ARRAY;
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers) {
-        this(context, name, type, superKlass, superInterfaces, modifiers, -1);
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers) {
+        this(context, name, type, modifiers, -1);
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers, int possibleID) {
-        this.context = context;
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, int possibleID) {
+        super(context);
         this.name = name;
         this.type = type;
-        this.superKlass = superKlass;
-        this.superInterfaces = superInterfaces;
         this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
@@ -643,7 +644,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private synchronized void mirrorCreate() {
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.mirrorCache = StaticObject.createClass(this);
+            this.mirrorCache = getAllocator().createClass(this);
         }
     }
 
@@ -687,11 +688,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @Override
-    public final EspressoContext getContext() {
-        return context;
-    }
-
-    @Override
     public final boolean equals(Object that) {
         return this == that;
     }
@@ -699,19 +695,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public final int hashCode() {
         return getType().hashCode();
-    }
-
-    /**
-     * Final override for performance reasons.
-     * <p>
-     * The compiler cannot see that the {@link Klass} hierarchy is sealed, there's a single
-     * {@link ContextAccess#getMeta} implementation.
-     * <p>
-     * This final override avoids the virtual call in compiled code.
-     */
-    @Override
-    public final Meta getMeta() {
-        return getContext().getMeta();
     }
 
     public final StaticObject tryInitializeAndGetStatics() {
@@ -723,7 +706,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).getStaticsImpl();
         }
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Primitives/arrays do not have static fields");
     }
 
@@ -778,11 +761,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (!(this instanceof ObjectKlass)) {
             return true; // primitives or arrays are considered initialized.
         }
-        int state = ((ObjectKlass) this).getState();
-        return state == ObjectKlass.INITIALIZED ||
-                        state == ObjectKlass.ERRONEOUS ||
-                        // initializing thread
-                        state == ObjectKlass.INITIALIZING && Thread.holdsLock(this);
+        return ((ObjectKlass) this).isInitializingOrInitializedImpl();
     }
 
     /**
@@ -911,8 +890,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * an interface, a primitive type, or void, then null is returned. If this object represents an
      * array class then the type object representing the {@code Object} class is returned.
      */
-    public final ObjectKlass getSuperKlass() {
-        return superKlass;
+    public ObjectKlass getSuperKlass() {
+        return null;
     }
 
     /**
@@ -921,8 +900,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * or extended by this type.
      */
     @Override
-    public final Klass[] getImplementedInterfaces() {
-        return superInterfaces;
+    public Klass[] getImplementedInterfaces() {
+        return getSuperInterfaces();
     }
 
     public abstract Klass getElementalType();
@@ -1000,14 +979,19 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         try {
             initialize();
         } catch (EspressoException e) {
-            StaticObject cause = e.getExceptionObject();
+            StaticObject cause = e.getGuestException();
             Meta meta = getMeta();
             if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
+                throw throwExceptionInInitializerError(meta, cause);
             } else {
                 throw e;
             }
         }
+    }
+
+    @TruffleBoundary
+    private static EspressoException throwExceptionInInitializerError(Meta meta, StaticObject cause) {
+        throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
     }
 
     public final Klass getSupertype() {
@@ -1035,79 +1019,38 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return !isInterface();
     }
 
-    @CompilationFinal(dimensions = 1) //
-    private Klass[] supertypesWithSelfCache;
-
     // index 0 is Object, index hierarchyDepth is this
-    Klass[] getSuperTypes() {
-        Klass[] supertypes = supertypesWithSelfCache;
-        if (supertypes == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Klass supertype = getSupertype();
-            if (supertype == null) {
-                this.supertypesWithSelfCache = new Klass[]{this};
-                return supertypesWithSelfCache;
-            }
-            Klass[] superKlassTypes = supertype.getSuperTypes();
-            supertypes = new Klass[superKlassTypes.length + 1];
-            int depth = getHierarchyDepth();
-            assert supertypes.length == depth + 1;
-            supertypes[depth] = this;
-            System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
-            supertypesWithSelfCache = supertypes;
-        }
-        return supertypes;
+    protected Klass[] getSuperTypes() {
+        // default implementation for primitive classes
+        return new Klass[]{this};
     }
 
-    int getHierarchyDepth() {
-        int result = hierarchyDepth;
-        if (result == -1) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (getSupertype() == null) {
-                // Primitives or java.lang.Object
-                result = 0;
-            } else {
-                result = getSupertype().getHierarchyDepth() + 1;
-            }
-            hierarchyDepth = result;
-        }
-        return result;
+    protected int getHierarchyDepth() {
+        // default implementation for primitive classes
+        return 0;
     }
 
-    @CompilationFinal(dimensions = 1) private ObjectKlass.KlassVersion[] transitiveInterfaceCache;
-
-    protected final ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
-        ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
-        if (transitiveInterfaces == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (this.isArray() || this.isPrimitive()) {
-                ObjectKlass[] superItfs = this.getSuperInterfaces();
-                transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
-                for (int i = 0; i < superItfs.length; i++) {
-                    transitiveInterfaces[i] = superItfs[i].getKlassVersion();
-                }
-            } else {
-                // Use the itable construction.
-                transitiveInterfaces = ((ObjectKlass) this).getiKlassTable();
-            }
-            transitiveInterfaceCache = transitiveInterfaces;
-        }
-        return transitiveInterfaces;
+    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+        // default implementation for primitive classes
+        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
     }
 
     @TruffleBoundary
     public StaticObject allocateReferenceArray(int length) {
-        return InterpreterToVM.newReferenceArray(this, length);
+        Meta meta = getMeta(); // TODO: pass constant meta
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(meta, length);
+        return meta.getAllocator().createNewReferenceArray(this, length);
     }
 
     @TruffleBoundary
     public StaticObject allocateReferenceArray(int length, IntFunction<StaticObject> generator) {
         // TODO(peterssen): Store check is missing.
+        Meta meta = getMeta(); // TODO: pass constant meta
         StaticObject[] array = new StaticObject[length];
         for (int i = 0; i < array.length; ++i) {
             array[i] = generator.apply(i);
         }
-        return StaticObject.createArray(getArrayClass(), array);
+        return meta.getAllocator().wrapArrayAs(getArrayClass(), array);
     }
 
     // region Lookup
@@ -1142,7 +1085,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public final Field requireDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         Field obj = lookupDeclaredField(fieldName, fieldType);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing field: ", fieldName, ": ", fieldType, " in ", this);
+            throw EspressoError.shouldNotReachHere("Missing field: " + fieldName + ": " + fieldType + " in " + this);
         }
         return obj;
     }
@@ -1174,7 +1117,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      *
      * 2) Otherwise, field lookup is applied recursively to the direct superinterfaces of the
      * specified class or interface C.
-     * 
+     *
      * 3) Otherwise, if C has a superclass S, field lookup is applied recursively to S.
      *
      * 4) Otherwise, field lookup fails.
@@ -1209,14 +1152,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return ((ObjectKlass) this).lookupFieldTableImpl(slot);
         } else if (this instanceof ArrayKlass) {
             // Arrays extend j.l.Object, which shouldn't have any declared instance fields.
-            assert getMeta().java_lang_Object == getSuperKlass();
-            assert getMeta().java_lang_Object.getDeclaredFields().length == 0;
-            // Always null?
-            return getMeta().java_lang_Object.lookupFieldTable(slot);
+            return null;
         }
         // Unreachable?
         assert this instanceof PrimitiveKlass;
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("lookupFieldTable on primitive type");
     }
 
@@ -1225,14 +1165,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return ((ObjectKlass) this).lookupStaticFieldTableImpl(slot);
         }
         // Array nor primitives have static fields.
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("lookupStaticFieldTable on primitive/array type");
     }
 
     public final Method requireMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         Method obj = lookupMethod(methodName, signature);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " starting at ", this);
+            throw EspressoError.shouldNotReachHere("Missing method: " + methodName + ": " + signature + " starting at " + this);
         }
         return obj;
     }
@@ -1240,7 +1180,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public final Method requireDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         Method obj = lookupDeclaredMethod(methodName, signature);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " in ", this);
+            throw EspressoError.shouldNotReachHere("Missing method: " + methodName + ": " + signature + " in " + this);
         }
         return obj;
     }
@@ -1390,8 +1330,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      */
     public abstract int getClassModifiers();
 
+    @TruffleBoundary
     public final StaticObject allocateInstance() {
-        return InterpreterToVM.newObject(this, false);
+        return allocateInstance(getContext()); // May not be constant
+    }
+
+    public final StaticObject allocateInstance(EspressoContext ctx) {
+        assert this instanceof ObjectKlass;
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(ctx.getMeta(), this, false);
+        return ctx.getAllocator().createNew((ObjectKlass) this);
     }
 
     @CompilationFinal private Symbol<Name> runtimePackage;
@@ -1583,6 +1530,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public final ModuleRef getModule() {
         return module();
+    }
+
+    // visible to TypeCheckNode
+    public Assumption getRedefineAssumption() {
+        return Assumption.ALWAYS_VALID;
     }
 
     // endregion jdwp-specific

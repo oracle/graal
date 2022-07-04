@@ -102,7 +102,8 @@ public final class MultiBitSetMatcher extends InvertibleCharMatcher {
 
     @Override
     public boolean match(int c) {
-        return result(BitSets.get(bitSets[highByte(c)], lowByte(c)));
+        int highByte = highByte(c);
+        return result(highByte < bitSets.length && BitSets.get(bitSets[highByte], lowByte(c)));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import java.util.function.Function;
  */
 public final class OptionType<T> {
 
-    private static final Consumer<?> EMPTY_VALIDATOR = new Consumer<Object>() {
+    private static final Consumer<?> EMPTY_VALIDATOR = new Consumer<>() {
         public void accept(Object t) {
         }
     };
@@ -62,6 +62,7 @@ public final class OptionType<T> {
     private final Converter<T> converter;
     private final Consumer<T> validator;
     private final boolean isOptionMap;
+    private final boolean isDefaultType;
 
     /**
      * Constructs a new option type with name and function that allows to convert a string to the
@@ -81,10 +82,10 @@ public final class OptionType<T> {
             public T convert(T previousValue, String key, String value) {
                 return stringConverter.apply(value);
             }
-        }, validator, false);
+        }, validator, false, false);
     }
 
-    private OptionType(String name, Converter<T> converter, Consumer<T> validator, boolean isOptionMap) {
+    private OptionType(String name, Converter<T> converter, Consumer<T> validator, boolean isOptionMap, boolean isDefaultType) {
         Objects.requireNonNull(name);
         Objects.requireNonNull(converter);
         Objects.requireNonNull(validator);
@@ -92,6 +93,18 @@ public final class OptionType<T> {
         this.converter = converter;
         this.validator = validator;
         this.isOptionMap = isOptionMap;
+        this.isDefaultType = isDefaultType;
+    }
+
+    // Used only to create default types
+    @SuppressWarnings("unchecked")
+    private OptionType(String name, Function<String, T> stringConverter, boolean isDefaultType) {
+        this(name, new Converter<T>() {
+            @Override
+            public T convert(T previousValue, String key, String value) {
+                return stringConverter.apply(value);
+            }
+        }, (Consumer<T>) EMPTY_VALIDATOR, false, isDefaultType);
     }
 
     /**
@@ -113,7 +126,7 @@ public final class OptionType<T> {
      * @deprecated Use {@link #OptionType(String, Function, Consumer)}
      * @since 19.0
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     @SuppressWarnings("unused")
     public OptionType(String name, T defaultValue, Function<String, T> stringConverter, Consumer<T> validator) {
         this(name, stringConverter, validator);
@@ -123,7 +136,7 @@ public final class OptionType<T> {
      * @deprecated Use {@link #OptionType(String, Function)}
      * @since 19.0
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     @SuppressWarnings("unused")
     public OptionType(String name, T defaultValue, Function<String, T> stringConverter) {
         this(name, stringConverter);
@@ -133,7 +146,7 @@ public final class OptionType<T> {
      * @deprecated
      * @since 19.0
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public T getDefaultValue() {
         return null;
     }
@@ -206,7 +219,7 @@ public final class OptionType<T> {
                     throw new IllegalArgumentException(String.format("Invalid boolean option value '%s'. The value of the option must be '%s' or '%s'.", t, "true", "false"));
                 }
             }
-        }));
+        }, true));
         DEFAULTTYPES.put(Byte.class, new OptionType<>("Byte", new Function<String, Byte>() {
             public Byte apply(String t) {
                 try {
@@ -215,7 +228,7 @@ public final class OptionType<T> {
                     throw new IllegalArgumentException(e.getMessage(), e);
                 }
             }
-        }));
+        }, true));
         DEFAULTTYPES.put(Integer.class, new OptionType<>("Integer", new Function<String, Integer>() {
             public Integer apply(String t) {
                 try {
@@ -224,7 +237,7 @@ public final class OptionType<T> {
                     throw new IllegalArgumentException(e.getMessage(), e);
                 }
             }
-        }));
+        }, true));
         DEFAULTTYPES.put(Long.class, new OptionType<>("Long", new Function<String, Long>() {
             public Long apply(String t) {
                 try {
@@ -233,7 +246,7 @@ public final class OptionType<T> {
                     throw new IllegalArgumentException(e.getMessage(), e);
                 }
             }
-        }));
+        }, true));
         DEFAULTTYPES.put(Float.class, new OptionType<>("Float", new Function<String, Float>() {
             public Float apply(String t) {
                 try {
@@ -242,7 +255,7 @@ public final class OptionType<T> {
                     throw new IllegalArgumentException(e.getMessage(), e);
                 }
             }
-        }));
+        }, true));
         DEFAULTTYPES.put(Double.class, new OptionType<>("Double", new Function<String, Double>() {
             public Double apply(String t) {
                 try {
@@ -251,12 +264,12 @@ public final class OptionType<T> {
                     throw new IllegalArgumentException(e.getMessage(), e);
                 }
             }
-        }));
+        }, true));
         DEFAULTTYPES.put(String.class, new OptionType<>("String", new Function<String, String>() {
             public String apply(String t) {
                 return t;
             }
-        }));
+        }, true));
     }
 
     /**
@@ -290,7 +303,7 @@ public final class OptionType<T> {
                 map.backingMap.put(key, valueType.convert(map.get(key), key, value));
                 return map;
             }
-        }, (Consumer<OptionMap<V>>) EMPTY_VALIDATOR, true);
+        }, (Consumer<OptionMap<V>>) EMPTY_VALIDATOR, true, true);
     }
 
     /**
@@ -314,33 +327,46 @@ public final class OptionType<T> {
     @SuppressWarnings("unchecked")
     private static <T> OptionType<T> defaultEnumType(Class<T> clazz) {
         return new OptionType<>(clazz.getSimpleName(), new Function<String, T>() {
+
+            final Map<String, Enum<?>> validValues = new HashMap<>();
+
+            {
+                Class<? extends Enum<?>> enumType = (Class<? extends Enum<?>>) clazz;
+                for (Enum<?> constant : enumType.getEnumConstants()) {
+                    validValues.put(constant.toString(), constant);
+                }
+            }
+
             @SuppressWarnings("rawtypes")
             public T apply(String t) {
                 Class<? extends Enum> enumType = (Class<? extends Enum>) clazz;
-                try {
-                    if (t != null) {
-                        return (T) Enum.valueOf(enumType, t);
+                if (t != null) {
+                    Enum value = validValues.get(t);
+                    if (value != null) {
+                        return (T) value;
                     }
-                    // fallthrough to failed
-                } catch (IllegalArgumentException e) {
-                    // fallthrough to failed
                 }
+                // fallthrough to failed
                 StringBuilder b = new StringBuilder();
                 String sep = "";
                 for (Enum constant : enumType.getEnumConstants()) {
                     b.append(sep);
                     b.append('\'');
-                    b.append(constant.name());
+                    b.append(constant.toString());
                     b.append('\'');
                     sep = ", ";
                 }
                 throw new IllegalArgumentException("Invalid option value '" + t + "'. Valid options values are: " + b.toString());
             }
-        });
+        }, true);
     }
 
     boolean isOptionMap() {
         return isOptionMap;
+    }
+
+    boolean isDefaultType() {
+        return isDefaultType;
     }
 
     @FunctionalInterface

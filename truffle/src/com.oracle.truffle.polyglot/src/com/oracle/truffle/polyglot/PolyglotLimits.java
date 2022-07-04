@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -169,7 +169,7 @@ final class PolyglotLimits {
      */
     static final class EngineLimits {
 
-        private static final Predicate<Source> NO_PREDICATE = new Predicate<Source>() {
+        private static final Predicate<Source> NO_PREDICATE = new Predicate<>() {
             public boolean test(Source t) {
                 return true;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.api.strings.test.ops;
 
+import static com.oracle.truffle.api.strings.test.TStringTestUtil.toIntArray;
 import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
@@ -67,15 +68,15 @@ public class TStringLastByteIndexOfStringTest extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            testIndexOfString(a, array, isValid, encoding, codepoints, byteIndices, true, true, (b, expectedIndex) -> {
-                Assert.assertEquals(expectedIndex, node.execute(a, b, array.length, 0, encoding));
-            });
+            testIndexOfString(a, array, isValid, encoding, codepoints, byteIndices, true, true, (b, fromIndex, toIndex) -> node.execute(a, b, fromIndex, toIndex, encoding));
         });
     }
 
     @Test
     public void testWithMask() throws Exception {
-        TruffleString strA = TruffleString.fromJavaStringUncached("ABCDEFGHIJKLMNOPQRSTUVWXYZ", TruffleString.Encoding.UTF_16);
+        String javaStrA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        int[] codepointsA = toIntArray(javaStrA);
+        TruffleString strA = TruffleString.fromJavaStringUncached(javaStrA, TruffleString.Encoding.UTF_16);
         TruffleString strB = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_16);
         TruffleString.WithMask[] withMask = {
                         TruffleString.WithMask.createUncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
@@ -88,7 +89,7 @@ public class TStringLastByteIndexOfStringTest extends TStringTestBase {
             byte[] arr = new byte[strA.byteLength(encoding)];
             strA.switchEncodingUncached(encoding).copyToByteArrayNodeUncached(0, arr, 0, arr.length, encoding);
             int iFinal = i;
-            checkStringVariants(arr, TruffleString.CodeRange.ASCII, true, encoding, null, null, (a, array, codeRange, isValid, enc, codepoints, byteIndices) -> {
+            checkStringVariants(arr, TruffleString.CodeRange.ASCII, true, encoding, codepointsA, null, (a, array, codeRange, isValid, enc, codepoints, byteIndices) -> {
                 Assert.assertEquals(0, node.execute(a, withMask[iFinal], array.length, 0, encoding));
             });
         }

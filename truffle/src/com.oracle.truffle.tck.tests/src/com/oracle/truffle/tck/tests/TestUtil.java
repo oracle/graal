@@ -109,7 +109,7 @@ final class TestUtil {
                 requiredValues.removeAll(installedProviders);
                 throw providerNotFound("tck.values", requiredValues, installedProviders);
             }
-            predicate = new Predicate<String>() {
+            predicate = new Predicate<>() {
                 @Override
                 public boolean test(String lang) {
                     return requiredValues.contains(lang);

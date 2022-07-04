@@ -470,7 +470,7 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
-        new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
+        new LoopPeelingPhase(new DefaultLoopPolicies(), createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
         new SchedulePhase(graph.getOptions()).apply(graph, getDefaultHighTierContext());
     }
 

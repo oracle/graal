@@ -34,7 +34,6 @@ import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -68,6 +67,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -85,13 +85,13 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-import sun.misc.Unsafe;
 
 /**
  * Performs deoptimization. The method to deoptimize (= the source method) is either a specialized
@@ -148,8 +148,6 @@ import sun.misc.Unsafe;
  * </ol>
  */
 public final class Deoptimizer {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     private static final RingBuffer<char[]> recentDeoptimizationEvents = new RingBuffer<>();
 
@@ -263,9 +261,19 @@ public final class Deoptimizer {
      */
     @NeverInline("deoptimize must have a separate stack frame")
     public static void deoptimizeAll() {
-        JavaVMOperation.enqueueBlockingSafepoint("Deoptimizer.deoptimizeInRange", () -> {
-            deoptimizeInRange((CodePointer) WordFactory.zero(), (CodePointer) WordFactory.zero(), true);
-        });
+        DeoptimizeAllOperation vmOp = new DeoptimizeAllOperation();
+        vmOp.enqueue();
+    }
+
+    private static class DeoptimizeAllOperation extends JavaVMOperation {
+        DeoptimizeAllOperation() {
+            super(VMOperationInfos.get(DeoptimizeAllOperation.class, "Deoptimize all", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            deoptimizeInRange(WordFactory.zero(), WordFactory.zero(), true);
+        }
     }
 
     /**
@@ -344,7 +352,28 @@ public final class Deoptimizer {
          */
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
 
-        JavaVMOperation.enqueueBlockingSafepoint("DeoptimizeFrame", () -> Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, targetThread));
+        DeoptimizeFrameOperation vmOp = new DeoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, targetThread);
+        vmOp.enqueue();
+    }
+
+    private static class DeoptimizeFrameOperation extends JavaVMOperation {
+        private final Pointer sourceSp;
+        private final boolean ignoreNonDeoptimizable;
+        private final SpeculationReason speculation;
+        private final IsolateThread targetThread;
+
+        DeoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread targetThread) {
+            super(VMOperationInfos.get(DeoptimizeFrameOperation.class, "Deoptimize frame", SystemEffect.SAFEPOINT));
+            this.sourceSp = sourceSp;
+            this.ignoreNonDeoptimizable = ignoreNonDeoptimizable;
+            this.speculation = speculation;
+            this.targetThread = targetThread;
+        }
+
+        @Override
+        protected void operate() {
+            Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, targetThread);
+        }
     }
 
     private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread targetThread) {
@@ -628,7 +657,7 @@ public final class Deoptimizer {
         private DeoptimizedFrame result;
 
         DeoptSourceFrameOperation(Deoptimizer receiver, CodePointer pc, boolean ignoreNonDeoptimizable) {
-            super("DeoptSourceFrameOperation", SystemEffect.SAFEPOINT);
+            super(VMOperationInfos.get(DeoptSourceFrameOperation.class, "Deoptimize source frame", SystemEffect.SAFEPOINT));
             this.receiver = receiver;
             this.pc = pc;
             this.ignoreNonDeoptimizable = ignoreNonDeoptimizable;
@@ -961,8 +990,9 @@ public final class Deoptimizer {
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
+            assert LayoutEncoding.isPureInstance(hub.getLayoutEncoding());
             try {
-                obj = UNSAFE.allocateInstance(DynamicHub.toClass(hub));
+                obj = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
             } catch (InstantiationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -1057,7 +1087,7 @@ public final class Deoptimizer {
     }
 
     private static void printDeoptimizedFrame(Log log, Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult sourceFrameInfo, boolean printOnlyTopFrames) {
-        log.string("[Deoptimization of frame").newline();
+        log.string("[Deoptimization of frame (timestamp ").unsigned(System.currentTimeMillis()).string(")").newline();
 
         SubstrateInstalledCode installedCode = deoptimizedFrame.getSourceInstalledCode();
         if (installedCode != null) {

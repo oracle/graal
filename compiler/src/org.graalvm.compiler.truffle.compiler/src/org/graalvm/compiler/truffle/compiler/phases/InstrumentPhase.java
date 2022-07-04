@@ -53,8 +53,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 
-public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
+public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
 
     private static boolean checkMethodExists(String declaringClassName, String methodName) {
         try {
@@ -91,16 +91,9 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
     };
     private final Instrumentation instrumentation;
-    protected final MethodFilter methodFilter;
     protected final SnippetReflectionProvider snippetReflection;
 
-    public InstrumentPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
-        String filterValue = instrumentationFilter(options);
-        if (filterValue != null) {
-            methodFilter = MethodFilter.parse(filterValue);
-        } else {
-            methodFilter = MethodFilter.matchNothing();
-        }
+    public InstrumentPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
         this.snippetReflection = snippetReflection;
         this.instrumentation = instrumentation;
     }
@@ -113,7 +106,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         return options.get(PolyglotCompilerOptions.InstrumentFilter);
     }
 
-    protected static void insertCounter(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant,
+    protected static void insertCounter(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant,
                     FixedWithNextNode targetNode, int slotIndex) {
         assert (tableConstant != null);
         TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
@@ -134,7 +127,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         JavaConstant tableConstant = snippetReflection.forObject(instrumentation.getAccessTable());
         try {
             instrumentGraph(graph, context, tableConstant);
@@ -143,7 +136,16 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         }
     }
 
-    protected abstract void instrumentGraph(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant);
+    protected MethodFilter methodFilter(TruffleTierContext context) {
+        String filterValue = instrumentationFilter(context.options);
+        if (filterValue != null) {
+            return MethodFilter.parse(filterValue);
+        } else {
+            return MethodFilter.matchNothing();
+        }
+    }
+
+    protected abstract void instrumentGraph(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant);
 
     protected abstract int instrumentationPointSlotCount();
 
@@ -151,14 +153,14 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
 
     protected abstract Point createPoint(int id, int startIndex, Node n);
 
-    public Point getOrCreatePoint(Node n) {
+    public Point getOrCreatePoint(Node n, MethodFilter methodFilter) {
         Point point = instrumentation.getOrCreatePoint(methodFilter, n, this);
         assert point == null || point.slotCount() == instrumentationPointSlotCount() : "Slot count mismatch between instrumentation point and expected value.";
         return point;
     }
 
     public static class Instrumentation {
-        private Comparator<Point> pointsComparator = new Comparator<Point>() {
+        private Comparator<Point> pointsComparator = new Comparator<>() {
             @Override
             public int compare(Point x, Point y) {
                 long diff = y.getHotness() - x.getHotness();
@@ -171,7 +173,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
                 }
             }
         };
-        private Comparator<Map.Entry<String, Point>> entriesComparator = new Comparator<Map.Entry<String, Point>>() {
+        private Comparator<Map.Entry<String, Point>> entriesComparator = new Comparator<>() {
             @Override
             public int compare(Map.Entry<String, Point> x, Map.Entry<String, Point> y) {
                 long diff = y.getValue().getHotness() - x.getValue().getHotness();

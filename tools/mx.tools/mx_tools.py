@@ -190,14 +190,13 @@ def dap_types_gen(args):
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
-    if mx.get_jdk(tag='default').javaCompliance > '1.8':
-        # This is required to access jdk.internal.module.Modules which
-        # in turn allows us to dynamically open fields/methods to reflection.
-        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+    # This is required to access jdk.internal.module.Modules which
+    # in turn allows us to dynamically open fields/methods to reflection.
+    vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # This is required for the call to setAccessible in
-        # TruffleTCK.testValueWithSource to work.
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+    # This is required for the call to setAccessible in
+    # TruffleTCK.testValueWithSource to work.
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -302,18 +301,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     truffle_jars=['tools:TRUFFLE_COVERAGE'],
     support_distributions=['tools:TRUFFLE_COVERAGE_GRAALVM_SUPPORT'],
     include_by_default=True,
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
-    suite=_suite,
-    name='VisualVM',
-    short_name='vvm',
-    dir_name='visualvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=[],
-    support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
-    provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')]
 ))
 
 for mode in ['jvm', 'native']:

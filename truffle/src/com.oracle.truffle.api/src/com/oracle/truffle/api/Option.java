@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,6 +104,12 @@ public @interface Option {
      * Returns a help message for the option. New lines can be embedded in the message with
      * {@code "%n"}. The generated an option descriptor returns this value as result of
      * {@link OptionDescriptor#getHelp()}.
+     * 
+     * Recommendation:
+     * <ul>
+     * <li>Include the default value for the option and the end of the text, e.g.
+     * <code>"Enable or disable the option (default: true)."</code></li>
+     * </ul>
      *
      * @since 0.27
      */
@@ -140,6 +146,40 @@ public @interface Option {
      * @since 19.0
      */
     OptionStability stability() default OptionStability.EXPERIMENTAL;
+
+    /**
+     * Describes in short the syntax of accepted values for this option. This value is used when
+     * generating help messages to better explain how to use the option. Combine with the help
+     * message to illustrate to users how to correctly use the option. For example:
+     * 
+     * <pre>
+     * &#64;Option(name = "Enabled", help = "Enable/Disable the option.", usageSyntax = "true|false")
+     * </pre>
+     *
+     * Recommendations:
+     * <ul>
+     * <li>if the option accepts a discrete number of values (e.g. boolean, enum) list the values
+     * separated by a '|' character. The default value for enums should be placed as the first in
+     * the list. e.g. <code>"true|false"</code>, <code>"none|red|green|blue|white"</code></li>
+     * <li>if the options accepts a value representing a well-known concept or a number representing
+     * particular units, place that concept/unit between &lt; and &gt; e.g.
+     * <code>"&lt;ms&gt;"</code>, <code>"&lt;path&gt;"</code>, <code>"&lt;country&gt;"</code>,
+     * <code>"&lt;&gt;"</code></li>
+     * <li>if the options accepts a range of numbers use the range syntax: [a,b] for inclusive range
+     * from a to b, (a, b) for exclusive range from a to b, [a, b) for range from a to b including a
+     * and (a, b] for range from a to b including b. If the range is infinite use inf and -inf. For
+     * example: <code>"[0, 100]"</code>, <code>"(0.0, 1.0)"</code>, <code>"[0, inf)</code>.
+     * <li>if the options accepts a comma-separated list, use two comma-separated values and a
+     * <code>...</code>. Apply these same recommendations to individual values, e.g.
+     * <code>"&lt;targetName&gt;,&lt;targetName&gt;,..."</code>.
+     * <li>if the options accepts a custom format, describe the format in a generic manner e.g. ip
+     * address - <code>"*.*.*.*"</code>, CSV Person -
+     * <code>"&lt;firstName&gt;,&lt;lastName&gt;,&lt;age&gt;"</code>.
+     * </ul>
+     * 
+     * @since 22.1
+     */
+    String usageSyntax() default "";
 
     /**
      * Must be applied on classes containing {@link Option option} fields to specify a name prefix

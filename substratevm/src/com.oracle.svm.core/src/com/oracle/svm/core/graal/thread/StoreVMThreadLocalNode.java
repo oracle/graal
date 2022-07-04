@@ -35,16 +35,18 @@ import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThreadLocalAccess, Lowerable {
+public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThreadLocalAccess, Lowerable, SingleMemoryKill {
     public static final NodeClass<StoreVMThreadLocalNode> TYPE = NodeClass.create(StoreVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;
@@ -69,6 +71,14 @@ public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThre
 
     public ValueNode getValue() {
         return value;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
+            return LocationIdentity.any();
+        }
+        return threadLocalInfo.locationIdentity;
     }
 
     @Override

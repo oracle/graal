@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
 import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -57,6 +54,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.LongValueProfile;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
@@ -76,7 +74,7 @@ public class LongValueProfileTest {
 
     @Before
     public void create() {
-        profile = (LongValueProfile) invokeStatic(loadRelative(PrimitiveValueProfileTest.class, "LongValueProfile$Enabled"), "create");
+        profile = ReflectionUtils.newInstance(LongValueProfile.class);
     }
 
     private static boolean isGeneric(LongValueProfile profile) {
@@ -148,7 +146,7 @@ public class LongValueProfileTest {
 
     @Test
     public void testDisabled() {
-        LongValueProfile p = (LongValueProfile) getStaticField(loadRelative(PrimitiveValueProfileTest.class, "LongValueProfile$Disabled"), "INSTANCE");
+        LongValueProfile p = LongValueProfile.getUncached();
         assertThat(p.profile(VALUE0), is(VALUE0));
         assertThat(p.profile(VALUE1), is(VALUE1));
         assertThat(p.profile(VALUE2), is(VALUE2));

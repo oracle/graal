@@ -201,13 +201,13 @@ public final class NFIContextExtension extends NativeContextExtension {
     private final EconomicMap<Source, Object> signatureCache = EconomicMap.create(Equivalence.IDENTITY);
 
     // This is an array instead of an ArrayList because it's accessed from the fast-path.
-    private Object[] wellKnownFunctionCache;
+    private WellKnownNativeFunctionAndSignature[] wellKnownFunctionCache;
 
     private NFIContextExtension(Env env, SignatureSourceCache signatureSourceCache) {
         assert env.getOptions().get(SulongNativeOption.ENABLE_NFI);
         this.env = env;
         this.signatureSourceCache = signatureSourceCache;
-        this.wellKnownFunctionCache = new Object[WELL_KNOWN_CACHE_INITIAL_SIZE];
+        this.wellKnownFunctionCache = new WellKnownNativeFunctionAndSignature[WELL_KNOWN_CACHE_INITIAL_SIZE];
     }
 
     @Override
@@ -476,13 +476,10 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
-    private static Object bindNativeFunction(Object symbol, String signature) {
+    private Object bindNativeFunction(Object symbol, String signature) {
         CompilerAsserts.neverPartOfCompilation();
-        try {
-            return INTEROP.invokeMember(symbol, "bind", signature);
-        } catch (InteropException ex) {
-            throw new IllegalStateException(ex);
-        }
+        Source sigSource = Source.newBuilder("nfi", signature, SIGNATURE_SOURCE_NAME).build();
+        return SignatureLibrary.getUncached().bind(getCachedSignature(sigSource), symbol);
     }
 
     @Override
@@ -502,19 +499,27 @@ public final class NFIContextExtension extends NativeContextExtension {
         return WellKnownNFIFunctionNodeGen.create(fn);
     }
 
-    private Object createWellKnownFunction(WellKnownFunction fn) {
+    @Override
+    @TruffleBoundary
+    public WellKnownNativeFunctionAndSignature getWellKnownNativeFunctionAndSignature(String name, String signature) {
+        WellKnownFunction fn = signatureSourceCache.getWellKnownFunction(name, signature);
+        return getCachedWellKnownFunction(fn);
+    }
+
+    private WellKnownNativeFunctionAndSignature createWellKnownFunction(WellKnownFunction fn) {
         CompilerAsserts.neverPartOfCompilation();
         NativeLookupResult result = getNativeFunctionOrNull(fn.name);
         if (result != null) {
             CallTarget parsedSignature = env.parseInternal(fn.signatureSource);
             Object signature = parsedSignature.call();
-            return SignatureLibrary.getUncached().bind(signature, result.getObject());
+            Object boundSignature = SignatureLibrary.getUncached().bind(signature, result.getObject());
+            return new WellKnownNativeFunctionAndSignature(signature, result.getObject(), boundSignature);
         }
         throw new LLVMLinkerException(String.format("External function %s cannot be found.", fn.name));
     }
 
     @TruffleBoundary
-    private Object getWellKnownFuctionSlowPath(WellKnownFunction fn) {
+    private WellKnownNativeFunctionAndSignature getWellKnownFunctionSlowPath(WellKnownFunction fn) {
         synchronized (this) {
             if (wellKnownFunctionCache.length <= fn.index) {
                 int newLength = wellKnownFunctionCache.length * 2;
@@ -524,7 +529,7 @@ public final class NFIContextExtension extends NativeContextExtension {
                 }
                 wellKnownFunctionCache = Arrays.copyOf(wellKnownFunctionCache, newLength);
             }
-            Object ret = wellKnownFunctionCache[fn.index];
+            WellKnownNativeFunctionAndSignature ret = wellKnownFunctionCache[fn.index];
             if (ret == null) {
                 ret = createWellKnownFunction(fn);
                 wellKnownFunctionCache[fn.index] = ret;
@@ -533,14 +538,14 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
-    Object getCachedWellKnownFunction(WellKnownFunction fn) {
+    WellKnownNativeFunctionAndSignature getCachedWellKnownFunction(WellKnownFunction fn) {
         if (fn.index < wellKnownFunctionCache.length) {
-            Object ret = wellKnownFunctionCache[fn.index];
+            WellKnownNativeFunctionAndSignature ret = wellKnownFunctionCache[fn.index];
             if (ret != null) {
                 return ret;
             }
         }
-        return getWellKnownFuctionSlowPath(fn);
+        return getWellKnownFunctionSlowPath(fn);
     }
 
     @Override
@@ -590,13 +595,18 @@ public final class NFIContextExtension extends NativeContextExtension {
     }
 
     private static String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
-        // TODO varargs
         CompilerAsserts.neverPartOfCompilation();
         String nativeRet = getNativeType(type.getReturnType());
         String[] argTypes = getNativeArgumentTypes(type, skipArguments);
         StringBuilder sb = new StringBuilder();
+
         sb.append("(");
-        for (String a : argTypes) {
+        for (int pos = 0; pos < argTypes.length; pos++) {
+            String a = argTypes[pos];
+
+            if (pos == type.getFixedArgs()) {
+                sb.append("...");
+            }
             sb.append(a);
             sb.append(",");
         }

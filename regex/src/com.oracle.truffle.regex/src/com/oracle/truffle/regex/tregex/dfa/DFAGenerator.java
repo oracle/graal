@@ -411,9 +411,9 @@ public final class DFAGenerator implements JsonConvertible {
             assert !transition.getTransitionSet().isEmpty();
             transition.setId(transitionIDCounter.inc());
             transition.setSource(state);
-            DFAStateNodeBuilder successorState = lookupState(transition.getTransitionSet(), false);
+            DFAStateNodeBuilder successorState = lookupState(transition.getTransitionSet(), state.isBackwardPrefixState());
             if (successorState == null) {
-                successorState = createState(transition.getTransitionSet(), false, false);
+                successorState = createState(transition.getTransitionSet(), state.isBackwardPrefixState(), false);
             } else if (pruneUnambiguousPaths) {
                 reScheduleFinalStateSuccessors(state, successorState);
             }
@@ -556,7 +556,7 @@ public final class DFAGenerator implements JsonConvertible {
     private void optimizeDFA() {
         RegexProperties props = nfa.getAst().getProperties();
 
-        doSimpleCG = (isForward() || !nfa.getAst().getRoot().hasLoops()) &&
+        doSimpleCG = (isForward() || !nfa.getAst().getProperties().hasQuantifiers() && !nfa.getAst().getProperties().hasEmptyCaptureGroups()) &&
                         !isBooleanMatch() &&
                         executorProps.isAllowSimpleCG() &&
                         !hasAmbiguousStates &&

@@ -70,7 +70,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
-        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier());
+        this(debug, providers, method, false);
+    }
+
+    public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, boolean forceTrackNodeSourcePosition) {
+        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), forceTrackNodeSourcePosition);
     }
 
     @Override
@@ -78,7 +82,8 @@ public class HostedGraphKit extends SubstrateGraphKit {
         ResolvedJavaMethod method = graph.method();
         if (method instanceof HostedMethod) {
             StaticAnalysisResults profilingInfo = ((HostedMethod) method).getProfilingInfo();
-            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profilingInfo.getTypeProfile(bci), profilingInfo.getMethodProfile(bci));
+            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp,
+                            profilingInfo.getTypeProfile(bci), profilingInfo.getMethodProfile(bci), profilingInfo.getStaticTypeProfile(bci));
         } else {
             return super.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, bci);
         }

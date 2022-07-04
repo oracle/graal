@@ -38,10 +38,8 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -58,57 +56,50 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implementation of synchronized-related operations.
- * <p>
+ *
  * Most objects used in synchronization operations have a dedicated memory in the object to store a
- * {@link ReentrantLock}. The static analysis finds out which classes are used for synchronization
- * (and thus need a monitor) and assigns a monitor offset to point to the {@link #getMonitorOffset
- * slot for the monitor}. The monitor is implemented with a {@link ReentrantLock}.
- * <p>
- * There are a few exceptions: {@link String} and {@link DynamicHub} objects never have monitor
- * fields because we want instances in the image heap to be immutable. Arrays never have monitor
- * fields because it would increase the size of every array and it is not possible to distinguish
- * between arrays with different header sizes. See
- * UniverseBuilder.canHaveMonitorFields(AnalysisType) for details.
- * <p>
- * Synchronization on {@link String}, arrays, and other types not detected by the static analysis
- * (like synchronization via JNI) fall back to a monitor stored in {@link #additionalMonitors}.
- * <p>
+ * {@link ReentrantLock}. The offset of this memory slot is not fixed, but stored separately for
+ * each class, see {@link #getMonitorOffset}. The monitor is implemented with a
+ * {@link ReentrantLock}. The first synchronization operation on an object lazily initializes the
+ * memory slot with a new {@link ReentrantLock}.
+ *
+ * There are a few exceptions: Some classes {@link String} and {@link DynamicHub} never have a
+ * monitor slot because we want instances in the image heap to be immutable. Arrays never have a
+ * monitor slot because it would increase the size of every array and it is not possible to
+ * distinguish between arrays with different header sizes. See
+ * {@code UniverseBuilder.getImmutableTypes()} for details.
+ * 
+ * Synchronization on {@link String}, arrays, and other types not having a monitor slot fall back to
+ * a monitor stored in {@link #additionalMonitors}. Synchronization of such objects is very slow and
+ * not scaling well with more threads because the {@link #additionalMonitorsLock additional monitor
+ * map lock} is a point of contention.
+ *
+ * Since {@link DynamicHub} is also the {@link java.lang.Class} object at run time and static
+ * synchronized methods in Java synchronize on the {@link Class} object, using the additional
+ * monitor map for {@link DynamicHub} is not an option. Therefore, {@link #replaceObject} replaces
+ * {@link DynamicHub} instances with their {@link DynamicHubCompanion} instance (which is mutable)
+ * and performs synchronization on the {@link DynamicHubCompanion}.
+ *
+ * Classes that might be synchronized by the code accessing the additional monitor map must never
+ * use the additional monitor map themselves, otherwise recursive map manipulation can corrupt the
+ * map. {@link #FORCE_MONITOR_SLOT_TYPES} contains all classes that must have a monitor slot
+ * themselves for such correctness reasons.
+ *
  * {@link Condition} objects are used to implement {@link #wait()} and {@link #notify()}. When an
  * object monitor needs a condition object, it is atomically swapped into its
  * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition} field.
  */
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
-    /**
-     * This is only used for preempting a continuation in the experimental Loom JDK support. There's
-     * performance impact in this solution.
-     */
-    protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt("MultiThreadedMonitorSupport.lockedMonitors");
-
-    protected static void onMonitorLocked() {
-        if (JavaContinuations.useLoom()) {
-            lockedMonitors.set(lockedMonitors.get() + 1);
-        }
-    }
-
-    protected static void onMonitorUnlocked() {
-        if (JavaContinuations.useLoom()) {
-            lockedMonitors.set(lockedMonitors.get() - 1);
-        }
-    }
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
@@ -266,8 +257,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void monitorEnter(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
         lockObject.lock();
-
-        onMonitorLocked();
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -305,8 +294,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void monitorExit(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
         lockObject.unlock();
-
-        onMonitorUnlocked();
     }
 
     @Override
@@ -360,7 +347,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         int newState = oldState + 1;
         VMError.guarantee(newState > 0, "Maximum lock count exceeded");
 
-        boolean success = UNSAFE.compareAndSwapInt(qSync, SYNC_STATE_FIELD_OFFSET, oldState, newState);
+        boolean success = UNSAFE.compareAndSetInt(qSync, SYNC_STATE_FIELD_OFFSET, oldState, newState);
         VMError.guarantee(success, "Could not re-lock object during deoptimization");
         aSync.exclusiveOwnerThread = currentThread;
     }
@@ -375,12 +362,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public boolean isLockedByAnyThread(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, false);
         return lockObject != null && lockObject.isLocked();
-    }
-
-    @Override
-    public int countThreadLock(IsolateThread vmThread) {
-        VMError.guarantee(JavaContinuations.useLoom(), "This method is only supported when continuations are enabled.");
-        return lockedMonitors.get(vmThread);
     }
 
     @SuppressFBWarnings(value = {"WA_AWAIT_NOT_IN_LOOP"}, justification = "This method is a wait implementation.")
@@ -461,7 +442,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
         /* Atomically put a new lock in place of the null at the monitorOffset. */
         ReentrantLock newMonitor = newMonitorLock();
-        if (UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
+        if (UNSAFE.compareAndSetObject(obj, monitorOffset, null, newMonitor)) {
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
@@ -551,7 +532,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             return existingCondition;
         }
         ConditionObject newCondition = (ConditionObject) monitorLock.newCondition();
-        if (!UNSAFE.compareAndSwapObject(sync, SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
+        if (!UNSAFE.compareAndSetObject(sync, SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
             newCondition = SubstrateUtil.cast(sync.objectMonitorCondition, ConditionObject.class);
             assert isMonitorCondition(newCondition) : "race winner must have installed valid condition";
         }

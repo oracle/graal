@@ -33,13 +33,13 @@ import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp.useAVX512ForStringInflateCompress;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXComparisonPredicate;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -47,17 +47,18 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @Opcode("AMD64_STRING_COMPRESS")
-public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
+public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64StringUTF16CompressOp> TYPE = LIRInstructionClass.create(AMD64StringUTF16CompressOp.class);
 
     private final int useAVX3Threshold;
-    private final int maxVectorSize;
 
     @Def({REG}) private Value rres;
     @Use({REG}) private Value rsrc;
@@ -74,12 +75,11 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
     @Temp({REG}) private Value vtmp4;
     @Temp({REG}) private Value rtmp5;
 
-    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, int useAVX3Threshold, int maxVectorSize, Value res, Value src, Value dst, Value len) {
-        super(TYPE);
+    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, int useAVX3Threshold, Value res, Value src, Value dst, Value len) {
+        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
-        this.maxVectorSize = maxVectorSize;
 
         assert asRegister(src).equals(rsi);
         assert asRegister(dst).equals(rdi);
@@ -91,10 +91,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
         rdstTemp = rdst = dst;
         rlenTemp = rlen = len;
 
-        LIRKind vkind = useAVX512ForStringInflateCompress(tool.target(), maxVectorSize)
-                        ? LIRKind.value(AMD64Kind.V512_BYTE)
-                        : LIRKind.value(AMD64Kind.V128_BYTE);
-
+        LIRKind vkind = LIRKind.value(getVectorKind(JavaKind.Byte));
         vtmp1 = tool.newVariable(vkind);
         vtmp2 = tool.newVariable(vkind);
         vtmp3 = tool.newVariable(vkind);
@@ -151,7 +148,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
         // Save length for return.
         masm.push(len);
 
-        if (useAVX3Threshold == 0 && useAVX512ForStringInflateCompress(masm.target, maxVectorSize)) {
+        if (useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM() && supportsBMI2()) {
             Label labelCopy32Loop = new Label();
             Label labelCopyLoopTail = new Label();
             Label labelBelowThreshold = new Label();
@@ -245,7 +242,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             masm.bind(labelBelowThreshold);
         }
 
-        if (masm.supports(AMD64.CPUFeature.SSE4_2)) {
+        if (masm.supports(CPUFeature.SSE4_2)) {
             Label labelCopy32Loop = new Label();
             Label labelCopy16 = new Label();
             Label labelCopyTail = new Label();
@@ -332,10 +329,5 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
         masm.addq(rsp, 8 /* wordSize */);
 
         masm.bind(labelDone);
-    }
-
-    @Override
-    public boolean needsClearUpperVectorRegisters() {
-        return true;
     }
 }

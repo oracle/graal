@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -185,7 +185,17 @@ public class TStringTestBase {
     }
 
     public interface TestIndexOfString {
-        void run(AbstractTruffleString b, int expectedIndex);
+
+        int run(AbstractTruffleString b, int fromIndex, int toIndex);
+
+        default void run(AbstractTruffleString b, int fromIndex, int toIndex, int expectedResult) {
+            if (expectedResult < 0) {
+                int result = run(b, fromIndex, toIndex);
+                Assert.assertTrue("expected: negative value, actual: " + result, result < 0);
+            } else {
+                Assert.assertEquals(expectedResult, run(b, fromIndex, toIndex));
+            }
+        }
     }
 
     public interface TestS {
@@ -405,6 +415,27 @@ public class TStringTestBase {
         }) {
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
+        if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
+            byte[] bytesUTF16 = new byte[(codepoints.length + 1) * 2];
+            for (int i = 0; i < codepoints.length; i++) {
+                TStringTestUtil.writeValue(bytesUTF16, 1, i, codepoints[i]);
+            }
+            TStringTestUtil.writeValue(bytesUTF16, 1, codepoints.length, 0xffff);
+            TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF16, 0, bytesUTF16.length, UTF_16, false).substringByteIndexUncached(0, bytesUTF16.length - 2, UTF_16,
+                            true).switchEncodingUncached(encoding);
+            test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+        }
+
+        if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding) || codeRange == TruffleString.CodeRange.LATIN_1 && isUTF16(encoding)) {
+            byte[] bytesUTF32 = new byte[(codepoints.length + 1) * 4];
+            for (int i = 0; i < codepoints.length; i++) {
+                TStringTestUtil.writeValue(bytesUTF32, 2, i, codepoints[i]);
+            }
+            TStringTestUtil.writeValue(bytesUTF32, 2, codepoints.length, 0x10ffff);
+            TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF32, 0, bytesUTF32.length, UTF_32, false).substringByteIndexUncached(0, bytesUTF32.length - 4, UTF_32,
+                            true).switchEncodingUncached(encoding);
+            test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+        }
     }
 
     protected static void checkAsciiString(String string, TestStrings test) throws Exception {
@@ -439,21 +470,52 @@ public class TStringTestBase {
             // ignore broken strings
             return;
         }
-        int lastCodepoint = codepoints[codepoints.length - 1];
-        TruffleString first = TruffleString.fromCodePointUncached(codepoints[0], encoding);
+        int lastCPI = codepoints.length - 1;
+        int firstCodepoint = codepoints[0];
+        int lastCodepoint = codepoints[lastCPI];
+        TruffleString first = TruffleString.fromCodePointUncached(firstCodepoint, encoding);
         TruffleString firstSubstring = a.substringByteIndexUncached(0, codepoints.length == 1 ? array.length : byteIndices[1], encoding, true);
         TruffleString last = TruffleString.fromCodePointUncached(lastCodepoint, encoding);
-        TruffleString lastSubstring = a.substringByteIndexUncached(byteIndices[codepoints.length - 1], array.length - byteIndices[codepoints.length - 1], encoding, true);
-        int expectedFirst = lastIndex ? lastIndexOfCodePoint(codepoints, byteIndices, byteIndex, codepoints[0]) : 0;
-        int expectedLast = lastIndex ? byteIndex ? byteIndices[codepoints.length - 1] : codepoints.length - 1 : indexOfCodePoint(codepoints, byteIndices, byteIndex, lastCodepoint);
-        test.run(first, expectedFirst);
-        test.run(firstSubstring, expectedFirst);
-        test.run(last, expectedLast);
-        test.run(lastSubstring, expectedLast);
+        TruffleString lastSubstring = a.substringByteIndexUncached(byteIndices[lastCPI], array.length - byteIndices[lastCPI], encoding, true);
+        int expectedFirst = lastIndex ? lastIndexOfCodePoint(codepoints, byteIndices, byteIndex, codepoints.length, 0, firstCodepoint) : 0;
+        int expectedLast = lastIndex ? byteIndex ? byteIndices[lastCPI] : lastCPI : indexOfCodePoint(codepoints, byteIndices, byteIndex, 0, codepoints.length, lastCodepoint);
+        int fromIndex;
+        int toIndex;
+        if (lastIndex) {
+            fromIndex = byteIndex ? array.length : codepoints.length;
+            toIndex = 0;
+        } else {
+            fromIndex = 0;
+            toIndex = byteIndex ? array.length : codepoints.length;
+        }
+        test.run(first, fromIndex, toIndex, expectedFirst);
+        test.run(firstSubstring, fromIndex, toIndex, expectedFirst);
+        test.run(last, fromIndex, toIndex, expectedLast);
+        test.run(lastSubstring, fromIndex, toIndex, expectedLast);
+        test.run(first, 0, 0, -1);
+
+        int i1 = byteIndex ? byteIndices[1] : 1;
+        int iLast1 = byteIndex ? byteIndices[codepoints.length - 1] : codepoints.length - 1;
+
+        if (lastIndex) {
+            expectedFirst = lastIndexOfCodePoint(codepoints, byteIndices, byteIndex, codepoints.length, 1, firstCodepoint);
+            expectedLast = lastIndexOfCodePoint(codepoints, byteIndices, byteIndex, codepoints.length - 1, 0, lastCodepoint);
+            test.run(first, fromIndex, i1, expectedFirst);
+            test.run(firstSubstring, fromIndex, i1, expectedFirst);
+            test.run(last, iLast1, toIndex, expectedLast);
+            test.run(lastSubstring, iLast1, toIndex, expectedLast);
+        } else {
+            expectedFirst = indexOfCodePoint(codepoints, byteIndices, byteIndex, 1, codepoints.length, firstCodepoint);
+            expectedLast = indexOfCodePoint(codepoints, byteIndices, byteIndex, 0, codepoints.length - 1, lastCodepoint);
+            test.run(first, i1, toIndex, expectedFirst);
+            test.run(firstSubstring, i1, toIndex, expectedFirst);
+            test.run(last, fromIndex, iLast1, expectedLast);
+            test.run(lastSubstring, fromIndex, iLast1, expectedLast);
+        }
     }
 
-    private static int indexOfCodePoint(int[] codepoints, int[] byteIndices, boolean byteIndex, int cp) {
-        for (int i = 0; i < codepoints.length; i++) {
+    private static int indexOfCodePoint(int[] codepoints, int[] byteIndices, boolean byteIndex, int fromIndex, int toIndex, int cp) {
+        for (int i = fromIndex; i < toIndex; i++) {
             if (codepoints[i] == cp) {
                 return byteIndex ? byteIndices[i] : i;
             }
@@ -461,8 +523,8 @@ public class TStringTestBase {
         return -1;
     }
 
-    private static int lastIndexOfCodePoint(int[] codepoints, int[] byteIndices, boolean byteIndex, int cp) {
-        for (int i = codepoints.length - 1; i >= 0; i--) {
+    private static int lastIndexOfCodePoint(int[] codepoints, int[] byteIndices, boolean byteIndex, int fromIndex, int toIndex, int cp) {
+        for (int i = fromIndex - 1; i >= toIndex; i--) {
             if (codepoints[i] == cp) {
                 return byteIndex ? byteIndices[i] : i;
             }
@@ -622,5 +684,4 @@ public class TStringTestBase {
         }
         return 0;
     }
-
 }

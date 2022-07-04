@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -67,7 +68,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
 
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
-        this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
+        this.argCount = Signatures.parameterCount(method.getParsedSignature());
         this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET;
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
         this.linker = findLinker(id);
@@ -83,7 +84,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         if (!resolutionSeed.getRedefineAssumption().isValid()) {
             if (resolutionSeed.getMethod().isRemovedByRedefition()) {
                 Klass receiverKlass = hasReceiver ? ((StaticObject) basicArgs[0]).getKlass() : resolutionSeed.getMethod().getDeclaringKlass();
-                resolutionSeed = resolutionSeed.getMethod().getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed.getMethod(), receiverKlass).getMethodVersion();
+                resolutionSeed = EspressoContext.get(this).getClassRedefinition().handleRemovedMethod(resolutionSeed.getMethod(), receiverKlass).getMethodVersion();
             }
         }
 

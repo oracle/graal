@@ -28,7 +28,7 @@ import java.util.ArrayList;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
+import org.graalvm.compiler.truffle.compiler.amd64.substitutions.AMD64TruffleInvocationPlugins;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -41,7 +41,7 @@ public class ArrayUtilsTest extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        new TruffleAMD64InvocationPlugins().registerInvocationPlugins(getProviders(), getBackend().getTarget().arch, invocationPlugins, true);
+        AMD64TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
         super.registerInvocationPlugins(invocationPlugins);
     }
 

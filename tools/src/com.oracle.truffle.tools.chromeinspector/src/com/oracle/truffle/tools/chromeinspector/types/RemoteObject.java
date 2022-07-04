@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,7 +143,11 @@ public final class RemoteObject {
                     toString = sourceSection.getCharacters().toString();
                     addType = false;
                 } else {
-                    toString = debugValue.toDisplayString(context.areToStringSideEffectsAllowed());
+                    if (typeInfo.type == TYPE.STRING && debugValue.isString()) {
+                        rawValue = toString = debugValue.asString();
+                    } else {
+                        toString = debugValue.toDisplayString(context.areToStringSideEffectsAllowed());
+                    }
                     if (typeInfo.type == TYPE.STRING || typeInfo.type == TYPE.SYMBOL) {
                         // The whole description is rendered as a String in quotes, or highlighted
                         // as a symbol. Do not prepend the type.

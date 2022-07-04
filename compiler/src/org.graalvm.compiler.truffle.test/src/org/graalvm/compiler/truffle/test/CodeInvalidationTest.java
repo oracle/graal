@@ -38,11 +38,14 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -50,6 +53,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -100,50 +104,23 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
         }
     }
 
-    @SuppressWarnings("deprecation")
     static final class WhileLoopNode extends BaseNode {
 
         @Child private LoopNode loop;
 
-        @CompilerDirectives.CompilationFinal com.oracle.truffle.api.frame.FrameSlot loopIndexSlot;
-        @CompilerDirectives.CompilationFinal com.oracle.truffle.api.frame.FrameSlot loopResultSlot;
+        @CompilerDirectives.CompilationFinal int loopIndexSlot;
+        @CompilerDirectives.CompilationFinal int loopResultSlot;
 
-        WhileLoopNode(Object loopCount, BaseNode child) {
+        WhileLoopNode(Object loopCount, BaseNode child, FrameDescriptor.Builder frameBuilder) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, child));
-        }
-
-        com.oracle.truffle.api.frame.FrameSlot getLoopIndex() {
-            if (loopIndexSlot == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopIndex" + getLoopDepth());
-            }
-            return loopIndexSlot;
-        }
-
-        com.oracle.truffle.api.frame.FrameSlot getResult() {
-            if (loopResultSlot == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopResult" + getLoopDepth());
-            }
-            return loopResultSlot;
-        }
-
-        private int getLoopDepth() {
-            Node node = getParent();
-            int count = 0;
-            while (node != null) {
-                if (node instanceof WhileLoopNode) {
-                    count++;
-                }
-                node = node.getParent();
-            }
-            return count;
+            this.loopIndexSlot = frameBuilder.addSlot(FrameSlotKind.Int, "loopIndex", frameBuilder);
+            this.loopResultSlot = frameBuilder.addSlot(FrameSlotKind.Int, "loopResult", frameBuilder);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(getResult(), false);
-            frame.setInt(getLoopIndex(), 0);
+            frame.setObject(loopResultSlot, false);
+            frame.setInt(loopIndexSlot, 0);
             loop.execute(frame);
             try {
                 return frame.getObject(loopResultSlot);
@@ -232,6 +209,9 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
 
     @Test
     public void testInvalidation() throws IOException, InterruptedException {
+        // with compile immediately this test does not trigger OSR
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+
         /*
          * The test runs the same compiled code in two threads. Invalidation in one thread using
          * CompilerDirectives#transferToInterpreterAndInvalidate causes deopt in that thread and
@@ -242,7 +222,8 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
          */
         CountDownLatch latch = new CountDownLatch(1);
         NodeToInvalidate nodeToInvalidate = new NodeToInvalidate(ThreadLocal.withInitial(() -> true), latch);
-        WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate);
+        FrameDescriptor.Builder frameBuilder = FrameDescriptor.newBuilder();
+        WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate, frameBuilder);
         LoopNode loopNode = testedCode.loop;
 
         setupEnv(Context.create(), new ProxyLanguage() {
@@ -258,7 +239,7 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
             protected synchronized CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
-                    target = new RootNode(languageInstance) {
+                    target = new RootNode(languageInstance, frameBuilder.build()) {
 
                         @Node.Child private volatile BaseNode child = testedCode;
 

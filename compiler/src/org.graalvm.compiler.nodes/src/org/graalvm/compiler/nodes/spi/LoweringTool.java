@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -64,7 +66,13 @@ public interface LoweringTool extends CoreProviders {
     enum StandardLoweringStage implements LoweringStage {
         HIGH_TIER,
         MID_TIER,
-        LOW_TIER
+        LOW_TIER;
+
+        public final TimerKey timer;
+
+        StandardLoweringStage() {
+            this.timer = DebugContext.timer("LoweringTime_%s", this);
+        }
     }
 
     /**

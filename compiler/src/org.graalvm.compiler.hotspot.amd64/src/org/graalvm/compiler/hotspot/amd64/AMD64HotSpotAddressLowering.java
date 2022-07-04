@@ -105,7 +105,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
     public void preProcess(StructuredGraph graph, LoopsDataProvider loopsDataProvider) {
         if (graph.hasLoops()) {
             LoopsData loopsData = loopsDataProvider.getLoopsData(graph);
-            loopsData.detectedCountedLoops();
+            loopsData.detectCountedLoops();
             for (LoopEx loop : loopsData.countedLoops()) {
                 for (OffsetAddressNode offsetAdressNode : loop.whole().nodes().filter(OffsetAddressNode.class)) {
                     tryOptimize(offsetAdressNode, loop);
@@ -198,7 +198,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
                 }
             }
         }
-        return input.graph().maybeAddOrUnique(SignExtendNode.create(input, ADDRESS_BITS, NodeView.DEFAULT));
+        return input.graph().addOrUnique(SignExtendNode.create(input, ADDRESS_BITS, NodeView.DEFAULT));
     }
 
     private static boolean applicableToImplicitZeroExtend(ZeroExtendNode zeroExtendNode) {

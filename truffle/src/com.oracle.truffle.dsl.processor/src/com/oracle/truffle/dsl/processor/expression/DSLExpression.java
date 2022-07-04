@@ -710,6 +710,27 @@ public abstract class DSLExpression {
             return "Variable [receiver=" + receiver + ", name=" + name + ", resolvedVariable=" + resolvedVariable + "]";
         }
 
+        public boolean isCompilationFinalField() {
+            VariableElement v = this.getResolvedVariable();
+            if (v == null) {
+                throw new IllegalStateException("not resolved yet");
+            }
+
+            if (v.getKind() != ElementKind.FIELD) {
+                return false;
+            }
+
+            if (v.getModifiers().contains(Modifier.FINAL)) {
+                return true;
+            }
+
+            if (ElementUtils.findAnnotationMirror(v, ProcessorContext.getInstance().getTypes().CompilerDirectives_CompilationFinal) != null) {
+                return true;
+            }
+
+            return false;
+        }
+
     }
 
     public static final class IntLiteral extends DSLExpression {

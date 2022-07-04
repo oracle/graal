@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,14 +31,12 @@ import static org.junit.Assert.assertTrue;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.TVMCI;
-import com.oracle.truffle.api.object.LayoutFactory;
 
 public class TruffleRuntimeTest {
 
@@ -77,19 +75,12 @@ public class TruffleRuntimeTest {
         assertNull("Expected null return value for Object.class", object);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testGetLayoutFactory() {
         TruffleRuntime runtime = Truffle.getRuntime();
-        LayoutFactory layoutFactory = runtime.getCapability(LayoutFactory.class);
+        com.oracle.truffle.api.object.LayoutFactory layoutFactory = runtime.getCapability(com.oracle.truffle.api.object.LayoutFactory.class);
         assertNotNull("LayoutFactory not found", layoutFactory);
-
-        boolean java8OrEarlier = JavaVersionUtil.JAVA_SPEC <= 8;
-        ClassLoader layoutFactoryCL = layoutFactory.getClass().getClassLoader();
-        if (java8OrEarlier) {
-            // Bootstrap class loader or JVMCI class loader
-            assertTrue(layoutFactoryCL == null || layoutFactoryCL == runtime.getClass().getClassLoader());
-        } else {
-            // Rely on modules to only load trusted service providers
-        }
+        // Rely on modules to only load trusted service providers
     }
 }

@@ -46,6 +46,13 @@ _polybench_modes = [
     ('interpreter', ['--mode=interpreter']),
 ]
 
+POLYBENCH_METRIC_MAPPING = {
+    "compilation-time": "compile-time",
+    "partial-evaluation-time": "pe-time",
+    "allocated-bytes": "allocated-memory",
+    "peak-time": "time"
+}  # Maps some polybench metrics to standardized metric names
+
 
 class GraalVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
@@ -129,10 +136,14 @@ class NativeImageVM(GraalVm):
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
+            self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(cmd_line_image_run_args))
+            for option in self.extra_agentlib_options:
+                if option.startswith('config-output-dir'):
+                    mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
             self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
-            self.pgo_iteration_num = None
+            self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
@@ -141,8 +152,8 @@ class NativeImageVM(GraalVm):
             self.last_stage = self.stages[-1]
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
-            self.executable_suffix = ('-' + self.benchmark_name) if self.benchmark_name else ''
-            self.executable_name = (os.path.splitext(basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
+            unique_suite_name = '{}-{}'.format(self.bmSuite.benchSuiteName(), self.bmSuite.version().replace('.', '-')) if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
+            self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
             self.profile_path_no_extension = os.path.join(self.output_dir, self.executable_name)
@@ -152,9 +163,9 @@ class NativeImageVM(GraalVm):
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.image_build_report_path = os.path.join(self.output_dir, self.executable_name + '-image-build-stats.json')
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath']
+            self.base_image_build_args += ['--no-fallback', '-g']
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
-            self.base_image_build_args += ['-J-ea', '-J-esa'] if vm.is_gate and not bm_suite.skip_build_assertions(self.benchmark_name) else []
+            self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
             self.base_image_build_args += self.system_properties
             self.base_image_build_args += self.classpath_arguments
@@ -164,12 +175,20 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
             self.base_image_build_args += ['-H:+PrintCallEdges']
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
+            if vm.is_quickbuild:
+                self.base_image_build_args += ['-Ob']
+            if vm.use_string_inlining:
+                self.base_image_build_args += ['-H:+UseStringInlining']
             if vm.is_llvm:
                 self.base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
             if vm.gc:
                 self.base_image_build_args += ['--gc=' + vm.gc, '-H:+SpawnIsolates']
             if vm.native_architecture:
                 self.base_image_build_args += ['-H:+NativeArchitecture']
+            if vm.analysis_context_sensitivity:
+                self.base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
+            if vm.no_inlining_before_analysis:
+                self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
             self.base_image_build_args += self.extra_image_build_arguments
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
@@ -183,12 +202,17 @@ class NativeImageVM(GraalVm):
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
         self.pgo_inline_explored = False
-        self.hotspot_pgo = False
         self.is_gate = False
+        self.is_quickbuild = False
+        self.use_string_inlining = False
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
         self.graalvm_edition = None
+        self.config = None
+        self.ml = None
+        self.analysis_context_sensitivity = None
+        self.no_inlining_before_analysis = False
         self._configure_from_name(config_name)
 
     def _configure_from_name(self, config_name):
@@ -206,7 +230,8 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<gate>gate-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?(?P<edition>ce-|ee-)?$'
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
         match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
@@ -218,9 +243,17 @@ class NativeImageVM(GraalVm):
             mx.logv("'native-architecture' is enabled for {}".format(config_name))
             self.native_architecture = True
 
+        if matching.group("string_inlining") is not None:
+            mx.logv("'string-inlining' is enabled for {}".format(config_name))
+            self.use_string_inlining = True
+
         if matching.group("gate") is not None:
             mx.logv("'gate' mode is enabled for {}".format(config_name))
             self.is_gate = True
+
+        if matching.group("quickbuild") is not None:
+            mx.logv("'quickbuild' is enabled for {}".format(config_name))
+            self.is_quickbuild = True
 
         if matching.group("gc") is not None:
             gc = matching.group("gc")[:-1]
@@ -239,9 +272,6 @@ class NativeImageVM(GraalVm):
             if pgo_mode == "pgo":
                 mx.logv("'pgo' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 1
-            elif pgo_mode == "pgo-hotspot":
-                mx.logv("'pgo-hotspot' is enabled for {}".format(config_name))
-                self.hotspot_pgo = True
             elif pgo_mode == "pgo-ctx-insens":
                 mx.logv("'pgo-ctx-insens' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 1
@@ -266,10 +296,33 @@ class NativeImageVM(GraalVm):
             else:
                 mx.abort("Unknown inliner configuration: {}".format(inliner))
 
+        if matching.group("ml") is not None:
+            self.ml = matching.group("ml")[:-1]
+
         if matching.group("edition") is not None:
             edition = matching.group("edition")[:-1]
             mx.logv("GraalVM edition is set to: {}".format(edition))
             self.graalvm_edition = edition
+
+        if matching.group("no_inlining_before_analysis") is not None:
+            option = matching.group("no_inlining_before_analysis")[:-1]
+            if option == "no-inline":
+                mx.logv("not doing inlining before analysis for {}".format(config_name))
+                self.no_inlining_before_analysis = True
+            else:
+                mx.abort("Unknown configuration for no inlining before analysis: {}".format(option))
+
+        if matching.group("analysis_context_sensitivity") is not None:
+            context_sensitivity = matching.group("analysis_context_sensitivity")[:-1]
+            if context_sensitivity in ["insens", "allocsens"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = context_sensitivity
+            elif context_sensitivity in ["1obj", "2obj1h", "3obj2h", "4obj3h"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = "_{}".format(context_sensitivity)
+            else:
+                mx.abort("Unknown analysis context sensitivity: {}".format(context_sensitivity))
+
 
     @staticmethod
     def supported_vm_arg_prefixes():
@@ -504,7 +557,7 @@ class NativeImageVM(GraalVm):
             metric_objects.append(obj + "_after_high_tier")
         rules = []
         for i in range(0, len(metric_objects)):
-            rules.append(mx_benchmark.JsonStdOutFileRule(r'^# Printing image build statistics to: (?P<path>\S+?)$', 'path', {
+            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
                 "benchmark": benchmark,
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
@@ -515,6 +568,44 @@ class NativeImageVM(GraalVm):
                 "metric.iteration": 0,
                 "metric.object": metric_objects[i].replace("_", "-").replace("total-", ""),
             }, [metric_objects[i]]))
+        return rules
+
+    def image_build_timers_rules(self, benchmark):
+        class NativeImageTimeToInt(object):
+            def __call__(self, *args, **kwargs):
+                return int(float(args[0].replace(',', '')))
+
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
+                           'write']
+        rules = []
+        for i in range(0, len(measured_phases)):
+            phase = measured_phases[i]
+            value_name = phase + "_time"
+            rules.append(
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
+                    "benchmark": benchmark,
+                    "metric.name": "compile-time",
+                    "metric.type": "numeric",
+                    "metric.unit": "ms",
+                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "metric.object": phase,
+                }, [value_name]))
+            value_name = phase + "_memory"
+            rules.append(
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
+                    "benchmark": benchmark,
+                    "metric.name": "analysis-stats",
+                    "metric.type": "numeric",
+                    "metric.unit": "B",
+                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "metric.object": phase + "_memory",
+                }, [value_name]))
         return rules
 
     def rules(self, output, benchmarks, bmSuiteArgs):
@@ -566,17 +657,6 @@ class NativeImageVM(GraalVm):
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "total",
-            }),
-            mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+(?P<phase>\w+?):[ ]+(?P<time>[0-9,.]+?) ms', {
-                "benchmark": benchmarks[0],
-                "metric.name": "compile-time",
-                "metric.type": "numeric",
-                "metric.unit": "ms",
-                "metric.value": ("<time>", NativeImageTimeToInt()),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "metric.object": ("<phase>", str),
             }),
             mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
                 "benchmark": benchmarks[0],
@@ -644,39 +724,30 @@ class NativeImageVM(GraalVm):
                 "metric.iteration": 0,
                 "metric.object": "memory"
             }, ['total_memory_bytes'])
-        ] + self.image_build_statistics_rules(benchmarks[0])
+        ] + self.image_build_statistics_rules(benchmarks[0]) + self.image_build_timers_rules(benchmarks[0])
 
     def run_stage_agent(self, config, stages):
-        profile_path = config.profile_path_no_extension + '-agent' + config.profile_file_extension
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
-        hotspot_run_args = []
-        hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
+        agentlib_options = ['native-image-agent=config-output-dir=' + str(config.config_dir)] + config.extra_agentlib_options
+        hotspot_vm_args += ['-agentlib:' + ','.join(agentlib_options)]
+
+        # Jargraal is very slow with the agent, and libgraal is usually not built for Native Image benchmarks. Therefore, don't use the GraalVM compiler.
+        hotspot_vm_args += ['-XX:-UseJVMCICompiler']
+
+        # Limit parallelism because the JVMTI operations in the agent sometimes scale badly.
+        if mx.cpu_count() > 8:
+            hotspot_vm_args += ['-XX:ActiveProcessorCount=8']
 
         if config.vm_args is not None:
             hotspot_vm_args += config.vm_args
 
-        if self.hotspot_pgo:
-            hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
-
-        if self.hotspot_pgo and not self.is_gate and config.extra_agent_profile_run_args:
-            hotspot_run_args += config.extra_agent_profile_run_args
-        else:
-            hotspot_run_args += config.extra_agent_run_args
-
-        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + hotspot_run_args
+        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
-            if self.hotspot_pgo and s.exit_code == 0:
-                # Hotspot instrumentation does not produce profiling information for the helloworld benchmark
-                if os.path.exists(profile_path):
-                    mx.copyfile(profile_path, config.latest_profile_path)
-                else:
-                    mx.warn("No profile information emitted during agent run.")
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
-        pgo_verification_output_path = os.path.join(config.output_dir, instrumentation_image_name + '-probabilities.log')
-        pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+        pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
@@ -700,11 +771,12 @@ class NativeImageVM(GraalVm):
 
     def run_stage_image(self, config, stages):
         executable_name_args = ['-H:Name=' + config.final_image_name]
-        pgo_verification_output_path = os.path.join(config.output_dir, config.final_image_name + '-probabilities.log')
-        pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+        pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
         pgo_args += ['-H:+AOTInliner', '--pgo-sampling-use'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path)) else [])
+        instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
+        ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path else []) + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
 
@@ -737,6 +809,7 @@ class NativeImageVM(GraalVm):
 
         # never fatal, we handle it ourselves
         config = NativeImageVM.BenchmarkConfig(self, self.bmSuite, args)
+        self.config = config
         stages = NativeImageVM.Stages(config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
 
@@ -751,20 +824,19 @@ class NativeImageVM(GraalVm):
                 config.last_stage = 'agent'
             self.run_stage_agent(config, stages)
 
-        if not self.hotspot_pgo:
-            # Native Image profile collection
-            for i in range(instrumented_iterations):
-                profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
-                instrumentation_image_name = config.executable_name + '-instrument-' + str(i)
-                instrumentation_image_latest = config.executable_name + '-instrument-latest'
+        # Native Image profile collection
+        for i in range(instrumented_iterations):
+            profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
+            instrumentation_image_name = config.executable_name + '-instrument-' + str(i)
+            instrumentation_image_latest = config.executable_name + '-instrument-latest'
 
-                image_path = os.path.join(config.output_dir, instrumentation_image_name)
-                image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
-                if stages.change_stage('instrument-image', str(i)):
-                    self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations)
+            image_path = os.path.join(config.output_dir, instrumentation_image_name)
+            image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
+            if stages.change_stage('instrument-image', str(i)):
+                self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations)
 
-                if stages.change_stage('instrument-run', str(i)):
-                    self.run_stage_instrument_run(config, stages, image_path, profile_path)
+            if stages.change_stage('instrument-run', str(i)):
+                self.run_stage_instrument_run(config, stages, image_path, profile_path)
 
         # Build the final image
         if stages.change_stage('image'):
@@ -773,6 +845,9 @@ class NativeImageVM(GraalVm):
         # Execute the benchmark
         if stages.change_stage('run'):
             self.run_stage_run(config, stages, out)
+
+        if stages.failed:
+            mx.abort('Exiting the benchmark due to the failure.')
 
     def create_log_files(self, config, executable_name, stage):
         stdout_path = os.path.abspath(
@@ -848,8 +923,9 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         super(AgentScriptJsBenchmarkSuite, self).__init__()
         self._benchmarks = {
             'plain' : [],
-            'triple' : ['--insight=sieve-filter1.js', '--experimental-options'],
-            'single' : ['--insight=sieve-filter2.js', '--experimental-options'],
+            'triple' : ['--insight=sieve-filter1.js'],
+            'single' : ['--insight=sieve-filter2.js'],
+            'iterate' : ['--insight=sieve-filter3.js'],
         }
 
     def group(self):
@@ -989,7 +1065,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return _polybench_vm_registry
 
     def rules(self, output, benchmarks, bmSuiteArgs):
-        metric_name = self._get_metric_name(bmSuiteArgs)
+        metric_name = self._get_metric_name(output)
         rules = []
         if metric_name == "time":
             # Special case for metric "time": Instead of reporting the aggregate numbers,
@@ -1018,12 +1094,12 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.iteration": ("<iteration>", int),
                 }, startPattern=r"::: Running :::")
             ]
-        elif metric_name == "allocated-memory":
+        elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory"):
             rules += [
                 ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
-                    "metric.name": "allocated-memory",
+                    "metric.name": metric_name,
                     "metric.unit": ("<unit>", str),
                     "metric.value": ("<value>", float),
                     "metric.type": "numeric",
@@ -1045,11 +1121,21 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 })
             ]
         rules += [
-            mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
+            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmarks[0],
                 "metric.name": "context-eval-time",
                 "metric.value": ("<delta>", float),
-                "metric.unit": "ms",
+                "metric.unit": ("<unit>", str),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0
+            }),
+            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmarks[0],
+                "metric.name": "context-init-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
                 "metric.score-function": "id",
                 "metric.better": "lower",
@@ -1058,22 +1144,18 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         ]
         return rules
 
-    def _get_metric_name(self, bmSuiteArgs):
-        metric = None
-        for arg in bmSuiteArgs:
-            if arg.startswith("--metric="):
-                metric = arg[len("--metric="):]
-                break
-        if metric == "compilation-time":
-            return "compile-time"
-        elif metric == "partial-evaluation-time":
-            return "pe-time"
-        elif metric == "one-shot":
-            return "one-shot"
-        elif metric == "allocated-bytes":
-            return "allocated-memory"
+    def _get_metric_name(self, bench_output):
+        match = re.search(r"metric class:\s*(?P<metric_class_name>\w+)Metric", bench_output)
+        if match is None:
+            match = re.search(r"metric class:\s*(?P<metric_class_name>\w+)", bench_output)
+
+        metric_class_name = match.group("metric_class_name")
+        metric_class_name = re.sub(r'(?<!^)(?=[A-Z])', '-', metric_class_name).lower()
+
+        if metric_class_name in POLYBENCH_METRIC_MAPPING:
+            return POLYBENCH_METRIC_MAPPING[metric_class_name]
         else:
-            return "time"
+            return metric_class_name
 
 
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
@@ -1106,7 +1188,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if isinstance(vm, mx_benchmark.GuestVm):
             host_vm = vm.host_vm()
             assert host_vm
-        name = 'graalvm-ee' if mx_sdk_vm_impl.has_component('svmee') else 'graalvm-ce'
+        name = 'graalvm-ee' if mx_sdk_vm_impl.has_component('svmee', stage1=True) else 'graalvm-ce'
         dims = {
             # the vm and host-vm fields are hardcoded to one of the accepted names of the field
             "vm": name,
@@ -1176,23 +1258,33 @@ def register_graalvm_vms():
             _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
+    # Inlining before analysis is done by default
+    analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
+    analysis_context_sensitivity_no_inline = ['{}-{}'.format(analysis_component, 'no-inline') for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity = ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity += ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity_no_inline]
+
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture']:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline + pgo_aot_inline_context_sensitivity:
                 final_config_name = '{}-{}'.format(main_config, config_suffix)
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
-    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo']:
+    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'quickbuild', 'quickbuild-g1gc']:
         mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 
     # Add VMs for libgraal
-    if mx_sdk_vm_impl.has_component('LibGraal'):
-        libgraal_location = mx_sdk_vm_impl.get_native_image_locations('LibGraal', 'jvmcicompiler')
-        if libgraal_location is not None:
-            import mx_graal_benchmark
-            mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
-                                                       ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
-                                                       mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)
+    if mx.suite('substratevm', fatalIfMissing=False) is not None:
+        import mx_substratevm
+        # Use `name` rather than `short_name` since the code that follows
+        # should not be executed when "LibGraal Enterprise" is registered
+        if mx_sdk_vm_impl.has_component(mx_substratevm.libgraal.name):
+            libgraal_location = mx_sdk_vm_impl.get_native_image_locations(mx_substratevm.libgraal.name, 'jvmcicompiler')
+            if libgraal_location is not None:
+                import mx_graal_benchmark
+                mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
+                                                           ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                           mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

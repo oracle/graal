@@ -31,19 +31,20 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
+import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
+import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -70,7 +71,24 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
+public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isVirtualRootMethodUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isVirtualRootMethod");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isDirectRootMethodUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isDirectRootMethod");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isInvokedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isInvoked");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isImplementationInvokedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isImplementationInvoked");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isIntrinsicMethodUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isIntrinsicMethod");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isInlinedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isInlined");
 
     public final ResolvedJavaMethod wrapped;
 
@@ -82,18 +100,21 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     private final AnalysisType declaringClass;
 
-    private final AtomicBoolean isRootMethod = new AtomicBoolean();
-    private boolean isIntrinsicMethod;
+    /** Virtually invoked method registered as root. */
+    @SuppressWarnings("unused") private volatile int isVirtualRootMethod;
+    /** Direct (special or static) invoked method registered as root. */
+    @SuppressWarnings("unused") private volatile int isDirectRootMethod;
     private Object entryPointData;
-    private final AtomicBoolean isInvoked = new AtomicBoolean();
-    private final AtomicBoolean isImplementationInvoked = new AtomicBoolean();
-    private boolean isInlined;
+    @SuppressWarnings("unused") private volatile int isInvoked;
+    @SuppressWarnings("unused") private volatile int isImplementationInvoked;
+    @SuppressWarnings("unused") private volatile int isIntrinsicMethod;
+    @SuppressWarnings("unused") private volatile int isInlined;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
     private static final Object GRAPH_CACHE_CLEARED = "cleared by cleanupAfterAnalysis";
 
-    private StructuredGraph analyzedGraph;
+    private EncodedGraph analyzedGraph;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
@@ -140,6 +161,24 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
         }
         localVariableTable = newLocalVariableTable;
         this.qualifiedName = format("%H.%n(%P)");
+
+        registerSignatureTypes();
+    }
+
+    /**
+     * Lookup the parameters and return type so that they are added to the universe even if the
+     * method is never linked and parsed.
+     */
+    private void registerSignatureTypes() {
+        boolean isStatic = Modifier.isStatic(getModifiers());
+        int parameterCount = getSignature().getParameterCount(!isStatic);
+
+        int offset = isStatic ? 0 : 1;
+        for (int i = offset; i < parameterCount; i++) {
+            getSignature().getParameterType(i - offset, getDeclaringClass());
+        }
+
+        getSignature().getReturnType(getDeclaringClass());
     }
 
     public String getQualifiedName() {
@@ -182,7 +221,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * @return analysis related invoke information for given method, mainly the possible callees to
      *         traverse the call graph
      */
-    public abstract Collection<InvokeInfo> getInvokes();
+    public abstract Iterable<? extends InvokeInfo> getInvokes();
 
     /**
      * @return the parsing context in which given method was parsed
@@ -199,7 +238,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * resolution must be able to find the method (otherwise the intrinsification would not work).
      */
     public void registerAsIntrinsicMethod() {
-        isIntrinsicMethod = true;
+        AtomicUtils.atomicMarkAndRun(this, isIntrinsicMethodUpdater, this::onReachable);
     }
 
     public void registerAsEntryPoint(Object newEntryPointData) {
@@ -213,7 +252,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public boolean registerAsInvoked() {
-        return AtomicUtils.atomicMark(isInvoked);
+        return AtomicUtils.atomicMark(this, isInvokedUpdater);
     }
 
     public boolean registerAsImplementationInvoked() {
@@ -228,11 +267,11 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
          * return before the class gets marked as reachable.
          */
         getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMark(isImplementationInvoked);
+        return AtomicUtils.atomicMarkAndRun(this, isImplementationInvokedUpdater, this::onReachable);
     }
 
     public void registerAsInlined() {
-        isInlined = true;
+        AtomicUtils.atomicMarkAndRun(this, isInlinedUpdater, this::onReachable);
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -252,11 +291,11 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public boolean isIntrinsicMethod() {
-        return isIntrinsicMethod;
+        return AtomicUtils.isSet(this, isIntrinsicMethodUpdater);
     }
 
     /**
-     * Registers this method as a root for the analysis.
+     * Registers this method as a virtual root for the analysis.
      *
      * The class constant of the declaring class is used for exception metadata, so marking a method
      * as invoked also makes the declaring class reachable.
@@ -264,39 +303,140 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
      * as in {@link AnalysisMethod#registerAsImplementationInvoked()}.
      */
-    public boolean registerAsRootMethod() {
+    public boolean registerAsVirtualRootMethod() {
         getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMark(isRootMethod);
+        return AtomicUtils.atomicMark(this, isVirtualRootMethodUpdater);
     }
 
-    public boolean isRootMethod() {
-        return isRootMethod.get();
+    /**
+     * Registers this method as a direct (special or static) root for the analysis.
+     */
+    public boolean registerAsDirectRootMethod() {
+        getDeclaringClass().registerAsReachable();
+        return AtomicUtils.atomicMark(this, isDirectRootMethodUpdater);
+    }
+
+    /**
+     * Returns true if the method is marked as virtual root. This doesn't necessarily mean that the
+     * method is implementation-invoked, that depends on the instantiation state of the respective
+     * receiver types.
+     */
+    public boolean isVirtualRootMethod() {
+        return AtomicUtils.isSet(this, isVirtualRootMethodUpdater);
+    }
+
+    /**
+     * Returns true if the method is marked as direct root. For special invoked methods this doesn't
+     * necessarily mean that the method is implementation-invoked, that depends on the instantiation
+     * state of the respective receiver types. Static root methods are immediately registered as
+     * implementation-invoked too.
+     */
+    public boolean isDirectRootMethod() {
+        return AtomicUtils.isSet(this, isDirectRootMethodUpdater);
     }
 
     public boolean isSimplyInvoked() {
-        return isInvoked.get();
+        return AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
     public boolean isSimplyImplementationInvoked() {
-        return isImplementationInvoked.get();
+        return AtomicUtils.isSet(this, isImplementationInvokedUpdater);
     }
 
     /**
      * Returns true if this method is ever used as the target of a call site.
      */
     public boolean isInvoked() {
-        return isIntrinsicMethod || isRootMethod() || isInvoked.get();
+        return isIntrinsicMethod() || isVirtualRootMethod() || isDirectRootMethod() || AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
     /**
-     * Returns true if the method body can ever be executed.
+     * Returns true if the method body can ever be executed. Methods registered as root are also
+     * registered as implementation invoked when they are linked.
      */
     public boolean isImplementationInvoked() {
-        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isRootMethod() || isImplementationInvoked.get());
+        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod() || AtomicUtils.isSet(this, isImplementationInvokedUpdater));
     }
 
+    @Override
     public boolean isReachable() {
-        return isImplementationInvoked() || isInlined;
+        return isImplementationInvoked() || AtomicUtils.isSet(this, isInlinedUpdater);
+    }
+
+    @Override
+    public boolean isTriggered() {
+        if (isReachable()) {
+            return true;
+        }
+        return isClassInitializer() && getDeclaringClass().isInitialized();
+    }
+
+    @Override
+    public void onReachable() {
+        notifyReachabilityCallbacks(declaringClass.getUniverse());
+        processMethodOverrides();
+    }
+
+    private void processMethodOverrides() {
+        if (wrapped.canBeStaticallyBound() || isConstructor()) {
+            notifyMethodOverride(this);
+        } else if (declaringClass.isAnySubtypeInstantiated()) {
+            /*
+             * If neither the declaring class nor a subtype is instantiated then this method cannot
+             * be marked as invoked, so it cannot be an override.
+             */
+            declaringClass.forAllSuperTypes(superType -> {
+                /*
+                 * Iterate all the super types (including this type itself) looking for installed
+                 * override notifications. If this method resolves in a super type, and it has an
+                 * override handler installed in that type, pass this method to the callback. It
+                 * doesn't matter if the superMethod is actually reachable, only if it has any
+                 * override handlers installed.
+                 */
+                AnalysisMethod superMethod = resolveInType(superType);
+                if (superMethod != null) {
+                    superMethod.notifyMethodOverride(AnalysisMethod.this);
+                }
+            });
+        }
+    }
+
+    protected void notifyMethodOverride(AnalysisMethod override) {
+        declaringClass.getOverrideReachabilityNotifications(this).forEach(n -> n.notifyCallback(getUniverse(), override));
+    }
+
+    public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {
+        declaringClass.registerOverrideReachabilityNotification(this, notification);
+    }
+
+    /**
+     * Resolves this method in the provided type, but only if the type or any of its subtypes is
+     * marked as instantiated.
+     */
+    protected AnalysisMethod resolveInType(AnalysisType holder) {
+        return resolveInType(holder, holder.isAnySubtypeInstantiated());
+    }
+
+    protected AnalysisMethod resolveInType(AnalysisType holder, boolean holderOrSubtypeInstantiated) {
+        /*
+         * If the holder and all subtypes are not instantiated, then we do not need to resolve the
+         * method. The method cannot be marked as invoked.
+         */
+        if (holderOrSubtypeInstantiated || isIntrinsicMethod()) {
+            AnalysisMethod resolved;
+            try {
+                resolved = holder.resolveConcreteMethod(this, null);
+            } catch (UnsupportedFeatureException e) {
+                /* An unsupported overriding method is not reachable. */
+                resolved = null;
+            }
+            /*
+             * resolved == null means that the method in the base class was called, but never with
+             * this holder.
+             */
+            return resolved;
+        }
+        return null;
     }
 
     @Override
@@ -372,7 +512,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     @Override
     public boolean isVarArgs() {
-        throw unimplemented();
+        return wrapped.isVarArgs();
     }
 
     @Override
@@ -428,21 +568,6 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     @Override
     public ConstantPool getConstantPool() {
         return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass());
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return GuardedAnnotationAccess.getAnnotations(wrapped);
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return GuardedAnnotationAccess.getDeclaredAnnotations(wrapped);
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return GuardedAnnotationAccess.getAnnotation(wrapped, annotationClass);
     }
 
     @Override
@@ -534,7 +659,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
             Object curState = parsedGraphCacheState.get();
 
             /*-
-             * This implements a state machine that ensures parsing is atomic. States: 
+             * This implements a state machine that ensures parsing is atomic. States:
              * 1) unparsed: represented by the String "unparsed".
              * 2) parsing: represented by a locked ReentrantLock object that other threads can wait on.
              * 3) parsed: represented by the ParsedGraph with the parsing result
@@ -606,11 +731,21 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph getAnalyzedGraph() {
-        return analyzedGraph;
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences) {
+        if (analyzedGraph == null) {
+            return null;
+        }
+
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug)
+                        .method(this)
+                        .recordInlinedMethods(false)
+                        .trackNodeSourcePosition(analyzedGraph.trackNodeSourcePosition()).build();
+        GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
+        decoder.decode(analyzedGraph, nodeReferences);
+        return result;
     }
 
-    public void setAnalyzedGraph(StructuredGraph analyzedGraph) {
+    public void setAnalyzedGraph(EncodedGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
     }
 }

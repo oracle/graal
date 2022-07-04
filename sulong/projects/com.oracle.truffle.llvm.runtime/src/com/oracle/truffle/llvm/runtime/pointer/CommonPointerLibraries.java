@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import java.nio.ByteOrder;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -40,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -52,15 +58,33 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropInvokeNode;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMResolveForeignClassChainNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Buffer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMResolveForeignClassChainNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsDateNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsInstantNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsTimeNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsDateTimeNode.LLVMPolyglotAsTimeZoneNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotNativeBufferInfo;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferByteNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferDoubleNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferFloatNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferIntNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferLongNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferShortNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferByteNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferDoubleNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferFloatNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferIntNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferLongNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferShortNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
@@ -156,6 +180,45 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     static void writePointer(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") LLVMPointer value) {
         throw CompilerDirectives.shouldNotReachHere("Cannot write a value of type Pointer directly to a pointer. Perhaps a getObject() call is missing.");
+    }
+
+    @ExportMessage
+    static boolean isDate(LLVMPointerImpl receiver) {
+        return receiver.getExportType() instanceof LLVMInteropType.Instant || receiver.getExportType() instanceof LLVMInteropType.TimeInfo;
+    }
+
+    @ExportMessage
+    static LocalDate asDate(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsDateNode asDate) throws UnsupportedMessageException {
+        return asDate.execute(receiver);
+    }
+
+    @ExportMessage
+    static boolean isTime(LLVMPointerImpl receiver) {
+        return receiver.getExportType() instanceof LLVMInteropType.Instant || receiver.getExportType() instanceof LLVMInteropType.TimeInfo;
+    }
+
+    @ExportMessage
+    static LocalTime asTime(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsTimeNode asTime) throws UnsupportedMessageException {
+        return asTime.execute(receiver);
+    }
+
+    @ExportMessage
+    static boolean isTimeZone(LLVMPointerImpl receiver) {
+        return receiver.getExportType() instanceof LLVMInteropType.Instant;
+    }
+
+    @ExportMessage
+    static ZoneId asTimeZone(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsTimeZoneNode asTimeZone) throws UnsupportedMessageException {
+        return asTimeZone.execute(receiver);
+    }
+
+    @ExportMessage
+    static Instant asInstant(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotAsInstantNode inst) throws UnsupportedMessageException {
+        return inst.execute(receiver);
     }
 
     @ExportMessage
@@ -454,9 +517,8 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    static String toDisplayString(LLVMPointerImpl receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
-        return receiver.toString();
+    static String toDisplayString(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+        throw CompilerDirectives.shouldNotReachHere("should be overridden");
     }
 
     @ExportMessage
@@ -492,5 +554,94 @@ abstract class CommonPointerLibraries {
     static int identityHashCode(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new AbstractMethodError(); // overridden in {Native,Managed}PointerLibraries
+    }
+
+    @ExportMessage
+    static boolean hasBufferElements(LLVMPointerImpl receiver) {
+        return receiver.getExportType() instanceof Buffer;
+    }
+
+    @ExportMessage
+    static long getBufferSize(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotNativeBufferInfo.GetBufferSize getSize) throws UnsupportedMessageException {
+        return getSize.execute(receiver);
+    }
+
+    @ExportMessage
+    static byte readBufferByte(LLVMPointerImpl receiver, long byteOffset,
+                    @Cached LLVMPolyglotReadBufferByteNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        return read.execute(receiver, byteOffset);
+    }
+
+    @ExportMessage
+    static void writeBufferByte(LLVMPointerImpl receiver, long byteOffset, byte value,
+                    @Cached LLVMPolyglotWriteBufferByteNode write) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        write.execute(receiver, byteOffset, value);
+    }
+
+    @ExportMessage
+    static short readBufferShort(LLVMPointerImpl receiver, ByteOrder order, long byteOffset,
+                    @Cached LLVMPolyglotReadBufferShortNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        return read.execute(receiver, order, byteOffset);
+    }
+
+    @ExportMessage
+    static void writeBufferShort(LLVMPointerImpl receiver, ByteOrder order, long byteOffset, short value,
+                    @Cached LLVMPolyglotWriteBufferShortNode write) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        write.execute(receiver, order, byteOffset, value);
+    }
+
+    @ExportMessage
+    static int readBufferInt(LLVMPointerImpl receiver, ByteOrder order, long byteOffset,
+                    @Cached LLVMPolyglotReadBufferIntNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        return read.execute(receiver, order, byteOffset);
+    }
+
+    @ExportMessage
+    static void writeBufferInt(LLVMPointerImpl receiver, ByteOrder order, long byteOffset, int value,
+                    @Cached LLVMPolyglotWriteBufferIntNode write) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        write.execute(receiver, order, byteOffset, value);
+    }
+
+    @ExportMessage
+    static long readBufferLong(LLVMPointerImpl receiver, ByteOrder order, long byteOffset,
+                    @Cached LLVMPolyglotReadBufferLongNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        return read.execute(receiver, order, byteOffset);
+    }
+
+    @ExportMessage
+    static void writeBufferLong(LLVMPointerImpl receiver, ByteOrder order, long byteOffset, long value,
+                    @Cached LLVMPolyglotWriteBufferLongNode write) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        write.execute(receiver, order, byteOffset, value);
+    }
+
+    @ExportMessage
+    static float readBufferFloat(LLVMPointerImpl receiver, ByteOrder order, long byteOffset,
+                    @Cached LLVMPolyglotReadBufferFloatNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        return read.execute(receiver, order, byteOffset);
+    }
+
+    @ExportMessage
+    static void writeBufferFloat(LLVMPointerImpl receiver, ByteOrder order, long byteOffset, float value,
+                    @Cached LLVMPolyglotWriteBufferFloatNode write) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        write.execute(receiver, order, byteOffset, value);
+    }
+
+    @ExportMessage
+    static double readBufferDouble(LLVMPointerImpl receiver, ByteOrder order, long byteOffset,
+                    @Cached LLVMPolyglotReadBufferDoubleNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        return read.execute(receiver, order, byteOffset);
+    }
+
+    @ExportMessage
+    static void writeBufferDouble(LLVMPointerImpl receiver, ByteOrder order, long byteOffset, double value,
+                    @Cached LLVMPolyglotWriteBufferDoubleNode write) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        write.execute(receiver, order, byteOffset, value);
+    }
+
+    @ExportMessage
+    static boolean isBufferWritable(LLVMPointerImpl receiver,
+                    @Cached LLVMPolyglotNativeBufferInfo.IsBufferWritable isWritable) throws UnsupportedMessageException {
+        return isWritable.execute(receiver);
     }
 }

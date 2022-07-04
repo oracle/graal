@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,7 @@ public class StringBenchmark extends BenchmarkBase {
         String loremLastChar = "Lorem ipsum dolor sit amet, consectetur adipisici elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi consequat. Quis aute iure reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint obcaecat cupiditat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum?";
         // @formatter:on
 
+        String verySmallLorem = lorem.substring(0, 7);
         String smallLorem = lorem.substring(0, 13);
         String largeLorem = lorem.concat(lorem);
 
@@ -90,6 +91,21 @@ public class StringBenchmark extends BenchmarkBase {
     @Benchmark
     public int indexOfCharNotFound(BenchState state) {
         return state.lorem.indexOf(state.ch2);
+    }
+
+    @Benchmark
+    public int indexOfCharNotFoundShort(BenchState state) {
+        return state.smallLorem.indexOf(state.ch2);
+    }
+
+    @Benchmark
+    public int indexOfCharNotFoundVeryShort(BenchState state) {
+        return state.verySmallLorem.indexOf(state.ch2);
+    }
+
+    @Benchmark
+    public int indexOfCharNotFoundLong(BenchState state) {
+        return state.largeLorem.indexOf(state.ch2);
     }
 
     @Benchmark

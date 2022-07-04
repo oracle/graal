@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.jni.access;
 
+import static com.oracle.svm.jni.access.JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE;
+
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -47,9 +49,9 @@ public final class JNINativeLinkage {
 
     private PointerBase entryPoint = WordFactory.nullPointer();
 
-    private final String declaringClass;
-    private final String name;
-    private final String descriptor;
+    private final CharSequence declaringClass;
+    private final CharSequence name;
+    private final CharSequence descriptor;
 
     private CGlobalDataInfo builtInAddress = null;
 
@@ -62,23 +64,22 @@ public final class JNINativeLinkage {
      * @param descriptor the {@linkplain Signature#toMethodDescriptor() descriptor} of the native
      *            method
      */
-    public JNINativeLinkage(String declaringClass, String name, String descriptor) {
-        assert declaringClass.startsWith("L") && declaringClass.endsWith(";") : declaringClass;
+    public JNINativeLinkage(CharSequence declaringClass, CharSequence name, CharSequence descriptor) {
         this.declaringClass = declaringClass;
         this.name = name;
         this.descriptor = descriptor;
     }
 
     public String getDeclaringClassName() {
-        return declaringClass;
+        return (String) declaringClass;
     }
 
     public String getName() {
-        return name;
+        return (String) name;
     }
 
     public String getDescriptor() {
-        return descriptor;
+        return (String) descriptor;
     }
 
     public boolean isBuiltInFunction() {
@@ -123,9 +124,9 @@ public final class JNINativeLinkage {
         if (obj instanceof JNINativeLinkage) {
             JNINativeLinkage that = (JNINativeLinkage) obj;
             return (that == this) ||
-                            (this.declaringClass.equals(that.declaringClass) &&
-                                            this.name.equals(that.name) &&
-                                            this.descriptor.equals(that.descriptor));
+                            (WRAPPED_CSTRING_EQUIVALENCE.equals(declaringClass, that.declaringClass) &&
+                                            WRAPPED_CSTRING_EQUIVALENCE.equals(name, that.name) &&
+                                            WRAPPED_CSTRING_EQUIVALENCE.equals(descriptor, that.descriptor));
         }
         return false;
     }
@@ -133,7 +134,7 @@ public final class JNINativeLinkage {
     @Override
     public String toString() {
         String shortName = getShortName();
-        return MetaUtil.internalNameToJava(declaringClass, true, false) + "." + name + descriptor +
+        return MetaUtil.internalNameToJava(getDeclaringClassName(), true, false) + "." + name + descriptor +
                         " [symbol: " + shortName + " or " + shortName + "__" + getSignature() + "]";
 
     }
@@ -159,16 +160,16 @@ public final class JNINativeLinkage {
 
     private String getShortName() {
         StringBuilder sb = new StringBuilder("Java_");
-        mangleName(declaringClass, 1, declaringClass.length() - 1, sb);
+        mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
         sb.append('_');
-        mangleName(name, 0, name.length(), sb);
+        mangleName(getName(), 0, name.length(), sb);
         return sb.toString();
     }
 
     private String getSignature() {
-        int closing = descriptor.indexOf(')');
-        assert descriptor.startsWith("(") && descriptor.indexOf(')') == closing && closing != -1;
-        return mangleName(descriptor, 1, closing, new StringBuilder()).toString();
+        int closing = getDescriptor().indexOf(')');
+        assert getDescriptor().startsWith("(") && getDescriptor().indexOf(')') == closing && closing != -1;
+        return mangleName(getDescriptor(), 1, closing, new StringBuilder()).toString();
     }
 
     private static StringBuilder mangleName(String name, int beginIndex, int endIndex, StringBuilder sb) {
@@ -203,9 +204,5 @@ public final class JNINativeLinkage {
             }
         }
         return sb;
-    }
-
-    public static String mangle(String s) {
-        return mangleName(s, 0, s.length(), new StringBuilder()).toString();
     }
 }

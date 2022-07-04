@@ -53,13 +53,17 @@ public class HostedHeapDumpFeature implements Feature {
 
     static class Options {
         @Option(help = "Dump the heap at a specific time during image building." +
-                        "The option accepts a list of comma separated phases, any of: after-analysis, before-compilation.")//
+                        "The option accepts a list of comma separated phases, any of: during-analysis, after-analysis, before-compilation.")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DumpHeap = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     enum Phases {
+        DuringAnalysis("during-analysis"),
         AfterAnalysis("after-analysis"),
-        BeforeCompilation("before-compilation");
+        BeforeCompilation("before-compilation"),
+        CompileQueueBeforeInlining("compile-queue-before-inlining"),
+        CompileQueueAfterInlining("compile-queue-after-inlining"),
+        CompileQueueAfterCompilation("compile-queue-after-compilation");
 
         final String name;
 
@@ -101,17 +105,40 @@ public class HostedHeapDumpFeature implements Feature {
         timeStamp = getTimeStamp();
     }
 
+    private int iteration;
+
     @Override
-    public void onAnalysisExit(OnAnalysisExitAccess access) {
-        if (phases.contains(Phases.AfterAnalysis.getName())) {
-            dumpHeap(Phases.AfterAnalysis.getName());
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        if (phases.contains(Phases.DuringAnalysis.getName())) {
+            dumpHeap(Phases.DuringAnalysis.getName() + "-" + iteration++);
         }
     }
 
     @Override
+    public void onAnalysisExit(OnAnalysisExitAccess access) {
+        dumpHeap(Phases.AfterAnalysis);
+    }
+
+    @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        if (phases.contains(Phases.BeforeCompilation.getName())) {
-            dumpHeap(Phases.BeforeCompilation.getName());
+        dumpHeap(Phases.BeforeCompilation);
+    }
+
+    public void beforeInlining() {
+        dumpHeap(Phases.CompileQueueBeforeInlining);
+    }
+
+    public void afterInlining() {
+        dumpHeap(Phases.CompileQueueAfterInlining);
+    }
+
+    public void compileQueueAfterCompilation() {
+        dumpHeap(Phases.CompileQueueAfterCompilation);
+    }
+
+    private void dumpHeap(Phases phase) {
+        if (phases.contains(phase.getName())) {
+            dumpHeap(phase.getName());
         }
     }
 

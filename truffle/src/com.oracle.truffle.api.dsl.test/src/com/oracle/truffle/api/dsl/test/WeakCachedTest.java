@@ -43,6 +43,7 @@ package com.oracle.truffle.api.dsl.test;
 import static org.junit.Assert.assertNotNull;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import org.junit.Test;
@@ -112,8 +113,7 @@ public class WeakCachedTest extends AbstractPolyglotTest {
         node.execute(o2);
         o1 = null;
         o2 = null;
-        GCUtils.assertGc("Reference is not collected", ref1);
-        GCUtils.assertGc("Reference is not collected", ref2);
+        GCUtils.assertGc("Reference is not collected", List.of(ref1, ref2));
 
         assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
     }
@@ -150,8 +150,7 @@ public class WeakCachedTest extends AbstractPolyglotTest {
         node.execute(o2);
         o1 = null;
         o2 = null;
-        GCUtils.assertGc("Reference is not collected", ref1);
-        GCUtils.assertGc("Reference is not collected", ref2);
+        GCUtils.assertGc("Reference is not collected", List.of(ref1, ref2));
 
         assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
     }

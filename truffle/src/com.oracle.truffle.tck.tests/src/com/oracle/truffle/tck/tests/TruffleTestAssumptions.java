@@ -43,7 +43,8 @@ package com.oracle.truffle.tck.tests;
 import org.junit.Assume;
 
 public class TruffleTestAssumptions {
-    private static final boolean spawnIsolate = "true".equals(System.getProperty("polyglot.engine.SpawnIsolate"));
+    private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
+    private static final boolean aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
     public static void assumeWeakEncapsulation() {
         Assume.assumeFalse(spawnIsolate);
@@ -51,5 +52,25 @@ public class TruffleTestAssumptions {
 
     public static boolean isWeakEncapsulation() {
         return !spawnIsolate;
+    }
+
+    public static boolean isStrongEncapsulation() {
+        return spawnIsolate;
+    }
+
+    public static void assumeAOT() {
+        Assume.assumeTrue(aot);
+    }
+
+    public static void assumeNotAOT() {
+        Assume.assumeFalse(aot);
+    }
+
+    public static boolean isAOT() {
+        return aot;
+    }
+
+    public static boolean isNotAOT() {
+        return !aot;
     }
 }

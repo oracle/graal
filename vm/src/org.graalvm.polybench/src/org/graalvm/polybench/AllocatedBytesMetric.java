@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public final class AllocatedBytesMetric implements Metric {
+public final class AllocatedBytesMetric extends Metric {
 
     private double allocatedBefore;
 
@@ -53,7 +53,7 @@ public final class AllocatedBytesMetric implements Metric {
     @Override
     public Map<String, String> getEngineOptions(Config config) {
         HashMap<String, String> map = new HashMap<>();
-        map.put("allocated-bytes", "true");
+        map.put("memory-usage", "true");
         return map;
     }
 

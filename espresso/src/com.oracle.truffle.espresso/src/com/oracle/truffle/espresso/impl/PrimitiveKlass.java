@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -35,9 +35,9 @@ import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Implementation of {@link Klass} for primitive types. Primitive classes don't have a .class
@@ -52,7 +52,7 @@ public final class PrimitiveKlass extends Klass {
      * @param primitiveKind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind primitiveKind) {
-        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(), null, ObjectKlass.EMPTY_ARRAY,
+        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(),
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
@@ -155,8 +155,9 @@ public final class PrimitiveKlass extends Klass {
         return getModifiers();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public StaticObject allocatePrimitiveArray(int length) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) getPrimitiveJavaKind().getBasicType(), length, getMeta());
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length);
+        return getAllocator().createNewPrimitiveArray(this, length);
     }
 }

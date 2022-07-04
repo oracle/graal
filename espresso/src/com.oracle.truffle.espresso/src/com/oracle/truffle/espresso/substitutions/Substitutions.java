@@ -42,7 +42,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -106,7 +106,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
  * The order of arguments matter: First, the actual guest arguments, next the list of guest method
  * nodes, and finally the meta to be injected.
  */
-public final class Substitutions implements ContextAccess {
+public final class Substitutions extends ContextAccessImpl {
 
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, Substitutions.class);
 
@@ -116,13 +116,6 @@ public final class Substitutions implements ContextAccess {
 
     public static void ensureInitialized() {
         /* nop */
-    }
-
-    private final EspressoContext context;
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     /**
@@ -155,7 +148,7 @@ public final class Substitutions implements ContextAccess {
     }
 
     public Substitutions(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     private static MethodRef getMethodKey(Method method) {

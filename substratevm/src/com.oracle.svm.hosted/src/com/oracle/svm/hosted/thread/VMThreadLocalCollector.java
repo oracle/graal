@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.thread;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,11 +42,15 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
+import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Collects all {@link FastThreadLocal} instances that are actually used by the application.
  */
 class VMThreadLocalCollector implements Function<Object, Object> {
+
+    static Field threadLocalInfosField = ReflectionUtil.lookupField(VMThreadLocalInfos.class, "infos");
 
     final Map<FastThreadLocal, VMThreadLocalInfo> threadLocals = new ConcurrentHashMap<>();
     private boolean sealed;

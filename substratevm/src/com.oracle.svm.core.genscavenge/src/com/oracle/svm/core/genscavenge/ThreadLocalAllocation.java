@@ -27,8 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
-import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.AllocationSnippets.FillContent;
 import org.graalvm.compiler.word.Word;
@@ -37,6 +35,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
@@ -46,6 +45,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -53,7 +53,9 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatPodNode;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -65,6 +67,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -108,11 +111,21 @@ public final class ThreadLocalAllocation {
         @RawField
         void setAllocationTop(Pointer top, LocationIdentity topIdentity);
 
+        @RawFieldOffset
+        static int offsetOfAllocationTop() {
+            throw VMError.unimplemented(); // replaced
+        }
+
         @RawField
         Word getAllocationEnd(LocationIdentity endIdentity);
 
         @RawField
         void setAllocationEnd(Pointer end, LocationIdentity endIdentity);
+
+        @RawFieldOffset
+        static int offsetOfAllocationEnd() {
+            throw VMError.unimplemented(); // replaced
+        }
     }
 
     /*
@@ -157,7 +170,7 @@ public final class ThreadLocalAllocation {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewInstance(Word objectHeader, UnsignedWord size) {
+    private static Object slowPathNewInstance(Word objectHeader) {
         /*
          * Avoid stack overflow errors while producing memory chunks, because that could leave the
          * heap in an inconsistent state.
@@ -166,9 +179,7 @@ public final class ThreadLocalAllocation {
         try {
             DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
-            // the instance either is a frame instance or the size can be read from the hub
-            assert hub.isStoredContinuationClass() || size.equal(hub.getLayoutEncoding());
-            Object result = slowPathNewInstanceWithoutAllocating(hub, size);
+            Object result = slowPathNewInstanceWithoutAllocating(hub);
             runSlowPathHooks();
             return result;
         } finally {
@@ -177,25 +188,46 @@ public final class ThreadLocalAllocation {
     }
 
     /**
-     * NOTE: All code that is transitively reachable from this method may get executed as a side
-     * effect of an allocation slow path. To prevent hard to debug transient issues, we execute as
-     * little code as possible in this method (see {@link GCImpl#doReferenceHandling()} for more
-     * details). Multiple threads may execute this method concurrently.
+     * NOTE: Multiple threads may execute this method concurrently. All code that is transitively
+     * reachable from this method may get executed as a side effect of an allocation slow path. To
+     * prevent hard to debug transient issues, we execute as little code as possible in this method.
+     *
+     * If the executed code is too complex, then it can happen that we unexpectedly change some
+     * shared global state as a side effect of an allocation. This may result in issues that look
+     * similar to races but that can even happen in single-threaded environments, e.g.:
+     * 
+     * <pre>
+     * {@code
+     * private static Object singleton;
+     *
+     * private static synchronized Object createSingleton() {
+     *     if (singleton == null) {
+     *         Object o = new Object();
+     *         // If the allocation above enters the allocation slow path code, and executes a complex
+     *         // slow path hook, then it is possible that createSingleton() gets recursively execute
+     *         // by the current thread. So, the assertion below may fail because the singleton got
+     *         // already initialized by the same thread in the meanwhile.
+     *         assert singleton == null;
+     *         singleton = o;
+     *     }
+     *     return result;
+     * }
+     * }
+     * </pre>
      */
     private static void runSlowPathHooks() {
-        GCImpl.doReferenceHandling();
         GCImpl.getPolicy().updateSizeParameters();
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub, UnsignedWord size) {
+    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
         DeoptTester.disableDeoptTesting();
         try {
-            HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
+            HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation();
 
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
-            return allocateInstanceInNewTlab(hub, size, newTlab);
+            return allocateInstanceInNewTlab(hub, newTlab);
         } finally {
             DeoptTester.enableDeoptTesting();
         }
@@ -203,6 +235,15 @@ public final class ThreadLocalAllocation {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewArray(Word objectHeader, int length, int fillStartOffset) {
+        return slowPathNewArrayOrPodImpl(objectHeader, length, fillStartOffset, null);
+    }
+
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    private static Object slowPathNewPodInstance(Word objectHeader, int arrayLength, int fillStartOffset, byte[] referenceMap) {
+        return slowPathNewArrayOrPodImpl(objectHeader, arrayLength, fillStartOffset, referenceMap);
+    }
+
+    private static Object slowPathNewArrayOrPodImpl(Word objectHeader, int length, int fillStartOffset, byte[] podReferenceMap) {
         /*
          * Avoid stack overflow errors while producing memory chunks, because that could leave the
          * heap in an inconsistent state.
@@ -222,10 +263,11 @@ public final class ThreadLocalAllocation {
              */
             GCImpl.getPolicy().ensureSizeParametersInitialized();
             if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize())) {
-                throw new OutOfMemoryError("Array allocation too large.");
+                OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
+                throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
             }
 
-            Object result = slowPathNewArrayWithoutAllocating(hub, length, size, fillStartOffset);
+            Object result = slowPathNewArrayOrPodWithoutAllocating(hub, length, size, fillStartOffset, podReferenceMap);
             runSlowPathHooks();
             return result;
         } finally {
@@ -234,26 +276,26 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewArrayWithoutAllocating(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset) {
+    private static Object slowPathNewArrayOrPodWithoutAllocating(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, byte[] podReferenceMap) {
         DeoptTester.disableDeoptTesting();
         try {
-            HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
+            HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation();
 
             if (size.aboveOrEqual(HeapParameters.getLargeArrayThreshold())) {
                 /* Large arrays go into their own unaligned chunk. */
                 boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
                 UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
-                return allocateLargeArrayInNewTlab(hub, length, size, fillStartOffset, newTlabChunk, needsZeroing);
+                return allocateLargeArrayOrPodInNewTlab(hub, length, size, fillStartOffset, newTlabChunk, needsZeroing, podReferenceMap);
             }
             /* Small arrays go into the regular aligned chunk. */
 
             // We might have allocated in the caller and acquired a TLAB with enough space already
             // (but we need to check in an uninterruptible method to be safe)
-            Object array = allocateSmallArrayInCurrentTlab(hub, length, size, fillStartOffset);
+            Object array = allocateSmallArrayOrPodInCurrentTlab(hub, length, size, fillStartOffset, podReferenceMap);
             if (array == null) { // We need a new chunk.
                 AlignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
-                array = allocateSmallArrayInNewTlab(hub, length, size, fillStartOffset, newTlabChunk);
+                array = allocateSmallArrayOrPodInNewTlab(hub, length, size, fillStartOffset, newTlabChunk, podReferenceMap);
             }
             return array;
         } finally {
@@ -262,28 +304,31 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateInstanceInNewTlab(DynamicHub hub, UnsignedWord size, AlignedHeader newTlabChunk) {
+    private static Object allocateInstanceInNewTlab(DynamicHub hub, AlignedHeader newTlabChunk) {
+        UnsignedWord size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding());
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
         return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateSmallArrayInCurrentTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset) {
+    private static Object allocateSmallArrayOrPodInCurrentTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, byte[] podReferenceMap) {
         if (size.aboveThan(availableTlabMemory(getTlab()))) {
             return null;
         }
         Pointer memory = allocateRawMemoryInTlab(size, getTlab());
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, FillContent.WITH_ZEROES, fillStartOffset, true);
+        return formatArrayOrPod(memory, hub, length, false, FillContent.WITH_ZEROES, fillStartOffset, podReferenceMap);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateSmallArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, AlignedHeader newTlabChunk) {
+    private static Object allocateSmallArrayOrPodInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, AlignedHeader newTlabChunk, byte[] podReferenceMap) {
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, FillContent.WITH_ZEROES, fillStartOffset, true);
+        return formatArrayOrPod(memory, hub, length, false, FillContent.WITH_ZEROES, fillStartOffset, podReferenceMap);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
-    private static Object allocateLargeArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, UnalignedHeapChunk.UnalignedHeader newTlabChunk, boolean needsZeroing) {
+    private static Object allocateLargeArrayOrPodInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset,
+                    UnalignedHeader newTlabChunk, boolean needsZeroing, byte[] podReferenceMap) {
+
         ThreadLocalAllocation.Descriptor tlab = getTlab();
 
         HeapChunk.setNext(newTlabChunk, tlab.getUnalignedChunk());
@@ -305,7 +350,16 @@ public final class ThreadLocalAllocation {
          * any way.
          */
         FillContent fillKind = needsZeroing ? FillContent.WITH_ZEROES : FillContent.DO_NOT_FILL;
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, true, fillKind, fillStartOffset, true);
+        return formatArrayOrPod(memory, hub, length, true, fillKind, fillStartOffset, podReferenceMap);
+    }
+
+    @Uninterruptible(reason = "Holds uninitialized memory")
+    private static Object formatArrayOrPod(Pointer memory, DynamicHub hub, int length, boolean unaligned, FillContent fillContent, int fillStartOffset, byte[] podReferenceMap) {
+        Class<?> clazz = DynamicHub.toClass(hub);
+        if (podReferenceMap != null) {
+            return FormatPodNode.formatPod(memory, clazz, length, podReferenceMap, false, unaligned, fillContent, fillStartOffset, true);
+        }
+        return FormatArrayNode.formatArray(memory, clazz, length, false, unaligned, fillContent, fillStartOffset, true);
     }
 
     @Uninterruptible(reason = "Returns uninitialized memory, modifies TLAB", callerMustBe = true)

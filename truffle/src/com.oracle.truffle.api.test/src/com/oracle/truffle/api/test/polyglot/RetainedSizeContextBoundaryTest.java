@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -55,10 +58,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -111,7 +112,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         Object writeMember(String key, Object value) {
             members.put(key, value);
             return value;
@@ -141,7 +142,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         Object toDisplayString(@SuppressWarnings("unused") boolean config) {
             return "global";
         }
@@ -179,7 +180,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
 
     @Test
     public void testRetainedSizeWithProxyObject() {
-        Assume.assumeFalse(TruffleOptions.AOT);
+        TruffleTestAssumptions.assumeNotAOT(); // GR-28085
         Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
         setupEnv(Context.newBuilder(), new LanguageWithScope());
         context.getBindings(ProxyLanguage.ID).putMember("proxyObject", new ProxyObject() {
@@ -227,15 +228,58 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
 
         @SuppressWarnings("unused")
         @ExportMessage
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         final Object execute(Object[] arguments) {
+            return instrumentEnv.calculateContextHeapSize(instrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class InvokeHostObjectExecutable implements TruffleObject {
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        @TruffleBoundary
+        final Object execute(Object[] arguments) {
+            try {
+                return InteropLibrary.getUncached().invokeMember(arguments[0], (String) arguments[1], arguments[2]);
+            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                throw new AssertionError(e);
+            }
+        }
+    }
+
+    public static class RetainedSizeComputationHostObject {
+        private final TruffleInstrument.Env instrumentEnv;
+
+        public RetainedSizeComputationHostObject(TruffleInstrument.Env instrumentEnv) {
+            this.instrumentEnv = instrumentEnv;
+        }
+
+        @SuppressWarnings("unused")
+        public long calculateRetainedSizeMapArgument(Map<?, ?> mapArgument) {
+            return instrumentEnv.calculateContextHeapSize(instrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
+        }
+
+        @SuppressWarnings("unused")
+        public long calculateRetainedSizeValueArgument(Value valueArgument) {
+            return instrumentEnv.calculateContextHeapSize(instrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
+        }
+
+        @SuppressWarnings("unused")
+        public long calculateRetainedSizeStringArgument(String s) {
             return instrumentEnv.calculateContextHeapSize(instrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
         }
     }
 
     @Test
     public void testRetainedSizeWithHostToGuestRootNode() {
-        Assume.assumeFalse(TruffleOptions.AOT);
+        TruffleTestAssumptions.assumeNotAOT(); // GR-28085
         Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
         HeapSizeExecutable heapSizeExecutable = new HeapSizeExecutable();
         setupEnv(Context.create(), new ProxyLanguage() {
@@ -268,9 +312,131 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
          * Value#execute() uses HostToGuestRootNode which stores PolyglotLanguageContext in a frame.
          * The retained size computation should stop on PolyglotLanguageContext and don't fail.
          */
-        long retainedSize = val.execute().asLong();
+        long retainedSize = val.execute(context.asValue(new MapLikeTruffleObject())).asLong();
         Assert.assertTrue(retainedSize > 0);
-        Assert.assertTrue(retainedSize < 16L * 1024L * 1024L);
+        /*
+         * The MapLikeTruffleObject should not be included as the only reference to that guest
+         * object exists from the host.
+         */
+        Assert.assertTrue(retainedSize < 16L * 1024L);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class MapLikeTruffleObject implements TruffleObject {
+        Map<String, String> map = new HashMap<>();
+        {
+            /*
+             * Make this object big enough to be detectable in the retained size.
+             */
+            for (int i = 0; i < 1000; i++) {
+                map.put(String.valueOf(i), String.valueOf(i));
+            }
+        }
+
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return null;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(@SuppressWarnings("unused") String key) {
+            return map.get(key);
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        Object writeMember(String key, Object value) {
+            return value;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
+            return false;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+            return false;
+        }
+
+    }
+
+    @Test
+    public void testRetainedSizeGuestToHostRootNode() {
+        TruffleTestAssumptions.assumeNotAOT(); // GR-28085
+        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        setupEnv(Context.newBuilder().allowHostAccess(HostAccess.ALL).build(), new ProxyLanguage() {
+            private CallTarget target;
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                com.oracle.truffle.api.source.Source source = request.getSource();
+                if (target == null) {
+                    target = new RootNode(languageInstance) {
+
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            return new InvokeHostObjectExecutable();
+                        }
+
+                        @Override
+                        public SourceSection getSourceSection() {
+                            return source.createSection(1);
+                        }
+
+                    }.getCallTarget();
+                }
+                return target;
+            }
+        });
+        Value val = context.eval(ProxyLanguage.ID, "");
+        long retainedSizeMapArgument = val.execute(new RetainedSizeComputationHostObject(instrumentEnv), "calculateRetainedSizeMapArgument", context.asValue(new MapLikeTruffleObject())).asLong();
+        /*
+         * The MapLikeTruffleObject should be included because it is one of the arguments in
+         * GuestToHostRootNode's frame, wrapped by PolyglotMap.
+         */
+        Assert.assertTrue(retainedSizeMapArgument > 16L * 1024L);
+        Assert.assertTrue(retainedSizeMapArgument < 16L * 1024L * 1024L);
+        long retainedSizeValueArgument = val.execute(new RetainedSizeComputationHostObject(instrumentEnv), "calculateRetainedSizeValueArgument", context.asValue(new MapLikeTruffleObject())).asLong();
+        /*
+         * The MapLikeTruffleObject should be included because it is one of the arguments in
+         * GuestToHostRootNode's frame, wrapped by polyglot.Value.
+         */
+        Assert.assertTrue(retainedSizeValueArgument > 16L * 1024L);
+        Assert.assertTrue(retainedSizeValueArgument < 16L * 1024L * 1024L);
+        long retainedSizeValueArgumentSmall = val.execute(new RetainedSizeComputationHostObject(instrumentEnv), "calculateRetainedSizeValueArgument", context.asValue(1)).asLong();
+        /*
+         * The passed Value is included, but in this case it is small in retained size.
+         */
+        Assert.assertTrue(retainedSizeValueArgumentSmall > 0L);
+        Assert.assertTrue(retainedSizeValueArgumentSmall < 16L * 1024L);
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < 20000; i++) {
+            b.append("a");
+        }
+        long retainedSizeStringArgument = val.execute(new RetainedSizeComputationHostObject(instrumentEnv), "calculateRetainedSizeStringArgument", b.toString()).asLong();
+        /*
+         * The passed string is included, because it is a valid interop value.
+         */
+        Assert.assertTrue(retainedSizeStringArgument > 16L * 1024L);
+        Assert.assertTrue(retainedSizeStringArgument < 16L * 1024L * 1024L);
     }
 
     private static TruffleInstrument.Env staticInstrumentEnv;
@@ -281,7 +447,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
 
     @Test
     public void testRetainedSizeWithGuestToHostRootNode() {
-        Assume.assumeFalse(TruffleOptions.AOT);
+        TruffleTestAssumptions.assumeNotAOT(); // GR-28085
         Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
         setupEnv(Context.newBuilder().allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL), new ProxyLanguage() {
             private CallTarget target;
@@ -298,8 +464,13 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
                             try {
                                 return InteropLibrary.getUncached().invokeMember(thisTestClass, "calculateRetainedSize");
                             } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
-                                throw new AssertionError(e);
+                                throw throwAssertionError(e);
                             }
+                        }
+
+                        @TruffleBoundary
+                        private AssertionError throwAssertionError(Exception cause) {
+                            throw new AssertionError(cause);
                         }
 
                         @Override

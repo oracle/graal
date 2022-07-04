@@ -8,6 +8,7 @@
   local linux_amd64 = common.linux_amd64,
   local linux_aarch64 = common.linux_aarch64,
   local darwin_amd64 = common.darwin_amd64,
+  local darwin_aarch64 = common.darwin_aarch64,
   local windows_amd64 = common.windows_amd64,
 
   nameOrEmpty(b):: if std.objectHas(b, "name") then
@@ -68,7 +69,8 @@
 
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
-  darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
+  darwin_amd64:: darwin_amd64 + sulong_deps.darwin_amd64,
+  darwin_aarch64:: darwin_aarch64 + sulong_deps.darwin_aarch64,
   windows_amd64:: windows_amd64 + sulong_deps.windows,
 
   sulong_notifications:: {
@@ -140,7 +142,6 @@
       CLANG_LLVM_LINK: "llvm-link",
       CLANG_LLVM_DIS: "llvm-dis",
       CLANG_LLVM_OPT: "opt",
-      MX_TEST_RESULTS_PATTERN: "es-XXX.json",
       MX_TEST_RESULT_TAGS: "sulong",
     },
   },
@@ -212,13 +213,8 @@
   },
 
   requireGMP:: {
-    downloads+: {
-      LIBGMP: { name: "libgmp", version: "6.1.0", platformspecific: true },
-    },
-    environment+: {
-      CPPFLAGS: "-g -I$LIBGMP/include",
-      LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH",
-      LDFLAGS: "-L$LIBGMP/lib",
+    packages+: {
+      libgmp: "==6.1.2",
     },
   },
 }

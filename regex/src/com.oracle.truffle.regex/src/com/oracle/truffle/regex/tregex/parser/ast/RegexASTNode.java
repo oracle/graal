@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -462,6 +462,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         return this instanceof LookBehindAssertion;
     }
 
+    public boolean isAtomicGroup() {
+        return this instanceof AtomicGroup;
+    }
+
     public boolean isMatchFound() {
         return this instanceof MatchFound;
     }
@@ -516,6 +520,14 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public LookBehindAssertion asLookBehindAssertion() {
         return (LookBehindAssertion) this;
+    }
+
+    public AtomicGroup asAtomicGroup() {
+        return (AtomicGroup) this;
+    }
+
+    public RegexASTSubtreeRootNode asSubtreeRootNode() {
+        return (RegexASTSubtreeRootNode) this;
     }
 
     public MatchFound asMatchFound() {

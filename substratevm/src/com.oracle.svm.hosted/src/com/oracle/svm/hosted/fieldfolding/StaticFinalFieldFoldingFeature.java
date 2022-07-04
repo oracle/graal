@@ -72,7 +72,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -127,7 +128,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * </ul>
  */
 @AutomaticFeature
-final class StaticFinalFieldFoldingFeature implements GraalFeature {
+final class StaticFinalFieldFoldingFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Optimize static final fields that get a constant assigned in the class initializer.")//
@@ -152,7 +153,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
-        access.getHostVM().addMethodAfterParsingHook(this::onAnalysisMethodParsed);
+        access.getHostVM().addMethodAfterParsingListener(this::onAnalysisMethodParsed);
     }
 
     @Override
@@ -337,6 +338,14 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
         AnalysisMethod classInitializer = aField.getDeclaringClass().getClassInitializer();
         if (classInitializer == null) {
             /* If there is no class initializer, there cannot be a foldable constant found in it. */
+            return false;
+        }
+
+        if (aField.wrapped instanceof ReadableJavaField && !((ReadableJavaField) aField.wrapped).isValueAvailable()) {
+            /*
+             * Cannot optimize static field whose value is recomputed and is not yet available,
+             * i.e., it may depend on analysis/compilation derived data.
+             */
             return false;
         }
 

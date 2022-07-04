@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,10 +34,13 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -45,11 +48,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * The base class of all instructions that access fields.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public abstract class AccessFieldNode extends FixedWithNextNode implements Lowerable, OrderedMemoryAccess {
+public abstract class AccessFieldNode extends FixedWithNextNode implements Lowerable, OrderedMemoryAccess, MemoryAccess {
 
     public static final NodeClass<AccessFieldNode> TYPE = NodeClass.create(AccessFieldNode.class);
     @OptionalInput ValueNode object;
-
+    protected final FieldLocationIdentity location;
     protected final ResolvedJavaField field;
     protected final MemoryOrderMode memoryOrder;
 
@@ -70,6 +73,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
         this.object = object;
         this.field = field;
         this.memoryOrder = memoryOrder;
+        this.location = new FieldLocationIdentity(field);
     }
 
     /**
@@ -80,6 +84,11 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      */
     public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field) {
         this(c, stamp, object, field, MemoryOrderMode.getMemoryOrder(field));
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return location;
     }
 
     /**
@@ -125,10 +134,10 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
-        if (hasMemoryFences()) {
+    protected NodeSize dynamicNodeSizeEstimate() {
+        if (ordersMemoryAccesses()) {
             return SIZE_2;
         }
-        return super.estimatedNodeSize();
+        return super.dynamicNodeSizeEstimate();
     }
 }

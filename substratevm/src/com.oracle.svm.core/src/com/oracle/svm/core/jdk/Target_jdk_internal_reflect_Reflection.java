@@ -35,13 +35,13 @@ final class Target_jdk_internal_reflect_Reflection {
 
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
-    private static Class<?> getCallerClass() {
+    public static Class<?> getCallerClass() {
         return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true);
     }
 
     @Substitute
-    private static int getClassAccessFlags(Class<?> cls) {
-        return cls.getModifiers();
+    private static int getClassAccessFlags(DynamicHub cls) {
+        return cls.getClassAccessFlags();
     }
 
     @Substitute
