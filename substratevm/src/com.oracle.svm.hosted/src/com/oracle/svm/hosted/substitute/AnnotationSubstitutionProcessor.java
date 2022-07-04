@@ -786,14 +786,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (originalName.length() == 0) {
             originalName = annotatedMethod.getName();
         }
-        Class<?>[] originalParams_ = null;
-        Method originalMethod_ = null;
         try {
             if (annotatedMethod instanceof Method && !originalName.equals(TargetElement.CONSTRUCTOR_NAME)) {
                 Class<?>[] originalParams = interceptParameterTypes(annotatedMethod.getParameterTypes());
-                originalParams_ =  originalParams;
                 Method originalMethod = originalClass.getDeclaredMethod(originalName, originalParams);
-                originalMethod_ = originalMethod;
                 guarantee(Modifier.isStatic(annotatedMethod.getModifiers()) == Modifier.isStatic(originalMethod.getModifiers()), "Static modifier mismatch: %s, %s", annotatedMethod, originalMethod);
                 return metaAccess.lookupJavaMethod(originalMethod);
 
@@ -805,14 +801,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
 
         } catch (NoSuchMethodException ex) {
-            if ( originalParams_ !=null) {
-                System.out.println(originalParams_.toString());
-            }
-            if ( originalMethod_ !=null) {
-                System.out.println(originalMethod_.toString());
-            }
-            System.out.println(originalName);
-            System.out.println(originalClass.toString());
             throw UserError.abort("Could not find target method: %s", annotatedMethod);
         } catch (LinkageError error) {
             throw UserError.abort("Cannot find %s.%s, %s can not be loaded, due to %s not being available in the classpath. Are you missing a dependency in your classpath?",
