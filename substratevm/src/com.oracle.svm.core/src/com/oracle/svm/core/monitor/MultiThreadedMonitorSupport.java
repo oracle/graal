@@ -48,6 +48,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
@@ -581,6 +582,7 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer {
     @Alias //
     volatile int state;
     @Alias
+    @TargetElement(name = "enqueue", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     final native void enqueue(Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node node);
 }
 @com.oracle.svm.core.annotate.TargetClass(value = java.util.concurrent.locks.AbstractQueuedSynchronizer.class, innerClass = "Node")
@@ -588,6 +590,7 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node {
     @Alias
     Thread waiter;
     @Alias
+    @TargetElement(name = "getAndUnsetStatus", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     final native int getAndUnsetStatus(int v);
 }
 
@@ -595,6 +598,7 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Node {
 final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode {
 
     @Alias
+    @TargetElement(name = "nextWaiter", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode nextWaiter;
 
 }
@@ -605,11 +609,14 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
     @Alias Target_java_util_concurrent_locks_AbstractQueuedSynchronizer this$0;
 
     @Alias
+    @TargetElement(name = "firstWaiter", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     private transient Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode firstWaiter;
     @Alias
+    @TargetElement(name = "lastWaiter", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     private transient Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode lastWaiter;
 
     @Substitute
+    @TargetElement(name = "doSignal", onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     private void doSignal(Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode first, boolean all) {
         while(true) {
             Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionNode next;
