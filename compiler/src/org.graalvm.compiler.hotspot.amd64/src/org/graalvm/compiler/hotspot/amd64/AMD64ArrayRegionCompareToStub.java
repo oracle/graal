@@ -42,52 +42,52 @@ public final class AMD64ArrayRegionCompareToStub extends SnippetStub {
     }
 
     @Snippet
-    private static int stubS1S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS1S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S1);
     }
 
     @Snippet
-    private static int stubS1S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS1S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S2);
     }
 
     @Snippet
-    private static int stubS1S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS1S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S4);
     }
 
     @Snippet
-    private static int stubS2S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS2S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S1);
     }
 
     @Snippet
-    private static int stubS2S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS2S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S2);
     }
 
     @Snippet
-    private static int stubS2S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS2S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S4);
     }
 
     @Snippet
-    private static int stubS4S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS4S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S1);
     }
 
     @Snippet
-    private static int stubS4S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS4S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S2);
     }
 
     @Snippet
-    private static int stubS4S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static int arrayRegionCompareToS4S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S4);
     }
 
     @Snippet
-    private static int stubDynamicStrides(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides) {
+    private static int arrayRegionCompareToDynamicStrides(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides) {
         return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides);
     }
 }
