@@ -40,7 +40,6 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FRETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ICONST_0;
-import static com.oracle.truffle.api.impl.asm.Opcodes.IFEQ;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESTATIC;
