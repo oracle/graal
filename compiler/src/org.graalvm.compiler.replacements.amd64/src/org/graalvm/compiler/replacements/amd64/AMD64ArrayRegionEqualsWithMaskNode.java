@@ -105,8 +105,10 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     @OptionalInput protected ValueNode dynamicStrides;
 
     public AMD64ArrayRegionEqualsWithMaskNode(
-                    ValueNode arrayA, ValueNode offsetA,
-                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayA,
+                    ValueNode offsetA,
+                    ValueNode arrayB,
+                    ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length,
                     @ConstantNodeParameter JavaKind arrayKind,
@@ -118,8 +120,10 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
-                    ValueNode arrayA, ValueNode offsetA,
-                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayA,
+                    ValueNode offsetA,
+                    ValueNode arrayB,
+                    ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length,
                     @ConstantNodeParameter JavaKind arrayKind,
@@ -132,16 +136,20 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
-                    ValueNode arrayA, ValueNode offsetA,
-                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayA,
+                    ValueNode offsetA,
+                    ValueNode arrayB,
+                    ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length, ValueNode dynamicStrides) {
         this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, NONE, null, null, null, null, LocationIdentity.ANY_LOCATION);
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
-                    ValueNode arrayA, ValueNode offsetA,
-                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayA,
+                    ValueNode offsetA,
+                    ValueNode arrayB,
+                    ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
@@ -149,8 +157,10 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
-                    ValueNode arrayA, ValueNode offsetA,
-                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayA,
+                    ValueNode offsetA,
+                    ValueNode arrayB,
+                    ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length,
                     ValueNode dynamicStrides,
