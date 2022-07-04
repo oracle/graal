@@ -534,37 +534,45 @@ public class FrameInfoEncoder {
         result.isDeoptEntry = isDeoptEntry;
 
         ValueInfo[] valueInfos = null;
-        // if (needLocalValues) {
-        SharedMethod method = (SharedMethod) frame.getMethod();
-        result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).setMethodId(method);
-        // Debug only.
-        ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, result.methodID);
+        /*
+         * TODO BS Remove the `|| true` bellow.
+         *
+         * This if was commented out in the original PR. Apparently, we need the local
+         * values as part of the sampling profiles.
+         */
+        if (needLocalValues || true) {
+            SharedMethod method = (SharedMethod) frame.getMethod();
+            if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
+                result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).setMethodId(method);
+                // Debug only.
+                ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, result.methodID);
+            }
 
-        if (customization.storeDeoptTargetMethod()) {
-            result.deoptMethod = method;
-            encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(method));
-        }
-        result.deoptMethodOffset = method.getDeoptOffsetInImage();
+            if (customization.storeDeoptTargetMethod()) {
+                result.deoptMethod = method;
+                encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(method));
+            }
+            result.deoptMethodOffset = method.getDeoptOffsetInImage();
 
-        result.numLocals = frame.numLocals;
-        result.numStack = frame.numStack;
-        result.numLocks = frame.numLocks;
+            result.numLocals = frame.numLocals;
+            result.numStack = frame.numStack;
+            result.numLocks = frame.numLocks;
 
-        JavaValue[] values = frame.values;
-        int numValues = 0;
-        for (int i = values.length; --i >= 0;) {
-            if (!ValueUtil.isIllegalJavaValue(values[i])) {
-                // Found the last non-illegal value, i.e., the last value we have to encode.
-                numValues = i + 1;
-                break;
+            JavaValue[] values = frame.values;
+            int numValues = 0;
+            for (int i = values.length; --i >= 0;) {
+                if (!ValueUtil.isIllegalJavaValue(values[i])) {
+                    // Found the last non-illegal value, i.e., the last value we have to encode.
+                    numValues = i + 1;
+                    break;
+                }
+            }
+
+            valueInfos = new ValueInfo[numValues];
+            for (int i = 0; i < numValues; i++) {
+                valueInfos[i] = makeValueInfo(data, getFrameValueKind(frame, i), values[i], isDeoptEntry);
             }
         }
-
-        valueInfos = new ValueInfo[numValues];
-        for (int i = 0; i < numValues; i++) {
-            valueInfos[i] = makeValueInfo(data, getFrameValueKind(frame, i), values[i], isDeoptEntry);
-        }
-        // }
         result.valueInfos = valueInfos;
         ImageSingletons.lookup(Counters.class).frameCount.inc();
 

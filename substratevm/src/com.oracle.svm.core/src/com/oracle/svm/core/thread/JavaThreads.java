@@ -33,10 +33,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.core.ProfilingSampler;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -300,7 +298,6 @@ public final class JavaThreads {
 
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();
-        ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
     }
 
     static void sleep(long millis) throws InterruptedException {

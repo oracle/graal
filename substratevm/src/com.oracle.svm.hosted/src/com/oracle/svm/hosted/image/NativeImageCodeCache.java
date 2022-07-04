@@ -562,6 +562,9 @@ public abstract class NativeImageCodeCache {
             return false;
         }
 
+        /*
+         * TODO BS Commented out in the original PR. Does not @Override. Remove?
+         */
         // @Override
         // protected boolean shouldInclude(ResolvedJavaMethod method, Infopoint infopoint) {
         //     return true;
@@ -629,6 +632,9 @@ public abstract class NativeImageCodeCache {
             // return false;
         // }
 
+        /*
+         * TODO BS I'm hoping this `return true` is just a debug artifact.
+         */
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
             return true;
             // CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;

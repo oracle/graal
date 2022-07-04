@@ -157,7 +157,9 @@ public class JavaMainWrapper {
                 VMRuntime.initialize();
             }
 
-            ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
+            if (ImageSingletons.contains(ProfilingSampler.class)) {
+                ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
+            }
 
             /*
              * Invoke the application's main method. Invoking the main method via a method handle
