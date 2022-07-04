@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.replacements.gc;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
@@ -37,7 +41,7 @@ public abstract class WriteBarrierSnippets {
     public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.mutable("GC-Card");
 
     protected static void verifyNotArray(Object object) {
-        if (object != null) {
+        if (probability(LIKELY_PROBABILITY, object != null)) {
             // Manually build the null check and cast because we're in snippet that's lowered late.
             AssertionNode.dynamicAssert(!PiNode.piCastNonNull(object, SnippetAnchorNode.anchor()).getClass().isArray(), "imprecise card mark used with array");
         }
@@ -45,7 +49,7 @@ public abstract class WriteBarrierSnippets {
 
     protected static Word getPointerToFirstArrayElement(Address address, long length, int elementStride) {
         long result = Word.fromAddress(address).rawValue();
-        if (elementStride < 0) {
+        if (probability(NOT_LIKELY_PROBABILITY, elementStride < 0)) {
             // the address points to the place after the last array element
             result = result + elementStride * length;
         }
@@ -54,7 +58,7 @@ public abstract class WriteBarrierSnippets {
 
     protected static Word getPointerToLastArrayElement(Address address, long length, int elementStride) {
         long result = Word.fromAddress(address).rawValue();
-        if (elementStride < 0) {
+        if (probability(NOT_LIKELY_PROBABILITY, elementStride < 0)) {
             // the address points to the place after the last array element
             result = result + elementStride;
         } else {

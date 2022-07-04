@@ -45,6 +45,13 @@ public @interface Snippet {
     boolean allowPartialIntrinsicArgumentMismatch() default false;
 
     /**
+     * Determine if this snippet's (defined in the top level snippet method) if nodes can have
+     * missing probabilities. This is sometimes necessary if a snippet inlines complex control flow
+     * from JDK code or it is not possible to attribute a given frequency statically to an if node.
+     */
+    boolean allowMissingProbabilities() default false;
+
+    /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during
      * snippet template instantiation. During snippet template creation, its value must be an array
      * whose length specifies the number of arguments (the contents of the array are ignored) bound

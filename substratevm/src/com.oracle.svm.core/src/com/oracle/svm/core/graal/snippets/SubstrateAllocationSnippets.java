@@ -28,12 +28,14 @@ import static org.graalvm.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplace
 import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.Arrays;
 import java.util.Map;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -278,11 +280,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         int length = dimensionsStackValue.readInt(0);
         Object result = java.lang.reflect.Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
 
-        if (rank > 1) {
+        if (probability(LIKELY_PROBABILITY, rank > 1)) {
             UnsignedWord offset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             UnsignedWord endOffset = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), length);
 
-            while (offset.belowThan(endOffset)) {
+            while (GraalDirectives.injectIterationCount(10, offset.belowThan(endOffset))) {
                 // Each newMultiArrayRecursion could create a cross-generational reference.
                 BarrieredAccess.writeObject(result, offset,
                                 newMultiArrayRecursion(hub.getComponentHub(), rank - 1, dimensionsStackValue.add(4)));
@@ -370,7 +372,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         int fromOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
         int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding()) + arrayLength - referenceMap.length;
-        for (int i = 0; i < referenceMap.length; i++) {
+        for (int i = 0; probability(LIKELY_PROBABILITY, i < referenceMap.length); i++) {
             byte b = ObjectAccess.readByte(referenceMap, fromOffset + i, byteArrayIdentity());
             ObjectAccess.writeByte(result, toOffset + i, b, LocationIdentity.INIT_LOCATION);
         }
