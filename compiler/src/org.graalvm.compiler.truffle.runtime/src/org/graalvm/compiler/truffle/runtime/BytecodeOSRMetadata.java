@@ -281,7 +281,7 @@ public final class BytecodeOSRMetadata {
 
     private void requestOSRCompilation(int target, OptimizedCallTarget callTarget, FrameWithoutBoxing frame) {
         OptimizedCallTarget previousCompilation = getCurrentlyCompiling();
-        if (previousCompilation != null && previousCompilation.isSubmittedForCompilation()) {
+        if (previousCompilation != null && !previousCompilation.isSubmittedForCompilation()) {
             // Completed compilation of the previously scheduled compilation. Clear the reference.
             currentlyCompiling.compareAndSet(previousCompilation, null);
         }
@@ -319,7 +319,7 @@ public final class BytecodeOSRMetadata {
             return;
         }
         resetCounter();
-        boolean submitted = currentlyCompiling.compareAndSet(PLACEHOLDER, previousCompilation);
+        boolean submitted = currentlyCompiling.compareAndSet(PLACEHOLDER, callTarget);
         assert submitted || currentlyCompiling.get() == DISABLE;
     }
 
