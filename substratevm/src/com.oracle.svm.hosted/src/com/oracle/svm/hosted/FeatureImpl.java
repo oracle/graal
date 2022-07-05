@@ -636,6 +636,7 @@ public class FeatureImpl {
     public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
         private final Map<HostedMethod, CompileTask> compilations;
         private final NativeImageCodeCache codeCache;
+
         public AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
                         Map<HostedMethod, CompileTask> compilations, NativeImageCodeCache codeCache, NativeImageHeap heap, DebugContext debugContext,
                         SharedRuntimeConfigurationBuilder runtimeBuilder) {
