@@ -543,14 +543,21 @@ public final class BytecodeOSRMetadata {
     /**
      * Counts re-attempts at compilations. Represents an approximation of the number of
      * deoptimizations in OSR a given method goes through.
+     * 
+     * The counter is shared across all bytecode OSR entry points. First time attempts at
+     * compilation of an entry point does not increment the counter.
      */
     private static final class ReAttemptsCounter {
         private final Set<Integer> knownTargets = new HashSet<>(1);
         private int total = 0;
 
         public void inc(int target) {
-            if (!knownTargets.add(target)) {
+            if (knownTargets.contains(target)) {
+                // Further compilation attempt.
                 total++;
+            } else {
+                // First compilation attempt, do not count.
+                knownTargets.add(target);
             }
         }
 
