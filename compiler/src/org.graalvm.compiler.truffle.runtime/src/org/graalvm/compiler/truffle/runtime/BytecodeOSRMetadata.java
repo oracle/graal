@@ -246,6 +246,30 @@ public final class BytecodeOSRMetadata {
     }
 
     /**
+     * No concurrency guarantees on this assignment. Other threads might still read an old value and
+     * reassign. No way to do better without slowing down the polling path.
+     * <p>
+     * Currently, this is reset on a successful poll, if OSR compilation in already underway. The
+     * goal is to restart the counter on OSR compilation submission to not bloat the compilation
+     * queue, and only re-submit is the method is still hot.
+     * <p>
+     * Due to the raciness of accesses to the counter, this is only an approximation of the wanted
+     * behavior. In particular, it differs in the following ways:
+     * <ul>
+     * <li>For long-running compilations, the counter might be reset even though it legitimately
+     * counted back up to the threshold while the method was compiling.</li>
+     * <li>Another thread might see the old value right as the previously submitted compilation
+     * completed, thus skipping the re-counting.</li>
+     * </ul>
+     * <p>
+     * Still, this should be an appropriate approximation, as even if those rare differences should
+     * happen, it would still result in acceptable behavior.
+     */
+    private void resetCounter() {
+        backEdgeCount = 0;
+    }
+
+    /**
      * Creates an OSR call target at the given dispatch target and requests compilation. The node's
      * AST lock should be held when this is invoked.
      */
@@ -263,6 +287,7 @@ public final class BytecodeOSRMetadata {
         }
         if (!currentlyCompiling.compareAndSet(null, PLACEHOLDER)) {
             // Prevent multiple OSR compilations of the same method at different entry points.
+            resetCounter();
             return;
         }
         compilationReAttempts.inc(target);
@@ -293,6 +318,7 @@ public final class BytecodeOSRMetadata {
             markOSRDisabled();
             return;
         }
+        resetCounter();
         boolean submitted = currentlyCompiling.compareAndSet(PLACEHOLDER, previousCompilation);
         assert submitted || currentlyCompiling.get() == DISABLE;
     }
