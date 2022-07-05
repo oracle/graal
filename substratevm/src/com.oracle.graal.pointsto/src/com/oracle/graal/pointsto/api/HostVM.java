@@ -240,7 +240,5 @@ public abstract class HostVM {
         return null;
     }
 
-    public Comparator<? super ResolvedJavaType> getTypeComparator() {
-        return null;
-    }
+    public abstract Comparator<? super ResolvedJavaType> getTypeComparator();
 }
