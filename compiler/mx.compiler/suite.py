@@ -992,6 +992,9 @@ suite = {
           "jdk.vm.ci.meta",
         ],
       },
+      "uses" : [
+        "org.graalvm.compiler.lir.LIRInstructionVerifier"
+      ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",

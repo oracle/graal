@@ -32,7 +32,9 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -91,20 +93,12 @@ import jdk.vm.ci.meta.Value;
  */
 public class CompilationResultBuilder {
 
-    private static final List<LIRInstructionVerifier> LIR_INSTRUCTION_VERIFIERS = new ArrayList<>();
-
-    static {
-        for (LIRInstructionVerifier verifier : GraalServices.load(LIRInstructionVerifier.class)) {
-            if (verifier.isEnabled()) {
-                LIR_INSTRUCTION_VERIFIERS.add(verifier);
-            }
-        }
-    }
-
     public static class Options {
         @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
         public static final OptionKey<Boolean> PrintLIRWithAssembly = new OptionKey<>(false);
     }
+
+    public static final List<LIRInstructionVerifier> NO_VERIFIERS = Collections.emptyList();;
 
     private static class ExceptionInfo {
 
@@ -186,6 +180,8 @@ public class CompilationResultBuilder {
     /** PCOffset passed within last call to {@link #recordImplicitException(int, LIRFrameState)}. */
     private int lastImplicitExceptionOffset = Integer.MIN_VALUE;
 
+    private final List<LIRInstructionVerifier> lirInstructionVerifiers;
+
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
                     Assembler asm,
@@ -204,7 +200,8 @@ public class CompilationResultBuilder {
                         debug,
                         compilationResult,
                         uncompressedNullRegister,
-                        EconomicMap.create(Equivalence.DEFAULT));
+                        EconomicMap.create(Equivalence.DEFAULT),
+                        NO_VERIFIERS);
     }
 
     public CompilationResultBuilder(CodeGenProviders providers,
@@ -216,7 +213,8 @@ public class CompilationResultBuilder {
                     DebugContext debug,
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister,
-                    EconomicMap<Constant, Data> dataCache) {
+                    EconomicMap<Constant, Data> dataCache,
+                    List<LIRInstructionVerifier> lirInstructionVerifiers) {
         this.target = providers.getCodeCache().getTarget();
         this.providers = providers;
         this.codeCache = providers.getCodeCache();
@@ -231,6 +229,8 @@ public class CompilationResultBuilder {
         this.debug = debug;
         assert frameContext != null;
         this.dataCache = dataCache;
+        Objects.requireNonNull(lirInstructionVerifiers);
+        this.lirInstructionVerifiers = lirInstructionVerifiers;
     }
 
     public void setTotalFrameSize(int frameSize) {
@@ -619,7 +619,7 @@ public class CompilationResultBuilder {
             if (op.getPosition() != null) {
                 recordSourceMapping(start, asm.position(), op.getPosition());
             }
-            if (LIR_INSTRUCTION_VERIFIERS.size() > 0 && start < asm.position()) {
+            if (!lirInstructionVerifiers.isEmpty() && start < asm.position()) {
                 int end = asm.position();
                 for (CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
                     if (codeAnnotation instanceof JumpTable) {
@@ -632,9 +632,7 @@ public class CompilationResultBuilder {
                     }
                 }
                 byte[] emittedCode = asm.copy(start, end);
-                for (LIRInstructionVerifier verifier : LIR_INSTRUCTION_VERIFIERS) {
-                    verifier.verify(op, emittedCode);
-                }
+                lirInstructionVerifiers.forEach(v -> v.verify(op, emittedCode));
             }
         } catch (BailoutException e) {
             throw e;
