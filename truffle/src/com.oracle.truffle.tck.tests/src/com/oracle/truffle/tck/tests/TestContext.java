@@ -172,9 +172,9 @@ final class TestContext implements Closeable {
                     }
                     Context.Builder builder = Context.newBuilder();
                     knownProviders.forEach((id, provider) -> {
-                        provider.setupContext(builder);
+                        builder.options(provider.additionalOptions());
                     });
-                    this.context = builder.allowAllAccess(true).out(out).err(err).build();
+                    this.context = builder.allowExperimentalOptions(true).allowAllAccess(true).out(out).err(err).build();
 
                     assert contextCache == null;
                     contextCache = new RefCountedContextReference(context, out, err);

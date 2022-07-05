@@ -42,6 +42,7 @@ package org.graalvm.polyglot.tck;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.ServiceLoader;
 
 import org.graalvm.polyglot.Context;
@@ -70,13 +71,14 @@ public interface LanguageProvider {
     String getId();
 
     /**
-     * Allows language providers to interact with the creation of the context. In particular, this
-     * way, languages can properly set up language options when needed.
-     * 
-     * @param builder The context builder for the context that will be use in the tests.
+     * Allows language providers to provide language options during the creation of the test
+     * context.
+     *
+     * @return The {@code (key, value)} pairs of language option to add to the context.
      * @since 22.3
      */
-    default void setupContext(Context.Builder builder) {
+    default Map<String, String> additionalOptions() {
+        return Collections.emptyMap();
     }
 
     /**
