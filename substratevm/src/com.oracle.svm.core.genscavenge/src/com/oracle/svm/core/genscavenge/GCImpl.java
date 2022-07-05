@@ -1076,8 +1076,7 @@ public final class GCImpl implements GC {
 
     @AlwaysInline("GC performance")
     @SuppressWarnings("static-method")
-    Object promoteObject(Pointer p, UnsignedWord header) {
-        Object original = p.toObject();
+    Object promoteObject(Object original, UnsignedWord header) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
         Header<?> originalChunk = getChunk(original, isAligned);
@@ -1086,39 +1085,27 @@ public final class GCImpl implements GC {
             return original;
         }
 
-        // enter critical section
-        originalSpace.lock();
-        try {
-            // reread header as it might have changed
-            header = ObjectHeaderImpl.readHeaderFromObject(original);
-            if (ObjectHeaderImpl.isForwardedHeader(header)) {
-                return ObjectHeaderImpl.getForwardedObject(p, header);
+        Object result = null;
+        if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
+            if (isAligned) {
+                result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+            } else {
+                result = heap.getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
             }
-            /// mutex here and Unsafe.cas in OHI.installFwPtr -- check for redundancy
-            Object result = null;
-            if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
-                if (isAligned) {
-                    result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
-                } else {
-                    result = heap.getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
-                }
-                if (result == null) {
-                    accounting.onSurvivorOverflowed();
-                }
+            if (result == null) {
+                accounting.onSurvivorOverflowed();
             }
-            if (result == null) { // complete collection, tenuring age reached, or survivor space full
-                if (isAligned) {
-                    result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
-                } else {
-                    result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
-                }
-                assert result != null : "promotion failure in old generation must have been handled";
-            }
-
-            return result;
-        } finally {
-            originalSpace.unlock();
         }
+        if (result == null) { // complete collection, tenuring age reached, or survivor space full
+            if (isAligned) {
+                result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+            } else {
+                result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
+            }
+            assert result != null : "promotion failure in old generation must have been handled";
+        }
+
+        return result;
     }
 
     private static Header<?> getChunk(Object obj, boolean isAligned) {

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
+import com.oracle.svm.core.log.Log;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -65,6 +66,9 @@ public class InteriorObjRefWalker {
         final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
         final int layoutEncoding = objHub.getLayoutEncoding();
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);
+        if (objHub.getName() == null) {
+            Log.log().string("PP warn NULL obj ").zhex(objPointer).newline();
+        }
 
         // Visit each Object reference in the array part of the Object.
         if (LayoutEncoding.isArrayLikeWithObjectElements(layoutEncoding)) {

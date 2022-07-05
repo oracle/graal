@@ -165,14 +165,6 @@ public final class Space {
         return log;
     }
 
-    void lock() {
-        mutex.lock();
-    }
-
-    void unlock() {
-        mutex.unlock();
-    }
-
     /**
      * Allocate memory from an AlignedHeapChunk in this Space.
      */
@@ -373,11 +365,63 @@ public final class Space {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert this != originalSpace && originalSpace.isFromSpace();
 
+        if (ParallelGCImpl.isEnabled()) {
+            return promoteAlignedObjectParallel(original, originalSpace);
+        }
+
         Object copy = copyAlignedObject(original);
         if (copy != null) {
-            copy = ObjectHeaderImpl.installForwardingPointer(original, copy);
+            ObjectHeaderImpl.installForwardingPointer(original, copy);
         }
         return copy;
+    }
+
+    @AlwaysInline("GC performance")
+    Object promoteAlignedObjectParallel(Object original, Space originalSpace) {
+        assert VMOperation.isGCInProgress();
+        assert ObjectHeaderImpl.isAlignedObject(original);
+
+        UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
+        Pointer copyMemory = allocateMemory(size);
+        if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
+            return null;
+        }
+        Object copy = copyMemory.toObject();
+        if (copy == null) {
+            return null;
+        }
+
+        // Read original header
+        Pointer originalMemory = Word.objectToUntrackedPointer(original);
+        assert ObjectHeaderImpl.getHubOffset() == 0;
+        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(originalMemory);
+        // Install forwarding pointer into the original header
+        /// mv CAS code from OHI here
+        Object forward = ObjectHeaderImpl.installForwardingPointer(original, copy);
+
+        if (forward == copy) {
+            // We have won the race, now we must copy the object bits. First install the original header
+            int headerSize = ObjectHeaderImpl.getReferenceSize();
+            if (headerSize == Integer.BYTES) {
+                copyMemory.writeInt(0, (int) header.rawValue());
+            } else {
+                copyMemory.writeWord(0, header);
+            }
+            // copy the rest of original object
+            UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(headerSize), copyMemory.add(headerSize), size.subtract(headerSize));
+
+            if (isOldSpace()) {
+                // If the object was promoted to the old gen, we need to take care of the remembered
+                // set bit and the first object table (even when promoting from old to old).
+                AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
+                RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+            }
+            ParallelGCImpl.queue(copyMemory);
+            return copy;
+        } else {
+            /// Now the allocated memory is lost. Retract in TLAB?
+            return forward;
+        }
     }
 
     @AlwaysInline("GC performance")
