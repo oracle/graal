@@ -667,7 +667,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * Return the "field type" string for the given type, appropriate for a field descriptor, a
      * parameter descriptor, or a return descriptor other than "void". See JVMS section 4.3.2.
      */
-    private String getFieldType(Klass type) {
+    private static String getFieldType(Klass type) {
         if (type.isPrimitive()) {
             return String.valueOf(JavaKind.fromTypeString(type.getTypeAsString()).getTypeChar());
         } else if (type.isArray()) {
