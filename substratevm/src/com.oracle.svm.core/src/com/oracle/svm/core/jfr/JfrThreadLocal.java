@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -166,7 +167,12 @@ public class JfrThreadLocal implements ThreadListener {
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
         long addressOfPos = JfrBufferAccess.getAddressOfPos(buffer).rawValue();
         long jfrThreadId = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
-        Target_jdk_jfr_internal_EventWriter result = new Target_jdk_jfr_internal_EventWriter(startPos, maxPos, addressOfPos, jfrThreadId, true);
+        Target_jdk_jfr_internal_EventWriter result;
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            result = new Target_jdk_jfr_internal_EventWriter(startPos, maxPos, addressOfPos, jfrThreadId, true, false);
+        } else {
+            result = new Target_jdk_jfr_internal_EventWriter(startPos, maxPos, addressOfPos, jfrThreadId, true);
+        }
         javaEventWriter.set(result);
 
         return result;

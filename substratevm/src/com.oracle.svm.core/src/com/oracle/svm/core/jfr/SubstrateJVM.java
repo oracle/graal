@@ -366,7 +366,7 @@ public class SubstrateJVM {
         options.memorySize.setUserValue(size);
     }
 
-    /** See {@link JVM#setMethodSamplingInterval}. */
+    /** See {@code JVM#setMethodSamplingInterval}. */
     public void setMethodSamplingInterval(long type, long intervalMillis) {
         long millis = intervalMillis;
         if (type != JfrEvent.ExecutionSample.getId()) {

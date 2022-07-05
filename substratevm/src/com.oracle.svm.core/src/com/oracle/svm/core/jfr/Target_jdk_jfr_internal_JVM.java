@@ -34,7 +34,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
 
@@ -190,9 +192,17 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().setMemorySize(size);
     }
 
-    /** See {@link JVM#setMethodSamplingInterval}. */
+    /** See {@code JVM#setMethodSamplingInterval}. */
     @Substitute
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public void setMethodSamplingInterval(long type, long intervalMillis) {
+        SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
+    }
+
+    /** See {@code JVM#setMethodSamplingPeriod}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public void setMethodSamplingPeriod(long type, long intervalMillis) {
         SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
     }
 
@@ -208,6 +218,7 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public void setSampleThreads(boolean sampleThreads) throws IllegalStateException {
         SubstrateJVM.get().setSampleThreads(sampleThreads);
     }
@@ -286,7 +297,7 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
+    @TargetElement(onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
     public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_handlers_EventHandler handler) {
         // eventHandler fields should all be set at compile time so this method
         // should never be reached at runtime
@@ -295,7 +306,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link SubstrateJVM#getHandler}. */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
+    @TargetElement(onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
     public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
         return SubstrateJVM.getHandler(eventClass);
     }
