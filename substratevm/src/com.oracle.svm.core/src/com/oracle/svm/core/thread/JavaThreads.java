@@ -42,6 +42,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -301,11 +302,13 @@ public final class JavaThreads {
     }
 
     static void sleep(long millis) throws InterruptedException {
+        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
             VirtualThreads.singleton().sleepMillis(millis);
         } else {
             PlatformThreads.sleep(millis);
         }
+        ThreadSleepEvent.emit(millis, startTicks);
     }
 
     static boolean isAlive(Thread thread) {
