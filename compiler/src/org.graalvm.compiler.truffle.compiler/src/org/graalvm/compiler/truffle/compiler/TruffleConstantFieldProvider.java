@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProvider implements ConstantFieldProvider {
+public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProvider {
     private final ConcurrentHashMap<ResolvedJavaField, ConstantFieldInfo> cachedConstantFieldInfo;
 
     public TruffleConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess, KnownTruffleTypes types) {

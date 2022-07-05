@@ -43,8 +43,13 @@ public final class TruffleCompilerConfiguration {
     private final TruffleTierConfiguration lastTier;
     private final KnownTruffleTypes knownTruffleTypes;
 
-    public TruffleCompilerConfiguration(TruffleCompilerRuntime runtime, GraphBuilderConfiguration.Plugins plugins, SnippetReflectionProvider provider,
-                    TruffleTierConfiguration firstTier, TruffleTierConfiguration lastTier, KnownTruffleTypes knownTruffleTypes) {
+    public TruffleCompilerConfiguration(
+                    TruffleCompilerRuntime runtime,
+                    GraphBuilderConfiguration.Plugins plugins,
+                    SnippetReflectionProvider provider,
+                    TruffleTierConfiguration firstTier,
+                    TruffleTierConfiguration lastTier,
+                    KnownTruffleTypes knownTruffleTypes) {
         this.runtime = runtime;
         this.plugins = plugins;
         this.provider = provider;
