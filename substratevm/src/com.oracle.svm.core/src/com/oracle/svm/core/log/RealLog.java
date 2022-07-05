@@ -485,6 +485,15 @@ public class RealLog extends Log {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    private void rawString(String value, int maxLength) {
+        int length = Math.min(value.length(), maxLength);
+        rawBytes(value, 0, length);
+        if (value.length() > length) {
+            rawString("...");
+        }
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private void rawString(char[] value) {
         rawBytes(value, 0, value.length);
     }
@@ -558,7 +567,7 @@ public class RealLog extends Log {
         int sanitizedWordsize = wordSize > 0 ? Integer.highestOneBit(Math.min(wordSize, 8)) : 2;
         for (int offset = 0; offset < sanitizedWordsize * numWords; offset += sanitizedWordsize) {
             if (offset % 16 == 0) {
-                zhex(base.add(offset).rawValue());
+                zhex(base.add(offset));
                 string(":");
             }
             string(" ");

@@ -152,20 +152,8 @@ public final class Space {
         log.string(getName()).string(":").indent(true);
         accounting.report(log);
         if (traceHeapChunks) {
-            if (getFirstAlignedHeapChunk().isNonNull()) {
-                log.newline().string("aligned chunks:").redent(true);
-                for (AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk(); aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
-                    log.newline().zhex(aChunk).string(" (").zhex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").zhex(HeapChunk.getTopPointer(aChunk)).string(")");
-                }
-                log.redent(false);
-            }
-            if (getFirstUnalignedHeapChunk().isNonNull()) {
-                log.newline().string("unaligned chunks:").redent(true);
-                for (UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk(); uChunk.isNonNull(); uChunk = HeapChunk.getNext(uChunk)) {
-                    log.newline().zhex(uChunk).string(" (").zhex(UnalignedHeapChunk.getObjectStart(uChunk)).string("-").zhex(HeapChunk.getTopPointer(uChunk)).string(")");
-                }
-                log.redent(false);
-            }
+            HeapChunkLogging.logChunks(log, getFirstAlignedHeapChunk());
+            HeapChunkLogging.logChunks(log, getFirstUnalignedHeapChunk());
         }
         log.redent(false);
         return log;

@@ -453,12 +453,13 @@ public final class CodeInfoAccess {
             reset();
         }
 
-        public void reset() {
+        public FrameInfoState reset() {
             entryOffset = -1;
             isFirstFrame = true;
             isDone = false;
             firstValue = -1;
             successorIndex = NO_SUCCESSOR_INDEX_MARKER;
+            return this;
         }
     }
 
@@ -467,8 +468,9 @@ public final class CodeInfoAccess {
 
         private boolean fired;
 
-        public void reload() {
+        public SingleShotFrameInfoQueryResultAllocator reload() {
             fired = false;
+            return this;
         }
 
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")

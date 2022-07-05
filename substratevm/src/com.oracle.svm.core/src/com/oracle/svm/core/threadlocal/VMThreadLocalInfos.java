@@ -45,7 +45,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.log.Log;
 
 public class VMThreadLocalInfos {
-
     private VMThreadLocalInfo[] infos;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -71,7 +70,7 @@ public class VMThreadLocalInfos {
                 log.string("(long) ").signed(value).string(" (").zhex(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalWord.class) {
                 WordBase value = primitiveData(thread).readWord(WordFactory.signed(info.offset));
-                log.string("(Word) ").signed(value).string(" (").zhex(value.rawValue()).string(")");
+                log.string("(Word) ").signed(value).string(" (").zhex(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
                 if (isJavaHeapAccessAllowed) {
                     Object value = ObjectAccess.readObject(objectData(thread), WordFactory.signed(info.offset));
@@ -79,7 +78,7 @@ public class VMThreadLocalInfos {
                     if (value == null) {
                         log.string("null");
                     } else {
-                        log.string(value.getClass().getName()).string(" (").zhex(Word.objectToUntrackedPointer(value).rawValue()).string(")");
+                        log.string(value.getClass().getName()).string(" (").zhex(Word.objectToUntrackedPointer(value)).string(")");
                     }
                 } else {
                     Word value = ReferenceAccess.singleton().readObjectAsUntrackedPointer(Word.objectToUntrackedPointer(objectData(thread)).add(info.offset), true);

@@ -58,6 +58,8 @@ import com.oracle.svm.core.util.VMError;
  * races between the application and the GC otherwise.
  */
 public class RuntimeCodeInfoMemory {
+    private static final int MAX_CODE_INFO_ENTRIES_TO_PRINT = 500_000;
+
     @Fold
     public static RuntimeCodeInfoMemory singleton() {
         return ImageSingletons.lookup(RuntimeCodeInfoMemory.class);
@@ -254,8 +256,16 @@ public class RuntimeCodeInfoMemory {
             // If we are not at a safepoint, then the table could be freed at any time.
             log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods:").indent(true);
             if (table.isNonNull()) {
+                int printed = 0;
                 for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
-                    printCodeInfo(log, i, allowJavaHeapAccess);
+                    if (printed >= MAX_CODE_INFO_ENTRIES_TO_PRINT) {
+                        log.string("... (truncated)").newline();
+                        break;
+                    }
+
+                    if (printCodeInfo(log, i, allowJavaHeapAccess)) {
+                        printed++;
+                    }
                 }
             }
             log.indent(false);
@@ -263,7 +273,7 @@ public class RuntimeCodeInfoMemory {
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    private void printCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
+    private boolean printCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
         UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
         if (info.isNonNull()) {
             /*
@@ -282,7 +292,9 @@ public class RuntimeCodeInfoMemory {
             }
             printCodeInfo0(log, info, UntetheredCodeInfoAccess.getState(info), name, UntetheredCodeInfoAccess.getCodeStart(info), UntetheredCodeInfoAccess.getCodeEnd(info), hasInstalledCode,
                             installedCode);
+            return true;
         }
+        return false;
     }
 
     @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
