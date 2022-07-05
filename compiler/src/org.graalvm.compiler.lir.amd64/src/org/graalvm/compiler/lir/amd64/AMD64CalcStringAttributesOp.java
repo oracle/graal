@@ -63,6 +63,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
@@ -200,12 +201,12 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value[] temp;
     @Temp({REG}) private Value[] vectorTemp;
 
-    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, Op op, Value array, Value offset, Value length, Value result, boolean assumeValid) {
-        super(TYPE, tool, YMM);
+    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, Op op, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value array, Value offset, Value length, Value result, boolean assumeValid) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.op = op;
         this.assumeValid = assumeValid;
 
-        assert supports(tool.target(), CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE4_1), "needs at least SSE4.1 support");
         assert op.stride.isNumericInteger();
 
         this.scale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(op.stride)));
@@ -220,7 +221,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         for (int i = 0; i < temp.length; i++) {
             temp[i] = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         }
-        this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(op, supports(tool.target(), CPUFeature.AVX), assumeValid)];
+        this.vectorTemp = new Value[getNumberOfRequiredVectorRegisters(op, supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.AVX), assumeValid)];
         for (int i = 0; i < vectorTemp.length; i++) {
             vectorTemp[i] = tool.newVariable(LIRKind.value(getVectorKind(JavaKind.Byte)));
         }
@@ -266,19 +267,21 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      * Calculates the code range and codepoint length of strings in various encodings.
      *
      * @param op operation to run.
+     * @param runtimeCheckedCPUFeatures
      * @param array arbitrary array.
      * @param byteOffset byteOffset to start from. Must include array base byteOffset!
      * @param length length of the array region to consider, scaled to {@link Op#stride}.
      * @param assumeValid assume that the string is encoded correctly.
      */
-    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, Op op, Value array, Value byteOffset, Value length, Value result, boolean assumeValid) {
+    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, Op op, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value array, Value byteOffset, Value length, Value result,
+                    boolean assumeValid) {
         RegisterValue regArray = REG_ARRAY.asValue(array.getValueKind());
         RegisterValue regOffset = REG_OFFSET.asValue(byteOffset.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
         tool.emitConvertNullToZero(regArray, array);
         tool.emitMove(regOffset, byteOffset);
         tool.emitMove(regLength, length);
-        return new AMD64CalcStringAttributesOp(tool, op, regArray, regOffset, regLength, result, assumeValid);
+        return new AMD64CalcStringAttributesOp(tool, op, runtimeCheckedCPUFeatures, regArray, regOffset, regLength, result, assumeValid);
     }
 
     @Override

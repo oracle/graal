@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -61,6 +63,7 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
 
     private final JavaKind strideSrc;
     private final JavaKind strideDst;
+    protected final EnumSet<?> runtimeCheckedCPUFeatures;
     @Input protected ValueNode arraySrc;
     @Input protected ValueNode offsetSrc;
     @Input protected ValueNode arrayDst;
@@ -93,7 +96,14 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
     public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
                     @ConstantNodeParameter JavaKind strideSrc,
                     @ConstantNodeParameter JavaKind strideDst) {
-        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst);
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst, null);
+    }
+
+    public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
+                    @ConstantNodeParameter JavaKind strideSrc,
+                    @ConstantNodeParameter JavaKind strideDst,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst, runtimeCheckedCPUFeatures);
     }
 
     /**
@@ -101,16 +111,23 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
      * {@link org.graalvm.compiler.core.common.StrideUtil}.
      */
     public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides) {
-        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null);
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null, null);
+    }
+
+    public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null, runtimeCheckedCPUFeatures);
     }
 
     protected ArrayCopyWithConversionsNode(NodeClass<? extends ArrayCopyWithConversionsNode> c,
                     ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter JavaKind strideSrc,
-                    @ConstantNodeParameter JavaKind strideDst) {
+                    @ConstantNodeParameter JavaKind strideDst,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
         super(c, StampFactory.forKind(JavaKind.Void));
         this.strideSrc = strideSrc;
         this.strideDst = strideDst;
+        this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         this.arraySrc = arraySrc;
         this.offsetSrc = offsetSrc;
         this.arrayDst = arrayDst;
@@ -125,7 +142,17 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
                     @ConstantNodeParameter JavaKind strideDst);
 
     @NodeIntrinsic
+    public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length,
+                    @ConstantNodeParameter JavaKind strideSrc,
+                    @ConstantNodeParameter JavaKind strideDst,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+
+    @NodeIntrinsic
     public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int stride);
+
+    @NodeIntrinsic
+    public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int stride,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     public int getDirectStubCallIndex() {
         return NodeStrideUtil.getDirectStubCallIndex(dynamicStrides, strideSrc, strideDst);
@@ -150,12 +177,17 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
 
     protected void generateArrayCopy(NodeLIRBuilderTool gen) {
         if (getDirectStubCallIndex() < 0) {
-            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(
+            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(getRuntimeCheckedCPUFeatures(),
                             gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length), gen.operand(dynamicStrides));
         } else {
-            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(NodeStrideUtil.getConstantStrideA(dynamicStrides, strideSrc), NodeStrideUtil.getConstantStrideB(dynamicStrides, strideDst),
+            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(
+                            NodeStrideUtil.getConstantStrideA(dynamicStrides, strideSrc), NodeStrideUtil.getConstantStrideB(dynamicStrides, strideDst), getRuntimeCheckedCPUFeatures(),
                             gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length));
         }
+    }
+
+    public EnumSet<?> getRuntimeCheckedCPUFeatures() {
+        return runtimeCheckedCPUFeatures;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
+package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
@@ -34,13 +34,10 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
-public class ArrayIndexOf {
-
-    private static final LocationIdentity[] NO_LOCATIONS = {};
+public class ArrayIndexOfForeignCalls {
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name, Class<?> arrayArgType, int nValues) {
         Class<?>[] argTypes = new Class<?>[4 + nValues];
@@ -49,7 +46,7 @@ public class ArrayIndexOf {
         for (int i = 2; i < argTypes.length; i++) {
             argTypes[i] = int.class;
         }
-        return new ForeignCallDescriptor(name, int.class, argTypes, true, NO_LOCATIONS, false, false);
+        return ForeignCalls.pureFunctionForeignCallDescriptor(name, int.class, argTypes);
     }
 
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_B_S1 = foreignCallDescriptor("indexOfTwoConsecutiveBS1", byte[].class, 2);
@@ -270,7 +267,7 @@ public class ArrayIndexOf {
                     throw GraalError.shouldNotReachHere();
             }
         } else {
-            int index = (4 * strideAsPowerOf2(stride)) + (valueCount - 1);
+            int index = (4 * ForeignCalls.strideAsPowerOf2(stride)) + (valueCount - 1);
             switch (arrayKind) {
                 case Byte:
                     return STUBS_INDEX_OF_ANY_B[index];
@@ -282,51 +279,5 @@ public class ArrayIndexOf {
                     throw GraalError.shouldNotReachHere();
             }
         }
-    }
-
-    /**
-     * Index of two consecutive bytes in a byte array.
-     */
-    public static int indexOfTwoConsecutiveBS1(byte[] array, int length, int fromIndex, byte b1, byte b2) {
-        return ArrayIndexOfNode.indexOf2Consecutive(S1, S1, array, 0, length, fromIndex, Byte.toUnsignedInt(b1), Byte.toUnsignedInt(b2));
-    }
-
-    /**
-     * Index of two consecutive chars in a byte array, type punned as a char array (stride 1).
-     */
-    public static int indexOfTwoConsecutiveBS2(byte[] array, int length, int fromIndex, char c1, char c2) {
-        return ArrayIndexOfNode.indexOf2Consecutive(S1, S2, array, 0, length, fromIndex, c1, c2);
-    }
-
-    /**
-     * Index of two consecutive chars in a char array.
-     */
-    public static int indexOfTwoConsecutiveCS2(char[] array, int length, int fromIndex, char c1, char c2) {
-        return ArrayIndexOfNode.indexOf2Consecutive(S2, S2, array, 0, length, fromIndex, c1, c2);
-    }
-
-    /**
-     * Index of one byte in a byte array.
-     */
-    public static int indexOfB1S1(byte[] array, int length, int fromIndex, byte b) {
-        return ArrayIndexOfNode.indexOf(S1, S1, array, 0, length, fromIndex, Byte.toUnsignedInt(b));
-    }
-
-    /**
-     * Index of one char in a byte array, type punned as a char array (stride 1).
-     */
-    public static int indexOfB1S2(byte[] array, int length, int fromIndex, char c) {
-        return ArrayIndexOfNode.indexOf(S1, S2, array, 0, length, fromIndex, c);
-    }
-
-    /**
-     * Index of one char in a char array.
-     */
-    public static int indexOfC1S2(char[] array, int length, int fromIndex, char c) {
-        return ArrayIndexOfNode.indexOf(S2, S2, array, 0, length, fromIndex, c);
-    }
-
-    public static int strideAsPowerOf2(JavaKind stride) {
-        return Integer.numberOfTrailingZeros(stride.getByteCount());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
+package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
 import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
 import static org.graalvm.compiler.core.common.StrideUtil.S2;
 import static org.graalvm.compiler.core.common.StrideUtil.S4;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
+
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -38,17 +40,12 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -95,8 +92,8 @@ import jdk.vm.ci.meta.Value;
  * {@code (array[i] | searchValues[2]) == searchValues[0] && (array[i + 1] | searchValues[3]) == searchValues[1]}.</li>
  * </ul>
  */
-@NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess {
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_16)
+public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable {
 
     public static final NodeClass<ArrayIndexOfNode> TYPE = NodeClass.create(ArrayIndexOfNode.class);
 
@@ -104,7 +101,6 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
     private final JavaKind stride;
     private final boolean findTwoConsecutive;
     private final boolean withMask;
-    private final LocationIdentity locationIdentity;
 
     @Input private ValueNode arrayPointer;
     @Input private ValueNode arrayOffset;
@@ -112,15 +108,24 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
     @Input private ValueNode fromIndex;
     @Input private NodeInputList<ValueNode> searchValues;
 
-    @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
-
     public ArrayIndexOfNode(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind stride,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     @ConstantNodeParameter boolean withMask,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, arrayKind, stride, findTwoConsecutive, withMask, arrayKind == NONE ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arrayKind),
+        this(TYPE, arrayKind, stride, findTwoConsecutive, withMask, null, arrayKind == NONE ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arrayKind),
+                        arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+    }
+
+    public ArrayIndexOfNode(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind stride,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
+                    ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
+        this(TYPE, arrayKind, stride, findTwoConsecutive, withMask, runtimeCheckedCPUFeatures, arrayKind == NONE ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arrayKind),
                         arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
@@ -129,9 +134,10 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
                     JavaKind stride,
                     boolean findTwoConsecutive,
                     boolean withMask,
+                    EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, arrayKind, stride, findTwoConsecutive, withMask, locationIdentity, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+        this(TYPE, arrayKind, stride, findTwoConsecutive, withMask, runtimeCheckedCPUFeatures, locationIdentity, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
     public ArrayIndexOfNode(
@@ -140,9 +146,10 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
                     JavaKind stride,
                     boolean findTwoConsecutive,
                     boolean withMask,
+                    EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        super(c, StampFactory.forKind(JavaKind.Int));
+        super(c, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, locationIdentity);
         GraalError.guarantee(arrayKind == S1 || arrayKind == S2 || arrayKind == S4 || arrayKind == NONE, "unsupported arrayKind");
         GraalError.guarantee(!(!withMask && findTwoConsecutive) || searchValues.length == 2, "findTwoConsecutive without mask requires exactly two search values");
         GraalError.guarantee(!(withMask && findTwoConsecutive) || searchValues.length == 4, "findTwoConsecutive with mask requires exactly four search values");
@@ -151,12 +158,16 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
         this.stride = stride;
         this.findTwoConsecutive = findTwoConsecutive;
         this.withMask = withMask;
-        this.locationIdentity = locationIdentity;
         this.arrayPointer = arrayPointer;
         this.arrayOffset = arrayOffset;
         this.arrayLength = arrayLength;
         this.fromIndex = fromIndex;
         this.searchValues = new NodeInputList<>(this, searchValues);
+    }
+
+    public static ArrayIndexOfNode createIndexOfSingle(JavaKind arrayKind, JavaKind stride, ValueNode array, ValueNode arrayLength, ValueNode fromIndex, ValueNode searchValue) {
+        return new ArrayIndexOfNode(TYPE, arrayKind, stride, false, false, null, arrayKind == NONE ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arrayKind),
+                        array, ConstantNode.forLong(0), arrayLength, fromIndex, searchValue);
     }
 
     public JavaKind getArrayKind() {
@@ -221,9 +232,9 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
     }
 
     private void generateArrayIndexOf(NodeLIRBuilderTool gen) {
-        int arrayBaseOffset = arrayKind == JavaKind.Void ? 0 : getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), arrayPointer, arrayKind);
+        int arrayBaseOffset = arrayKind == NONE ? 0 : getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), arrayPointer, arrayKind);
         Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayBaseOffset, stride, findTwoConsecutive, withMask,
-                        gen.operand(arrayPointer), gen.operand(arrayOffset), gen.operand(arrayLength), gen.operand(fromIndex), searchValuesAsOperands(gen));
+                        getRuntimeCheckedCPUFeatures(), gen.operand(arrayPointer), gen.operand(arrayOffset), gen.operand(arrayLength), gen.operand(fromIndex), searchValuesAsOperands(gen));
         gen.setResult(this, result);
     }
 
@@ -240,12 +251,10 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
-        return locationIdentity;
-    }
-
-    @Override
     public Node canonical(CanonicalizerTool tool) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            return null;
+        }
         if (arrayPointer.isJavaConstant() && ((ConstantNode) arrayPointer).getStableDimension() > 0 &&
                         arrayOffset.isJavaConstant() &&
                         arrayLength.isJavaConstant() &&
@@ -319,16 +328,13 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
         return true;
     }
 
-    @Override
-    public MemoryKill getLastLocationAccess() {
-        return lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryKill lla) {
-        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
-        lastLocationAccess = lla;
-    }
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    @ConstantNodeParameter boolean withMask,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, int v1);
 
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
@@ -336,6 +342,7 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1);
 
     @NodeIntrinsic
@@ -352,6 +359,24 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    @ConstantNodeParameter boolean withMask,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3);
 
     @NodeIntrinsic
@@ -362,11 +387,13 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
                     @ConstantNodeParameter boolean withMask,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3, int v4);
 
-    public static int indexOf(JavaKind arrayKind, JavaKind stride, Object array, long arrayOffset, int arrayLength, int fromIndex, int v1) {
-        return optimizedArrayIndexOf(arrayKind, stride, false, false, array, arrayOffset, arrayLength, fromIndex, v1);
-    }
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind valueKind,
+                    @ConstantNodeParameter boolean findTwoConsecutive,
+                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3, int v4);
 
-    public static int indexOf2Consecutive(JavaKind arrayKind, JavaKind stride, Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2) {
-        return optimizedArrayIndexOf(arrayKind, stride, true, false, array, arrayOffset, arrayLength, fromIndex, v1, v2);
-    }
 }

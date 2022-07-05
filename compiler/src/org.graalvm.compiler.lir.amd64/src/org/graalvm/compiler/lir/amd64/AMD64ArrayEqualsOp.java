@@ -43,6 +43,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
@@ -125,9 +126,11 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value[] vectorTemp;
 
     private AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kindA, JavaKind kindB, JavaKind kindMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, Value dynamicStrides,
+                    AMD64MacroAssembler.ExtendMode extendMode,
                     int constOffsetA, int constOffsetB, int constLength) {
-        super(TYPE, tool, AVXSize.YMM);
+        super(TYPE, tool, runtimeCheckedCPUFeatures, AVXSize.YMM);
         this.extendMode = extendMode;
 
         this.constOffsetA = constOffsetA;
@@ -150,7 +153,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
             this.argScaleB = null;
             this.argScaleMask = null;
         }
-        this.canGenerateConstantLengthCompare = canGenerateConstantLengthCompare(tool.target(), kindA, kindB, constLength, dynamicStrides, vectorSize);
+        this.canGenerateConstantLengthCompare = canGenerateConstantLengthCompare(tool.target(), runtimeCheckedCPUFeatures, kindA, kindB, constLength, dynamicStrides, vectorSize);
 
         this.resultValue = result;
         this.arrayAValue = this.arrayAValueTemp = arrayA;
@@ -175,7 +178,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         }
 
         // We only need the vector temporaries if we generate SSE code.
-        if (supports(tool.target(), CPUFeature.SSE4_1)) {
+        if (supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE4_1)) {
             LIRKind lirKind = LIRKind.value(getVectorKind(JavaKind.Byte));
             this.vectorTemp = new Value[(withMask() ? 3 : 2) + (canGenerateConstantLengthCompare ? 1 : 0)];
             for (int i = 0; i < vectorTemp.length; i++) {
@@ -188,14 +191,18 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
 
     public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool,
                     int baseOffsetA, int baseOffsetB, int baseOffsetMask,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, null, null, null, baseOffsetA, baseOffsetB, baseOffsetMask, result, arrayA, offsetA, arrayB, offsetB, mask, length, dynamicStrides, extendMode);
+        return movParamsAndCreate(tool, null, null, null, baseOffsetA, baseOffsetB, baseOffsetMask, runtimeCheckedCPUFeatures, result, arrayA, offsetA, arrayB, offsetB, mask, length, dynamicStrides,
+                        extendMode);
     }
 
     public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB, JavaKind strideMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, strideA, strideB, strideMask, baseOffsetA, baseOffsetB, baseOffsetMask, result, arrayA, offsetA, arrayB, offsetB, mask, length, null,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length,
+                    AMD64MacroAssembler.ExtendMode extendMode) {
+        return movParamsAndCreate(tool, strideA, strideB, strideMask, baseOffsetA, baseOffsetB, baseOffsetMask, runtimeCheckedCPUFeatures, result, arrayA, offsetA, arrayB, offsetB, mask, length, null,
                         extendMode);
     }
 
@@ -219,7 +226,8 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
      * @param extendMode integer extension mode for the array with the smaller element size.
      */
     public static AMD64ArrayEqualsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB, JavaKind strideMask, int baseOffsetA, int baseOffsetB, int baseOffsetMask,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value arrayMask, Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value arrayMask, Value length, Value dynamicStrides,
+                    AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArrayA = REG_ARRAY_A.asValue(arrayA.getValueKind());
         RegisterValue regOffsetA = REG_OFFSET_A.asValue(offsetA == null ? LIRKind.value(AMD64Kind.QWORD) : offsetA.getValueKind());
         RegisterValue regArrayB = REG_ARRAY_B.asValue(arrayB.getValueKind());
@@ -244,7 +252,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
             tool.emitMove((RegisterValue) regStride, dynamicStrides);
         }
         return new AMD64ArrayEqualsOp(tool, strideA, strideB, strideMask, baseOffsetA, baseOffsetB, baseOffsetMask,
-                        result, regArrayA, regOffsetA, regArrayB, regOffsetB, regMask, regLength, regStride,
+                        runtimeCheckedCPUFeatures, result, regArrayA, regOffsetA, regArrayB, regOffsetB, regMask, regLength, regStride,
                         extendMode, constOffset(offsetA), constOffset(offsetB), LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1);
     }
 
@@ -261,15 +269,17 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         return -1;
     }
 
-    private static boolean canGenerateConstantLengthCompare(TargetDescription target, JavaKind kindA, JavaKind kindB, int constantLength, Value stride, AVXSize vectorSize) {
-        return isIllegal(stride) && constantLength >= 0 && canGenerateConstantLengthCompare(target, kindA, kindB, constantLength, vectorSize);
+    private static boolean canGenerateConstantLengthCompare(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, JavaKind kindA, JavaKind kindB, int constantLength, Value stride,
+                    AVXSize vectorSize) {
+        return isIllegal(stride) && constantLength >= 0 && canGenerateConstantLengthCompare(target, runtimeCheckedCPUFeatures, kindA, kindB, constantLength, vectorSize);
     }
 
-    public static boolean canGenerateConstantLengthCompare(TargetDescription target, JavaKind kindA, JavaKind kindB, int constantLength, AVXSize vectorSize) {
+    public static boolean canGenerateConstantLengthCompare(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, JavaKind kindA, JavaKind kindB, int constantLength,
+                    AVXSize vectorSize) {
         int elementSize = Math.max(kindA.getByteCount(), kindB.getByteCount());
         int minVectorSize = AVXSize.XMM.getBytes() / elementSize;
         int maxVectorSize = vectorSize.getBytes() / elementSize;
-        return supports(target, CPUFeature.SSE4_1) && kindA.isNumericInteger() && (kindA == kindB || minVectorSize <= constantLength) && constantLength <= maxVectorSize * 2;
+        return supports(target, runtimeCheckedCPUFeatures, CPUFeature.SSE4_1) && kindA.isNumericInteger() && (kindA == kindB || minVectorSize <= constantLength) && constantLength <= maxVectorSize * 2;
     }
 
     private boolean isLengthConstant() {
@@ -486,7 +496,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     }
 
     private void pmovSZx(AMD64MacroAssembler asm, AVXSize size, Register dst, Scale maxScale, Register src, Register index, int displacement, Scale scale) {
-        AMD64MacroAssembler.pmovSZx(asm, size, dst, extendMode, maxScale, src, scale, index, displacement);
+        AMD64MacroAssembler.pmovSZx(asm, size, extendMode, dst, maxScale, src, scale, index, displacement);
     }
 
     private static void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
@@ -873,7 +883,4 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         }
     }
 
-    public static Scale max(Scale a, Scale b) {
-        return a.value > b.value ? a : b;
-    }
 }

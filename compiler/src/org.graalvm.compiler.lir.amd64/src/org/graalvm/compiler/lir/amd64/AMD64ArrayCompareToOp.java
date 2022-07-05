@@ -32,6 +32,8 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -78,9 +80,9 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
 
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
 
-    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2,
-                    Value length1, Value length2) {
-        super(TYPE, tool, AVXSize.ZMM);
+    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    Value result, Value array1, Value array2, Value length1, Value length2) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures, AVXSize.ZMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
@@ -108,7 +110,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         this.temp2 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
 
         // We only need the vector temporaries if we generate SSE code.
-        if (supports(tool.target(), CPUFeature.SSE4_2)) {
+        if (supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE4_2)) {
             this.vectorTemp1 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
         } else {
             this.vectorTemp1 = Value.ILLEGAL;

@@ -72,7 +72,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
     @Temp({REG, ILLEGAL}) protected Value maskValue2;
 
     public AMD64HasNegativesOp(LIRGeneratorTool tool, Value result, Value array, Value length) {
-        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? ZMM : YMM);
+        super(TYPE, tool, null, supportsAVX512VLBW(tool.target(), null) && supports(tool.target(), null, CPUFeature.BMI2) ? ZMM : YMM);
 
         this.resultValue = result;
         this.originArrayValue = array;
@@ -119,7 +119,7 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
         // len == 0
         masm.testlAndJcc(len, len, ConditionFlag.Zero, labelFalse, false);
 
-        if (supportsAVX512VLBWAndZMM() && supports(crb.target, CPUFeature.BMI2)) {
+        if (supportsAVX512VLBWAndZMM() && supports(CPUFeature.BMI2)) {
             Label labelTest64Loop = new Label();
             Label labelTestTail = new Label();
 

@@ -42,6 +42,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
@@ -54,12 +55,12 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.StrideUtil;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -133,13 +134,12 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
      * @param extendMode sign- or zero-extend array elements when inflating to a bigger stride.
      * @param dynamicStrides dynamic stride dispatch as described in {@link StrideUtil}.
      */
-    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length,
-                    Value dynamicStrides,
-                    AMD64MacroAssembler.ExtendMode extendMode) {
-        super(TYPE, tool, YMM);
+    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.extendMode = extendMode;
 
-        assert ((AMD64) tool.target().arch).getFeatures().contains(CPUFeature.SSE2);
+        GraalError.guarantee(supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE2), "needs at least SSE2 support");
 
         this.arraySrcTmp = this.arraySrc = arraySrc;
         this.offsetSrcTmp = this.offsetSrc = offsetSrc;
@@ -163,18 +163,19 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         }
     }
 
-    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst,
-                    Value length, AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, strideSrc, strideDst, arraySrc, offsetSrc, arrayDst, offsetDst, length, Value.ILLEGAL, extendMode);
+    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, AMD64MacroAssembler.ExtendMode extendMode) {
+        return movParamsAndCreate(tool, strideSrc, strideDst, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, Value.ILLEGAL, extendMode);
     }
 
-    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride,
+    public static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride, AMD64MacroAssembler.ExtendMode extendMode) {
+        return movParamsAndCreate(tool, null, null, runtimeCheckedCPUFeatures, arraySrc, offsetSrc, arrayDst, offsetDst, length, stride, extendMode);
+    }
+
+    private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
-        return movParamsAndCreate(tool, null, null, arraySrc, offsetSrc, arrayDst, offsetDst, length, stride, extendMode);
-    }
-
-    private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst,
-                    Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArraySrc = REG_ARRAY_SRC.asValue(arraySrc.getValueKind());
         RegisterValue regOffsetSrc = REG_OFFSET_SRC.asValue(offsetSrc.getValueKind());
         RegisterValue regArrayDst = REG_ARRAY_DST.asValue(arrayDst.getValueKind());
@@ -192,7 +193,8 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             regDynamicStrides = REG_STRIDE.asValue(dynamicStrides.getValueKind());
             tool.emitMove((RegisterValue) regDynamicStrides, dynamicStrides);
         }
-        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, regDynamicStrides, extendMode);
+        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, runtimeCheckedCPUFeatures, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, regDynamicStrides,
+                        extendMode);
     }
 
     private static Op getOp(Scale scaleDst, Scale scaleSrc) {

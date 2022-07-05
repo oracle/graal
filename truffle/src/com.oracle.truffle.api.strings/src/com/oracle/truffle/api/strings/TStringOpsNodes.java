@@ -266,15 +266,7 @@ final class TStringOpsNodes {
     }
 
     static int memCmpTail(int cmp, int lengthA, int lengthB) {
-        if (cmp == 0) {
-            if (lengthA == lengthB) {
-                return 0;
-            } else {
-                return lengthA < lengthB ? -1 : 1;
-            }
-        } else {
-            return cmp > 0 ? 1 : -1;
-        }
+        return cmp == 0 ? lengthA - lengthB : cmp;
     }
 
     @ImportStatic(TStringGuards.class)

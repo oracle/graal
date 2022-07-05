@@ -24,7 +24,14 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
+import java.util.EnumSet;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -35,6 +42,9 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+
 /**
  * Base class for AMD64 LIR instruction using AVX CPU features.
  */
@@ -42,13 +52,15 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64ComplexVectorOp> TYPE = LIRInstructionClass.create(AMD64ComplexVectorOp.class);
 
     protected final AVXSize vectorSize;
+    protected final EnumSet<CPUFeature> runtimeCheckedCPUFeatures;
     protected final TargetDescription targetDescription;
 
-    public AMD64ComplexVectorOp(LIRInstructionClass<? extends AMD64ComplexVectorOp> c, LIRGeneratorTool tool, AVXSize maxUsedVectorSize) {
+    public AMD64ComplexVectorOp(LIRInstructionClass<? extends AMD64ComplexVectorOp> c, LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, AVXSize maxUsedVectorSize) {
         super(c);
 
         this.targetDescription = tool.target();
-        AVXSize maxSupportedVectorSize = (AVXSize) tool.getMaxVectorSize();
+        this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
+        AVXSize maxSupportedVectorSize = (AVXSize) tool.getMaxVectorSize(runtimeCheckedCPUFeatures);
         assert isXMMOrGreater(maxUsedVectorSize) && isXMMOrGreater(maxSupportedVectorSize);
 
         if (maxUsedVectorSize.fitsWithin(maxSupportedVectorSize)) {
@@ -60,6 +72,14 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
 
     private static boolean isXMMOrGreater(AVXSize size) {
         return size == AVXSize.XMM || size == AVXSize.YMM || size == AVXSize.ZMM;
+    }
+
+    public static AMD64Address.Scale min(AMD64Address.Scale a, AMD64Address.Scale b) {
+        return a.value < b.value ? a : b;
+    }
+
+    public static AMD64Address.Scale max(AMD64Address.Scale a, AMD64Address.Scale b) {
+        return a.value > b.value ? a : b;
     }
 
     protected AMD64Kind getVectorKind(JavaKind valueKind) {
@@ -120,24 +140,49 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         }
     }
 
-    public static boolean supports(TargetDescription target, CPUFeature cpuFeature) {
-        return ((AMD64) target.arch).getFeatures().contains(cpuFeature);
+    protected Value[] allocateVectorRegisters(LIRGeneratorTool tool, JavaKind valueKind, int n) {
+        LIRKind kind = LIRKind.value(getVectorKind(valueKind));
+        Value[] vectors = new Value[n];
+        for (int i = 0; i < vectors.length; i++) {
+            vectors[i] = tool.newVariable(kind);
+        }
+        return vectors;
     }
 
-    public static boolean supportsAVX512VLBW(TargetDescription target) {
-        return supports(target, CPUFeature.AVX512VL) && supports(target, CPUFeature.AVX512BW);
+    public static boolean supports(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, CPUFeature cpuFeature) {
+        return runtimeCheckedCPUFeatures != null && runtimeCheckedCPUFeatures.contains(cpuFeature) || ((AMD64) target.arch).getFeatures().contains(cpuFeature);
+    }
+
+    public static boolean supportsAVX512VLBW(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures) {
+        return supports(target, runtimeCheckedCPUFeatures, CPUFeature.AVX512VL) && supports(target, runtimeCheckedCPUFeatures, CPUFeature.AVX512BW);
+    }
+
+    protected boolean supports(CPUFeature cpuFeature) {
+        return supports(targetDescription, runtimeCheckedCPUFeatures, cpuFeature);
     }
 
     protected boolean supportsAVX2AndYMM() {
-        return AVXSize.YMM.fitsWithin(vectorSize) && supports(targetDescription, CPUFeature.AVX2);
+        return AVXSize.YMM.fitsWithin(vectorSize) && supports(CPUFeature.AVX2);
     }
 
     protected boolean supportsAVX512VLBWAndZMM() {
-        return AVXSize.ZMM.fitsWithin(vectorSize) && supportsAVX512VLBW(targetDescription);
+        return AVXSize.ZMM.fitsWithin(vectorSize) && supportsAVX512VLBW(targetDescription, runtimeCheckedCPUFeatures);
     }
 
     protected boolean supportsBMI2() {
-        return supports(targetDescription, CPUFeature.BMI2);
+        return supports(CPUFeature.BMI2);
+    }
+
+    protected boolean supportsTZCNT() {
+        return supports(AMD64.CPUFeature.BMI1) && ((AMD64) targetDescription.arch).getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction);
+    }
+
+    protected void bsfq(AMD64MacroAssembler masm, Register dst, Register src) {
+        if (supportsTZCNT()) {
+            TZCNT.emit(masm, QWORD, dst, src);
+        } else {
+            masm.bsfq(dst, src);
+        }
     }
 
     @Override

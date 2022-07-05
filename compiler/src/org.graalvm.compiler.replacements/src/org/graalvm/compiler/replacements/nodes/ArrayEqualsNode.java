@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,9 @@
 package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -37,13 +37,9 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -52,7 +48,6 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -64,8 +59,8 @@ import jdk.vm.ci.meta.Value;
 /**
  * Compares two arrays with the same length.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
+public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements LIRLowerable, Canonicalizable, Virtualizable {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
 
@@ -86,14 +81,21 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     /** Length of both arrays. */
     @Input protected ValueNode length;
 
-    @OptionalInput(Memory) MemoryKill lastLocationAccess;
-
-    public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
-        this(TYPE, array1, array2, length, kind);
+    public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length,
+                    @ConstantNodeParameter JavaKind kind) {
+        this(TYPE, array1, array2, length, kind, null);
     }
 
-    protected ArrayEqualsNode(NodeClass<? extends ArrayEqualsNode> c, ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
-        super(c, StampFactory.forKind(JavaKind.Boolean));
+    public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length,
+                    @ConstantNodeParameter JavaKind kind,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, array1, array2, length, kind, runtimeCheckedCPUFeatures);
+    }
+
+    protected ArrayEqualsNode(NodeClass<? extends ArrayEqualsNode> c, ValueNode array1, ValueNode array2, ValueNode length,
+                    @ConstantNodeParameter JavaKind kind,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        super(c, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(kind));
         this.kind = kind;
         this.array1 = array1;
         this.array2 = array2;
@@ -197,7 +199,13 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     }
 
     @NodeIntrinsic
-    public static native boolean equals(Object array1, Object array2, int length, @ConstantNodeParameter JavaKind kind);
+    public static native boolean equals(Object array1, Object array2, int length,
+                    @ConstantNodeParameter JavaKind kind);
+
+    @NodeIntrinsic
+    public static native boolean equals(Object array1, Object array2, int length,
+                    @ConstantNodeParameter JavaKind kind,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     public ValueNode getArray1() {
         return array1;
@@ -217,9 +225,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        if (length.isJavaConstant() && kind.isNumericInteger()) {
-            // Full-unroll opportunity in LIR.
-        } else if (UseGraalStubs.getValue(graph().getOptions())) {
+        if (UseGraalStubs.getValue(graph().getOptions())) {
             ForeignCallLinkage linkage = gen.lookupGraalStub(this);
             if (linkage != null) {
                 Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(array1), gen.operand(array2), gen.operand(length));
@@ -233,25 +239,9 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     protected void generateArrayEquals(NodeLIRBuilderTool gen) {
         int array1BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
         int array2BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
-        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2),
+        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, array1BaseOffset, array2BaseOffset, getRuntimeCheckedCPUFeatures(), gen.operand(array1), gen.operand(array2),
                         gen.operand(length));
         gen.setResult(this, result);
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return NamedLocationIdentity.getArrayLocation(kind);
-    }
-
-    @Override
-    public MemoryKill getLastLocationAccess() {
-        return lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryKill lla) {
-        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
-        lastLocationAccess = lla;
     }
 
 }

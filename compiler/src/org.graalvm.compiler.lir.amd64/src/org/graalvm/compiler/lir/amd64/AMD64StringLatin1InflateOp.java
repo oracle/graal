@@ -68,7 +68,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value rtmp2;
 
     public AMD64StringLatin1InflateOp(LIRGeneratorTool tool, int useAVX3Threshold, Value src, Value dst, Value len) {
-        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.YMM);
+        super(TYPE, tool, null, supportsAVX512VLBW(tool.target(), null) && supports(tool.target(), null, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.YMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
