@@ -758,7 +758,7 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
-        image_run_cmd = [image_path, '-XX:ProfilingDumpFile=' + profile_path]
+        image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
         image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
