@@ -132,7 +132,12 @@ local jdks = common_json.jdks;
         patterns: [build.name]
       }
     ]
-  }, 
+  },
+
+  diskspace_required: {
+    java11_linux_mad64: "30GB",
+    java17_linux_mad64: "30GB",
+  },
 
   local builds = [
     self.vm_java_11 + vm_common.gate_vm_linux_amd64 + self.vm_unittest + {
