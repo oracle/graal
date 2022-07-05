@@ -65,7 +65,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self._config_name = config_name
         self.extra_java_args = extra_java_args or []
         self.extra_launcher_args = extra_launcher_args or []
-        self.debug_args = mx.java_debug_args() if config_name == "jvm" else []
+        self.debug_args = mx.java_debug_args() if "jvm" in config_name else []
 
     def name(self):
         return self._name
@@ -1168,6 +1168,13 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 
 class PolyBenchVm(GraalVm):
+    def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
+        super(PolyBenchVm, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
+        if self.debug_args:
+            # The `arg[1:]` is to strip the first '-' from the args since it's
+            # re-added by the subsequent processing of `--vm`
+            self.debug_args = ['--vm.{}'.format(arg[1:]) for arg in self.debug_args]
+
     def run(self, cwd, args):
         return self.run_launcher('polybench', args, cwd)
 
