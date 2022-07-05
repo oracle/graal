@@ -5018,7 +5018,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.3
          */
         public int getRegionByteLength() {
-            return regionOffset < 0 ? regionOffset : regionOffset << string.stride();
+            return regionLength < 0 ? regionLength : regionLength << string.stride();
         }
 
         /**
