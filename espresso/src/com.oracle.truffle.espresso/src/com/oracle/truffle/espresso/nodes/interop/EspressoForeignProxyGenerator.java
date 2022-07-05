@@ -654,7 +654,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * This string is useful for constructing string keys for methods without regard to their return
      * type.
      */
-    private String getParameterDescriptors(Klass[] parameterTypes) {
+    private static String getParameterDescriptors(Klass[] parameterTypes) {
         StringBuilder desc = new StringBuilder("(");
         for (int i = 0; i < parameterTypes.length; i++) {
             desc.append(getFieldType(parameterTypes[i]));
