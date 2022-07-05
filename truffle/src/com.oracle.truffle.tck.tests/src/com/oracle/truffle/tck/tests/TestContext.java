@@ -58,6 +58,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.InlineSnippet;
@@ -110,7 +111,7 @@ final class TestContext implements Closeable {
         if (providers == null) {
             state = State.INITIALIZING;
             try {
-                providers = getContextInstalledProviders(getContext());
+                providers = getInstalledProvidersForEngine(getContext().getEngine());
             } finally {
                 state = State.INITIALIZED;
             }
@@ -118,9 +119,9 @@ final class TestContext implements Closeable {
         return providers;
     }
 
-    private static Map<String, LanguageProvider> getContextInstalledProviders(Context ctx) {
+    private static Map<String, LanguageProvider> getInstalledProvidersForEngine(Engine engine) {
         final Map<String, LanguageProvider> tmpProviders = new HashMap<>();
-        final Set<String> languages = ctx.getEngine().getLanguages().keySet();
+        final Set<String> languages = engine.getLanguages().keySet();
         for (LanguageProvider provider : ServiceLoader.load(LanguageProvider.class)) {
             final String id = provider.getId();
             if (languages.contains(id) || isHost(provider)) {
@@ -166,8 +167,8 @@ final class TestContext implements Closeable {
 
                     Map<String, LanguageProvider> knownProviders;
                     // Get known providers from a dummy context
-                    try (Context dummyCtx = Context.newBuilder().allowAllAccess(true).build()) {
-                        knownProviders = getContextInstalledProviders(dummyCtx);
+                    try (Engine dummyCtx = Engine.newBuilder().build()) {
+                        knownProviders = getInstalledProvidersForEngine(dummyCtx);
                     }
                     Context.Builder builder = Context.newBuilder();
                     knownProviders.forEach((id, provider) -> {
