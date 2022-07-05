@@ -2991,7 +2991,11 @@ public final class TruffleString extends AbstractTruffleString {
          * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, this node will return
          *            the encoding's minimum number of bytes per codepoint if an error occurs while
          *            reading the codepoint. If set to {@link ErrorHandling#RETURN_NEGATIVE}, a
-         *            negative value will be returned instead. This parameter is expected to be
+         *            negative value will be returned instead, where two error cases are
+         *            distinguished: if the codepoint is invalid, the return value is -1. If the
+         *            codepoint is an unfinished, possibly valid byte sequence at the end of the
+         *            string, the return value is {@code -1 - (number of missing bytes)}. This
+         *            parameter is expected to be
          *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
          *            constant}.
          *

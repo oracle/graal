@@ -1449,7 +1449,7 @@ final class TStringOps {
 
     private static boolean invalidOffsetOrLength(Object stubArray, int offset, int length, int stride, boolean isNative) {
         if (isNative) {
-            return stubArray != null || (offset | length) < 0;
+            return stubArray != null || offset < 0 || length < 0;
         } else {
             return (Integer.toUnsignedLong(offset) + (Integer.toUnsignedLong(length) << stride)) > ((byte[]) stubArray).length;
         }
