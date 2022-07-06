@@ -212,7 +212,7 @@ public final class PerformanceInformationHandler implements Closeable {
                 List<Block> loopBlocks = loop.getBlocks();
                 for (Block exit : loop.getLoopExits()) {
                     Block exitDom = exit.getDominator();
-                    if (!(exitDom.getEndNode() instanceof ControlSplitNode) && !loopBlocks.contains(exitDom)) {
+                    while (!(exitDom.getEndNode() instanceof ControlSplitNode) && !loopBlocks.contains(exitDom)) {
                         // potential computation before loop exit
                         exitDom = exitDom.getDominator();
                     }
