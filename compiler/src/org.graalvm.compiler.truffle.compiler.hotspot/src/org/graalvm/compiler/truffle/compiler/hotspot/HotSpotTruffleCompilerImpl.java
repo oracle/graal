@@ -133,7 +133,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Suites lastTierSuites = backend.getSuites().getDefaultSuites(options);
         Providers lastTierProviders = backend.getProviders();
         HotSpotTruffleProfilingInstrumentation.installGuest(options, lastTierSuites.getLowTier());
-        final TruffleTierConfiguration lastTierSetup = new TruffleTierConfiguration(lastTierPe, backend, lastTierProviders, lastTierSuites, lastTierLirSuites);
+        final TruffleTierConfiguration lastTierSetup = new TruffleTierConfiguration(lastTierPe, backend, lastTierProviders, lastTierSuites, lastTierLirSuites, knownTruffleTypes);
 
         CompilerConfigurationFactory lowTierCompilerConfigurationFactory = new EconomyCompilerConfigurationFactory();
         CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
@@ -146,8 +146,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
 
         HotSpotTruffleProfilingInstrumentation.installGuest(options, firstTierSuites.getLowTier());
-        TruffleTierConfiguration firstTierSetup = new TruffleTierConfiguration(firstTierPe, firstTierBackend, firstTierProviders, firstTierSuites, firstTierLirSuites);
-        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection, firstTierSetup, lastTierSetup);
+        TruffleTierConfiguration firstTierSetup = new TruffleTierConfiguration(firstTierPe, firstTierBackend, firstTierProviders, firstTierSuites, firstTierLirSuites, knownTruffleTypes);
+        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection, firstTierSetup, lastTierSetup, knownTruffleTypes);
 
         return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, compilerConfig);
     }

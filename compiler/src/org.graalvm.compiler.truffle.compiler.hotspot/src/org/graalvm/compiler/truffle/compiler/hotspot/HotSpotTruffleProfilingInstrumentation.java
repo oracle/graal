@@ -31,9 +31,12 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.PrefetchAllocateNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
+import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
@@ -106,7 +109,13 @@ public class HotSpotTruffleProfilingInstrumentation {
         @Override
         protected void run(StructuredGraph graph) {
             graph.getNodes().forEach((node) -> {
-                if (node instanceof Invoke) {
+                if (node instanceof PrefetchAllocateNode) {
+                    DynamicCounterNode.addCounterBefore("allocate", formatCounterLocation(node, null, host), 1, false, (PrefetchAllocateNode) node);
+                } else if (node instanceof SwitchNode) {
+                    DynamicCounterNode.addCounterBefore("switch", formatCounterLocation(node, null, host), 1, false, (SwitchNode) node);
+                } else if (node instanceof IfNode) {
+                    DynamicCounterNode.addCounterBefore("if", formatCounterLocation(node, null, host), 1, false, (IfNode) node);
+                } else if (node instanceof Invoke) {
                     DynamicCounterNode.addCounterBefore("invoke", formatCounterLocation(node, ((Invoke) node).callTarget(), host), 1, false, ((Invoke) node).asFixedNode());
                 } else if (node instanceof ReadNode) {
                     DynamicCounterNode.addCounterBefore("read", formatCounterLocation(node, null, host), 1, false, (ReadNode) node);
@@ -127,9 +136,7 @@ public class HotSpotTruffleProfilingInstrumentation {
         for (StackTraceElement stackTraceElement : elements) {
             b.append(sep);
             b.append(stackTraceElement.toString());
-
             if (sep.isEmpty()) {
-                b.append(" (").append(node.toString()).append(")");
                 sep = "\n                          ";
             }
         }
@@ -140,9 +147,9 @@ public class HotSpotTruffleProfilingInstrumentation {
         if (b.length() == 0) {
             ResolvedJavaMethod method = ((StructuredGraph) node.graph()).method();
             if (method == null) {
-                return "no-location";
+                return "no-location(" + node.toString() + ")";
             } else {
-                return "no-location in " + method.format("%H.%n(%p)");
+                return "no-location in " + method.format("%H.%n(%p) (" + node.toString() + ")");
             }
         } else {
             if (!host) {
