@@ -41,7 +41,6 @@
 package org.graalvm.home;
 
 import java.nio.file.Path;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.ServiceLoader;
@@ -98,10 +97,15 @@ public abstract class HomeFinder {
         if (ImageInfo.inImageCode() && ImageSingletons.contains(HomeFinder.class)) {
             return ImageSingletons.lookup(HomeFinder.class);
         }
-        final ServiceLoader<HomeFinder> serviceLoader = ServiceLoader.load(HomeFinder.class);
-        final Iterator<HomeFinder> iterator = serviceLoader.iterator();
+        ModuleLayer moduleLayer = HomeFinder.class.getModule().getLayer();
+        ServiceLoader<HomeFinder> serviceLoader;
+        if (moduleLayer != null) {
+            serviceLoader = ServiceLoader.load(moduleLayer, HomeFinder.class);
+        } else {
+            serviceLoader = ServiceLoader.load(HomeFinder.class, HomeFinder.class.getClassLoader());
+        }
         try {
-            return iterator.next();
+            return serviceLoader.iterator().next();
         } catch (NoSuchElementException e) {
             throw new IllegalStateException("No implementation of " + HomeFinder.class.getName() + " could be found");
         }

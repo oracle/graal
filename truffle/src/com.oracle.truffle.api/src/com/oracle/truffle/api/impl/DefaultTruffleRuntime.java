@@ -263,7 +263,12 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
                     throw new InternalError(e);
                 }
             } else {
-                return ServiceLoader.load(service);
+                ModuleLayer moduleLayer = truffleModule.getLayer();
+                if (moduleLayer != null) {
+                    return ServiceLoader.load(moduleLayer, service);
+                } else {
+                    return ServiceLoader.load(service, DefaultTruffleRuntime.class.getClassLoader());
+                }
             }
         }
     }

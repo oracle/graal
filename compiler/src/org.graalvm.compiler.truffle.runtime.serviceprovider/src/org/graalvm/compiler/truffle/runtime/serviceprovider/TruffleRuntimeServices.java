@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,13 @@ public final class TruffleRuntimeServices {
      * @param service the service whose provider is being requested
      */
     public static <S> Iterable<S> load(Class<S> service) {
-        return ServiceLoader.load(service);
+        ModuleLayer moduleLayer = TruffleRuntimeServices.class.getModule().getLayer();
+        Iterable<S> services;
+        if (moduleLayer != null) {
+            services = ServiceLoader.load(moduleLayer, service);
+        } else {
+            services = ServiceLoader.load(service, TruffleRuntimeServices.class.getClassLoader());
+        }
+        return services;
     }
 }

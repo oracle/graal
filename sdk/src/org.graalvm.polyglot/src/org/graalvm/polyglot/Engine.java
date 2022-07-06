@@ -906,7 +906,14 @@ public final class Engine implements AutoCloseable {
             }
 
             private Iterator<? extends AbstractPolyglotImpl> searchServiceLoader() throws InternalError {
-                return ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                ModuleLayer moduleLayer = AbstractPolyglotImpl.class.getModule().getLayer();
+                Iterable<AbstractPolyglotImpl> services;
+                if (moduleLayer != null) {
+                    services = ServiceLoader.load(moduleLayer, AbstractPolyglotImpl.class);
+                } else {
+                    services = ServiceLoader.load(AbstractPolyglotImpl.class, AbstractPolyglotImpl.class.getClassLoader());
+                }
+                return services.iterator();
             }
 
             private AbstractPolyglotImpl loadAndValidateProviders(Iterator<? extends AbstractPolyglotImpl> providers) throws AssertionError {
