@@ -118,8 +118,13 @@ public class ExperimentImpl implements Experiment {
     public void writeMethodCompilationList(Writer writer, String compilationMethodName) {
         writer.writeln("In experiment " + experimentId);
         writer.increaseIndent();
-        List<ExecutedMethod> executedMethods = methodsByName.get(compilationMethodName)
-                        .stream()
+        List<ExecutedMethod> executedMethods = methodsByName.get(compilationMethodName);
+        if (executedMethods == null) {
+            writer.writeln("No compilations");
+            writer.decreaseIndent();
+            return;
+        }
+        executedMethods = executedMethods.stream()
                         .sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod()))
                         .collect(Collectors.toList());
         long hotMethodCount = executedMethods.stream()
