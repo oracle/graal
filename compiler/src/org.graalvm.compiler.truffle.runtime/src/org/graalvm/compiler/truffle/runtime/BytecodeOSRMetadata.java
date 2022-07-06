@@ -206,7 +206,20 @@ public final class BytecodeOSRMetadata {
             return null;
         }
         // Case 2: code is compiled and valid
-        if (callTarget.isValid()) {
+        boolean valid = callTarget.isValid();
+
+        // Case 3: code is invalid; either give up or reschedule compilation
+        if (!valid) {
+            if (callTarget.isCompilationFailed()) {
+                markOSRDisabled();
+            } else {
+                requestOSRCompilation(target, callTarget, (FrameWithoutBoxing) parentFrame);
+                // Can happen for very quick compilation or if background compilation is disabled.
+                valid = callTarget.isValid();
+            }
+        }
+
+        if (valid) {
             /*
              * Note: though unlikely, it is still possible to call into an OSR compiled method at
              * this point, even if disabled. This is OK, as we leave enough information around to
@@ -216,12 +229,6 @@ public final class BytecodeOSRMetadata {
                 beforeTransfer.run();
             }
             return callTarget.callOSR(osrNode.storeParentFrameInArguments(parentFrame));
-        }
-        // Case 3: code is invalid; either give up or reschedule compilation
-        if (callTarget.isCompilationFailed()) {
-            markOSRDisabled();
-        } else {
-            requestOSRCompilation(target, callTarget, (FrameWithoutBoxing) parentFrame);
         }
         return null;
     }
