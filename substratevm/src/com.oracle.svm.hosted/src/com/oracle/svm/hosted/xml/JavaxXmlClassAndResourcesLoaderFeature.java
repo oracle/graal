@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMImplementation
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DatatypeFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SAXParserClasses;
+import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 
@@ -58,5 +59,8 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
 
         access.registerReachabilityHandler(new DatatypeFactoryClasses()::registerConfigs,
                         method(access, "javax.xml.datatype.DatatypeFactory", "newInstance"));
+
+        access.registerReachabilityHandler(new SchemaFactoryClasses()::registerConfigs,
+                        method(access, "javax.xml.validation.SchemaFactory", "newSchema"));
     }
 }

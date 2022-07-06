@@ -24,10 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.core.common.StrideUtil.S1;
-import static org.graalvm.compiler.core.common.StrideUtil.S2;
-
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.SnippetStub;
@@ -42,22 +40,22 @@ public final class AMD64ArrayCompareToStub extends SnippetStub {
     }
 
     @Snippet
-    private static int byteArrayCompareToByteArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S1, S1);
+    private static int byteArrayCompareToByteArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S1, Stride.S1);
     }
 
     @Snippet
-    private static int byteArrayCompareToCharArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S1, S2);
+    private static int byteArrayCompareToCharArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S1, Stride.S2);
     }
 
     @Snippet
-    private static int charArrayCompareToByteArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S2, S1);
+    private static int charArrayCompareToByteArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S2, Stride.S1);
     }
 
     @Snippet
-    private static int charArrayCompareToCharArray(Pointer array1, Pointer array2, int length1, int length2) {
-        return ArrayCompareToNode.compareTo(array1, array2, length1, length2, S2, S2);
+    private static int charArrayCompareToCharArray(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB) {
+        return ArrayCompareToNode.compareTo(arrayA, lengthA, arrayB, lengthB, Stride.S2, Stride.S2);
     }
 }

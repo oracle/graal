@@ -58,6 +58,7 @@ import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -356,7 +357,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                          * an optional shift that is known to be a valid addressing mode.
                          */
                         memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                        computeRegister, AMD64Address.Scale.fromShift(compressEncoding.getShift()),
+                                        computeRegister, Stride.fromLog2(compressEncoding.getShift()),
                                         field.getOffset());
                     } else {
                         memoryAddress = new AMD64Address(computeRegister, field.getOffset());
@@ -375,7 +376,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                      * the heap base is a constant.
                      */
                     memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                    Register.None, AMD64Address.Scale.Times1,
+                                    Register.None, Stride.S1,
                                     field.getOffset() + addressDisplacement(object, constantReflection),
                                     addressDisplacementAnnotation(object));
 

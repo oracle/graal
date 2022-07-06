@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1090,6 +1091,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisField[] getStaticFields() {
         registerAsReachable();
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
+    }
+
+    @Override
+    public AnnotatedElement getAnnotationRoot() {
+        return wrapped;
     }
 
     @Override

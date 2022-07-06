@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,6 +96,9 @@ public enum JavaKind {
     private final int basicType;
     private final Symbol<Type> type;
     private final Symbol<Name> name;
+    private final String unwrapMethodName;
+    private final String unwrapMethodDesc;
+    private final String wrapperValueOfDesc;
 
     JavaKind(char typeChar, int basicType, String javaName, int slotCount, boolean isStackInt, Class<?> primitiveJavaClass, Class<?> boxedJavaClass) {
         this.typeChar = typeChar;
@@ -107,6 +110,9 @@ public enum JavaKind {
         this.basicType = basicType;
         this.type = (primitiveJavaClass != null) ? StaticSymbols.putType("" + typeChar) : null;
         this.name = StaticSymbols.putName(javaName);
+        this.unwrapMethodName = (primitiveJavaClass != null) ? javaName + "Value" : null;
+        this.unwrapMethodDesc = (primitiveJavaClass != null) ? "()" + typeChar : null;
+        this.wrapperValueOfDesc = (primitiveJavaClass != null) ? "(" + typeChar + ")Ljava/lang/" + boxedJavaClass.getSimpleName() + ";" : null;
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
     }
 
@@ -440,6 +446,18 @@ public enum JavaKind {
     public Symbol<Name> getPrimitiveBinaryName() {
         EspressoError.guarantee(isPrimitive(), "not a primitive");
         return name;
+    }
+
+    public String getUnwrapMethodName() {
+        return unwrapMethodName;
+    }
+
+    public String getUnwrapMethodDesc() {
+        return unwrapMethodDesc;
+    }
+
+    public String getWrapperValueOfDesc() {
+        return wrapperValueOfDesc;
     }
 
     /**

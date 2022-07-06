@@ -697,7 +697,7 @@ public final class ObjectKlass extends Klass {
                 try {
                     MethodVerifier.verify(m);
                 } catch (MethodVerifier.VerifierError e) {
-                    String message = String.format("Verification for class `%s` failed for method `%s`", getExternalName(), m.getNameAsString());
+                    String message = String.format("Verification for class `%s` failed for method `%s` with message `%s`", getExternalName(), m.getNameAsString(), e.getMessage());
                     switch (e.kind()) {
                         case Verify:
                             throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);

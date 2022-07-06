@@ -39,6 +39,12 @@
     },
   },
 
+  local jsonschema = {
+    packages+: {
+      "pip:jsonschema": "==4.6.1",
+    },
+  },
+
   local musl_toolchain = {
     downloads+: {
       "MUSL_TOOLCHAIN": {
@@ -73,7 +79,7 @@
     darwin_jdk17      + gate("js-quickbuild", "build,js_quickbuild") + clone_js_benchmarks,
     linux_amd64_jdk11 + gate("build-ce", "build,checkstubs,helloworld,test,nativeimagehelp,muslcbuild,debuginfotest") + maven + svm_unittest + t("35:00") + musl_toolchain + gdb("10.2"),
     linux_amd64_jdk11 + gate("modules-basic", "build,hellomodule,test") + maven + svm_unittest + t("30:00"),
-    linux_amd64_jdk17 + gate("style-fullbuild", "style,fullbuild,helloworld,test,svmjunit,debuginfotest") + common.eclipse + common.jdt + maven + svm_unittest + t("50:00") + mx_build_exploded + gdb("10.2"),
+    linux_amd64_jdk17 + gate("style-fullbuild", "style,fullbuild,helloworld,test,svmjunit,debuginfotest") + common.eclipse + common.jdt + maven + jsonschema + svm_unittest + t("50:00") + mx_build_exploded + gdb("10.2"),
     linux_amd64_jdk19 + gate("build-ce", "build") + {
       run: [
         # cannot yet use mx gate --tag build due to compile errors in /compiler
