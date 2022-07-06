@@ -108,14 +108,13 @@ public final class OldGeneration extends Generation {
     }
 
     boolean scanGreyObjects() {
-        Log trace = Log.log().string("<OldGeneration.scanGreyObjects:").newline();
+        Log trace = Log.log().string("[OldGeneration.scanGreyObjects:").newline();
         if (!toGreyObjectsWalker.haveGreyObjects()) {
-            trace.string(">").newline();
+            trace.string("]").newline();
             return false;
         }
         toGreyObjectsWalker.walkGreyObjects();
-        ParallelGCImpl.waitForIdle();
-        trace.string(">").newline();
+        trace.string("]").newline();
         return true;
     }
 

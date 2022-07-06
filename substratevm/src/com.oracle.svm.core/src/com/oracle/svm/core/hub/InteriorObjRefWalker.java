@@ -67,7 +67,7 @@ public class InteriorObjRefWalker {
         final int layoutEncoding = objHub.getLayoutEncoding();
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);
         if (objHub.getName() == null) {
-            Log.log().string("PP warn NULL obj ").zhex(objPointer).newline();
+            Log.log().string("PP warn hub.name=null for obj ").zhex(objPointer).newline();
         }
 
         // Visit each Object reference in the array part of the Object.

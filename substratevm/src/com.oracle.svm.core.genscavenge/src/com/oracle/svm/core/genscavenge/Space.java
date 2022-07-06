@@ -450,9 +450,6 @@ public final class Space {
             AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
             RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
         }
-        if (ParallelGCImpl.isEnabled()) {
-            ParallelGCImpl.queue(copyMemory);
-        }
         return copy;
     }
 

@@ -180,7 +180,7 @@ public final class YoungGeneration extends Generation {
     }
 
     boolean scanGreyObjects() {
-        Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
+        Log trace = Log.log().string("[YoungGeneration.scanGreyObjects:").newline();
         boolean needScan = false;
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (getSurvivorGreyObjectsWalker(i).haveGreyObjects()) {
@@ -189,11 +189,13 @@ public final class YoungGeneration extends Generation {
             }
         }
         if (!needScan) {
+            trace.string("]").newline();
             return false;
         }
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            trace.string("[Scanning survivor-").signed(i).string("]").newline();
+            trace.string("[Scanning survivor-").signed(i).newline();
             getSurvivorGreyObjectsWalker(i).walkGreyObjects();
+            trace.string("]").newline();
         }
         trace.string("]").newline();
         return true;

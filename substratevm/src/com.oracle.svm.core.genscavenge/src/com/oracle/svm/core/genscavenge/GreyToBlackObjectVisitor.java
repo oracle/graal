@@ -62,12 +62,6 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     @NeverInline("GC performance")
     public boolean visitObjectInline(Object o) {
         if (ParallelGCImpl.isEnabled()) {
-            /// temp assertions
-//            Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-//            assert ObjectHeaderImpl.isAlignedHeader(offsetP);
-            assert GCImpl.getGCImpl().isCompleteCollection();
-//            assert innerOffset == 0;
-
             ParallelGCImpl.queue(Word.objectToUntrackedPointer(o));
             return true;
         } else {

@@ -18,7 +18,7 @@ public class ParallelGCImpl extends ParallelGC {
     /// static -> ImageSingletons
     public static final int WORKERS_COUNT = 4;
 
-    private static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
+    private static final TaskQueue QUEUE = new TaskQueue("pargc");
     private static final TaskQueue.Consumer PROMOTE_TASK =
             obj -> getVisitor().doVisitObject(obj);
 

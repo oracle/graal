@@ -40,7 +40,7 @@ public class TaskQueue {
         try {
             mutex.lock();
             while (!canPut()) {
-                Log.log().string("PP cannot put task\n");
+                Log.log().string("TQ cannot put task\n");
                 cond.block();
             }
             data[putIndex] = ptr;
@@ -57,7 +57,7 @@ public class TaskQueue {
         mutex.lock();
         try {
             while (!canGet()) {
-                Log.log().string("PP cannot get task\n");
+                Log.log().string("TQ cannot get task\n");
                 idleCount++;
                 cond.block();
                 idleCount--;
@@ -81,7 +81,7 @@ public class TaskQueue {
     }
 
     public void waitUntilIdle(int expectedIdleCount) {
-        Log log = Log.log().string("PP waitForIdle\n");
+        Log log = Log.log().string("TQ waitForIdle\n");
         while (true) {
             try {
                 mutex.lock();
@@ -89,7 +89,7 @@ public class TaskQueue {
                     cond.block();
                 }
                 if (idleCount >= expectedIdleCount) {
-                    log.string("PP waitForIdle over\n");
+                    log.string("TQ waitForIdle over\n");
                     return;
                 }
             } finally {
