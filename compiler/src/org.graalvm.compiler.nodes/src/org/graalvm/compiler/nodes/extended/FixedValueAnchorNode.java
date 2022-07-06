@@ -81,6 +81,9 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         }
+        if (object instanceof FixedValueAnchorNode && ((FixedValueAnchorNode) object).next == this) {
+            return object;
+        }
         return this;
     }
 
