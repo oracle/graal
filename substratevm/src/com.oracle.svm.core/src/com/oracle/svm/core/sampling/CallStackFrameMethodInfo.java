@@ -47,6 +47,7 @@ public class CallStackFrameMethodInfo {
 
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
         sampledMethods.put(methodId, method.format("%H.%n"));
+        // TODO BS make this contains be equals
         if (enterSafepointCheckId == INITIAL_METHOD_ID && method.format("%H.%n").contains(ENTER_SAFEPOINT_METHOD_NAME)) {
             enterSafepointCheckId = methodId;
         }

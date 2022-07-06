@@ -642,10 +642,10 @@ _scala_dacapo_resources = {
 }
 
 _scala_dacapo_iterations = {
-    'scalac'        : 40,
-    'scalariform'   : 40,
+    'scalac'        : 30,
+    'scalariform'   : 30,
     'scalap'        : 120,
-    'scaladoc'      : 40,
+    'scaladoc'      : 30,
     'scalatest'     : 60,
     'scalaxb'       : 60,
     'kiama'         : 40,

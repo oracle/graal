@@ -33,7 +33,6 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.hosted.code.CompilationGraph;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
@@ -133,26 +132,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
             }
         }
         localVariableTable = newLocalVariableTable;
-    }
-
-    public HostedMethod cloneSpecialized(HostedUniverse universe, List<Pair<HostedMethod, Integer>> context) {
-        StaticAnalysisResults profilingInfo = getProfilingInfo();
-        StaticAnalysisResults profilingInfoCopy = new StaticAnalysisResults(profilingInfo.getCodeSize(), profilingInfo.getParameterTypeProfiles(), profilingInfo.getResultTypeProfile(),
-                        profilingInfo.firstBytecodeEntry());
-        HostedMethod copy = new HostedMethod(universe, wrapped, getDeclaringClass(), signature, constantPool, getExceptionHandlers(), this.compilationInfo.getDeoptOrigin());
-        copy.staticAnalysisResults = profilingInfoCopy;
-        /*
-         * TODO BS Do we need a copy of the graph here?
-         * 
-         * In the original PR this was a StructuredGraph and we cloneSpecialized it. Now it's a
-         * CompilationGraph (wrapper around EncodedGraph) so do we really need a copy?
-         */
-        copy.compilationInfo.setGraph(this.compilationInfo.getCompilationGraph());
-        copy.specializationReason = SpecializationReason.create(context);
-        assert copy.vtableIndex == -1;
-        // isParsed will be set as false but doesnt seem to have any impact since we are already
-        // past that point in the compilation pipeline
-        return copy;
     }
 
     @Override

@@ -36,9 +36,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.sampling.CallStackFrameMethodData;
-import com.oracle.svm.core.sampling.CallStackFrameMethodInfo;
-import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -46,7 +43,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -66,6 +62,8 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.sampling.CallStackFrameMethodData;
+import com.oracle.svm.core.sampling.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -509,6 +507,9 @@ public class FrameInfoEncoder {
 
     private static void countVirtualObjects(JavaValue[] values, BitSet visitedVirtualObjects) {
         for (JavaValue v : values) {
+            /**
+             * TODO BS Why do we need this if?
+             */
             JavaValue value = v;
             if (value instanceof StackLockValue) {
                 value = ((StackLockValue) value).getOwner();
@@ -534,13 +535,7 @@ public class FrameInfoEncoder {
         result.isDeoptEntry = isDeoptEntry;
 
         ValueInfo[] valueInfos = null;
-        /*
-         * TODO BS Remove the `|| true` bellow.
-         *
-         * This if was commented out in the original PR. Apparently, we need the local
-         * values as part of the sampling profiles.
-         */
-        if (needLocalValues || true) {
+        if (needLocalValues) {
             SharedMethod method = (SharedMethod) frame.getMethod();
             if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
                 result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).setMethodId(method);
@@ -574,6 +569,7 @@ public class FrameInfoEncoder {
             }
         }
         result.valueInfos = valueInfos;
+
         ImageSingletons.lookup(Counters.class).frameCount.inc();
 
         return result;
@@ -675,7 +671,6 @@ public class FrameInfoEncoder {
 
     private void makeVirtualObject(FrameData data, VirtualObject virtualObject, boolean isDeoptEntry) {
         int id = virtualObject.getId();
-
         if (data.virtualObjects[id] != null) {
             return;
         }

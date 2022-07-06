@@ -42,7 +42,6 @@ import java.util.Objects;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.Bytecodes;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -141,7 +140,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     /**
      * The bytecode to which this frame state applies.
      */
-    private Bytecode code;
+    private final Bytecode code;
 
     /**
      * Narrows {@code value} to a {@code char} while ensuring the value does not change.
@@ -952,10 +951,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     public boolean isExceptionHandlingBCI() {
         return bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNWIND_BCI;
-    }
-
-    public void setBytecode(ResolvedJavaMethodBytecode bytecode) {
-        this.code = bytecode;
     }
 
 }
