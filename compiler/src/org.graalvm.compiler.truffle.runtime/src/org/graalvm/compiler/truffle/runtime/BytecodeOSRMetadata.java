@@ -64,6 +64,31 @@ public final class BytecodeOSRMetadata {
     // interval.
     public static final int OSR_POLL_INTERVAL = 1024;
 
+    /**
+     * Default original stage for bytecode OSR compilation. In this stage,
+     * {@link #incrementAndPoll() polling} will succeed only after a {@link #backEdgeCount backedge}
+     * has been reported {@link #osrThreshold} times. After the first successful
+     * {@link #requestOSRCompilation(int, OptimizedCallTarget, FrameWithoutBoxing) request for
+     * compilation}, switch to {@link #HOT_STAGE}.
+     */
+    private static final byte FRESH_STAGE = 0;
+    /**
+     * Stage representing a method that has been submitted for OSR compilation at least once. In
+     * this stage, {@link #incrementAndPoll() polling} succeeds every {@link #OSR_POLL_INTERVAL},
+     * checking for available compiled code to jump to. New requests for compilation still only
+     * happens once every {@link #secondaryOsrThreshold} - {@link #osrThreshold} reported backedges.
+     */
+    private static final byte HOT_STAGE = 1;
+    /**
+     * In this stage, no polling succeeds. The unit enters this stage if either:
+     * <ul>
+     * <li>OSR compilation is disabled (see {@link PolyglotCompilerOptions#OSR}).</li>
+     * <li>An attempt at compilation failed.</li>
+     * <li>This unit deopts too much</li>
+     * </ul>
+     */
+    private static final byte DISABLED_STAGE = 99;
+
     private final BytecodeOSRNode osrNode;
 
     /*
@@ -80,7 +105,7 @@ public final class BytecodeOSRMetadata {
      * Stores the latest call target submitted for compilation, or #DISABLE if compilation is
      * disabled for this method. All writes should be made through compareAndSet, the exception
      * being setting the #DISABLE value.
-     * 
+     *
      * Used as a synchronization mechanism.
      */
     private final AtomicReference<Object> currentlyCompiling = new AtomicReference<>();
@@ -167,17 +192,19 @@ public final class BytecodeOSRMetadata {
     }
 
     private final int osrThreshold;
+    private final int secondaryOsrThreshold;
     private final int maxCompilationReAttempts;
     private int backEdgeCount;
-    private boolean isDisabled = false;
+    private byte stage = FRESH_STAGE;
 
     BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold, int maxCompilationReAttempts) {
         this.osrNode = osrNode;
         this.osrThreshold = osrThreshold;
+        this.secondaryOsrThreshold = Math.max(osrThreshold << 1, osrThreshold); // might overflow
         this.maxCompilationReAttempts = maxCompilationReAttempts;
         this.backEdgeCount = 0;
         if (osrNode == null) {
-            isDisabled = true;
+            this.stage = DISABLED_STAGE;
         }
     }
 
@@ -195,7 +222,11 @@ public final class BytecodeOSRMetadata {
                     OsrEntryDescription entryDescription = new OsrEntryDescription();
                     lockedTarget = createOSRTarget(target, interpreterState, parentFrame.getFrameDescriptor(), entryDescription);
                     state.push(target, lockedTarget, entryDescription);
-                    requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
+                    if (stage == FRESH_STAGE) {
+                        // First attempt at compilation gets a free pass
+                        requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
+                        stage = HOT_STAGE;
+                    }
                 }
                 return lockedTarget;
             });
@@ -212,7 +243,7 @@ public final class BytecodeOSRMetadata {
         if (!valid) {
             if (callTarget.isCompilationFailed()) {
                 markOSRDisabled();
-            } else {
+            } else if (backEdgeCount >= secondaryOsrThreshold) {
                 requestOSRCompilation(target, callTarget, (FrameWithoutBoxing) parentFrame);
                 // Can happen for very quick compilation or if background compilation is disabled.
                 valid = callTarget.isValid();
@@ -221,9 +252,8 @@ public final class BytecodeOSRMetadata {
 
         if (valid) {
             /*
-             * Note: though unlikely, it is still possible to call into an OSR compiled method at
-             * this point, even if disabled. This is OK, as we leave enough information around to
-             * work with.
+             * Note: If disabled, though unlikely, it is still possible to call into an OSR compiled
+             * method at this point. This is OK, as we leave enough information around to work with.
              */
             if (beforeTransfer != null) {
                 beforeTransfer.run();
@@ -249,7 +279,7 @@ public final class BytecodeOSRMetadata {
      * Returns whether OSR compilation is disabled for the current unit.
      */
     public boolean isDisabled() {
-        return isDisabled;
+        return stage == DISABLED_STAGE;
     }
 
     /**
@@ -258,7 +288,7 @@ public final class BytecodeOSRMetadata {
      * <p>
      * Currently, this is reset on a successful poll, if OSR compilation in already underway. The
      * goal is to restart the counter on OSR compilation submission to not bloat the compilation
-     * queue, and only re-submit is the method is still hot.
+     * queue, and only re-submit if the method is still hot.
      * <p>
      * Due to the raciness of accesses to the counter, this is only an approximation of the wanted
      * behavior. In particular, it differs in the following ways:
@@ -273,7 +303,7 @@ public final class BytecodeOSRMetadata {
      * happen, it would still result in acceptable behavior.
      */
     private void resetCounter() {
-        backEdgeCount = 0;
+        backEdgeCount = osrThreshold;
     }
 
     /**
@@ -529,7 +559,7 @@ public final class BytecodeOSRMetadata {
             // Prevent new compilations from scheduling ASAP
             currentlyCompiling.set(DISABLE);
 
-            isDisabled = true;
+            stage = DISABLED_STAGE;
             LazyState state = lazyState;
             if (state != null) {
                 state.doClear();
@@ -550,9 +580,12 @@ public final class BytecodeOSRMetadata {
     /**
      * Counts re-attempts at compilations. Represents an approximation of the number of
      * deoptimizations in OSR a given method goes through.
-     * 
+     *
      * The counter is shared across all bytecode OSR entry points. First time attempts at
      * compilation of an entry point does not increment the counter.
+     *
+     * Note that there is no synchronization happening in this class. Accesses should be made in
+     * synchronized portions of code.
      */
     private static final class ReAttemptsCounter {
         private final Set<Integer> knownTargets = new HashSet<>(1);
