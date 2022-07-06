@@ -35,6 +35,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -43,7 +44,6 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -60,9 +60,6 @@ import jdk.vm.ci.meta.Value;
 @Opcode("ARRAY_COMPARE_TO")
 public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64ArrayCompareToOp> TYPE = LIRInstructionClass.create(AArch64ArrayCompareToOp.class);
-
-    private final int array1BaseOffset;
-    private final int array2BaseOffset;
 
     private final boolean isLL;
     private final boolean isUU;
@@ -91,37 +88,33 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
     @Temp({REG}) protected AllocatableValue vectorTemp4;
     @Temp({REG}) protected AllocatableValue vectorTemp5;
 
-    public AArch64ArrayCompareToOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2, Value length1,
-                    Value length2) {
+    public AArch64ArrayCompareToOp(LIRGeneratorTool tool, Stride strideA, Stride strideB, Value result,
+                    Value arrayA, Value lengthA, Value arrayB, Value lengthB) {
         super(TYPE);
 
-        assert array1.getPlatformKind() == AArch64Kind.QWORD && array1.getPlatformKind() == array2.getPlatformKind();
-        assert length1.getPlatformKind() == AArch64Kind.DWORD && length1.getPlatformKind() == length2.getPlatformKind();
+        assert arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind();
+        assert lengthA.getPlatformKind() == AArch64Kind.DWORD && lengthA.getPlatformKind() == lengthB.getPlatformKind();
         assert result.getPlatformKind() == AArch64Kind.DWORD;
 
-        assert kind1 == JavaKind.Byte || kind1 == JavaKind.Char;
-        assert kind2 == JavaKind.Byte || kind2 == JavaKind.Char;
+        assert strideA == Stride.S1 || strideA == Stride.S2;
+        assert strideB == Stride.S1 || strideB == Stride.S2;
 
-        this.isLL = (kind1 == kind2 && kind1 == JavaKind.Byte);
-        this.isUU = (kind1 == kind2 && kind1 == JavaKind.Char);
-        this.isLU = (kind1 != kind2 && kind1 == JavaKind.Byte);
-        this.isUL = (kind1 != kind2 && kind1 == JavaKind.Char);
+        this.isLL = (strideA == strideB && strideA == Stride.S1);
+        this.isUU = (strideA == strideB && strideA == Stride.S2);
+        this.isLU = (strideA != strideB && strideA == Stride.S1);
+        this.isUL = (strideA != strideB && strideA == Stride.S2);
 
-        this.array1BaseOffset = array1BaseOffset;
-        this.array2BaseOffset = array2BaseOffset;
         this.resultValue = result;
-        this.array1Value = array1;
-        this.array2Value = array2;
+        this.array1Value = arrayA;
+        this.array2Value = arrayB;
 
         /*
          * The length values are inputs but are also killed like temporaries so need both Use and
          * Temp annotations, which will only work with fixed registers.
          */
 
-        this.length1Value = length1;
-        this.length2Value = length2;
-        this.length1ValueTemp = length1;
-        this.length2ValueTemp = length2;
+        this.length1Value = length1ValueTemp = lengthA;
+        this.length2Value = length2ValueTemp = lengthB;
 
         LIRKind archWordKind = LIRKind.unknownReference(tool.target().arch.getWordKind());
         this.temp1 = tool.newVariable(archWordKind);
@@ -153,8 +146,8 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         final Label simdImpl = new Label();
 
         /* Load array base addresses. */
-        masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
-        masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
+        masm.mov(64, array1, asRegister(array1Value));
+        masm.mov(64, array2, asRegister(array2Value));
         masm.prfm(AArch64Address.createBaseRegisterOnlyAddress(64, array1), AArch64Assembler.PrefetchMode.PLDL1STRM);
         masm.prfm(AArch64Address.createBaseRegisterOnlyAddress(64, array2), AArch64Assembler.PrefetchMode.PLDL1STRM);
 

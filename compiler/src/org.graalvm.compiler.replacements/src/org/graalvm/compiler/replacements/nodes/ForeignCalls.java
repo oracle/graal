@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.word.LocationIdentity;
 
@@ -34,9 +33,5 @@ public final class ForeignCalls {
 
     public static ForeignCallDescriptor pureFunctionForeignCallDescriptor(String name, Class<?> resultType, Class<?>... argTypes) {
         return new ForeignCallDescriptor(name, resultType, argTypes, true, NO_LOCATIONS, false, false);
-    }
-
-    public static int strideAsPowerOf2(JavaKind stride) {
-        return Integer.numberOfTrailingZeros(stride.getByteCount());
     }
 }

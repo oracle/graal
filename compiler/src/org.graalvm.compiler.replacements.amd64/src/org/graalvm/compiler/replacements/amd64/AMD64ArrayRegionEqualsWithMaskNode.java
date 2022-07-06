@@ -25,22 +25,19 @@
 package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-import static org.graalvm.compiler.core.common.StrideUtil.NONE;
-import static org.graalvm.compiler.core.common.StrideUtil.S1;
-import static org.graalvm.compiler.core.common.StrideUtil.S2;
-import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -65,35 +62,28 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     public static final NodeClass<AMD64ArrayRegionEqualsWithMaskNode> TYPE = NodeClass.create(AMD64ArrayRegionEqualsWithMaskNode.class);
 
     /**
-     * {@link JavaKind} of the arrays {@link #arrayA}, {@link #arrayB}, and {@link #arrayMask}, e.g.
-     * if this is {@link JavaKind#Byte}, all arrays must be {@code byte[]} arrays, and the intrinsic
-     * will use the corresponding array base offset when reading array elements. This value can also
-     * be set to {@link JavaKind#Void}, which changes the operation's behavior in the following way:
-     * {@link #arrayA} and {@link #arrayB} may be any type, and their respective base offset must be
-     * added to {@link #offsetA} and {@link #offsetB}; {@link #arrayMask} must be a {@code byte[]}
-     * array.
-     */
-    private final JavaKind arrayKind;
-    /**
      * Stride for reading type punned array elements of {@link #arrayA}. Allowed values are
-     * {@link JavaKind#Byte}, {@link JavaKind#Char} and {@link JavaKind#Int}.
+     * {@link Stride#S1}, {@link Stride#S2} and {@link Stride#S4}.
      */
-    private final JavaKind strideA;
+    private final Stride strideA;
     /**
      * Stride for reading type punned array elements of {@link #arrayB}. Allowed values are
-     * {@link JavaKind#Byte}, {@link JavaKind#Char} and {@link JavaKind#Int}.
+     * {@link Stride#S1}, {@link Stride#S2} and {@link Stride#S4}.
      */
-    private final JavaKind strideB;
+    private final Stride strideB;
     /**
      * Stride for reading type punned array elements of {@link #arrayMask}. Allowed values are
-     * {@link JavaKind#Byte}, {@link JavaKind#Char} and {@link JavaKind#Int}.
+     * {@link Stride#S1}, {@link Stride#S2} and {@link Stride#S4}.
      */
-    private final JavaKind strideMask;
+    private final Stride strideMask;
 
     @Input protected ValueNode arrayA;
     @Input protected ValueNode offsetA;
     @Input protected ValueNode arrayB;
     @Input protected ValueNode offsetB;
+    /**
+     * Direct pointer to the memory region to be OR-ed to arrayA.
+     */
     @Input protected ValueNode arrayMask;
     @Input protected ValueNode length;
 
@@ -111,12 +101,10 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                     ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length,
-                    @ConstantNodeParameter JavaKind arrayKind,
-                    @ConstantNodeParameter JavaKind strideA,
-                    @ConstantNodeParameter JavaKind strideB,
-                    @ConstantNodeParameter JavaKind strideMask) {
-        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, arrayKind, strideA, strideB, strideMask, null,
-                        defaultLocationIdentity(arrayKind, strideA, strideB, strideMask));
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB,
+                    @ConstantNodeParameter Stride strideMask) {
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, strideA, strideB, strideMask, null, LocationIdentity.ANY_LOCATION);
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
@@ -126,13 +114,11 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                     ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length,
-                    @ConstantNodeParameter JavaKind arrayKind,
-                    @ConstantNodeParameter JavaKind strideA,
-                    @ConstantNodeParameter JavaKind strideB,
-                    @ConstantNodeParameter JavaKind strideMask,
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB,
+                    @ConstantNodeParameter Stride strideMask,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, arrayKind, strideA, strideB, strideMask, runtimeCheckedCPUFeatures,
-                        defaultLocationIdentity(arrayKind, strideA, strideB, strideMask));
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, strideA, strideB, strideMask, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
@@ -142,7 +128,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                     ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length, ValueNode dynamicStrides) {
-        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, NONE, null, null, null, null, LocationIdentity.ANY_LOCATION);
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, null, null, null, null, LocationIdentity.ANY_LOCATION);
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
@@ -153,7 +139,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                     ValueNode arrayMask,
                     ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, NONE, null, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, null, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
@@ -164,17 +150,15 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                     ValueNode arrayMask,
                     ValueNode length,
                     ValueNode dynamicStrides,
-                    JavaKind arrayKind,
-                    JavaKind strideA,
-                    JavaKind strideB,
-                    JavaKind strideMask,
+                    Stride strideA,
+                    Stride strideB,
+                    Stride strideMask,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, locationIdentity);
         assert validStride(strideA);
         assert validStride(strideB);
         assert validStride(strideMask);
-        this.arrayKind = arrayKind;
         this.strideA = strideA;
         this.strideB = strideB;
         this.strideMask = strideMask;
@@ -187,23 +171,19 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
         this.dynamicStrides = dynamicStrides;
     }
 
-    private static boolean validStride(JavaKind stride) {
-        return stride == null || stride == S1 || stride == S2 || stride == S4;
+    private static boolean validStride(Stride stride) {
+        return stride == null || stride.value <= 4;
     }
 
-    public JavaKind getArrayKind() {
-        return arrayKind;
-    }
-
-    public JavaKind getStrideA() {
+    public Stride getStrideA() {
         return strideA;
     }
 
-    public JavaKind getStrideB() {
+    public Stride getStrideB() {
         return strideB;
     }
 
-    public JavaKind getStrideMask() {
+    public Stride getStrideMask() {
         return strideMask;
     }
 
@@ -213,14 +193,6 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
 
     public ValueNode getLength() {
         return length;
-    }
-
-    private static boolean sameKinds(JavaKind arrayKind, JavaKind strideA, JavaKind strideB, JavaKind strideMask) {
-        return strideA == arrayKind && strideB == arrayKind && strideMask == arrayKind;
-    }
-
-    private static LocationIdentity defaultLocationIdentity(JavaKind arrayKind, JavaKind strideA, JavaKind strideB, JavaKind strideMask) {
-        return !sameKinds(arrayKind, strideA, strideB, strideMask) || arrayKind == NONE ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arrayKind);
     }
 
     public int getDirectStubCallIndex() {
@@ -259,18 +231,16 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     }
 
     @Override
-    public int getArrayBaseOffset(MetaAccessProvider metaAccess, @SuppressWarnings("unused") ValueNode array, JavaKind elementKind) {
-        return metaAccess.getArrayBaseOffset(elementKind);
+    public int getArrayBaseOffset(MetaAccessProvider metaAccess, @SuppressWarnings("unused") ValueNode array, JavaKind arrayKind) {
+        return metaAccess.getArrayBaseOffset(arrayKind);
     }
 
     private void generateArrayRegionEquals(NodeLIRBuilderTool gen) {
         final Value result;
-        MetaAccessProvider metaAccess = gen.getLIRGeneratorTool().getMetaAccess();
-        int maskBaseOffset = metaAccess.getArrayBaseOffset(arrayKind == NONE ? JavaKind.Byte : arrayKind);
         if (getDirectStubCallIndex() < 0) {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(
-                            0, 0, maskBaseOffset,
-                            getRuntimeCheckedCPUFeatures(), gen.operand(arrayA),
+            result = gen.getLIRGeneratorTool().emitArrayEqualsWithMaskDynamicStrides(
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arrayA),
                             gen.operand(offsetA),
                             gen.operand(arrayB),
                             gen.operand(offsetB),
@@ -278,11 +248,10 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                             gen.operand(length),
                             gen.operand(dynamicStrides));
         } else {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(
+            result = gen.getLIRGeneratorTool().emitArrayEqualsWithMask(
                             NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA),
                             NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
                             NodeStrideUtil.getConstantStrideB(dynamicStrides, strideMask),
-                            0, 0, maskBaseOffset,
                             getRuntimeCheckedCPUFeatures(), gen.operand(arrayA),
                             gen.operand(offsetA),
                             gen.operand(arrayB),
@@ -295,17 +264,15 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
 
     @NodeIntrinsic
     public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length,
-                    @ConstantNodeParameter JavaKind arrayKind,
-                    @ConstantNodeParameter JavaKind kindA,
-                    @ConstantNodeParameter JavaKind kindB,
-                    @ConstantNodeParameter JavaKind kindMask);
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB,
+                    @ConstantNodeParameter Stride strideMask);
 
     @NodeIntrinsic
     public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length,
-                    @ConstantNodeParameter JavaKind arrayKind,
-                    @ConstantNodeParameter JavaKind kindA,
-                    @ConstantNodeParameter JavaKind kindB,
-                    @ConstantNodeParameter JavaKind kindMask,
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB,
+                    @ConstantNodeParameter Stride strideMask,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
@@ -320,25 +287,28 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         }
-        if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant()) {
+        if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant() && arrayMask instanceof ComputeObjectAddressNode) {
             int len = length.asJavaConstant().asInt();
-            JavaKind constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
-            JavaKind constStrideB = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB);
-            JavaKind constStrideMask = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideMask);
-            if (len * Math.max(constStrideA.getByteCount(), constStrideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
+            Stride constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
+            Stride constStrideB = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB);
+            Stride constStrideMask = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideMask);
+            ValueNode arrayMaskNode = ((ComputeObjectAddressNode) arrayMask).getObject();
+            ValueNode offsetMaskNode = ((ComputeObjectAddressNode) arrayMask).getOffset();
+            if (len * Math.max(constStrideA.value, constStrideB.value) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, constStrideA, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, constStrideB, len, this) &&
-                            ConstantReflectionUtil.canFoldReads(tool, arrayMask, null, constStrideMask, len, this)) {
+                            ConstantReflectionUtil.canFoldReads(tool, arrayMaskNode, offsetMaskNode, constStrideMask, len, this)) {
                 Integer startIndexA = ConstantReflectionUtil.startIndex(tool, arrayA, offsetA.asJavaConstant(), constStrideA, this);
                 Integer startIndexB = ConstantReflectionUtil.startIndex(tool, arrayB, offsetB.asJavaConstant(), constStrideB, this);
-                return ConstantNode.forBoolean(constantFold(tool, arrayA, startIndexA, arrayB, startIndexB, arrayMask, len, constStrideA, constStrideB, constStrideMask));
+                Integer startIndexMask = ConstantReflectionUtil.startIndex(tool, arrayMaskNode, offsetMaskNode.asJavaConstant(), constStrideMask, this);
+                return ConstantNode.forBoolean(constantFold(tool, arrayA, startIndexA, arrayB, startIndexB, arrayMaskNode, startIndexMask, len, constStrideA, constStrideB, constStrideMask));
             }
         }
         return this;
     }
 
-    private static boolean constantFold(CanonicalizerTool tool, ValueNode a, int startIndexA, ValueNode b, int startIndexB, ValueNode mask, int len,
-                    JavaKind constStrideA, JavaKind constStrideB, JavaKind constStrideMask) {
+    private static boolean constantFold(CanonicalizerTool tool, ValueNode a, int startIndexA, ValueNode b, int startIndexB, ValueNode mask, int startIndexMask, int len,
+                    Stride constStrideA, Stride constStrideB, Stride constStrideMask) {
         JavaKind arrayKindA = a.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
         JavaKind arrayKindB = b.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
         JavaKind arrayKindM = mask.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
@@ -346,7 +316,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
         for (int i = 0; i < len; i++) {
             int valueA = ConstantReflectionUtil.readTypePunned(constantReflection, a.asJavaConstant(), arrayKindA, constStrideA, startIndexA + i);
             int valueB = ConstantReflectionUtil.readTypePunned(constantReflection, b.asJavaConstant(), arrayKindB, constStrideB, startIndexB + i);
-            int valueM = ConstantReflectionUtil.readTypePunned(constantReflection, mask.asJavaConstant(), arrayKindM, constStrideMask, i);
+            int valueM = ConstantReflectionUtil.readTypePunned(constantReflection, mask.asJavaConstant(), arrayKindM, constStrideMask, startIndexMask + i);
             if ((valueA | valueM) != valueB) {
                 return false;
             }
