@@ -224,16 +224,6 @@ final class Target_org_graalvm_compiler_serviceprovider_IsolateUtil {
  * The following substitutions replace methods where reflection is used in the Graal code.
  */
 
-@TargetClass(value = org.graalvm.compiler.virtual.phases.ea.EffectList.class, onlyWith = GraalFeature.IsEnabled.class)
-@SuppressWarnings({"static-method", "unused"})
-final class Target_org_graalvm_compiler_virtual_phases_ea_EffectList {
-
-    @Substitute
-    private void toString(StringBuilder str, int i) {
-        str.append("<Effect - no string representation possible>");
-    }
-}
-
 @TargetClass(value = org.graalvm.compiler.debug.KeyRegistry.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_KeyRegistry {
 
