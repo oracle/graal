@@ -412,6 +412,6 @@ def main(warmup, iterations):
 
 
 import os, sys
-if __name__ == "__main__" and sys.implementation.name != "graalpython":
+if __name__ == "__main__" and sys.implementation.name != "graalpy":
     print(f"Running {os.path.basename(__file__)}")
     main(20, 30)
