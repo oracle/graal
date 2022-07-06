@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.json;
+package org.graalvm.util.json;
 
 import java.io.File;
 import java.io.FileReader;

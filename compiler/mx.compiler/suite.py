@@ -1855,7 +1855,7 @@ suite = {
     "org.graalvm.bisect" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.compiler.nodes"],
+      "dependencies" : ["org.graalvm.util"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
     },

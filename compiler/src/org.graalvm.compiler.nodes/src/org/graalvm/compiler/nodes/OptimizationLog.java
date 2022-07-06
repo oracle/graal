@@ -49,9 +49,9 @@ import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.json.JSONFormatter;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.util.json.JSONFormatter;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

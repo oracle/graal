@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.json;
+package org.graalvm.util.json;
+
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-
-import java.util.List;
 
 public class JSONFormatter {
     public static String formatJSON(EconomicMap<String, Object> map) {
