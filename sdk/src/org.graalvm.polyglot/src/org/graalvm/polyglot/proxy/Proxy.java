@@ -80,6 +80,7 @@ import org.graalvm.polyglot.PolyglotException;
  * @see ProxyTimeZone to mimic timezone objects
  * @see ProxyDuration to mimic duration objects
  * @see ProxyInstant to mimic timestamp objects
+ * @see ProxyInstantiable to mimic instantiate objects
  * @see ProxyIterable to mimic iterable objects
  * @see ProxyIterator to mimic iterator objects
  * @see ProxyHashMap to mimic map objects
