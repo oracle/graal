@@ -157,12 +157,23 @@ public interface VirtualizerTool {
     void replaceFirstInput(Node oldInput, Node replacement);
 
     /**
-     * Adds the given node to the graph.This action will only be performed when, and if, the changes
-     * are committed.
+     * Adds the given node to the graph. This action will only be performed when, and if, the
+     * changes are committed. This should be used for nodes which have been explicitly created by
+     * the caller. If it's unclear who might have created a node, use
+     * {@link #ensureAdded(ValueNode)}.
      *
      * @param node the node to add.
      */
     void addNode(ValueNode node);
+
+    /**
+     * Adds the given node to the graph. This action will only be performed when, and if, the
+     * changes are committed. This will only add the node if it hasn't already been added when the
+     * changed are committed.
+     *
+     * @param node the node to add.
+     */
+    void ensureAdded(ValueNode node);
 
     /**
      * This method performs either {@link #replaceWithValue(ValueNode)} or
