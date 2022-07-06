@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +23,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -35,21 +36,26 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
-public class ThreadStartEvent {
+public class ThreadSleepEvent {
+
+    public static void emit(long time, long startTicks) {
+        if (com.oracle.svm.core.jfr.HasJfrSupport.get()) {
+            emit0(time, startTicks);
+        }
+    }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(IsolateThread isolateThread) {
-        SubstrateJVM svm = SubstrateJVM.get();
-        if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvent.ThreadStart)) {
+    private static void emit0(long time, long startTicks) {
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadSleep)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadStart);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadSleep);
+            JfrNativeEventWriter.putLong(data, startTicks);
+            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ThreadStart, 0));
-            JfrNativeEventWriter.putThread(data, isolateThread);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.getParentThreadId(isolateThread));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadSleep, 0));
+            JfrNativeEventWriter.putLong(data, time);
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
