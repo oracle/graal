@@ -336,7 +336,14 @@ public final class Target_java_lang_Thread {
         // TODO: derive from characteristics bitset
         boolean inheritThreadLocals = false;
         /* Initialize the rest of the Thread object, ignoring `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc, inheritThreadLocals);
+        String nameLocal = (name != null) ? name : genThreadName();
+        JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, inheritThreadLocals);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static String genThreadName() {
+        return "Thread-" + JavaThreads.threadInitNumber.incrementAndGet();
     }
 
     /**
