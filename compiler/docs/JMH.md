@@ -19,6 +19,13 @@ If you want to run a JMH benchmark in an [**external jar**](#external-jar), try:
 mx benchmark jmh-jar:* -- --jmh-jar=path/to/benchmarks.jar --jvm-config=graal-core
 ```
 
+If you want to run a Truffle JMH benchmark, try:
+
+```
+cd compiler
+mx benchmark truffle:JMH_1_21 -- -Dgraal.CompileGraalWithC1Only=false -- BenchmarkName
+```
+
 If you do not know or want to learn more, continue reading.
 
 ---
