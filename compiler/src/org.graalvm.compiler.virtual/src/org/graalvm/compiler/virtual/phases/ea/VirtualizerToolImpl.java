@@ -284,10 +284,19 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     @Override
     public void addNode(ValueNode node) {
         if (node instanceof FloatingNode) {
-            effects.addFloatingNode(node, "VirtualizerTool");
+            effects.addFloatingNode(node, "VirtualizerTool.addNode");
         } else {
             effects.addFixedNodeBefore((FixedWithNextNode) node, position);
         }
+    }
+
+    @Override
+    public void ensureAdded(ValueNode node) {
+        if (node.isAlive()) {
+            // nothing to do
+            return;
+        }
+        effects.ensureAdded(node, position);
     }
 
     @Override
