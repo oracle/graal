@@ -143,14 +143,14 @@ public final class GraphEffectList extends EffectList {
      * @param node The fixed node to be added to the graph if not yet present.
      * @param position The fixed node before which the node should be added if not yet present.
      */
-    public void ensureAdded(ValueNode node, FixedNode position) {
+    void ensureAdded(ValueNode node, FixedNode position) {
+        assert !(node instanceof FixedWithNextNode) || position != null;
         add(new SimpleEffect("ensure added") {
             @Override
             public void apply(StructuredGraph graph) {
-                assert position.isAlive();
-                assert node instanceof FixedNode;
+                assert position == null || position.isAlive();
                 if (!node.isAlive()) {
-                    graph.addOrUniqueWithInputs(node);
+                    graph.addWithoutUniqueWithInputs(node);
                     if (node instanceof FixedWithNextNode) {
                         graph.addBeforeFixed(position, (FixedWithNextNode) node);
                     }
@@ -199,22 +199,8 @@ public final class GraphEffectList extends EffectList {
      *
      * @param node The floating node to be added to the graph if not yet present.
      */
-    public void ensureFloatingAdded(ValueNode node) {
-        add(new SimpleEffect("ensure floating added") {
-            @Override
-            public void apply(StructuredGraph graph) {
-                assert node instanceof FloatingNode;
-                assert !node.isDeleted();
-                if (!node.isAlive()) {
-                    graph.addWithoutUniqueWithInputs(node);
-                }
-            }
-
-            @Override
-            void format(StringBuilder str) {
-                format(str, new String[]{"node"}, new Object[]{node});
-            }
-        });
+    void ensureFloatingAdded(ValueNode node) {
+        ensureAdded(node, null);
     }
 
     /**
