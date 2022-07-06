@@ -500,22 +500,22 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     private static void setBCI(VirtualFrame frame, int bci) {
-        frame.setInt(EspressoFrame.BCI_SLOT, bci);
+        frame.setIntStatic(EspressoFrame.BCI_SLOT, bci);
     }
 
     // region Operand stack accessors
 
     public static int popInt(VirtualFrame frame, int slot) {
-        int result = frame.getInt(slot);
+        int result = frame.getIntStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
-        clear(frame, slot);
+        clearPrimitive(frame, slot);
         return result;
     }
 
     // Exposed to CheckCastNode.
     // Exposed to InstanceOfNode and quick nodes, which can produce foreign objects.
     public static StaticObject peekObject(VirtualFrame frame, int slot) {
-        Object result = frame.getObject(slot);
+        Object result = frame.getObjectStatic(slot);
         assert result instanceof StaticObject;
         return (StaticObject) result;
     }
@@ -525,32 +525,30 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
      */
     public static StaticObject popObject(VirtualFrame frame, int slot) {
         // nulls-out the slot, use peekObject to read only
-        Object result = frame.getObject(slot);
-        clear(frame, slot);
+        Object result = frame.getObjectStatic(slot);
+        clearReference(frame, slot);
         assert result instanceof StaticObject;
         return (StaticObject) result;
     }
 
     public static float popFloat(VirtualFrame frame, int slot) {
-        float result = frame.getFloat(slot);
+        float result = frame.getFloatStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
-        clear(frame, slot);
+        clearPrimitive(frame, slot);
         return result;
     }
 
     public static long popLong(VirtualFrame frame, int slot) {
-        long result = frame.getLong(slot);
+        long result = frame.getLongStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
-        clear(frame, slot);
-        clear(frame, slot - 1);
+        clearPrimitive(frame, slot);
         return result;
     }
 
     public static double popDouble(VirtualFrame frame, int slot) {
-        double result = frame.getDouble(slot);
+        double result = frame.getDoubleStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
-        clear(frame, slot);
-        clear(frame, slot - 1);
+        clearPrimitive(frame, slot);
         return result;
     }
 
@@ -558,42 +556,45 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
      * Read and clear the operand stack slot.
      */
     private static Object popReturnAddressOrObject(VirtualFrame frame, int slot) {
-        Object result = frame.getObject(slot);
-        clear(frame, slot);
+        Object result = frame.getObjectStatic(slot);
+        clearReference(frame, slot);
         assert result instanceof StaticObject || result instanceof ReturnAddress;
         return result;
     }
 
     private static void putReturnAddress(VirtualFrame frame, int slot, int targetBCI) {
-        frame.setObject(slot, ReturnAddress.create(targetBCI));
+        frame.setObjectStatic(slot, ReturnAddress.create(targetBCI));
     }
 
     public static void putObject(VirtualFrame frame, int slot, StaticObject value) {
         assert value != null : "use putRawObject to store host nulls";
-        frame.setObject(slot, value);
+        frame.setObjectStatic(slot, value);
     }
 
     public static void putInt(VirtualFrame frame, int slot, int value) {
-        frame.setInt(slot, value);
+        frame.setIntStatic(slot, value);
     }
 
     public static void putFloat(VirtualFrame frame, int slot, float value) {
-        frame.setFloat(slot, value);
+        frame.setFloatStatic(slot, value);
     }
 
     public static void putLong(VirtualFrame frame, int slot, long value) {
-        // Avoid keeping track of partial slots in FrameStates.
-        clear(frame, slot);
-        frame.setLong(slot + 1, value);
+        frame.setLongStatic(slot + 1, value);
     }
 
     public static void putDouble(VirtualFrame frame, int slot, double value) {
-        // Avoid keeping track of partial slots in FrameStates.
-        clear(frame, slot);
-        frame.setDouble(slot + 1, value);
+        frame.setDoubleStatic(slot + 1, value);
     }
 
-    public static void clear(VirtualFrame frame, int slot) {
+    static void clearReference(VirtualFrame frame, int slot) {
+        frame.clearObjectStatic(slot);
+    }
+
+    static void clearPrimitive(VirtualFrame frame, int slot) {
+        frame.clearPrimitiveStatic(slot);
+    }
+    static void clear(VirtualFrame frame, int slot) {
         frame.clear(slot);
     }
 
@@ -607,59 +608,59 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     public static void setLocalObject(Frame frame, int slot, StaticObject value) {
         assert value != null : "use putRawObject to store host nulls";
-        frame.setObject(EspressoFrame.VALUES_START + slot, value);
+        frame.setObjectStatic(EspressoFrame.VALUES_START + slot, value);
     }
 
     public static void setLocalObjectOrReturnAddress(VirtualFrame frame, int slot, Object value) {
-        frame.setObject(EspressoFrame.VALUES_START + slot, value);
+        frame.setObjectStatic(EspressoFrame.VALUES_START + slot, value);
     }
 
     public static void setLocalInt(Frame frame, int slot, int value) {
-        frame.setInt(EspressoFrame.VALUES_START + slot, value);
+        frame.setIntStatic(EspressoFrame.VALUES_START + slot, value);
     }
 
     public static void setLocalFloat(Frame frame, int slot, float value) {
-        frame.setFloat(EspressoFrame.VALUES_START + slot, value);
+        frame.setFloatStatic(EspressoFrame.VALUES_START + slot, value);
     }
 
     public static void setLocalLong(Frame frame, int slot, long value) {
-        frame.setLong(EspressoFrame.VALUES_START + slot, value);
+        frame.setLongStatic(EspressoFrame.VALUES_START + slot, value);
     }
 
     public static void setLocalDouble(Frame frame, int slot, double value) {
-        frame.setDouble(EspressoFrame.VALUES_START + slot, value);
+        frame.setDoubleStatic(EspressoFrame.VALUES_START + slot, value);
     }
 
     public static int getLocalInt(Frame frame, int slot) {
-        return frame.getInt(EspressoFrame.VALUES_START + slot);
+        return frame.getIntStatic(EspressoFrame.VALUES_START + slot);
     }
 
     public static StaticObject getLocalObject(Frame frame, int slot) {
-        Object result = frame.getObject(EspressoFrame.VALUES_START + slot);
+        Object result = frame.getObjectStatic(EspressoFrame.VALUES_START + slot);
         assert result instanceof StaticObject;
         return (StaticObject) result;
     }
 
     public static Object getRawLocalObject(VirtualFrame frame, int slot) {
-        return frame.getObject(EspressoFrame.VALUES_START + slot);
+        return frame.getObjectStatic(EspressoFrame.VALUES_START + slot);
     }
 
     public static int getLocalReturnAddress(VirtualFrame frame, int slot) {
-        Object result = frame.getObject(EspressoFrame.VALUES_START + slot);
+        Object result = frame.getObjectStatic(EspressoFrame.VALUES_START + slot);
         assert result instanceof ReturnAddress;
         return ((ReturnAddress) result).getBci();
     }
 
     public static float getLocalFloat(Frame frame, int slot) {
-        return frame.getFloat(EspressoFrame.VALUES_START + slot);
+        return frame.getFloatStatic(EspressoFrame.VALUES_START + slot);
     }
 
     public static long getLocalLong(Frame frame, int slot) {
-        return frame.getLong(EspressoFrame.VALUES_START + slot);
+        return frame.getLongStatic(EspressoFrame.VALUES_START + slot);
     }
 
     public static double getLocalDouble(Frame frame, int slot) {
-        return frame.getDouble(EspressoFrame.VALUES_START + slot);
+        return frame.getDoubleStatic(EspressoFrame.VALUES_START + slot);
     }
 
     // endregion Local accessors
@@ -1646,7 +1647,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     public int getBci(Frame frame) {
-        return frame.getInt(EspressoFrame.BCI_SLOT);
+        return frame.getIntStatic(EspressoFrame.BCI_SLOT);
     }
 
     @Override
