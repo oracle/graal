@@ -43,7 +43,7 @@ The optional `--jvm-name` option to set a benchmark suite name suffix in the `re
 ```
 mx benchmark jmh-jar:* --results-file=results.json -- --jmh-name=acme-benchmarks --jmh-jar=path/to/benchmarks.jar --jvm-config=graal-core
 ```
-See [mx documentation][mx external-jar] for further in sights.
+See [mx documentation][mx external-jar] for further insights.
 
 ## *Normal* JMH Benchmarks in the Graal Repository (Blackbox) <a name="dist"></a>
 
@@ -51,7 +51,7 @@ The next category are *normal* JMH benchmarks that are located in the Graal repo
 *Normal* in the sense that they do not depend on Graal internals.
 The `ArrayListBenchmark`, for example, benchmarks the performance of array lists.
 Although it targets a specific optimization in Graal, it does not know about Graal internals.
-I is possible to run it on any JVM.
+It is possible to run it on any JVM.
 It could also be in an external jar file, but for convenience it is located next to the Graal code.
 
 Creating such an in-repo benchmark is a two-step procedure.
