@@ -136,6 +136,9 @@ public abstract class NativeImageViaCC extends NativeImage {
                 }
 
                 Path imagePath = inv.getOutputFile();
+                // Set the file size for reporting again as the object file before linking might be
+                // larger than the final size.
+                resultingImageSize = (int) imagePath.toFile().length();
                 BuildArtifacts.singleton().add(imageKind.isExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
 
                 if (Platform.includedIn(Platform.WINDOWS.class) && !imageKind.isExecutable) {
