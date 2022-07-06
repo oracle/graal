@@ -291,7 +291,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("static-method")
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     void setCurrentThread(Thread thread) {
         PlatformThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
     }
