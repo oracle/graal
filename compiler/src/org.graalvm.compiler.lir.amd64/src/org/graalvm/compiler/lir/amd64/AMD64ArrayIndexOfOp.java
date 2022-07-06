@@ -33,11 +33,6 @@ import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movSZx;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pand;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeq;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovmsk;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.por;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.ExtendMode.ZERO_EXTEND;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -300,13 +295,13 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             asm.orq(asRegister(searchValue[0]), asRegister(searchValue[1]));
             if (withMask) {
                 if (isStackSlot(searchValue[3])) {
-                    movSZx(asm, valueSize, ZERO_EXTEND, asRegister(searchValue[1]), (AMD64Address) crb.asAddress(searchValue[3]));
+                    asm.movSZx(valueSize, ZERO_EXTEND, asRegister(searchValue[1]), (AMD64Address) crb.asAddress(searchValue[3]));
                 } else {
                     asm.movq(asRegister(searchValue[1]), asRegister(searchValue[3]));
                 }
                 asm.shlq(asRegister(searchValue[1]), stride.getBitCount());
                 if (isStackSlot(searchValue[2])) {
-                    movSZx(asm, valueSize, ZERO_EXTEND, cmpResult, (AMD64Address) crb.asAddress(searchValue[2]));
+                    asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, (AMD64Address) crb.asAddress(searchValue[2]));
                     asm.orq(asRegister(searchValue[1]), cmpResult);
                 } else {
                     asm.orq(asRegister(searchValue[1]), asRegister(searchValue[2]));
@@ -319,7 +314,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         if (findTwoConsecutive) {
             AMD64Address arrayAddr = new AMD64Address(arrayPtr, index, arrayIndexStride, -stride.value);
             if (withMask) {
-                movSZx(asm, getDoubleOpSize(stride), ZERO_EXTEND, cmpResult, arrayAddr);
+                asm.movSZx(getDoubleOpSize(stride), ZERO_EXTEND, cmpResult, arrayAddr);
                 asm.orq(cmpResult, asRegister(searchValue[1]));
                 asm.cmpqAndJcc(cmpResult, asRegister(searchValue[0]), AMD64Assembler.ConditionFlag.Equal, elementWiseFound, true);
             } else {
@@ -333,11 +328,11 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             if (withMask) {
                 assert !valuesOnStack;
                 assert nValues == 2;
-                movSZx(asm, valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
+                asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
                 asm.orq(cmpResult, asRegister(searchValue[1]));
                 asm.cmpqAndJcc(cmpResult, asRegister(searchValue[0]), AMD64Assembler.ConditionFlag.Equal, elementWiseFound, true);
             } else if (valuesOnStack) {
-                movSZx(asm, valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
+                asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
                 for (int i = 0; i < nValues; i++) {
                     if (isStackSlot(searchValue[i])) {
                         asm.cmpqAndJcc(cmpResult, (AMD64Address) crb.asAddress(searchValue[i]), AMD64Assembler.ConditionFlag.Equal, elementWiseFound, true);
@@ -467,7 +462,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
 
     private void broadcastSearchValue(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register dst, Value srcVal, Register tmpReg, Register tmpVector) {
         Register src = asRegOrTmpReg(crb, asm, srcVal, tmpReg);
-        AMD64MacroAssembler.movdl(asm, dst, src);
+        asm.movdl(dst, src);
         emitBroadcast(asm, stride, dst, tmpVector, vectorSize);
     }
 
@@ -564,34 +559,34 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         if (findTwoConsecutive) {
             for (int i = 0; i < nVectors << 1; i += 2) {
                 if (withMask) {
-                    por(asm, targetVectorSize, vecArray[i], vecCmp[2]);
-                    por(asm, targetVectorSize, vecArray[i + 1], vecCmp[3]);
+                    asm.por(targetVectorSize, vecArray[i], vecCmp[2]);
+                    asm.por(targetVectorSize, vecArray[i + 1], vecCmp[3]);
                 }
-                pcmpeq(asm, targetVectorSize, stride, vecArray[i], vecCmp[0]);
-                pcmpeq(asm, targetVectorSize, stride, vecArray[i + 1], vecCmp[1]);
-                pand(asm, targetVectorSize, vecArray[i], vecArray[i + 1]);
-                pmovmsk(asm, targetVectorSize, cmpResult, vecArray[i]);
+                asm.pcmpeq(targetVectorSize, stride, vecArray[i], vecCmp[0]);
+                asm.pcmpeq(targetVectorSize, stride, vecArray[i + 1], vecCmp[1]);
+                asm.pand(targetVectorSize, vecArray[i], vecArray[i + 1]);
+                asm.pmovmsk(targetVectorSize, cmpResult, vecArray[i]);
                 emitVectorCompareCheckVectorFound(asm, targetVectorSize, cmpResult, vectorFound[nVectors - ((i / 2) + 1)], shortJmp);
             }
         } else if (withMask) {
             assert nValues == 2 && nVectors == 1;
-            por(asm, targetVectorSize, vecArray[0], vecCmp[1]);
-            pcmpeq(asm, targetVectorSize, stride, vecArray[0], vecCmp[0]);
-            pmovmsk(asm, targetVectorSize, cmpResult, vecArray[0]);
+            asm.por(targetVectorSize, vecArray[0], vecCmp[1]);
+            asm.pcmpeq(targetVectorSize, stride, vecArray[0], vecCmp[0]);
+            asm.pmovmsk(targetVectorSize, cmpResult, vecArray[0]);
             emitVectorCompareCheckVectorFound(asm, targetVectorSize, cmpResult, vectorFound[0], shortJmp);
         } else {
             for (int i = 0; i < nVectors; i++) {
                 int base = i * nValues;
                 for (int j = 0; j < nValues; j++) {
-                    pcmpeq(asm, targetVectorSize, stride, vecArray[base + j], vecCmp[j]);
+                    asm.pcmpeq(targetVectorSize, stride, vecArray[base + j], vecCmp[j]);
                     if ((j & 1) == 1) {
-                        por(asm, targetVectorSize, vecArray[base + j - 1], vecArray[base + j]);
+                        asm.por(targetVectorSize, vecArray[base + j - 1], vecArray[base + j]);
                     }
                 }
                 if (nValues > 2) {
-                    por(asm, targetVectorSize, vecArray[base], vecArray[base + 2]);
+                    asm.por(targetVectorSize, vecArray[base], vecArray[base + 2]);
                 }
-                pmovmsk(asm, targetVectorSize, cmpResult, vecArray[base]);
+                asm.pmovmsk(targetVectorSize, cmpResult, vecArray[base]);
                 emitVectorCompareCheckVectorFound(asm, targetVectorSize, cmpResult, vectorFound[nVectors - (i + 1)], shortJmp);
             }
         }

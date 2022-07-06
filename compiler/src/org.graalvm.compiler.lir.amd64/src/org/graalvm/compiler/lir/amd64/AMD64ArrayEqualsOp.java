@@ -35,10 +35,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movSZx;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.por;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.ptest;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pxor;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -428,7 +424,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         pmovSZx(masm, vectorSize, vector2, maxStride, arrayB, length, 0, strideB);
         if (withMask()) {
             pmovSZx(masm, vectorSize, vector3, maxStride, mask, length, 0, strideMask);
-            por(masm, vectorSize, vector1, vector3);
+            masm.por(vectorSize, vector1, vector3);
         }
         emitVectorCmp(masm, vector1, vector2, vectorSize);
         masm.jcc(ConditionFlag.NotZero, requiresNaNCheck ? nanCheck : falseLabel, requiresNaNCheck);
@@ -456,7 +452,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         pmovSZx(masm, vectorSize, vector2, maxStride, arrayB, result, -vectorSize.getBytes(), strideB);
         if (withMask()) {
             pmovSZx(masm, vectorSize, vector3, maxStride, mask, result, -vectorSize.getBytes(), strideMask);
-            por(masm, vectorSize, vector1, vector3);
+            masm.por(vectorSize, vector1, vector3);
         }
         emitVectorCmp(masm, vector1, vector2, vectorSize);
         if (requiresNaNCheck) {
@@ -481,12 +477,12 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     }
 
     private void pmovSZx(AMD64MacroAssembler asm, AVXSize size, Register dst, Stride maxStride, Register src, Register index, int displacement, Stride stride) {
-        AMD64MacroAssembler.pmovSZx(asm, size, extendMode, dst, maxStride, src, stride, index, displacement);
+        asm.pmovSZx(size, extendMode, dst, maxStride, src, stride, index, displacement);
     }
 
     private static void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
-        pxor(masm, size, vector1, vector2);
-        ptest(masm, size, vector1);
+        masm.pxor(size, vector1, vector2);
+        masm.ptest(size, vector1);
     }
 
     /**
@@ -674,12 +670,12 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
         for (int i = 0; i < elementsPerLoopIteration; i++) {
-            movSZx(masm, strideA, extendMode, tmp1, new AMD64Address(array1, length, strideA, i << strideA.log2));
+            masm.movSZx(strideA, extendMode, tmp1, new AMD64Address(array1, length, strideA, i << strideA.log2));
             if (withMask()) {
-                movSZx(masm, strideMask, extendMode, tmp2, new AMD64Address(mask, length, strideMask, i << strideMask.log2));
+                masm.movSZx(strideMask, extendMode, tmp2, new AMD64Address(mask, length, strideMask, i << strideMask.log2));
                 masm.orq(tmp1, tmp2);
             }
-            movSZx(masm, strideB, extendMode, tmp2, new AMD64Address(array2, length, strideB, i << strideB.log2));
+            masm.movSZx(strideB, extendMode, tmp2, new AMD64Address(array2, length, strideB, i << strideB.log2));
             masm.cmpqAndJcc(tmp1, tmp2, ConditionFlag.NotEqual, falseLabel, true);
         }
         masm.addqAndJcc(length, elementsPerLoopIteration, ConditionFlag.NotZero, loop, true);
@@ -687,12 +683,12 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.bind(compareTail);
         masm.testlAndJcc(result, result, ConditionFlag.Zero, trueLabel, true);
         for (int i = 0; i < elementsPerLoopIteration - 1; i++) {
-            movSZx(masm, strideA, extendMode, tmp1, new AMD64Address(array1, length, strideA, 0));
+            masm.movSZx(strideA, extendMode, tmp1, new AMD64Address(array1, length, strideA, 0));
             if (withMask()) {
-                movSZx(masm, strideMask, extendMode, tmp2, new AMD64Address(mask, length, strideMask, 0));
+                masm.movSZx(strideMask, extendMode, tmp2, new AMD64Address(mask, length, strideMask, 0));
                 masm.orq(tmp1, tmp2);
             }
-            movSZx(masm, strideB, extendMode, tmp2, new AMD64Address(array2, length, strideB, 0));
+            masm.movSZx(strideB, extendMode, tmp2, new AMD64Address(array2, length, strideB, 0));
             masm.cmpqAndJcc(tmp1, tmp2, ConditionFlag.NotEqual, falseLabel, true);
             if (i < elementsPerLoopIteration - 2) {
                 masm.incrementq(length, 1);
@@ -799,13 +795,13 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
             int byteLength = constantLength() << argStrideA.log2;
             // array is shorter than any vector register, use regular XOR instructions
             Stride movStride = (byteLength < 2) ? Stride.S1 : ((byteLength < 4) ? Stride.S2 : ((byteLength < 8) ? Stride.S4 : Stride.S8));
-            movSZx(asm, movStride, extendMode, tmp, new AMD64Address(arrayA));
+            asm.movSZx(movStride, extendMode, tmp, new AMD64Address(arrayA));
             if (withMask()) {
                 emitOrBytes(asm, tmp, new AMD64Address(mask, 0), movStride);
             }
             if (byteLength > movStride.value) {
                 emitXorBytes(asm, tmp, new AMD64Address(arrayB), movStride);
-                movSZx(asm, movStride, extendMode, arrayA, new AMD64Address(arrayA, byteLength - movStride.value));
+                asm.movSZx(movStride, extendMode, arrayA, new AMD64Address(arrayA, byteLength - movStride.value));
                 if (withMask()) {
                     emitOrBytes(asm, arrayA, new AMD64Address(mask, byteLength - movStride.value), movStride);
                 }
@@ -823,22 +819,22 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
             pmovSZx(asm, vSize, vector2, maxStride, arrayB, 0, argStrideB);
             if (withMask()) {
                 pmovSZx(asm, vSize, vector4, maxStride, mask, 0, argStrideMask);
-                por(asm, vSize, vector1, vector4);
+                asm.por(vSize, vector1, vector4);
             }
-            pxor(asm, vSize, vector1, vector2);
+            asm.pxor(vSize, vector1, vector2);
             if (constantLength() > elementsPerVector) {
                 int endOffset = (constantLength() << maxStride.log2) - vSize.getBytes();
                 pmovSZx(asm, vSize, vector3, maxStride, arrayA, endOffset, argStrideA);
                 pmovSZx(asm, vSize, vector2, maxStride, arrayB, endOffset, argStrideB);
                 if (withMask()) {
                     pmovSZx(asm, vSize, vector4, maxStride, mask, endOffset, argStrideMask);
-                    por(asm, vSize, vector3, vector4);
+                    asm.por(vSize, vector3, vector4);
                 }
-                pxor(asm, vSize, vector3, vector2);
-                por(asm, vSize, vector1, vector3);
+                asm.pxor(vSize, vector3, vector2);
+                asm.por(vSize, vector1, vector3);
             }
             asm.xorq(arrayA, arrayA);
-            ptest(asm, vSize, vector1);
+            asm.ptest(vSize, vector1);
             asm.cmovl(AMD64Assembler.ConditionFlag.NotZero, result, arrayA);
         }
     }
