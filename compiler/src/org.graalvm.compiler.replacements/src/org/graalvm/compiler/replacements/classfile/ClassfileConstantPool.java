@@ -165,6 +165,21 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     @Override
+    public JavaMethod lookupMethod(int index, int opcode, ResolvedJavaMethod caller) {
+        if (opcode == Bytecodes.INVOKEDYNAMIC) {
+            throw new GraalError("INVOKEDYNAMIC not supported by" + ClassfileBytecodeProvider.class.getSimpleName());
+        }
+        ResolvedJavaMethod result = get(ExecutableRef.class, index).resolve(this, opcode);
+        if (result != null && result.getName().equals("getEventWriter") && result.getDeclaringClass().getName().equals("Ljdk/jfr/internal/event/EventWriterFactory;")) {
+            // Only JFR transformed methods can call
+            // jdk.jfr.internal.event.EventWriterFactory.getEventWriter(long)
+            // and this ClassfileBytecode will never be used to load such a class.
+            throw new IllegalAccessError("illegal access linking method 'jdk.jfr.internal.event.EventWriterFactory.getEventWriter(long)'");
+        }
+        return result;
+    }
+
+    @Override
     public JavaType lookupType(int index, int opcode) {
         return get(ClassRef.class, index).resolve(this);
     }
