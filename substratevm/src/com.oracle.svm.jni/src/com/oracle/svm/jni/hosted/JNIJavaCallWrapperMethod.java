@@ -60,6 +60,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.access.JNIAccessibleMethod;
@@ -89,7 +90,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
 
     public static class Factory {
-        public JNIJavaCallWrapperMethod create(JNICallSignature targetSignature, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
+        public JNIJavaCallWrapperMethod create(SimpleSignature targetSignature, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
             return new JNIJavaCallWrapperMethod(targetSignature, originalMetaAccess, wordTypes);
         }
 
@@ -99,7 +100,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
         }
     }
 
-    public static JNICallSignature getGeneralizedSignatureForTarget(ResolvedJavaMethod targetMethod, MetaAccessProvider originalMetaAccess) {
+    public static SimpleSignature getGeneralizedSignatureForTarget(ResolvedJavaMethod targetMethod, MetaAccessProvider originalMetaAccess) {
         JavaType[] paramTypes = targetMethod.getSignature().toParameterTypes(null);
         // Note: our parameters do not include the receiver, but we can do a type check based on the
         // JNIAccessibleMethod object we get from the method id.
@@ -114,18 +115,18 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
         // Note: no need to distinguish between object return types for us, the return value must
         // match in Java code and we return it as handle anyway.
         JavaType returnType = originalMetaAccess.lookupJavaType(returnKind.isObject() ? Object.class : returnKind.toJavaClass());
-        return new JNICallSignature(paramTypes, returnType);
+        return new SimpleSignature(paramTypes, returnType);
     }
 
     private final Signature targetSignature;
 
-    protected JNIJavaCallWrapperMethod(JNICallSignature targetSignature, MetaAccessProvider metaAccess, WordTypes wordTypes) {
+    protected JNIJavaCallWrapperMethod(SimpleSignature targetSignature, MetaAccessProvider metaAccess, WordTypes wordTypes) {
         super("invoke_" + targetSignature.getIdentifier(), metaAccess.lookupJavaType(JNIJavaCallWrappers.class),
                         createSignature(targetSignature, metaAccess, wordTypes), JNIJavaCallWrappers.getConstantPool(metaAccess));
         this.targetSignature = targetSignature;
     }
 
-    private static JNICallSignature createSignature(Signature targetSignature, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
+    private static SimpleSignature createSignature(Signature targetSignature, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
         JavaKind wordKind = wordTypes.getWordKind();
         int count = targetSignature.getParameterCount(false);
         JavaKind[] args = new JavaKind[3 + count];
@@ -151,12 +152,12 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
         if (returnKind.isObject()) {
             returnKind = wordKind; // handle
         }
-        return new JNICallSignature(args, returnKind, originalMetaAccess);
+        return SimpleSignature.fromKinds(args, returnKind, originalMetaAccess);
     }
 
     @Override
-    public JNICallSignature getSignature() {
-        return (JNICallSignature) super.getSignature();
+    public SimpleSignature getSignature() {
+        return (SimpleSignature) super.getSignature();
     }
 
     @Override

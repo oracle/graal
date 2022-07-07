@@ -62,6 +62,7 @@ import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.jni.JNIJavaCallVariantWrappers;
 
@@ -82,7 +83,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
     private final CallVariant callVariant;
     private final boolean nonVirtual;
 
-    public JNIJavaCallVariantWrapperMethod(JNICallSignature callWrapperSignature, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
+    public JNIJavaCallVariantWrapperMethod(SimpleSignature callWrapperSignature, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
         super(createName(callWrapperSignature, callVariant, nonVirtual),
                         originalMetaAccess.lookupJavaType(JNIJavaCallVariantWrappers.class),
                         createSignature(callWrapperSignature, callVariant, nonVirtual, originalMetaAccess, wordTypes),
@@ -92,7 +93,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         this.nonVirtual = nonVirtual;
     }
 
-    private static String createName(JNICallSignature targetSignature, CallVariant callVariant, boolean nonVirtual) {
+    private static String createName(SimpleSignature targetSignature, CallVariant callVariant, boolean nonVirtual) {
         return "invoke" + targetSignature.getIdentifier() + "_" + callVariant.name() + (nonVirtual ? "_Nonvirtual" : "");
     }
 
@@ -129,7 +130,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         if (returnType.isObject()) {
             returnType = wordKind; // handle
         }
-        return new JNICallSignature(args.toArray(JavaKind[]::new), returnType, originalMetaAccess);
+        return SimpleSignature.fromKinds(args.toArray(JavaKind[]::new), returnType, originalMetaAccess);
     }
 
     @Override
