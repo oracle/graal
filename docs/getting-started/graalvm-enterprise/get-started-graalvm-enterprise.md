@@ -22,12 +22,7 @@ You can get Oracle GraalVM Enterprise Edition by:
 
 ## Install GraalVM Enterprise
 
-<<<<<<< HEAD
 Choose your operating system and proceed to the installation steps for your specific platform:
-=======
-Getting GraalVM Enterprise installed and ready-to-go should take a few minutes.
-Choose your operating system and environment, and proceed to the installation steps:
->>>>>>> 1eb4b527e2b (Add GraalVM Enterprise in OCI DevOps Build Pipeline)
 
 * Oracle Cloud 
   * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-yum.md)
