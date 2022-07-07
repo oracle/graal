@@ -207,7 +207,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         try {
             return target.getRootNode().getSourceSection();
         } catch (Throwable throwable) {
-            log(target, "Failed to call RootNode.getName(): " + throwable);
+            log(target, "Failed to call RootNode.getSourceSection(): " + throwable);
             return null;
         }
     }
@@ -240,7 +240,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             inlinedAndDispatched[1] = dispatchedCalls;
             return inlinedAndDispatched;
         } catch (Throwable throwable) {
-            log(target, "Failed to call RootNode.getName(): " + throwable);
+            log(target, "Failed to inlined and dispatched counts: " + throwable);
             return null;
         }
     }

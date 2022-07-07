@@ -268,7 +268,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private void setEnv(Context.Builder contextBuilder) {
+    private static void setEnv(Context.Builder contextBuilder) {
         String pythonpath = System.getenv("POLYBENCH_PYTHONPATH");
         if (pythonpath != null) {
             contextBuilder.option("python.PythonPath", pythonpath);

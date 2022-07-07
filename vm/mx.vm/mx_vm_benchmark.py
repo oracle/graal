@@ -1265,7 +1265,6 @@ def polybenchmark_rules(benchmark, metric_name, mode):
             mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmark,
                 "metric.name": "context-eval-time",
-                "metric.better": "lower",
                 "metric.value": ("<delta>", float),
                 "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
@@ -1277,7 +1276,6 @@ def polybenchmark_rules(benchmark, metric_name, mode):
             mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmark,
                 "metric.name": "context-init-time",
-                "metric.better": "lower",
                 "metric.value": ("<delta>", float),
                 "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
@@ -1335,7 +1333,7 @@ def register_graalvm_vms():
         if mx_sdk_vm_impl.has_component('svm'):
             _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
-        if _suite.get_import("polybenchmarks") != None:
+        if _suite.get_import("polybenchmarks") is not None:
             import mx_polybenchmarks_benchmark
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "jvm", [], ["--jvm"]))
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "native", [], ["--native"]))
