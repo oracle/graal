@@ -98,7 +98,7 @@ public class CompilationResultBuilder {
         public static final OptionKey<Boolean> PrintLIRWithAssembly = new OptionKey<>(false);
     }
 
-    public static final List<LIRInstructionVerifier> NO_VERIFIERS = Collections.emptyList();;
+    public static final List<LIRInstructionVerifier> NO_VERIFIERS = Collections.emptyList();
 
     private static class ExceptionInfo {
 
@@ -229,8 +229,7 @@ public class CompilationResultBuilder {
         this.debug = debug;
         assert frameContext != null;
         this.dataCache = dataCache;
-        Objects.requireNonNull(lirInstructionVerifiers);
-        this.lirInstructionVerifiers = lirInstructionVerifiers;
+        this.lirInstructionVerifiers = Objects.requireNonNull(lirInstructionVerifiers);
     }
 
     public void setTotalFrameSize(int frameSize) {

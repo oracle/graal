@@ -30,7 +30,6 @@ import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.ServiceLoader;
 
 import org.graalvm.collections.EconomicMap;
@@ -81,7 +80,6 @@ public interface CompilationResultBuilderFactory {
         private volatile boolean isVerifierInitialized = false;
 
         private void initializeLIRVerifiers(String lirInstructionVerifierPath) {
-            Objects.requireNonNull(lirInstructionVerifierPath);
             try {
                 URL verifierURL = Paths.get(lirInstructionVerifierPath).toUri().toURL();
                 URLClassLoader cl = new URLClassLoader(new URL[]{verifierURL}, ClassLoader.getPlatformClassLoader());
