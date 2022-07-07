@@ -72,6 +72,11 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
+/**
+ * Generated code for taking arguments according to a specific signature and {@link CallVariant} and
+ * passing them on to a {@link JNIJavaCallWrapperMethod} which does the actual Java call. This
+ * method also enters the isolate and catches any exception.
+ */
 public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
     public enum CallVariant {
         VARARGS,

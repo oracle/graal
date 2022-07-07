@@ -93,6 +93,7 @@ public class JNIAccessFeature implements Feature {
         return ImageSingletons.lookup(JNIAccessFeature.class);
     }
 
+    /** A group of wrappers for the same target signature, but different JNI call variants. */
     static final class JNIJavaCallVariantWrapperGroup {
         static final JNIJavaCallVariantWrapperGroup NONE = new JNIJavaCallVariantWrapperGroup(null, null, null);
 
