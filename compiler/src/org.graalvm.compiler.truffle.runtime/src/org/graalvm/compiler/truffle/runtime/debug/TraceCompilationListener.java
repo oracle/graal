@@ -73,51 +73,43 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     @Override
     public void onCompilationQueued(OptimizedCallTarget target, int tier) {
         if (target.engine.traceCompilationDetails) {
-            try {
-                int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
-                int scale = runtime.compilationThresholdScale();
-                log(target, String.format(QUEUED_FORMAT,
-                                target.id,
-                                safeTargetName(target),
-                                tier,
-                                target.getCallAndLoopCount(),
-                                FixedPointMath.multiply(scale, callAndLoopThreshold),
-                                runtime.getCompilationQueueSize(),
-                                '+',
-                                1,
-                                FixedPointMath.toDouble(scale),
-                                0,
-                                System.nanoTime(),
-                                formatSourceSection(safeSourceSection(target))));
-            } catch (ExceptionDuringTracingException ignored) {
-                // Handled by the safe* methods
-            }
+            int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
+            int scale = runtime.compilationThresholdScale();
+            log(target, String.format(QUEUED_FORMAT,
+                            target.id,
+                            safeTargetName(target),
+                            tier,
+                            target.getCallAndLoopCount(),
+                            FixedPointMath.multiply(scale, callAndLoopThreshold),
+                            runtime.getCompilationQueueSize(),
+                            '+',
+                            1,
+                            FixedPointMath.toDouble(scale),
+                            0,
+                            System.nanoTime(),
+                            formatSourceSection(safeSourceSection(target))));
         }
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
         if (target.engine.traceCompilationDetails) {
-            try {
-                int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
-                int scale = runtime.compilationThresholdScale();
-                log(target, String.format(UNQUEUED_FORMAT,
-                                target.id,
-                                safeTargetName(target),
-                                tier,
-                                target.getCallAndLoopCount(),
-                                FixedPointMath.multiply(scale, callAndLoopThreshold),
-                                runtime.getCompilationQueueSize(),
-                                ' ',
-                                0,
-                                FixedPointMath.toDouble(scale),
-                                0,
-                                System.nanoTime(),
-                                formatSourceSection(safeSourceSection(target)),
-                                reason));
-            } catch (ExceptionDuringTracingException ignored) {
-                // Handled by the safe* methods
-            }
+            int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
+            int scale = runtime.compilationThresholdScale();
+            log(target, String.format(UNQUEUED_FORMAT,
+                            target.id,
+                            safeTargetName(target),
+                            tier,
+                            target.getCallAndLoopCount(),
+                            FixedPointMath.multiply(scale, callAndLoopThreshold),
+                            runtime.getCompilationQueueSize(),
+                            ' ',
+                            0,
+                            FixedPointMath.toDouble(scale),
+                            0,
+                            System.nanoTime(),
+                            formatSourceSection(safeSourceSection(target)),
+                            reason));
         }
     }
 
@@ -127,18 +119,14 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason, tier);
             } else {
-                try {
-                    log(target, String.format(FAILED_FORMAT,
-                                    target.id,
-                                    safeTargetName(target),
-                                    tier,
-                                    compilationTime(),
-                                    reason,
-                                    System.nanoTime(),
-                                    formatSourceSection(safeSourceSection(target))));
-                } catch (ExceptionDuringTracingException ignored) {
-                    // Handled by the safe* methods
-                }
+                log(target, String.format(FAILED_FORMAT,
+                                target.id,
+                                safeTargetName(target),
+                                tier,
+                                compilationTime(),
+                                reason,
+                                System.nanoTime(),
+                                formatSourceSection(safeSourceSection(target))));
             }
             currentCompilation.remove();
         }
@@ -147,23 +135,19 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     @Override
     public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
         if (target.engine.traceCompilationDetails) {
-            try {
-                log(target, String.format(START_FORMAT,
-                                target.id,
-                                safeTargetName(target),
-                                task.tier(),
-                                (int) task.weight(),
-                                task.rate(),
-                                runtime.getCompilationQueueSize(),
-                                task.queueChange() >= 0 ? '+' : '-',
-                                Math.abs(task.queueChange()),
-                                FixedPointMath.toDouble(runtime.compilationThresholdScale()),
-                                task.time() / 1000,
-                                System.nanoTime(),
-                                formatSourceSection(safeSourceSection(target))));
-            } catch (ExceptionDuringTracingException ignored) {
-                // Handled by the safe* methods
-            }
+            log(target, String.format(START_FORMAT,
+                            target.id,
+                            safeTargetName(target),
+                            task.tier(),
+                            (int) task.weight(),
+                            task.rate(),
+                            runtime.getCompilationQueueSize(),
+                            task.queueChange() >= 0 ? '+' : '-',
+                            Math.abs(task.queueChange()),
+                            FixedPointMath.toDouble(runtime.compilationThresholdScale()),
+                            task.time() / 1000,
+                            System.nanoTime(),
+                            formatSourceSection(safeSourceSection(target))));
         }
 
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
@@ -178,15 +162,11 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
-            try {
-                log(target, String.format(DEOPT_FORMAT,
-                                target.id,
-                                safeTargetName(target),
-                                System.nanoTime(),
-                                formatSourceSection(safeSourceSection(target))));
-            } catch (ExceptionDuringTracingException ignored) {
-                // Handled by the safe* methods
-            }
+            log(target, String.format(DEOPT_FORMAT,
+                            target.id,
+                            safeTargetName(target),
+                            System.nanoTime(),
+                            formatSourceSection(safeSourceSection(target))));
         }
     }
 
@@ -204,34 +184,31 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
             return;
         }
-        try {
-            Times compilation = currentCompilation.get();
-            int [] inlinedAndDispatched = inlinedAndDispatched(target, inliningDecision);
-            log(target, String.format(DONE_FORMAT,
-                            target.id,
-                            safeTargetName(target),
-                            tier,
-                            compilationTime(),
-                            target.getNonTrivialNodeCount(),
-                            inlinedAndDispatched[0],
-                            inlinedAndDispatched[1],
-                            compilation.nodeCountPartialEval,
-                            graph == null ? 0 : graph.getNodeCount(),
-                            result == null ? 0 : result.getTargetCodeSize(),
-                            "0x" + Long.toHexString(target.getCodeAddress()),
-                            System.nanoTime(),
-                            formatSourceSection(safeSourceSection(target))));
-            currentCompilation.remove();
-        } catch (ExceptionDuringTracingException ignored) {
-            // Handled by the safe* methods
-        }
+        Times compilation = currentCompilation.get();
+        int[] inlinedAndDispatched = inlinedAndDispatched(target, inliningDecision);
+        log(target, String.format(DONE_FORMAT,
+                        target.id,
+                        safeTargetName(target),
+                        tier,
+                        compilationTime(),
+                        target.getNonTrivialNodeCount(),
+                        inlinedAndDispatched[0],
+                        inlinedAndDispatched[1],
+                        compilation.nodeCountPartialEval,
+                        graph == null ? 0 : graph.getNodeCount(),
+                        result == null ? 0 : result.getTargetCodeSize(),
+                        "0x" + Long.toHexString(target.getCodeAddress()),
+                        System.nanoTime(),
+                        formatSourceSection(safeSourceSection(target))));
+        currentCompilation.remove();
     }
 
     private SourceSection safeSourceSection(OptimizedCallTarget target) {
         try {
             return target.getRootNode().getSourceSection();
         } catch (Throwable throwable) {
-            throw handle(target, throwable);
+            log(target, "Failed to call RootNode.getName(): " + throwable);
+            return null;
         }
     }
 
@@ -239,13 +216,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         try {
             return target.getName();
         } catch (Throwable throwable) {
-            throw handle(target, throwable);
+            log(target, "Failed to call RootNode.getName(): " + throwable);
+            return null;
         }
-    }
-
-    private ExceptionDuringTracingException handle(OptimizedCallTarget target, Throwable throwable) {
-        log(target, "Exception during tracing " + throwable);
-        return new ExceptionDuringTracingException();
     }
 
     private int[] inlinedAndDispatched(OptimizedCallTarget target, TruffleInlining inliningDecision) {
@@ -266,8 +239,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             inlinedAndDispatched[0] = inlinedCalls;
             inlinedAndDispatched[1] = dispatchedCalls;
             return inlinedAndDispatched;
-        } catch (Throwable t) {
-            throw handle(target, t);
+        } catch (Throwable throwable) {
+            log(target, "Failed to call RootNode.getName(): " + throwable);
+            return null;
         }
     }
 
@@ -290,16 +264,12 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
-            try {
-                log(target, String.format(INV_FORMAT,
-                                target.id,
-                                safeTargetName(target),
-                                System.nanoTime(),
-                                formatSourceSection(safeSourceSection(target)),
-                                reason));
-            } catch (ExceptionDuringTracingException ignored) {
-                // Handled by the safe* methods
-            }
+            log(target, String.format(INV_FORMAT,
+                            target.id,
+                            safeTargetName(target),
+                            System.nanoTime(),
+                            formatSourceSection(safeSourceSection(target)),
+                            reason));
         }
     }
 
@@ -330,9 +300,5 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             }
             return true;
         }
-    }
-
-    static final class ExceptionDuringTracingException extends RuntimeException {
-
     }
 }
