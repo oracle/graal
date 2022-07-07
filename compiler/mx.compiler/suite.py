@@ -745,7 +745,6 @@ suite = {
       "requiresConcealed" : {
         "java.instrument" : [
           "sun.instrument",
-          "java.lang.instrument",
         ],
       },
       "annotationProcessors" : [
