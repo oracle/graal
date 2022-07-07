@@ -41,7 +41,7 @@ For demonstration purposes here, we will use GraalVM Enterprise based on Java 17
 The core distribution of GraalVM Enterprise includes the JVM, the GraalVM compiler, the LLVM runtime, and the JavaScript runtime.
 Having downloaded and installed GraalVM Enterprise, you are ready to run Java, JavaScript, and LLVM-based applications.
 
-GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but includes a set of additional launchers and utilities:
+GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but includes several additional launchers and utilities:
 - **js** -- a JavaScript launcher
 - **lli** -- a LLVM bitcode launcher
 - **gu** -- the GraalVM Updater tool to install additional language runtimes and utilities
