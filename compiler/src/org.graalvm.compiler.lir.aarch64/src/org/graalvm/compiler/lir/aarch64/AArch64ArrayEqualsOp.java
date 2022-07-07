@@ -37,7 +37,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -46,7 +46,6 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -57,10 +56,7 @@ import jdk.vm.ci.meta.Value;
 public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AArch64ArrayEqualsOp.class);
 
-    private final JavaKind kind;
-    private final int array1BaseOffset;
-    private final int array2BaseOffset;
-    private final int arrayIndexScale;
+    private final Stride stride;
 
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value array1Value;
@@ -78,28 +74,15 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Temp({REG}) protected AllocatableValue vectorTemp3;
     @Temp({REG}) protected AllocatableValue vectorTemp4;
 
-    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value offset1, Value array2, Value offset2,
-                    Value length) {
+    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, Stride stride, Value result, Value array1, Value offset1, Value array2, Value offset2, Value length) {
         super(TYPE);
-
-        assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
+        this.stride = stride;
 
         assert result.getPlatformKind() == AArch64Kind.DWORD;
         assert array1.getPlatformKind() == AArch64Kind.QWORD && array1.getPlatformKind() == array2.getPlatformKind();
         assert offset1 == null || offset1.getPlatformKind() == AArch64Kind.QWORD;
         assert offset2 == null || offset2.getPlatformKind() == AArch64Kind.QWORD;
         assert length.getPlatformKind() == AArch64Kind.DWORD;
-
-        this.kind = kind;
-
-        /*
-         * The arrays are expected to have the same kind and thus the same index scale. For
-         * primitive arrays, this will mean the same array base offset as well; but if we compare a
-         * regular array with a hybrid object, they may have two different offsets.
-         */
-        this.array1BaseOffset = array1BaseOffset;
-        this.array2BaseOffset = array2BaseOffset;
-        this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
 
         this.resultValue = result;
         this.array1Value = array1;
@@ -133,10 +116,9 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             Register scratch = sc2.getRegister();
 
             // Get array length in bytes and store as a 64-bit value.
-            int shiftAmt = NumUtil.log2Ceil(arrayIndexScale);
             masm.mov(32, byteArrayLength, asRegister(lengthValue));
-            masm.lsl(64, byteArrayLength, byteArrayLength, shiftAmt);
-            masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale);
+            masm.lsl(64, byteArrayLength, byteArrayLength, stride.log2);
+            masm.compare(32, asRegister(lengthValue), 32 / stride.value);
             masm.branchConditionally(ConditionFlag.LE, scalarCompare);
 
             emitSIMDCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
@@ -152,22 +134,11 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     }
 
     private void loadArrayStart(AArch64MacroAssembler masm, Register array1, Register array2) {
-        if (!offset1Value.equals(Value.ILLEGAL)) {
-            // address start = pointer + baseOffset + offset
-            masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
-            masm.add(64, array1, array1, array1BaseOffset);
-        } else {
-            // address start = pointer + base offset
-            masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
-        }
-        if (!offset2Value.equals(Value.ILLEGAL)) {
-            // address start = pointer + baseOffset + offset
-            masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
-            masm.add(64, array2, array2, array2BaseOffset);
-        } else {
-            // address start = pointer + base offset
-            masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
-        }
+        // address start = pointer + offset
+        masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
+        // address start = pointer + offset
+        masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
+
     }
 
     private void emitScalarCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label breakLabel) {
@@ -241,7 +212,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
 
         Register temp = asRegister(temp4);
 
-        if (kind.getByteCount() <= 4) {
+        if (stride.value <= 4) {
             // Compare trailing 4 bytes, if any.
             masm.ands(32, zr, result, 4);
             masm.branchConditionally(ConditionFlag.EQ, compare2Bytes);
@@ -250,7 +221,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             masm.eor(32, rscratch1, temp, rscratch1);
             masm.cbnz(32, rscratch1, breakLabel);
 
-            if (kind.getByteCount() <= 2) {
+            if (stride.value <= 2) {
                 // Compare trailing 2 bytes, if any.
                 masm.bind(compare2Bytes);
                 masm.ands(32, zr, result, 2);
@@ -261,7 +232,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
                 masm.cbnz(32, rscratch1, breakLabel);
 
                 // The one-byte tail compare is only required for boolean and byte arrays.
-                if (kind.getByteCount() <= 1) {
+                if (stride.value <= 1) {
                     // Compare trailing byte, if any.
                     masm.bind(compare1Byte);
                     masm.ands(32, zr, result, 1);
@@ -406,9 +377,9 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.mov(64, array1Address, refAddress1);
         if (!offset2Value.equals(Value.ILLEGAL)) {
             masm.add(64, array2Address, asRegister(array2Value), asRegister(offset2Value));
-            masm.add(64, array2Address, array2Address, array2BaseOffset - 32);
+            masm.sub(64, array2Address, array2Address, 32);
         } else {
-            masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset - 32);
+            masm.sub(64, array2Address, asRegister(array2Value), 32);
         }
         masm.add(64, array2Address, array2Address, byteArrayLength);
         masm.jmp(compareByChunkTail);

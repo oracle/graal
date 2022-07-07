@@ -157,6 +157,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return sg;
     }
 
+    @SuppressWarnings("deprecation"/* JDK-8277863 */)
     private static int getObjectFieldOffset(Class<?> c, String fieldName) {
         try {
             return Math.toIntExact(UNSAFE.objectFieldOffset(c.getField(fieldName)));

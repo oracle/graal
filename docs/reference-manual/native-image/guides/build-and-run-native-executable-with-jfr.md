@@ -1,0 +1,96 @@
+---
+layout: ni-docs
+toc_group: how-to-guides
+link_title: Build and Run Native Executables with JFR
+permalink: /reference-manual/native-image/guides/build-and-run-native-executable-with-jfr/
+---
+
+# Build and Run Native Executables with JFR
+
+JDK Flight Recorder (JFR) is a tool for collecting diagnostic and profiling data about a running Java application, built into a JVM. 
+GraalVM Native Image supports JFR events and users can use [`jdk.jfr.Event`](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.jfr/jdk/jfr/Event.html) API with a similar experience to using JFR in the Java HotSpot VM.
+
+To record JFR events when running a native executable, JFR support and JFR recording must be enabled, and this guide covers how to do that.
+
+> Note: JFR events recording is not supported on GraalVM distribution for Windows. JFR is only supported with native executables built on GraalVM JDK 11.
+
+## Enable JFR Support and Record Events at Run Time
+
+To build a native executable with the JFR events support, you first need to include JFR at build time, then enable the system, start a recording, and configure logging at native executable run time. 
+The following options are supported:
+  * `-H:+AllowVMInspection`: enable the VM inspection
+  * `-XX:+FlightRecorder`: use to enable JFR
+  * `-XX:StartFlightRecording`: use to start a recording on application's startup
+  * `-XX:FlightRecorderLogging`: use to configure the log output for the JFR system
+
+Follow the steps below to practice building a native executable with JFR support and recording events at run time.
+
+1. Save the following code to the file named _JFRDemo.java_.
+
+    ```java
+    import jdk.jfr.Event;
+    import jdk.jfr.Description;
+    import jdk.jfr.Label;
+
+    public class JFRDemo {
+
+      @Label("Hello World")
+      @Description("Build and run a native executable with JFR.")
+      static class HelloWorldEvent extends Event {
+          @Label("Message")
+          String message;
+      }
+
+      public static void main(String... args) {
+          HelloWorldEvent event = new HelloWorldEvent();
+          event.message = "Hello, World!";
+          event.commit();
+      }
+    }
+    ```
+
+    This demo application consists of a simple class and JDK library classes.
+    It creates an event, labelled with the `@Label` annotation from the `jdk.jfr.*` package.
+    If you run this application, it will not print anything and just run that event.
+
+2. Compile the Java file on GraalVM JDK:
+    ```shell 
+    $JAVA_HOME/bin/javac JFRDemo.java
+    ```
+    It creates two class files: `JFRDemo$HelloWorldEvent.class`	and `JFRDemo.class`.
+
+3. Build a native executable with the VM inspection enabled:
+    ```shell
+    $JAVA_HOME/bin/native-image -H:+AllowVMInspection JFRDemo
+    ```
+    The `-H:+AllowVMInspection` option enables features such as JFR that can be used to inspect the VM.
+
+4. Run the executable and start recording:
+    ```shell
+    ./jfrdemo -XX:+FlightRecorder -XX:StartFlightRecording="filename=recording.jfr"
+    ```
+    It runs the application as a native executable. The `-XX:+FlightRecorder` flag enables the built-in Flight Recorder and starts recording to a specified binary file, `recording.jfr`.
+
+5. Start [VisualVM](https://visualvm.github.io/) to view the contents of the recording file in a user-friendly way. GraalVM provides VisualVM in the core installation. To start the tool, run:
+
+    ```shell
+    $JAVA_HOME/bin/jvisualvm
+    ```
+
+6. Go to **File**, then **Add JFR Snapshot**, browse _recording.jfr_, and open the selected file. Confirm the display name and click **OK**. 
+  Once opened, there is a bunch of options you can check: Monitoring, Threads, Exceptions, etc., but you should be mostly interested in the events browsing. It will look something like this:
+
+    ![JDK Flight Recorder](img/jfr.png)
+
+    Alternatively, you can view the contents of the recording file in the console window by running this command:
+
+    ```shell
+    $JAVA_HOME/bin/jfr print recording.jfr
+    ```
+    It prints all events recorded by Flight Recorder.
+
+### Related Documentation
+
+- Learn more about [Native Image support for JFR events](../JFR.md) and how to further configure JFR recording and system logging.
+
+- [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/17/jfapi/creating-and-recording-your-first-event.html).

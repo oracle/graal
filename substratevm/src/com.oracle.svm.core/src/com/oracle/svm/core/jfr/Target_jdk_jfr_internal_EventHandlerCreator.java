@@ -26,15 +26,14 @@ package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.jfr.internal.handlers.EventHandler;
-
-@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = HasJfrSupport.class)
+@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = {HasJfrSupport.class, JDK17OrEarlier.class})
 public final class Target_jdk_jfr_internal_EventHandlerCreator {
     @Substitute
     @SuppressWarnings("static-method")
-    public Class<? extends EventHandler> makeEventHandlerClass() {
+    public Class<? extends Target_jdk_jfr_internal_handlers_EventHandler> makeEventHandlerClass() {
         throw VMError.shouldNotReachHere();
     }
 }

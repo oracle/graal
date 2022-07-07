@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ public final class EspressoOptions {
 
     private static final Path EMPTY = Paths.get("");
     private static final String PATH_SEPARATOR_INSERT = "\" + java.io.File.pathSeparator + \"";
+    private static final String SEMI_COLON = ";";
 
     /**
      * File.pathSeparator-delimited list of paths.
@@ -80,6 +81,17 @@ public final class EspressoOptions {
         public Path apply(String path) {
             try {
                 return Paths.get(path);
+            } catch (InvalidPathException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+    });
+
+    private static final OptionType<List<String>> STRINGS_OPTION_TYPE_SEPARATED_BY_SEMI_COLON = new OptionType<>("Strings", new Function<String, List<String>>() {
+        @Override
+        public List<String> apply(String strings) {
+            try {
+                return Collections.unmodifiableList(splitBySemiColon(strings));
             } catch (InvalidPathException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -188,6 +200,12 @@ public final class EspressoOptions {
     ) //
     public static final OptionKey<List<Path>> ExtDirs = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
+    @Option(help = "A '" + SEMI_COLON + "' separated list of fully qualified interface names that enables interface type mapping in polyglot usage.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "my.first.MyInterface;my.second.MySecondInterface;...") //
+    public static final OptionKey<List<String>> PolyglotInterfaceMappings = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE_SEPARATED_BY_SEMI_COLON);
+
     @Option(help = "Enable assertions.", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
@@ -210,6 +228,10 @@ public final class EspressoOptions {
 
     private static List<String> splitByFileSeparator(String strings) {
         return new ArrayList<>(Arrays.asList(strings.split(File.pathSeparator)));
+    }
+
+    private static List<String> splitBySemiColon(String strings) {
+        return new ArrayList<>(Arrays.asList(strings.split(EspressoOptions.SEMI_COLON)));
     }
 
     public enum SpecComplianceMode {

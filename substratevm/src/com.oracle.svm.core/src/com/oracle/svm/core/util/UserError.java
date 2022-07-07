@@ -37,6 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * SVM mechanism for handling user errors and warnings that should be reported to the command line.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
+@SuppressWarnings("serial")
 public class UserError {
 
     /**

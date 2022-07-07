@@ -27,9 +27,11 @@ package org.graalvm.compiler.hotspot.amd64;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
@@ -123,14 +125,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public AVXSize getMaxVectorSize() {
+    public AVXSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
         int maxVectorSize = config.maxVectorSize;
-        if (supports(CPUFeature.AVX512VL)) {
+        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX512VL)) {
             if (maxVectorSize < 0 || maxVectorSize >= 64) {
                 return AVXSize.ZMM;
             }
         }
-        if (supports(CPUFeature.AVX2)) {
+        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX2)) {
             if (maxVectorSize < 0 || maxVectorSize >= 32) {
                 return AVXSize.YMM;
             }
@@ -568,11 +570,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed;
             int shift = encoding.getShift();
-            if (Scale.isScaleShiftSupported(shift)) {
+            if (AMD64Address.isScaleShiftSupported(shift)) {
                 LIRKind wordKind = LIRKind.unknownReference(target().arch.getWordKind());
                 RegisterValue heapBase = getProviders().getRegisters().getHeapBaseRegister().asValue(wordKind);
-                Scale scale = Scale.fromShift(shift);
-                uncompressed = new AMD64AddressValue(wordKind, heapBase, asAllocatable(address), scale, 0);
+                Stride stride = Stride.fromLog2(shift);
+                uncompressed = new AMD64AddressValue(wordKind, heapBase, asAllocatable(address), stride, 0);
             } else {
                 uncompressed = emitUncompress(address, encoding, false);
             }

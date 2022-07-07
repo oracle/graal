@@ -184,7 +184,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private static ValueNode maybeUncompress(ValueNode node) {
         Stamp stamp = node.stamp(NodeView.DEFAULT);
         if (stamp instanceof NarrowOopStamp) {
-            return SubstrateCompressionNode.uncompress(node, ((NarrowOopStamp) stamp).getEncoding());
+            return SubstrateCompressionNode.uncompress(node.graph(), node, ((NarrowOopStamp) stamp).getEncoding());
         }
         return node;
     }

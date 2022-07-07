@@ -128,6 +128,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
         private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
+        @SuppressWarnings("deprecation"/* JDK-8277863 */)
         @Fold
         static int countOffset() {
             try {

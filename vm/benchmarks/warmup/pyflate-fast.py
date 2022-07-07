@@ -710,7 +710,7 @@ def main(warmup=20, iterations=30):
         print("Iteration", i, ":", t2 * 1000, "ms")
 
 
-if __name__ == "__main__" and sys.implementation.name != "graalpython":
+if __name__ == "__main__" and sys.implementation.name != "graalpy":
     print(f"Running {os.path.basename(__file__)}")
     times = main(20, 30)
     for idx, time in enumerate(times):

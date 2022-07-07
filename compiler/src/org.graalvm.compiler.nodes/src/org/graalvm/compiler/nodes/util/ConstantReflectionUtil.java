@@ -26,15 +26,17 @@ package org.graalvm.compiler.nodes.util;
 
 import java.nio.ByteOrder;
 
+import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 /**
  * Helper functions to access complex objects on the application heap via the
@@ -77,24 +79,22 @@ public final class ConstantReflectionUtil {
      * @param array a constant java byte[], char[] or int[] array.
      * @param arrayKind the array's element kind ({@link JavaKind#Byte} for byte[],
      *            {@link JavaKind#Char} for char[] and {@link JavaKind#Int} for int[]).
-     * @param stride the element width to read from the array ({@link JavaKind#Byte} == 1 byte,
-     *            {@link JavaKind#Char} == 2 bytes and {@link JavaKind#Int} == 4 bytes). The stride
-     *            must not be smaller than the array element kind, e.g. reading a byte from an int[]
-     *            array is not supported.
+     * @param stride the element width to read from the array. The stride must not be smaller than
+     *            the array element kind, e.g. reading a byte from an int[] array is not supported.
      * @param index the index to read from, scaled to {@code stride}.
      * @return the bytes read, zero-extended to an int value.
      */
-    public static int readTypePunned(ConstantReflectionProvider provider, JavaConstant array, JavaKind arrayKind, JavaKind stride, int index) {
+    public static int readTypePunned(ConstantReflectionProvider provider, JavaConstant array, JavaKind arrayKind, Stride stride, int index) {
         assert arrayKind == JavaKind.Byte || arrayKind == JavaKind.Char || arrayKind == JavaKind.Int;
-        assert stride == JavaKind.Byte || stride == JavaKind.Char || stride == JavaKind.Int;
-        assert stride.getByteCount() >= arrayKind.getByteCount();
+        assert stride.value <= 4;
+        assert stride.value >= arrayKind.getByteCount();
         if (arrayKind == JavaKind.Byte) {
-            int i = index * stride.getByteCount();
-            if (stride == JavaKind.Byte) {
+            int i = index * stride.value;
+            if (stride == Stride.S1) {
                 return provider.readArrayElement(array, i).asInt() & 0xff;
             }
             if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
-                if (stride == JavaKind.Char) {
+                if (stride == Stride.S2) {
                     return (provider.readArrayElement(array, i).asInt() & 0xff) |
                                     ((provider.readArrayElement(array, i + 1).asInt() & 0xff) << 8);
                 } else {
@@ -104,7 +104,7 @@ public final class ConstantReflectionUtil {
                                     ((provider.readArrayElement(array, i + 3).asInt() & 0xff) << 24);
                 }
             } else {
-                if (stride == JavaKind.Char) {
+                if (stride == Stride.S2) {
                     return (provider.readArrayElement(array, i + 1).asInt() & 0xff) |
                                     ((provider.readArrayElement(array, i).asInt() & 0xff) << 8);
                 } else {
@@ -115,10 +115,10 @@ public final class ConstantReflectionUtil {
                 }
             }
         } else if (arrayKind == JavaKind.Char) {
-            if (stride == JavaKind.Char) {
+            if (stride == Stride.S2) {
                 return provider.readArrayElement(array, index).asInt() & 0xffff;
             } else {
-                assert stride == JavaKind.Int;
+                assert stride == Stride.S4;
                 int i = index * 2;
                 if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
                     return (provider.readArrayElement(array, i).asInt() & 0xffff) |
@@ -129,13 +129,13 @@ public final class ConstantReflectionUtil {
                 }
             }
         } else {
-            assert stride == JavaKind.Int;
+            assert stride == Stride.S4;
             return provider.readArrayElement(array, index).asInt();
         }
     }
 
     public interface ArrayBaseOffsetProvider {
-        int getArrayBaseOffset(MetaAccessProvider metaAccess, ValueNode array, JavaKind elementKind);
+        int getArrayBaseOffset(MetaAccessProvider metaAccess, ValueNode array, JavaKind arrayKind);
     }
 
     /**
@@ -143,17 +143,13 @@ public final class ConstantReflectionUtil {
      * {@code len} in-bounds constant reads starting at byte offset {@code offset}. Return
      * {@code false} if not everything constant or if we would try to read out of bounds.
      */
-    public static boolean canFoldReads(CanonicalizerTool tool, ValueNode array, ValueNode offset, JavaKind stride, int len, ArrayBaseOffsetProvider arrayBaseOffsetProvider) {
-        if (array.isJavaConstant() && ((ConstantNode) array).getStableDimension() >= 1 && (offset == null || offset.isJavaConstant())) {
+    public static boolean canFoldReads(CanonicalizerTool tool, ValueNode array, ValueNode offset, Stride stride, int len, ArrayBaseOffsetProvider arrayBaseOffsetProvider) {
+        if (array.isJavaConstant() && ((ConstantNode) array).getStableDimension() >= 1 && offset.isJavaConstant()) {
             ResolvedJavaType arrayType = array.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess());
             if (arrayType.isArray()) {
                 Integer arrayLength = tool.getConstantReflection().readArrayLength(array.asJavaConstant());
-                if (offset == null) {
-                    return arrayLength != null && len <= arrayLength;
-                } else {
-                    Integer index = startIndex(tool, array, offset.asJavaConstant(), stride, arrayBaseOffsetProvider);
-                    return arrayLength != null && index != null && index >= 0 && index + len <= arrayLength;
-                }
+                Integer index = startIndex(tool, array, offset.asJavaConstant(), stride, arrayBaseOffsetProvider);
+                return arrayLength != null && index != null && index >= 0 && index + len <= arrayLength;
             }
         }
         return false;
@@ -163,12 +159,12 @@ public final class ConstantReflectionUtil {
      * Compute an element index from a byte offset from the start of the array object. Returns
      * {@code null} if the given offset is not aligned correctly for the element kind's stride.
      */
-    public static Integer startIndex(CanonicalizerTool tool, ValueNode array, JavaConstant offset, JavaKind stride, ArrayBaseOffsetProvider arrayBaseOffsetProvider) {
+    public static Integer startIndex(CanonicalizerTool tool, ValueNode array, JavaConstant offset, Stride stride, ArrayBaseOffsetProvider arrayBaseOffsetProvider) {
         JavaKind arrayKind = array.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
         long elementOffset = offset.asLong() - arrayBaseOffsetProvider.getArrayBaseOffset(tool.getMetaAccess(), array, arrayKind);
-        if (elementOffset % stride.getByteCount() != 0) {
+        if (elementOffset % stride.value != 0) {
             return null;
         }
-        return (int) (elementOffset / stride.getByteCount());
+        return (int) (elementOffset / stride.value);
     }
 }

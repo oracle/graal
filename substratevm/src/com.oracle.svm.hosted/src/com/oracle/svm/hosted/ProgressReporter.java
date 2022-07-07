@@ -124,7 +124,7 @@ public class ProgressReporter {
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
     private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
-    private long graphEncodingByteLength = 0;
+    private long graphEncodingByteLength = -1;
     private int numJNIClasses = -1;
     private int numJNIFields = -1;
     private int numJNIMethods = -1;

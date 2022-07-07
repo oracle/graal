@@ -77,6 +77,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -280,9 +281,14 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     /**
      * Descriptor for {@code StubRoutines::_base64_decodeBlock}.
+     *
+     * JDK-8268276 - added isMIME parameter
      */
-    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
-                    int.class, int.class, Word.class, int.class, boolean.class);
+    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = JavaVersionUtil.JAVA_SPEC < 18
+                    ? new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
+                                    int.class, int.class, Word.class, int.class, boolean.class)
+                    : new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
+                                    int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
 
     /**
      * Descriptor for {@code StubRoutines::_counterMode_AESCrypt}.

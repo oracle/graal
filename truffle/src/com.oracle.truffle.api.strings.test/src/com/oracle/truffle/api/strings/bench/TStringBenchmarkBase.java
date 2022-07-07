@@ -44,8 +44,8 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Warmup;
 
-@Warmup(iterations = TStringBenchmarkBase.Defaults.WARMUP_ITERATIONS, time = 2)
-@Measurement(iterations = TStringBenchmarkBase.Defaults.MEASUREMENT_ITERATIONS, time = 2)
+@Warmup(iterations = TStringBenchmarkBase.Defaults.WARMUP_ITERATIONS, time = 10)
+@Measurement(iterations = TStringBenchmarkBase.Defaults.MEASUREMENT_ITERATIONS, time = 10)
 @Fork(TStringBenchmarkBase.Defaults.FORKS)
 public class TStringBenchmarkBase {
 

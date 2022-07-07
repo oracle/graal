@@ -306,12 +306,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setModule(Module module) {
+        assert module != null;
         this.module = module;
     }
 
     private final DynamicHubCompanion companion;
 
     private String signature;
+
+    @Substitute @InjectAccessors(ClassLoaderAccessors.class) //
+    private ClassLoader classLoader;
 
     @Substitute @InjectAccessors(ReflectionDataAccessors.class) //
     private SoftReference<Target_java_lang_Class_ReflectionData<?>> reflectionData;
@@ -732,10 +736,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native ClassLoader getClassLoader();
 
-    @Substitute
-    private ClassLoader getClassLoader0() {
-        return companion.getClassLoader();
-    }
+    @KeepOriginal
+    private native ClassLoader getClassLoader0();
 
     public boolean isLoaded() {
         return companion.hasClassLoader();
@@ -1107,13 +1109,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
-    public static Class<?> forName(String className) throws ClassNotFoundException {
+    public static Class<?> forName(String className) throws Throwable {
         Class<?> caller = Reflection.getCallerClass();
         return forName(className, true, caller.getClassLoader());
     }
 
     @Substitute //
-    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) {
+    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
          * we use the class loader of the caller class instead of the module's loader.
@@ -1127,13 +1129,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
+    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
         Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
         if (result == null && loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
             result = loader.loadClass(name); // may throw
         }
         if (result == null) {
-            throw new ClassNotFoundException(name);
+            throw ClassLoadingExceptionSupport.getExceptionForClass(name, new ClassNotFoundException(name));
         }
         if (initialize) {
             DynamicHub.fromClass(result).ensureInitialized();
@@ -1549,6 +1551,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         @SuppressWarnings("unused")
         private static SoftReference<Target_java_lang_Class_ReflectionData<?>> getReflectionData(DynamicHub that) {
             return that.companion.getReflectionData();
+        }
+    }
+
+    private static class ClassLoaderAccessors {
+        @SuppressWarnings("unused")
+        private static ClassLoader getClassLoader(DynamicHub that) {
+            return that.companion.getClassLoader();
         }
     }
 

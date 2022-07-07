@@ -256,6 +256,7 @@ final class NodeClassImpl extends NodeClass {
         final long offset;
         final boolean clonable;
 
+        @SuppressWarnings("deprecation"/* JDK-8277863 */)
         NodeFieldData(NodeFieldKind kind, Field field) {
             this.kind = kind;
             this.type = field.getType();

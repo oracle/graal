@@ -54,7 +54,8 @@ public enum JfrEvent {
     SafepointBegin("jdk.SafepointBegin"),
     SafepointEnd("jdk.SafepointEnd"),
     ExecuteVMOperation("jdk.ExecuteVMOperation"),
-    JavaMonitorEnter("jdk.JavaMonitorEnter");
+    JavaMonitorEnter("jdk.JavaMonitorEnter"),
+    ThreadSleep("jdk.ThreadSleep");
 
     private final long id;
 
