@@ -58,7 +58,6 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -346,16 +345,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             Collection<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
 
             CodeTreeBuilder builder = method.createBuilder();
-
-            TruffleTypes types = context.getTypes();
-
-            if (cachedVersion) {
-                // call uncached version for the interpreter version.
-                // no need to check the state there.
-                builder.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
-                builder.startReturn().startCall(name).string(LOCAL_VALUE).end().end();
-                builder.end();
-            }
 
             boolean elseIf = false;
 
