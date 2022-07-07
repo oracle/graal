@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.generator;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -78,7 +79,7 @@ public interface NodeGeneratorPlugs {
 
     CodeTree transformValueBeforePersist(CodeTree tree);
 
-    CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType);
+    CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType);
 
     CodeTree createNodeFieldReference(FrameState frame, NodeExecutionData execution, String nodeFieldName, boolean forRead);
 
@@ -127,4 +128,8 @@ public interface NodeGeneratorPlugs {
     CodeTree createGetLock();
 
     CodeTree createSuperInsert(CodeTree value);
+
+    CodeTree createReturnUnexpectedResult(FrameState frameState, ExecutableTypeData forType, boolean needsCast);
+
+    void setUseSpecializationClass(Predicate<SpecializationData> useSpecializationClass);
 }

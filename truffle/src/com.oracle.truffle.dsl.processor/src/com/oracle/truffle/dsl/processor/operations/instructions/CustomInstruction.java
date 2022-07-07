@@ -153,7 +153,6 @@ public class CustomInstruction extends Instruction {
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
                     case VIRTUAL_FRAME:
-                        inputTrees[inputIndex++] = CodeTreeBuilder.singleVariable(vars.frame);
                         break;
                     default:
                         throw new IllegalArgumentException("Unexpected value: " + kind);

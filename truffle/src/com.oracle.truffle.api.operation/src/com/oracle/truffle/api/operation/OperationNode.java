@@ -46,6 +46,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class OperationNode extends Node {
@@ -79,11 +80,10 @@ public abstract class OperationNode extends Node {
 
     @Override
     public final SourceSection getSourceSection() {
-        nodes.ensureSources();
-
         int[] sourceInfo = getSourceInfo();
+        Source[] sources = nodes.sources;
 
-        if (sourceInfo == null) {
+        if (sourceInfo == null || sources == null) {
             return null;
         }
 
@@ -91,7 +91,7 @@ public abstract class OperationNode extends Node {
             if (sourceInfo[i + SOURCE_INFO_START] >= 0) {
                 // return the first defined source section - that one should encompass the entire
                 // function
-                return nodes.sources[sourceInfo[i + SOURCE_INFO_BCI_INDEX] >> 16].createSection(sourceInfo[i + SOURCE_INFO_START], sourceInfo[i + SOURCE_INFO_LENGTH]);
+                return sources[sourceInfo[i + SOURCE_INFO_BCI_INDEX] >> 16].createSection(sourceInfo[i + SOURCE_INFO_START], sourceInfo[i + SOURCE_INFO_LENGTH]);
             }
         }
 
@@ -100,8 +100,6 @@ public abstract class OperationNode extends Node {
 
     @ExplodeLoop
     protected final SourceSection getSourceSectionAtBci(int bci) {
-        nodes.ensureSources();
-
         int[] sourceInfo = getSourceInfo();
 
         if (sourceInfo == null) {

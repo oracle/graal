@@ -136,7 +136,7 @@ public class StoreLocalInstruction extends Instruction {
             b.startIf().string("localTag == ").staticReference(FrameSlotKind, "Illegal").end().startBlock();
             // {
             if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
-                b.statement("System.out.printf(\" local store %2d : %s [uninit]%n\", localIdx, $frame.getValue(sourceSlot))");
+                b.statement("System.err.printf(\" local store %2d : %s [uninit]%n\", localIdx, $frame.getValue(sourceSlot))");
             }
             b.startAssert().startCall(vars.frame, "isObject").string("sourceSlot").end(2);
             createCopyObject(vars, b);
@@ -153,7 +153,7 @@ public class StoreLocalInstruction extends Instruction {
             b.end(2);
 
             if (OperationGeneratorFlags.LOG_LOCAL_STORES || OperationGeneratorFlags.LOG_LOCAL_STORES_SPEC) {
-                b.statement("System.out.printf(\" local store %2d : %s [init -> %s]%n\", localIdx, $frame.getValue(sourceSlot), FrameSlotKind.fromTag((byte) resultTag))");
+                b.statement("System.err.printf(\" local store %2d : %s [init -> %s]%n\", localIdx, $frame.getValue(sourceSlot), FrameSlotKind.fromTag((byte) resultTag))");
             }
 
             b.startStatement().startCall("setResultBoxedImpl");
@@ -168,7 +168,7 @@ public class StoreLocalInstruction extends Instruction {
             b.end();
         } else if (kind == FrameKind.OBJECT) {
             if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
-                b.statement("System.out.printf(\" local store %2d : %s [generic]%n\", localIdx, $frame.getValue(sourceSlot))");
+                b.statement("System.err.printf(\" local store %2d : %s [generic]%n\", localIdx, $frame.getValue(sourceSlot))");
             }
 
             b.startStatement().startCall(vars.frame, "setObject");
@@ -176,6 +176,9 @@ public class StoreLocalInstruction extends Instruction {
             b.startCall("expectObject").variable(vars.frame).string("sourceSlot").end();
             b.end(2);
         } else {
+            if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
+                b.statement("System.err.printf(\" local store %2d : %s [" + kind + "]%n\", localIdx, $frame.getValue(sourceSlot))");
+            }
             b.startIf().string("!").startCall("storeLocal" + kind.getFrameName() + "Check");
             b.variable(vars.frame);
             b.string("localIdx");

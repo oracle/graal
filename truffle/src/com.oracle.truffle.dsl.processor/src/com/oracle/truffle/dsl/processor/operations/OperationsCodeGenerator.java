@@ -302,7 +302,58 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(mSetOSRMetadata);
         mSetOSRMetadata.createBuilder().startAssign("_osrMetadata").string("osrMetadata").end();
 
+        typOperationNodeImpl.add(createNodeImplDeepCopy(typOperationNodeImpl));
+        typOperationNodeImpl.add(createNodeImplCopy(typOperationNodeImpl));
+
         return typOperationNodeImpl;
+    }
+
+    private CodeExecutableElement createNodeImplDeepCopy(CodeTypeElement typOperationNodeImpl) {
+        CodeExecutableElement met = GeneratorUtils.overrideImplement(types.Node, "deepCopy");
+        CodeTreeBuilder b = met.createBuilder();
+
+        b.declaration(typOperationNodeImpl.asType(), "result", "new OperationNodeImpl(nodes)");
+
+        b.statement("result._bc = Arrays.copyOf(_bc, _bc.length)");
+        b.statement("result._consts = Arrays.copyOf(_consts, _consts.length)");
+        b.statement("result._children = Arrays.copyOf(_children, _children.length)");
+        b.statement("result._handlers = _handlers");
+        b.statement("result._conditionProfiles = Arrays.copyOf(_conditionProfiles, _conditionProfiles.length)");
+        b.statement("result._maxLocals = _maxLocals");
+        b.statement("result._maxStack = _maxStack");
+        b.statement("result.sourceInfo = sourceInfo");
+
+        for (OperationMetadataData metadata : m.getMetadatas()) {
+            b.statement("result._metadata_" + metadata.getName() + " = _metadata_" + metadata.getName());
+        }
+
+        b.statement("return result");
+
+        return met;
+    }
+
+    private CodeExecutableElement createNodeImplCopy(CodeTypeElement typOperationNodeImpl) {
+        CodeExecutableElement met = GeneratorUtils.overrideImplement(types.Node, "copy");
+        CodeTreeBuilder b = met.createBuilder();
+
+        b.declaration(typOperationNodeImpl.asType(), "result", "new OperationNodeImpl(nodes)");
+
+        b.statement("result._bc = _bc");
+        b.statement("result._consts = _consts");
+        b.statement("result._children = _children");
+        b.statement("result._handlers = _handlers");
+        b.statement("result._conditionProfiles = _conditionProfiles");
+        b.statement("result._maxLocals = _maxLocals");
+        b.statement("result._maxStack = _maxStack");
+        b.statement("result.sourceInfo = sourceInfo");
+
+        for (OperationMetadataData metadata : m.getMetadatas()) {
+            b.statement("result._metadata_" + metadata.getName() + " = _metadata_" + metadata.getName());
+        }
+
+        b.statement("return result");
+
+        return met;
     }
 
     private CodeExecutableElement createNodeImplCreateFrameDescriptor() {
@@ -1123,8 +1174,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("" + op.getNumAuxValues());
             b.string("false");
 
-            for (VariableElement v : metEmit.getParameters()) {
-                b.variable(v);
+            if (metEmit.getParameters().size() == 1 && metEmit.getParameters().get(0).asType().getKind() == TypeKind.ARRAY) {
+                b.startGroup().cast(context.getType(Object.class)).variable(metEmit.getParameters().get(0)).end();
+            } else {
+                for (VariableElement v : metEmit.getParameters()) {
+                    b.variable(v);
+                }
             }
             b.end(2);
         }
@@ -1782,6 +1837,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.end();
 
         b.startIf().string("pushValue").end().startBlock();
+
+        b.startIf().string("curStack >= stackSourceBci.length").end().startBlock();
+        b.statement("stackSourceBci = Arrays.copyOf(stackSourceBci, stackSourceBci.length * 2)");
+        b.end();
 
         b.statement("stackSourceBci[curStack] = bci");
         b.statement("curStack++");

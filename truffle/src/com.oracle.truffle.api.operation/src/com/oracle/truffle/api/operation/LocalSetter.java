@@ -86,6 +86,8 @@ public final class LocalSetter {
     }
 
     static void setObject(VirtualFrame frame, int index, Object value) {
+        FrameDescriptor descriptor = frame.getFrameDescriptor();
+        descriptor.setSlotKind(index, FrameSlotKind.Object);
         frame.setObject(index, value);
     }
 

@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.VariableElement;
@@ -54,6 +55,7 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
@@ -68,6 +70,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -100,6 +103,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     private final ExecutionVariables dummyVariables = new ExecutionVariables();
     private NodeData nodeData;
+    private Predicate<SpecializationData> useSpecializationClass;
 
     {
         context = ProcessorContext.getInstance();
@@ -127,6 +131,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 }
             };
         }
+    }
+
+    public void setUseSpecializationClass(Predicate<SpecializationData> useSpecializationClass) {
+        this.useSpecializationClass = useSpecializationClass;
     }
 
     public void setNodeData(NodeData node) {
@@ -301,9 +309,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     @Override
-    public CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType) {
-        Object refObject = useSpecializationClass ? s : fieldName;
-        return createArrayReference(frame, refObject, fieldType != null, fieldType, false);
+    public CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType) {
+        boolean specClass = useSpecializationClass.test(s);
+        Object refObject = specClass ? s : fieldName;
+        boolean isChild = specClass ? true : ElementUtils.isAssignable(fieldType, types.Node);
+        return createArrayReference(frame, refObject, fieldType != null, fieldType, isChild);
     }
 
     @Override
@@ -316,19 +326,49 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public CodeTree createCacheReference(FrameState frame, SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead) {
-        Object refObject;
+        Object refObject = null;
+        TypeMirror mir = null;
+        String fieldName = null;
+        boolean innerForRead = forRead;
+        CodeTree base = null;
+        boolean isChild;
+
         if (sharedName != null) {
             refObject = sharedName;
-        } else {
-            String sharedGroup = cache.getSharedGroup();
-            if (sharedGroup != null) {
-                refObject = sharedGroup;
+            mir = cache.getParameter().getType();
+            isChild = ElementUtils.isAssignable(mir, types.Node);
+        } else if (cache.getSharedGroup() != null) {
+            refObject = cache.getSharedGroup();
+            mir = cache.getParameter().getType();
+            isChild = ElementUtils.isAssignable(mir, types.Node);
+        } else if (useSpecializationClass.test(specialization)) {
+            LocalVariable specLocal = frame != null
+                            ? frame.get(FlatNodeGenFactory.createSpecializationLocalName(specialization))
+                            : null;
+            fieldName = cache.getParameter().getLocalName() + "_";
+            isChild = true;
+            if (specLocal != null) {
+                base = specLocal.createReference();
             } else {
-                refObject = cache;
+                refObject = specialization;
+                mir = new GeneratedTypeMirror("", cinstr.getUniqueName() + "_" + specialization.getId() + "Data");
+                innerForRead = true;
             }
+        } else {
+            refObject = cache;
+            mir = cache.getParameter().getType();
+            isChild = ElementUtils.isAssignable(mir, types.Node);
         }
-        boolean isChild = ElementUtils.isAssignable(cache.getParameter().getType(), types.Node);
-        return createArrayReference(frame, refObject, forRead, cache.getParameter().getType(), isChild);
+
+        if (base == null) {
+            base = createArrayReference(frame, refObject, innerForRead, mir, isChild);
+        }
+
+        if (fieldName == null) {
+            return base;
+        } else {
+            return CodeTreeBuilder.createBuilder().tree(base).string("." + fieldName).build();
+        }
     }
 
     public int getStackOffset(LocalVariable value) {
@@ -839,5 +879,15 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     @Override
     public CodeTree createSuperInsert(CodeTree value) {
         return CodeTreeBuilder.createBuilder().startCall("$this.insertAccessor").tree(value).end().build();
+    }
+
+    @Override
+    public CodeTree createReturnUnexpectedResult(FrameState frameState, ExecutableTypeData forType, boolean needsCast) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        TypeMirror retType = context.getType(Object.class);
+        createPushResult(frameState, b, CodeTreeBuilder.singleString((needsCast ? "((UnexpectedResultException) ex)" : "ex") + ".getResult()"), retType);
+
+        return b.build();
     }
 }

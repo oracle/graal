@@ -78,7 +78,7 @@ public class LoadLocalInstruction extends Instruction {
 
         if (kind == null) {
             if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
-                b.statement("System.out.printf(\" local load  %2d : %s [uninit]%n\", localIdx, $frame.getValue(localIdx))");
+                b.statement("System.err.printf(\" local load  %2d : %s [uninit]%n\", localIdx, $frame.getValue(localIdx))");
             }
             createCopyAsObject(vars, b);
         } else if (kind == FrameKind.OBJECT) {
@@ -93,7 +93,7 @@ public class LoadLocalInstruction extends Instruction {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
             if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.out.printf(\" local load  %2d : %s [init object]%n\", localIdx, $frame.getValue(localIdx))");
+                b.statement("System.err.printf(\" local load  %2d : %s [init object]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createSetSlotKind(vars, b, "FrameSlotKind.Object");
@@ -102,7 +102,7 @@ public class LoadLocalInstruction extends Instruction {
             b.end();
 
             if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
-                b.statement("System.out.printf(\" local load  %2d : %s [generic]%n\", localIdx, $frame.getValue(localIdx))");
+                b.statement("System.err.printf(\" local load  %2d : %s [generic]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createCopyObject(vars, b);
@@ -129,7 +129,7 @@ public class LoadLocalInstruction extends Instruction {
             // {
 
             if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.out.printf(\" local load  %2d : %s [init " + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
+                b.statement("System.err.printf(\" local load  %2d : %s [init " + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createSetSlotKind(vars, b, "FrameSlotKind." + kind.getFrameName());
@@ -145,7 +145,7 @@ public class LoadLocalInstruction extends Instruction {
             // {
 
             if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.out.printf(\" local load  %2d : %s [" + kind + " -> generic]%n\", localIdx, $frame.getValue(localIdx))");
+                b.statement("System.err.printf(\" local load  %2d : %s [" + kind + " -> generic]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createSetSlotKind(vars, b, "FrameSlotKind.Object");
@@ -156,7 +156,7 @@ public class LoadLocalInstruction extends Instruction {
             b.end().startElseBlock(); // } else {
 
             if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
-                b.statement("System.out.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
+                b.statement("System.err.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
             }
 
             createCopyPrimitive(vars, b);
