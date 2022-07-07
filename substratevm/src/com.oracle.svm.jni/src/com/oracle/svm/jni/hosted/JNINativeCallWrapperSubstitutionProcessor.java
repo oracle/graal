@@ -27,53 +27,45 @@ package com.oracle.svm.jni.hosted;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.word.WordTypes;
-
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.jni.JNIJavaCallTrampolines;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Substitutes methods declared as {@code native} with {@link JNINativeCallMethod} and
- * {@link JNINativeCallWrapperMethod} instances that perform the actual native calls.
+ * Substitutes methods declared as {@code native} with {@link JNINativeCallWrapperMethod} instances
+ * that take care of performing the actual native calls.
  */
-final class JNINativeCallSubstitutionProcessor extends SubstitutionProcessor {
-    private final AnalysisUniverse universe;
-    private final WordTypes wordTypes;
-
+class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
+    private final MetaAccessProvider originalMetaAccess;
     private final ResolvedJavaType trampolinesType;
-    private final Map<ResolvedJavaMethod, JNINativeCallMethod> callers = new ConcurrentHashMap<>();
-    private final Map<JNICallSignature, JNINativeCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
+    private final Map<ResolvedJavaMethod, JNINativeCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
 
-    JNINativeCallSubstitutionProcessor(DuringSetupAccessImpl access) {
-        this.universe = access.getUniverse();
-        this.wordTypes = access.getBigBang().getProviders().getWordTypes();
-        this.trampolinesType = universe.getOriginalMetaAccess().lookupJavaType(JNIJavaCallTrampolines.class);
+    JNINativeCallWrapperSubstitutionProcessor(DuringSetupAccessImpl access) {
+        this.originalMetaAccess = access.getMetaAccess().getWrapped();
+        this.trampolinesType = originalMetaAccess.lookupJavaType(JNIJavaCallTrampolines.class);
     }
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         assert method.isNative() : "Must have been registered as a native substitution processor";
-        if (method instanceof JNINativeCallMethod || method instanceof JNINativeCallWrapperMethod) {
-            return method; // already substituted
+        if (method instanceof JNINativeCallWrapperMethod) { // already substituted
+            return method;
         }
         if (method.getDeclaringClass().equals(trampolinesType)) {
-            return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(universe.getOriginalMetaAccess(), method.getName());
+            return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(originalMetaAccess, method.getName());
         }
-        return callers.computeIfAbsent(method, original -> new JNINativeCallMethod(original,
-                        callWrappers.computeIfAbsent(JNINativeCallWrapperMethod.getSignatureForTarget(original, universe, wordTypes),
-                                        signature -> new JNINativeCallWrapperMethod(signature, universe.getOriginalMetaAccess()))));
+        return callWrappers.computeIfAbsent(method, JNINativeCallWrapperMethod::new);
     }
 
     @Override
     public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof JNINativeCallMethod) {
-            return ((JNINativeCallMethod) method).getOriginal();
+        if (method instanceof JNINativeCallWrapperMethod) {
+            return ((JNINativeCallWrapperMethod) method).getOriginal();
         } else if (method instanceof JNICallTrampolineMethod) {
             return ((JNICallTrampolineMethod) method).getOriginal();
         }
