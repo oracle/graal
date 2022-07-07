@@ -97,11 +97,9 @@ public class EffectList implements Iterable<EffectList.Effect> {
     }
 
     private static final Effect[] EMPTY_ARRAY = new Effect[0];
-    private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     private final DebugContext debug;
     private Effect[] effects = EMPTY_ARRAY;
-    private String[] names = EMPTY_STRING_ARRAY;
     private int size;
 
     public EffectList(DebugContext debug) {
@@ -115,9 +113,6 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 length = Math.max(length * 2, 4);
             }
             effects = Arrays.copyOf(effects, length);
-            if (debug.isLogEnabled()) {
-                names = Arrays.copyOf(names, length);
-            }
         }
     }
 
