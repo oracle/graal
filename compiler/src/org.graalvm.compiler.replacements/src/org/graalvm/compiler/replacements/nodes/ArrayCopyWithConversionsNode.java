@@ -24,13 +24,12 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -42,7 +41,6 @@ import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
 import org.graalvm.word.LocationIdentity;
@@ -56,7 +54,7 @@ import jdk.vm.ci.meta.JavaKind;
  * compression and inflation depending on {@code strideSrc} and {@code strideDst}.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryAccess, MultiMemoryKill {
+public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint implements MemoryAccess, MultiMemoryKill, IntrinsicMethod {
 
     public static final NodeClass<ArrayCopyWithConversionsNode> TYPE = NodeClass.create(ArrayCopyWithConversionsNode.class);
 
@@ -160,30 +158,40 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                if (getDirectStubCallIndex() < 0) {
-                    gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length),
-                                    gen.operand(dynamicStrides));
-                } else {
-                    gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length));
-                }
-                return;
-            }
-        }
-        generateArrayCopy(gen);
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return ArrayCopyWithConversionsForeignCalls.getStub(this);
     }
 
-    protected void generateArrayCopy(NodeLIRBuilderTool gen) {
+    @Override
+    public ValueNode[] getForeignCallArguments() {
         if (getDirectStubCallIndex() < 0) {
-            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(getRuntimeCheckedCPUFeatures(),
-                            gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length), gen.operand(dynamicStrides));
+            return new ValueNode[]{arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides};
+        } else {
+            return new ValueNode[]{arraySrc, offsetSrc, arrayDst, offsetDst, length};
+        }
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        if (getDirectStubCallIndex() < 0) {
+            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arraySrc),
+                            gen.operand(offsetSrc),
+                            gen.operand(arrayDst),
+                            gen.operand(offsetDst),
+                            gen.operand(length),
+                            gen.operand(dynamicStrides));
         } else {
             gen.getLIRGeneratorTool().emitArrayCopyWithConversion(
-                            NodeStrideUtil.getConstantStrideA(dynamicStrides, strideSrc), NodeStrideUtil.getConstantStrideB(dynamicStrides, strideDst), getRuntimeCheckedCPUFeatures(),
-                            gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length));
+                            NodeStrideUtil.getConstantStrideA(dynamicStrides, strideSrc),
+                            NodeStrideUtil.getConstantStrideB(dynamicStrides, strideDst),
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arraySrc),
+                            gen.operand(offsetSrc),
+                            gen.operand(arrayDst),
+                            gen.operand(offsetDst),
+                            gen.operand(length));
         }
     }
 

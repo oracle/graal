@@ -24,13 +24,11 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
@@ -42,7 +40,6 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
@@ -51,7 +48,6 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
 
@@ -76,7 +72,7 @@ import jdk.vm.ci.meta.Value;
  * {@code arrayA[i] != arrayB[i]}. If no such index exists, returns 0.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<ArrayRegionCompareToNode> TYPE = NodeClass.create(ArrayRegionCompareToNode.class);
 
@@ -221,38 +217,46 @@ public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode impl
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                final Value result;
-                if (getDirectStubCallIndex() < 0) {
-                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length),
-                                    gen.operand(dynamicStrides));
-                } else {
-                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
-                }
-                gen.setResult(this, result);
-                return;
-            }
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return ArrayRegionCompareToForeignCalls.getStub(this);
+    }
+
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        if (getDirectStubCallIndex() < 0) {
+            return new ValueNode[]{arrayA, offsetA, arrayB, offsetB, length, dynamicStrides};
+        } else {
+            return new ValueNode[]{arrayA, offsetA, arrayB, offsetB, length};
         }
-        generateArrayCompare(gen);
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        if (getDirectStubCallIndex() < 0) {
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arrayA),
+                            gen.operand(offsetA),
+                            gen.operand(arrayB),
+                            gen.operand(offsetB),
+                            gen.operand(length),
+                            gen.operand(dynamicStrides)));
+        } else {
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(
+                            NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA),
+                            NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arrayA),
+                            gen.operand(offsetA),
+                            gen.operand(arrayB),
+                            gen.operand(offsetB),
+                            gen.operand(length)));
+        }
     }
 
     @Override
     public int getArrayBaseOffset(MetaAccessProvider metaAccess, @SuppressWarnings("unused") ValueNode array, JavaKind arrayKind) {
         return metaAccess.getArrayBaseOffset(arrayKind);
-    }
-
-    protected void generateArrayCompare(NodeLIRBuilderTool gen) {
-        if (getDirectStubCallIndex() < 0) {
-            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(
-                            getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(dynamicStrides)));
-        } else {
-            gen.setResult(this,
-                            gen.getLIRGeneratorTool().emitArrayRegionCompareTo(NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA), NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
-                                            getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length)));
-        }
     }
 
     @Override

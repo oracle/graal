@@ -24,13 +24,11 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -42,7 +40,6 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
@@ -52,12 +49,11 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<AMD64ArrayRegionEqualsWithMaskNode> TYPE = NodeClass.create(AMD64ArrayRegionEqualsWithMaskNode.class);
 
@@ -200,45 +196,23 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                final Value result;
-                if (getDirectStubCallIndex() < 0) {
-                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null,
-                                    gen.operand(arrayA),
-                                    gen.operand(offsetA),
-                                    gen.operand(arrayB),
-                                    gen.operand(offsetB),
-                                    gen.operand(arrayMask),
-                                    gen.operand(length),
-                                    gen.operand(dynamicStrides));
-                } else {
-                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null,
-                                    gen.operand(arrayA),
-                                    gen.operand(offsetA),
-                                    gen.operand(arrayB),
-                                    gen.operand(offsetB),
-                                    gen.operand(arrayMask),
-                                    gen.operand(length));
-                }
-                gen.setResult(this, result);
-                return;
-            }
-        }
-        generateArrayRegionEquals(gen);
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return AMD64ArrayEqualsWithMaskForeignCalls.getStub(this);
     }
 
     @Override
-    public int getArrayBaseOffset(MetaAccessProvider metaAccess, @SuppressWarnings("unused") ValueNode array, JavaKind arrayKind) {
-        return metaAccess.getArrayBaseOffset(arrayKind);
+    public ValueNode[] getForeignCallArguments() {
+        if (getDirectStubCallIndex() < 0) {
+            return new ValueNode[]{arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides};
+        } else {
+            return new ValueNode[]{arrayA, offsetA, arrayB, offsetB, arrayMask, length};
+        }
     }
 
-    private void generateArrayRegionEquals(NodeLIRBuilderTool gen) {
-        final Value result;
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
         if (getDirectStubCallIndex() < 0) {
-            result = gen.getLIRGeneratorTool().emitArrayEqualsWithMaskDynamicStrides(
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayEqualsWithMaskDynamicStrides(
                             getRuntimeCheckedCPUFeatures(),
                             gen.operand(arrayA),
                             gen.operand(offsetA),
@@ -246,9 +220,9 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                             gen.operand(offsetB),
                             gen.operand(arrayMask),
                             gen.operand(length),
-                            gen.operand(dynamicStrides));
+                            gen.operand(dynamicStrides)));
         } else {
-            result = gen.getLIRGeneratorTool().emitArrayEqualsWithMask(
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayEqualsWithMask(
                             NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA),
                             NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
                             NodeStrideUtil.getConstantStrideB(dynamicStrides, strideMask),
@@ -257,9 +231,13 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
                             gen.operand(arrayB),
                             gen.operand(offsetB),
                             gen.operand(arrayMask),
-                            gen.operand(length));
+                            gen.operand(length)));
         }
-        gen.setResult(this, result);
+    }
+
+    @Override
+    public int getArrayBaseOffset(MetaAccessProvider metaAccess, @SuppressWarnings("unused") ValueNode array, JavaKind arrayKind) {
+        return metaAccess.getArrayBaseOffset(arrayKind);
     }
 
     @NodeIntrinsic

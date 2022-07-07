@@ -24,18 +24,15 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
@@ -47,7 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Returns the index of the first non-equal elements in two memory regions, or -1 if they are equal.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public class VectorizedMismatchNode extends PureFunctionStubIntrinsicNode implements LIRLowerable {
+public class VectorizedMismatchNode extends PureFunctionStubIntrinsicNode {
 
     public static final NodeClass<VectorizedMismatchNode> TYPE = NodeClass.create(VectorizedMismatchNode.class);
 
@@ -95,15 +92,17 @@ public class VectorizedMismatchNode extends PureFunctionStubIntrinsicNode implem
     public static native int vectorizedMismatch(Object arrayA, Object arrayB, int length, int stride, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                gen.setResult(this, gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(arrayB), gen.operand(length), gen.operand(stride)));
-                return;
-            }
-        }
-        gen.setResult(this, gen.getLIRGeneratorTool().emitVectorizedMismatch(getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(arrayB), gen.operand(length), gen.operand(stride)));
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return VectorizedMismatchForeignCalls.STUB;
     }
 
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{arrayA, arrayB, length, stride};
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitVectorizedMismatch(getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(arrayB), gen.operand(length), gen.operand(stride)));
+    }
 }
