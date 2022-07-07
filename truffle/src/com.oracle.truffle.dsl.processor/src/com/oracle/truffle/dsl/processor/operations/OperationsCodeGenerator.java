@@ -372,7 +372,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTreeBuilder b = mExecuteAt.createBuilder();
         b.declaration("int", "result", "storedLocation");
-        b.startDoBlock();
+        b.startWhile().string("true").end().startBlock();
 
         b.startAssign("result").startCall("switchImpl", "continueAt");
         b.string("this");
@@ -387,7 +387,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.string("_maxLocals");
         b.end(2);
 
-        b.end().startDoWhile().string("(result & 0xffff) != 0xffff").end();
+        b.startIf().string("(result & 0xffff) == 0xffff").end().startBlock();
+        b.statement("break");
+        b.end().startElseBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.end();
+
+        b.end();
 
         b.startReturn().string("frame.getObject((result >> 16) & 0xffff)").end();
 
