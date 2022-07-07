@@ -555,14 +555,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
              * </pre>
              */
             double factor = Math.pow(split.get(0).getSuccessorCount(), split.get(0).getSuccessorCount() * split.size());
-            for (ControlSplitNode s : split) {
-                for (double p : s.successorProbabilities()) {
-                    factor *= p;
+            if (isTrusted) {
+                for (ControlSplitNode s : split) {
+                    for (double p : s.successorProbabilities()) {
+                        factor *= p;
+                    }
                 }
-            }
-            assert 0 <= factor && factor <= 1 : "factor shold be between 0 and 1, but is : " + factor;
-
-            if (!isTrusted) {
+                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+            } else {
                 debug.log("control split %s has an untrusted profile source", split);
                 factor = DefaultUnswitchFactor.getValue(options);
             }
