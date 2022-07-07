@@ -579,8 +579,16 @@ public class CompilationResultBuilder {
         void log(AbstractBlockBase<?> b, int startPC, int endPC) {
             if (this.isEnable) {
                 // Dump basic block information using the following csv format
-                // BBid, BBStartingPC, BBEndingPC, BBfreq
-                this.formatter.format("%d, %d, %d, %f\n", b.getId(), startPC, endPC, b.getRelativeFrequency());
+                // BBid, BBStartingPC, BBEndingPC, BBfreq, [(succID, succProbability)*]
+                this.formatter.format("%d, %d, %d, %f, [", b.getId(), startPC, endPC, b.getRelativeFrequency());
+                for (int i = 0; i < b.getSuccessorCount(); ++i) {
+                    if (i < b.getSuccessorCount() - 1) {
+                        this.formatter.format("(%d, %f),", b.getSuccessors()[i].getId(), b.getSuccessorProbabilities()[i]);
+                    } else {
+                        this.formatter.format("(%d, %f)", b.getSuccessors()[i].getId(), b.getSuccessorProbabilities()[i]);
+                    }
+                }
+                this.formatter.format("]\n");
             }
         }
 
