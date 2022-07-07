@@ -82,15 +82,6 @@ public abstract class Message {
     @CompilationFinal LibraryFactory<Library> library;
 
     /**
-     * @since 19.0
-     * @deprecated Use {@link #Message(Class, String, int, Class, Class[])}.
-     */
-    @Deprecated(since = "22.0")
-    protected Message(Class<? extends Library> libraryClass, String messageName, Class<?> returnType, Class<?>... parameterTypes) {
-        this(libraryClass, -1, messageName, returnType, parameterTypes);
-    }
-
-    /**
      * @since 22.0
      */
     protected Message(Class<? extends Library> libraryClass, String messageName, int id, Class<?> returnType, Class<?>... parameterTypes) {

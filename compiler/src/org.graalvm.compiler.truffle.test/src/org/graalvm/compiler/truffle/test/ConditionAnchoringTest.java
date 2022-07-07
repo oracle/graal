@@ -30,6 +30,8 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -67,7 +69,8 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     static {
         long fieldOffset = 0;
         try {
-            fieldOffset = UNSAFE.objectFieldOffset(CheckedObject.class.getDeclaredField("field"));
+            Field field = CheckedObject.class.getDeclaredField("field");
+            fieldOffset = getObjectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
             e.printStackTrace();
         }

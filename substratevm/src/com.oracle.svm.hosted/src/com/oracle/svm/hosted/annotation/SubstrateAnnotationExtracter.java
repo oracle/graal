@@ -62,7 +62,7 @@ import sun.reflect.annotation.AnnotationParser;
  * avoid initializing classes that should be initialized at run-time, since looking up annotations
  * through the JDK's {@link AnnotationParser} initializes the class of every annotation on the
  * queried element.
- * 
+ *
  * When queried, the extracter looks for the root of the provided element, which can be a
  * {@link Field}, {@link Method}, {@link Constructor} or {@link Class} object, as well as a record
  * component on JDK 17. It then looks into the byte arrays representing annotations in the root
@@ -70,7 +70,7 @@ import sun.reflect.annotation.AnnotationParser;
  * annotation on demand in an {@link AnnotationValue} or {@link TypeAnnotationValue} object or any
  * subclass of {@link AnnotationMemberValue}. The actual annotation can then be created using the
  * {@link AnnotationMemberValue#get(Class)} method.
- * 
+ *
  * The {@link SubstrateAnnotationExtracter} is tightly coupled with {@link GuardedAnnotationAccess},
  * which provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
  * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} should
@@ -107,22 +107,56 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     private static final Method hotSpotJDKReflectionGetMirror;
     private static final Method hotSpotJDKReflectionGetMethod;
     private static final Method hotSpotJDKReflectionGetField;
+    private static final boolean isHotSpotJDKReflectionAvailable;
+    private static final Method hotSpotResolvedObjectTypeImplMirror;
+    private static final Method hotSpotResolvedPrimitiveTypeMirror;
+    private static final Method hotSpotResolvedJavaMethodImplToJava;
+    private static final Method hotSpotResolvedJavaFieldImplToJava;
 
     static {
+        recordComponentClass = ReflectionUtil.lookupClass(true, "java.lang.reflect.RecordComponent");
+        recordComponentAnnotations = recordComponentClass != null ? ReflectionUtil.lookupField(recordComponentClass, "annotations") : null;
+        recordComponentTypeAnnotations = recordComponentClass != null ? ReflectionUtil.lookupField(recordComponentClass, "typeAnnotations") : null;
+        recordComponentGetDeclaringRecord = recordComponentClass != null ? ReflectionUtil.lookupMethod(recordComponentClass, "getDeclaringRecord") : null;
+
+        Object temporaryHotSpotJVMCIRuntimeReflection = null;
+        Method temporaryHotSpotJDKReflectionGetMirror = null;
+        Method temporaryHotSpotJDKReflectionGetMethod = null;
+        Method temporaryHotSpotJDKReflectionGetField = null;
+        boolean temporaryIsHotSpotJDKReflectionAvailable = true;
+
         try {
-            recordComponentClass = ReflectionUtil.lookupClass(true, "java.lang.reflect.RecordComponent");
-            recordComponentAnnotations = recordComponentClass != null ? ReflectionUtil.lookupField(recordComponentClass, "annotations") : null;
-            recordComponentTypeAnnotations = recordComponentClass != null ? ReflectionUtil.lookupField(recordComponentClass, "typeAnnotations") : null;
-            recordComponentGetDeclaringRecord = recordComponentClass != null ? ReflectionUtil.lookupMethod(recordComponentClass, "getDeclaringRecord") : null;
             Object hotSpotJVMCIRuntime = ReflectionUtil.lookupMethod(HotSpotJVMCIRuntime.class, "runtime").invoke(null);
-            hotSpotJVMCIRuntimeReflection = ReflectionUtil.lookupMethod(HotSpotJVMCIRuntime.class, "getReflection").invoke(hotSpotJVMCIRuntime);
-            hotSpotJDKReflectionGetMirror = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getMirror", HotSpotResolvedJavaType.class);
-            hotSpotJDKReflectionGetMethod = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getMethod",
+            temporaryHotSpotJVMCIRuntimeReflection = ReflectionUtil.lookupMethod(HotSpotJVMCIRuntime.class, "getReflection").invoke(hotSpotJVMCIRuntime);
+            temporaryHotSpotJDKReflectionGetMirror = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getMirror", HotSpotResolvedJavaType.class);
+            temporaryHotSpotJDKReflectionGetMethod = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getMethod",
                             Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaMethodImpl"));
-            hotSpotJDKReflectionGetField = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getField",
+            temporaryHotSpotJDKReflectionGetField = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getField",
                             Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaFieldImpl"));
-        } catch (ClassNotFoundException | IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+        } catch (ClassNotFoundException | IllegalAccessException | InvocationTargetException | ReflectionUtil.ReflectionUtilError ex) {
+            temporaryIsHotSpotJDKReflectionAvailable = false;
+        }
+
+        isHotSpotJDKReflectionAvailable = temporaryIsHotSpotJDKReflectionAvailable;
+        hotSpotJVMCIRuntimeReflection = temporaryHotSpotJVMCIRuntimeReflection;
+        hotSpotJDKReflectionGetMirror = temporaryHotSpotJDKReflectionGetMirror;
+        hotSpotJDKReflectionGetMethod = temporaryHotSpotJDKReflectionGetMethod;
+        hotSpotJDKReflectionGetField = temporaryHotSpotJDKReflectionGetField;
+
+        if (isHotSpotJDKReflectionAvailable) {
+            hotSpotResolvedObjectTypeImplMirror = null;
+            hotSpotResolvedPrimitiveTypeMirror = null;
+            hotSpotResolvedJavaMethodImplToJava = null;
+            hotSpotResolvedJavaFieldImplToJava = null;
+        } else {
+            try {
+                hotSpotResolvedObjectTypeImplMirror = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl"), "mirror");
+                hotSpotResolvedPrimitiveTypeMirror = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedPrimitiveType"), "mirror");
+                hotSpotResolvedJavaMethodImplToJava = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaMethodImpl"), "toJava");
+                hotSpotResolvedJavaFieldImplToJava = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaFieldImpl"), "toJava");
+            } catch (ClassNotFoundException e) {
+                throw GraalError.shouldNotReachHere(e);
+            }
         }
     }
 
@@ -228,7 +262,8 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     }
 
     public AnnotationValue[][] getParameterAnnotationData(AnnotatedElement element) {
-        return getParameterAnnotationDataFromRoot((Executable) getRoot(element));
+        AnnotatedElement root = getRoot(element);
+        return root != null ? getParameterAnnotationDataFromRoot((Executable) root) : NO_PARAMETER_ANNOTATIONS;
     }
 
     private AnnotationValue[][] getParameterAnnotationDataFromRoot(Executable rootElement) {
@@ -256,7 +291,8 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     }
 
     public TypeAnnotationValue[] getTypeAnnotationData(AnnotatedElement element) {
-        return getTypeAnnotationDataFromRoot(getRoot(element));
+        AnnotatedElement root = getRoot(element);
+        return root != null ? getTypeAnnotationDataFromRoot(root) : NO_TYPE_ANNOTATIONS;
     }
 
     private TypeAnnotationValue[] getTypeAnnotationDataFromRoot(AnnotatedElement rootElement) {
@@ -276,7 +312,8 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     }
 
     public AnnotationMemberValue getAnnotationDefaultData(AnnotatedElement element) {
-        return getAnnotationDefaultDataFromRoot((Method) getRoot(element));
+        AnnotatedElement root = getRoot(element);
+        return root != null ? getAnnotationDefaultDataFromRoot((Method) root) : null;
     }
 
     private AnnotationMemberValue getAnnotationDefaultDataFromRoot(Method accessorMethod) {
@@ -380,14 +417,30 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
             if (element instanceof Package) {
                 return (Class<?>) packageGetPackageInfo.invoke(element);
             } else if (element instanceof HotSpotResolvedObjectType || element instanceof HotSpotResolvedJavaType) {
-                return (AnnotatedElement) hotSpotJDKReflectionGetMirror.invoke(hotSpotJVMCIRuntimeReflection, element);
+                if (isHotSpotJDKReflectionAvailable) {
+                    return (AnnotatedElement) hotSpotJDKReflectionGetMirror.invoke(hotSpotJVMCIRuntimeReflection, element);
+                } else {
+                    if (element instanceof HotSpotResolvedObjectType) {
+                        return (AnnotatedElement) hotSpotResolvedObjectTypeImplMirror.invoke(element);
+                    } else {
+                        return (AnnotatedElement) hotSpotResolvedPrimitiveTypeMirror.invoke(element);
+                    }
+                }
             } else if (element instanceof HotSpotResolvedJavaMethod) {
                 if (((ResolvedJavaMethod) element).isClassInitializer()) {
                     return null;
                 }
-                return (AnnotatedElement) hotSpotJDKReflectionGetMethod.invoke(hotSpotJVMCIRuntimeReflection, element);
+                if (isHotSpotJDKReflectionAvailable) {
+                    return (AnnotatedElement) hotSpotJDKReflectionGetMethod.invoke(hotSpotJVMCIRuntimeReflection, element);
+                } else {
+                    return (AnnotatedElement) hotSpotResolvedJavaMethodImplToJava.invoke(element);
+                }
             } else if (element instanceof HotSpotResolvedJavaField) {
-                return (AnnotatedElement) hotSpotJDKReflectionGetField.invoke(hotSpotJVMCIRuntimeReflection, element);
+                if (isHotSpotJDKReflectionAvailable) {
+                    return (AnnotatedElement) hotSpotJDKReflectionGetField.invoke(hotSpotJVMCIRuntimeReflection, element);
+                } else {
+                    return (AnnotatedElement) hotSpotResolvedJavaFieldImplToJava.invoke(element);
+                }
             } else if (element instanceof AnnotationWrapper) {
                 return getRoot(((AnnotationWrapper) element).getAnnotationRoot());
             }

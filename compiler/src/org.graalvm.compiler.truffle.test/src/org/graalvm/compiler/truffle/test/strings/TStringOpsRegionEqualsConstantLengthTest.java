@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test.strings;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -34,7 +35,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -45,6 +45,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
@@ -87,7 +88,7 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
     @Test
     public void testRegionEquals() {
         Assume.assumeTrue(getTarget().arch instanceof AMD64);
-        Assume.assumeTrue(AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(getTarget(), StrideUtil.log2ToStride(strideA), StrideUtil.log2ToStride(strideB), lengthCMP, getMaxVectorSize()));
+        Assume.assumeTrue(AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(getTarget(), null, JavaKind.Byte, Stride.fromLog2(strideA), Stride.fromLog2(strideB), lengthCMP, getMaxVectorSize()));
         constantArgs[4] = strideA;
         constantArgs[9] = strideB;
         constantArgs[12] = lengthCMP;

@@ -61,7 +61,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -69,7 +68,6 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -392,9 +390,7 @@ public class SVMHost extends HostVM {
                         isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
                         modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
                         type.declaresDefaultMethods(), isSealed);
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
-        }
+        ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }
 
@@ -531,7 +527,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void methodBeforeTypeFlowCreationHook(PointsToAnalysis bb, AnalysisMethod method, StructuredGraph graph) {
+    public void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (method.isEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
             ValueNode receiver = graph.start().stateAfter().localAt(0);
             if (receiver != null && receiver.hasUsages()) {
@@ -602,7 +598,7 @@ public class SVMHost extends HostVM {
      * call chain is the class initializer. But this does not fit well into the current approach
      * where each method has a `Safety` flag.
      */
-    private void checkClassInitializerSideEffect(PointsToAnalysis bb, AnalysisMethod method, Node n) {
+    private void checkClassInitializerSideEffect(BigBang bb, AnalysisMethod method, Node n) {
         if (n instanceof AccessFieldNode) {
             ResolvedJavaField field = ((AccessFieldNode) n).field();
             if (field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {

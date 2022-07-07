@@ -24,15 +24,8 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
-
 public class Timer {
-    private static boolean disablePrinting = false;
-
-    private String prefix;
-
     private final String name;
-    private final boolean autoPrint;
     /** Timer start time in nanoseconds. */
     private long startTime;
     /** Timer total time in nanoseconds. */
@@ -42,25 +35,11 @@ public class Timer {
 
     /**
      * Timers should only be instantiated via factory methods in TimerCollection.
-     * 
+     *
      * @see TimerCollection
      */
-    Timer(String prefix, String name, boolean autoPrint) {
-        this.prefix = prefix;
+    Timer(String name) {
         this.name = name;
-        this.autoPrint = autoPrint;
-    }
-
-    public static void disablePrinting() {
-        disablePrinting = true;
-    }
-
-    /**
-     * Registers the prefix to be used when {@linkplain Timer#print(long) printing} a timer. This
-     * allows the output of interlaced native image executions to be disambiguated.
-     */
-    public void setPrefix(String value) {
-        this.prefix = value;
     }
 
     public StopTimer start() {
@@ -72,30 +51,6 @@ public class Timer {
         long addTime = System.nanoTime() - startTime;
         totalTime += addTime;
         totalMemory = Runtime.getRuntime().totalMemory();
-        if (autoPrint) {
-            print(addTime);
-        }
-    }
-
-    private void print(long time) {
-        // TODO GR-35721
-        if (disablePrinting) {
-            return;
-        }
-        final String concurrentPrefix;
-        if (prefix != null) {
-            // Add the PID to further disambiguate concurrent builds of images with the same name
-            String pid = GraalServices.getExecutionID();
-            concurrentPrefix = String.format("[%s:%s] ", prefix, pid);
-        } else {
-            concurrentPrefix = "";
-        }
-        double totalMemoryGB = totalMemory / 1024.0 / 1024.0 / 1024.0;
-        System.out.format("%s%12s: %,10.2f ms, %,5.2f GB%n", concurrentPrefix, name, time / 1000000d, totalMemoryGB);
-    }
-
-    public void print() {
-        print(totalTime);
     }
 
     /** Get timer total time in milliseconds. */

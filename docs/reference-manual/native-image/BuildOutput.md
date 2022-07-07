@@ -1,13 +1,20 @@
 ---
-layout: docs
-toc_group: native-image
+layout: ni-docs
+toc_group: build-overview
 link_title: Build Output
-permalink: /reference-manual/native-image/BuildOutput/
+permalink: /reference-manual/native-image/overview/BuildOutput/
+redirect_from: /$version/reference-manual/native-image/BuildOutput/
 ---
+
 # Native Image Build Output
 
-This page provides documentation for the build output of GraalVM Native Image.
-Below is the example output when building a native image of the `HelloWorld` class:
+* [Build Stages](#build-stages)
+* [Resource Usage Statistics](#resource-usage-statistics)
+* [Machine-Readable Build Output](#machine-readable-build-output)
+* [Build Output Options](#build-output-options)
+
+Here you will find information about the build output of GraalVM Native Image.
+Below is the example output when building a native executable of the `HelloWorld` class:
 
 ```shell
 ================================================================================
@@ -23,6 +30,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
   12,128 (44.82%) of 27,058 methods reachable
       27 classes,     0 fields, and   271 methods registered for reflection
       58 classes,    59 fields, and    52 methods registered for JNI access
+       4 native libraries: dl, pthread, rt, z
 [3/7] Building universe...                                       (0.5s @ 0.61GB)
 [4/7] Parsing methods...      [*]                                (0.5s @ 0.86GB)
 [5/7] Inlining methods...     [****]                             (0.5s @ 0.73GB)
@@ -61,37 +69,37 @@ Finished generating 'helloworld' in 16.2s.
 ## Build Stages
 
 ### <a name="stage-initializing"></a>Initializing
-In this stage, the Native Image build process is set up and [`Features`][jdoc_feature] are initialized.
+In this stage, the Native Image build process is set up and [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) are initialized.
 
 #### <a name="glossary-imagekind"></a>Native Image Kind
-By default, Native Image generates *executables* but it can also generate [*shared libraries*][doc_shared_library] and [*static executables*][doc_static_images].
+By default, Native Image generates *executables* but it can also generate [*native shared libraries*](InteropWithNativeCode.md) and [*static executables*](guides/build-static-and-mostly-static-executable.md).
 
 #### <a name="glossary-version-info"></a>Version Info
 The version info of the Native Image process.
-This string is also used for the `java.vm.version` property within the generated image.
-Please report this version info when you [file issues][new_issue].
+This string is also used for the `java.vm.version` property within the generated native binary.
+Please report this version info when you [file issues](https://github.com/oracle/graal/issues/new).
 
 #### <a name="glossary-java-version-info"></a>Java Version Info
 The Java version info (`java.runtime.version` property) of the Native Image build process.
-Please report this version info when you [file issues][new_issue].
+Please report this version info when you [file issues](https://github.com/oracle/graal/issues/new).
 
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
 
 #### <a name="glossary-gc"></a>Garbage Collector
-The garbage collector used within the generated image:
+The garbage collector used within the generated executable:
 - The *Serial GC* is the default GC and optimized for low memory footprint and small Java heap sizes.
 - The *G1 GC* (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
-- The *Epsilon GC* does not do any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
+- The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
-For more information see the [docs on Memory Management at Image Run Time][doc_mem_mgmt].
+For more information see the [docs on Memory Management at Image Run Time](MemoryManagement.md).
 
-#### <a name="glossary-user-specific-features"></a>User-specific Features
-All [`Features`][jdoc_feature] that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
+#### <a name="glossary-user-specific-features"></a>User-Specific Features
+All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
 GraalVM Native Image deploys a number of internal features, which are excluded from this list.
 
 ### <a name="stage-analysis"></a>Performing Analysis
-In this stage, a [points-to analysis][oopsla19_initialize_once_start_fast] is performed.
+In this stage, a [points-to analysis](https://dl.acm.org/doi/10.1145/3360610) is performed.
 The progress indicator visualizes the number of analysis iterations.
 A large number of iterations can indicate problems in the analysis likely caused by misconfiguration or a misbehaving feature.
 
@@ -102,18 +110,18 @@ To reduce overhead, please ensure that the classpath only contains entries that 
 
 #### <a name="glossary-reflection-registrations"></a>Reflection Registrations
 The number of classes, fields, and methods that are registered for reflection.
-Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native image (see [reflection metadata](#glossary-reflection-metadata)).
+Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native binary (see [reflection metadata](#glossary-reflection-metadata)).
 
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
-The number of classes, fields, and methods that are registered for [JNI][doc_jni] access.
+The number of classes, fields, and methods that are registered for [JNI](JNI.md) access.
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
-This number is only shown if runtime compilation is built into the image, for example, when building a [Truffle][truffle] language.
-Runtime compiled methods account for [graph encodings](#glossary-graph-encodings) in the image heap.
+This number is only shown if runtime compilation is built into the executable, for example, when building a [Truffle](https://github.com/oracle/graal/tree/master/truffle) language.
+Runtime-compiled methods account for [graph encodings](#glossary-graph-encodings) in the heap.
 
 ### <a name="stage-universe"></a>Building Universe
-In this stage, a universe with all classes, fields, and methods is built, which is then used to create the native image.
+In this stage, a universe with all classes, fields, and methods is built, which is then used to create the native binary.
 
 ### <a name="stage-parsing"></a>Parsing Methods
 In this stage, the Graal compiler parses all reachable methods.
@@ -128,7 +136,7 @@ In this stage, the Graal compiler compiles all reachable methods to machine code
 The progress indicator is printed periodically at an increasing interval.
 
 ### <a name="stage-creating"></a>Creating Image
-In this stage, the native image is created and written to disk.
+In this stage, the native binary is created and written to disk.
 Debug info is also generated as part of this stage (if requested).
 
 #### <a name="glossary-code-area"></a>Code Area
@@ -136,21 +144,21 @@ The code area contains machine code produced by the Graal compiler for all reach
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of the code area.
 
 #### <a name="glossary-image-heap"></a>Image Heap
-The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes (see below).
+The heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes (see below).
 
 ##### <a name="glossary-general-heap-data"></a>General Heap Data Stored in `byte[]`
 The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [reflection metadata](#glossary-reflection-metadata), nor [graph encodings](#glossary-graph-encodings).
 Therefore, this can also include `byte[]` objects from application code.
 
 ##### <a name="glossary-embedded-resources"></a>Embedded Resources Stored in `byte[]`
-The total size of all `byte[]` objects used for storing resources (e.g., files accessed via `Class.getResource()`) within the native image. The number of resources is shown in the [Image Heap](#glossary-image-heap) section.
+The total size of all `byte[]` objects used for storing resources (for example, files accessed via `Class.getResource()`) within the native binary. The number of resources is shown in the [Heap](#glossary-image-heap) section.
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of this metadata.
 
 ##### <a name="glossary-reflection-metadata"></a>Reflection Metadata Stored in `byte[]`
-The total size of all `byte[]` objects used for reflection metadata, including class, field, method and constructor data.
+The total size of all `byte[]` objects used for reflection metadata, including class, field, method, and constructor data.
 To reduce the amount of reflection metadata, reduce the number of [elements registered for reflection](#glossary-reflection-registrations).
 
 ##### <a name="glossary-graph-encodings"></a>Graph Encodings Stored in `byte[]`
@@ -162,24 +170,42 @@ Therefore, reducing the number of such methods also reduces the size of correspo
 The total size of generated debug information (if enabled).
 
 #### <a name="glossary-other-data"></a>Other Data
-The amount of data in the image that is neither in the [code area](#glossary-code-area), nor in the [image heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
+The amount of data in the binary that is neither in the [code area](#glossary-code-area), nor in the [heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
 This data typically contains internal information for Native Image and should not be dominating.
 
-### Resource Usage Statistics
+## Resource Usage Statistics
 
 #### <a name="glossary-garbage-collection"></a>Garbage Collections
-The total time spent in all garbage collectors, total GC time divided by the total process time in percent, and the total number of garbage collections.
+The total time spent in all garbage collectors, total GC time divided by the total process time as a percentage, and the total number of garbage collections.
 A large number of collections or time spent in collectors usually indicates that the system is under memory pressure.
-Increase the amount of available memory to reduce the time to build the image.
+Increase the amount of available memory to reduce the time to build the native binary.
 
 #### <a name="glossary-peak-rss"></a>Peak RSS
-Peak [resident set size][rss_wiki] as reported by the operating system.
+Peak [resident set size](https://en.wikipedia.org/wiki/Resident_set_size) as reported by the operating system.
 This value indicates the maximum amount of memory consumed by the build process.
 If the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of available memory of the system can be reduced to a value closer to the peak RSS.
 
 #### <a name="glossary-cpu-load"></a>CPU load
 The CPU time used by the process divided by the total process time.
-Increase the number of CPU threads to reduce the time to build the image.
+Increase the number of CPU threads to reduce the time to build the native binary.
+
+## Machine-Readable Build Output
+
+The build output produced by the `native-image` builder is designed for humans, can evolve with new releases, and should thus not be parsed in any way by tools.
+Instead, use the `-H:BuildOutputJSONFile=<file.json>` option to instruct the builder to produce machine-readable build output in JSON format that can be used, for example, for building monitoring tools.
+The JSON files validate against the JSON schema defined in [`build-output-schema-v0.9.0.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json).
+Note that a JSON file is produced if and only if a build succeeds.
+
+The following example illustrates how this could be used in a CI/CD build pipeline to check that the number of reachable methods does not exceed a certain threshold:
+
+```bash
+native-image -H:BuildOutputJSONFile=build.json HelloWorld
+# ...
+cat build.json | python3 -c "import json,sys;c = json.load(sys.stdin)['analysis_results']['methods']['reachable']; assert c < 12000, f'Too many reachable methods: {c}'"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+AssertionError: Too many reachable methods: 12128
+```
 
 ## Build Output Options
 
@@ -189,18 +215,20 @@ Run `native-image --expert-options-all | grep "BuildOutput"` to see all build ou
 -H:±BuildOutputBreakdowns    Show code and heap breakdowns as part of the build output. Default: + (enabled).
 -H:±BuildOutputColorful      Colorize build output. Default: + (enabled).
 -H:±BuildOutputGCWarnings    Print GC warnings as part of build output. Default: + (enabled).
+-H:BuildOutputJSONFile=""    Print build output statistics as JSON to the specified file. The output is according to the JSON schema located at:
+                             docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json.
 -H:±BuildOutputLinks         Show links in build output. Default: + (enabled).
--H:±BuildOutputPrefix        Prefix build output with '<pid>:<image name>'. Default: - (disabled).
+-H:±BuildOutputPrefix        Prefix build output with '<pid>:<name of binary>'. Default: - (disabled).
 -H:±BuildOutputProgress      Report progress in build output. Default: + (enabled).
 ```
 
+### Related Documentation
 
-[jdoc_feature]: https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html
-[doc_jni]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/JNI.md
-[doc_mem_mgmt]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/MemoryManagement.md
-[doc_shared_library]: https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image#build-a-shared-library
-[doc_static_images]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/StaticImages.md
-[new_issue]: https://github.com/oracle/graal/issues/new
-[oopsla19_initialize_once_start_fast]: https://dl.acm.org/doi/10.1145/3360610
-[rss_wiki]: https://en.wikipedia.org/wiki/Resident_set_size
-[truffle]: https://github.com/oracle/graal/tree/master/truffle
+- [Build a Native Shared Library](guides/build-native-shared-library.md)
+- [Build a Statically Linked or Mostly-Statically Linked Native Executable](guides/build-static-and-mostly-static-executable.md)
+- [Feature](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html)
+- [Interoperability with Native Code](InteropWithNativeCode.md)
+- [Java Native Interface (JNI) in Native Image](JNI.md)
+- [Memory Management](MemoryManagement.md)
+- [Native Image Build Overview](BuildOverview.md)
+- [Native Image Build Configuration](BuildConfiguration.md)

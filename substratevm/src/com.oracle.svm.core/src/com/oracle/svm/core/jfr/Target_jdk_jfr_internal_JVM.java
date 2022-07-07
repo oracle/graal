@@ -26,10 +26,8 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import org.graalvm.nativeimage.ProcessProperties;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -37,13 +35,12 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.Event;
-import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
-import jdk.jfr.internal.handlers.EventHandler;
 
 @SuppressWarnings({"static-method", "unused"})
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
@@ -136,7 +133,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getThreadId}. */
     @Substitute
     public long getThreadId(Thread t) {
-        return SubstrateJVM.get().getThreadId(t);
+        return SubstrateJVM.getThreadId(t);
     }
 
     /** See {@link JVM#getTicksFrequency}. */
@@ -291,7 +288,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
-    public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
+    public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_handlers_EventHandler handler) {
         // eventHandler fields should all be set at compile time so this method
         // should never be reached at runtime
         throw VMError.shouldNotReachHere("eventHandler does not exist for: " + eventClass);
@@ -318,13 +315,13 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#newEventWriter}. */
     @Substitute
-    public static EventWriter newEventWriter() {
-        return SubstrateUtil.cast(SubstrateJVM.get().newEventWriter(), EventWriter.class);
+    public static Target_jdk_jfr_internal_EventWriter newEventWriter() {
+        return SubstrateJVM.get().newEventWriter();
     }
 
     /** See {@link JVM#flush}. */
     @Substitute
-    public static boolean flush(EventWriter writer, int uncommittedSize, int requestedSize) {
+    public static boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 

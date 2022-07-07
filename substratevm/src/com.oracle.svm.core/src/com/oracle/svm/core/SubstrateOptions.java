@@ -394,9 +394,6 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
-    @Option(help = "Use new build output style", type = OptionType.User, deprecated = true, deprecationMessage = "The old build output style will be removed in a future release.")//
-    public static final HostedOptionKey<Boolean> BuildOutputUseNewStyle = new HostedOptionKey<>(true);
-
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
@@ -414,6 +411,11 @@ public class SubstrateOptions {
 
     @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
+
+    @Option(help = "Print build output statistics as JSON to the specified file. " +
+                    "The output is according to the JSON schema located at: " +
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json", type = OptionType.User)//
+    public static final HostedOptionKey<String> BuildOutputJSONFile = new HostedOptionKey<>("");
 
     /*
      * Object and array allocation options.

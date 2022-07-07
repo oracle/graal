@@ -72,42 +72,44 @@ public class TStringCompareTest extends TStringTestBase {
     public void testAll() throws Exception {
         forAllStrings(true, (a, arrayA, codeRangeA, isValidA, encodingA, codepointsA, byteIndicesA) -> {
             forAllStrings(new TruffleString.Encoding[]{encodingA}, true, (b, arrayB, codeRangeB, isValidB, encodingB, codepointsB, byteIndicesB) -> {
-                Assert.assertEquals(compare(arrayA, arrayB), node.execute(a, b, encodingA));
+                checkResult(compare(arrayA, arrayB), node.execute(a, b, encodingA));
                 if (encodingA == TruffleString.Encoding.UTF_16) {
-                    Assert.assertEquals(compare(codepointsA, codepointsB), nodeUTF16.execute(a, b));
+                    checkResult(compare(codepointsA, codepointsB), nodeUTF16.execute(a, b));
                 } else if (encodingA == TruffleString.Encoding.UTF_32) {
-                    Assert.assertEquals(compare(codepointsA, codepointsB), nodeUTF32.execute(a, b));
+                    checkResult(compare(codepointsA, codepointsB), nodeUTF32.execute(a, b));
                 }
             });
         });
+    }
+
+    private static void checkResult(int expected, int actual) {
+        if (expected < 0) {
+            Assert.assertTrue(actual < 0);
+        } else if (expected == 0) {
+            Assert.assertEquals(0, actual);
+        } else {
+            Assert.assertTrue(actual > 0);
+        }
     }
 
     private static int compare(byte[] a, byte[] b) {
         for (int i = 0; i < Math.min(a.length, b.length); i++) {
             int cmp = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]);
             if (cmp != 0) {
-                return cmp > 0 ? 1 : -1;
+                return cmp;
             }
         }
-        return compareTail(a.length, b.length);
+        return a.length - b.length;
     }
 
     private static int compare(int[] a, int[] b) {
         for (int i = 0; i < Math.min(a.length, b.length); i++) {
             int cmp = a[i] - b[i];
             if (cmp != 0) {
-                return cmp > 0 ? 1 : -1;
+                return cmp;
             }
         }
-        return compareTail(a.length, b.length);
-    }
-
-    private static int compareTail(int lengthA, int lengthB) {
-        if (lengthA == lengthB) {
-            return 0;
-        } else {
-            return lengthA < lengthB ? -1 : 1;
-        }
+        return a.length - b.length;
     }
 
     @Test

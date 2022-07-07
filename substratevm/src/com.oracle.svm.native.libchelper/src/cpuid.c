@@ -444,8 +444,12 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
         features->fAVX512_VPCLMULQDQ = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.vaes != 0)
         features->fAVX512_VAES = 1;
+      if (_cpuid_info->sef_cpuid7_ecx.bits.gfni != 0)
+        features->fGFNI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vnni != 0)
         features->fAVX512_VNNI = 1;
+      if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_bitalg != 0)
+        features->fAVX512_BITALG = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vbmi != 0)
         features->fAVX512_VBMI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vbmi2 != 0)
@@ -464,6 +468,8 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
     features->fAES = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.erms != 0)
     features->fERMS = 1;
+  if (_cpuid_info->sef_cpuid7_edx.bits.fast_short_rep_mov != 0)
+    features->fFSRM = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.clmul != 0)
     features->fCLMUL = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.rtm != 0)
@@ -478,6 +484,10 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
     features->fFMA = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.clflushopt != 0)
     features->fFLUSHOPT = 1;
+  if (_cpuid_info->ext_cpuid1_edx.bits.rdtscp != 0)
+    features->fRDTSCP = 1;
+  if (_cpuid_info->sef_cpuid7_ecx.bits.rdpid != 0)
+    features->fRDPID = 1;
 
   // AMD|Hygon features.
   if (is_amd_family(_cpuid_info))
@@ -504,6 +514,10 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
     if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0)
     {
       features->fCLWB = 1;
+    }
+    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0)
+    {
+      features->fSERIALIZE = 1;
     }
   }
 
@@ -553,6 +567,17 @@ void determineCPUFeatures(CPUFeatures *features)
       features->fVZEROUPPER = 0;
       features->fAVX512BW = 0;
       features->fAVX512VL = 0;
+      features->fAVX512DQ = 0;
+      features->fAVX512_VNNI = 0;
+      features->fAVX512_VAES = 0;
+      features->fAVX512_VPOPCNTDQ = 0;
+      features->fAVX512_VPCLMULQDQ = 0;
+      features->fAVX512_VBMI = 0;
+      features->fAVX512_VBMI2 = 0;
+      features->fCLWB = 0;
+      features->fFLUSHOPT = 0;
+      features->fGFNI = 0;
+      features->fAVX512_BITALG = 0;
     }
   }
 }

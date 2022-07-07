@@ -30,7 +30,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
 import org.graalvm.compiler.lir.InstructionValueProcedure;
@@ -48,29 +48,29 @@ public final class AMD64AddressValue extends CompositeValue {
 
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;
-    protected final Scale scale;
+    protected final Stride stride;
     protected final int displacement;
     private final Object displacementAnnotation;
 
     private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG, OperandFlag.ILLEGAL);
 
     public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, int displacement) {
-        this(kind, base, Value.ILLEGAL, Scale.Times1, displacement);
+        this(kind, base, Value.ILLEGAL, Stride.S1, displacement);
     }
 
-    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement) {
-        this(kind, base, index, scale, displacement, null);
+    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Stride stride, int displacement) {
+        this(kind, base, index, stride, displacement, null);
     }
 
-    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement, Object displacementAnnotation) {
+    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Stride stride, int displacement, Object displacementAnnotation) {
         super(kind);
         this.base = base;
         this.index = index;
-        this.scale = scale;
+        this.stride = stride;
         this.displacement = displacement;
         this.displacementAnnotation = displacementAnnotation;
 
-        assert scale != null;
+        assert stride != null;
     }
 
     public AllocatableValue getBase() {
@@ -86,7 +86,7 @@ public final class AMD64AddressValue extends CompositeValue {
         AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
         AllocatableValue newIndex = (AllocatableValue) proc.doValue(inst, index, mode, flags);
         if (!base.identityEquals(newBase) || !index.identityEquals(newIndex)) {
-            return new AMD64AddressValue(getValueKind(), newBase, newIndex, scale, displacement, displacementAnnotation);
+            return new AMD64AddressValue(getValueKind(), newBase, newIndex, stride, displacement, displacementAnnotation);
         }
         return this;
     }
@@ -98,7 +98,7 @@ public final class AMD64AddressValue extends CompositeValue {
     }
 
     public AMD64AddressValue withKind(ValueKind<?> newKind) {
-        return new AMD64AddressValue(newKind, base, index, scale, displacement, displacementAnnotation);
+        return new AMD64AddressValue(newKind, base, index, stride, displacement, displacementAnnotation);
     }
 
     private static Register toRegister(AllocatableValue value) {
@@ -111,7 +111,7 @@ public final class AMD64AddressValue extends CompositeValue {
     }
 
     public AMD64Address toAddress() {
-        return new AMD64Address(toRegister(base), toRegister(index), scale, displacement, displacementAnnotation);
+        return new AMD64Address(toRegister(base), toRegister(index), stride, displacement, displacementAnnotation);
     }
 
     @Override
@@ -123,7 +123,7 @@ public final class AMD64AddressValue extends CompositeValue {
             sep = " + ";
         }
         if (isLegal(index)) {
-            s.append(sep).append(index).append(" * ").append(scale.value);
+            s.append(sep).append(index).append(" * ").append(stride.value);
             sep = " + ";
         }
         if (displacement < 0) {
@@ -146,13 +146,13 @@ public final class AMD64AddressValue extends CompositeValue {
     public boolean equals(Object obj) {
         if (obj instanceof AMD64AddressValue) {
             AMD64AddressValue addr = (AMD64AddressValue) obj;
-            return getValueKind().equals(addr.getValueKind()) && displacement == addr.displacement && base.equals(addr.base) && scale == addr.scale && index.equals(addr.index);
+            return getValueKind().equals(addr.getValueKind()) && displacement == addr.displacement && base.equals(addr.base) && stride == addr.stride && index.equals(addr.index);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (scale.value << 8) ^ getValueKind().hashCode();
+        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (stride.value << 8) ^ getValueKind().hashCode();
     }
 }

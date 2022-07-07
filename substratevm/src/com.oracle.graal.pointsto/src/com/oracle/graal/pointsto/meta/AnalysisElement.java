@@ -35,8 +35,6 @@ import java.util.function.Consumer;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
-
 public abstract class AnalysisElement {
 
     /**
@@ -137,7 +135,7 @@ public abstract class AnalysisElement {
          * as reachable early, before the analysis is started, the reachability callbacks are run
          * during the analysis.
          */
-        ((PointsToAnalysis) universe.getBigbang()).postTask(task);
+        universe.getBigbang().postTask((d) -> task.run());
     }
 
 }

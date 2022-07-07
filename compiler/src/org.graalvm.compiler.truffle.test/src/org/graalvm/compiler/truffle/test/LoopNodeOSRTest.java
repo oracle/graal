@@ -51,9 +51,9 @@ public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
 
     private static class TestLoopRootNode extends RootNode {
         @Child private LoopNode loop;
-        private final com.oracle.truffle.api.frame.FrameSlot iterationSlot;
+        private final int iterationSlot;
 
-        TestLoopRootNode(RepeatingNode body, FrameDescriptor frameDescriptor, com.oracle.truffle.api.frame.FrameSlot iterationSlot) {
+        TestLoopRootNode(RepeatingNode body, FrameDescriptor frameDescriptor, int iterationSlot) {
             super(null, frameDescriptor);
             this.loop = Truffle.getRuntime().createLoopNode(body);
             this.iterationSlot = iterationSlot;
@@ -68,11 +68,11 @@ public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
 
     private final class CheckStackWalkBody extends Node implements RepeatingNode {
         private final int total;
-        private final com.oracle.truffle.api.frame.FrameSlot iterationSlot;
+        private final int iterationSlot;
         private final FrameDescriptor frameDescriptor;
         boolean compiled;
 
-        private CheckStackWalkBody(int total, FrameDescriptor frameDescriptor, com.oracle.truffle.api.frame.FrameSlot iterationSlot) {
+        private CheckStackWalkBody(int total, FrameDescriptor frameDescriptor, int iterationSlot) {
             this.total = total;
             this.iterationSlot = iterationSlot;
             this.frameDescriptor = frameDescriptor;
@@ -116,10 +116,11 @@ public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
                         "engine.OSR", "true",
                         "engine.OSRCompilationThreshold", String.valueOf(osrThreshold));
 
-        FrameDescriptor desc = new FrameDescriptor();
-        com.oracle.truffle.api.frame.FrameSlot iterationSlot = desc.addFrameSlot("iteration", FrameSlotKind.Int);
-        CheckStackWalkBody loop = new CheckStackWalkBody(osrThreshold * 2, desc, iterationSlot);
-        TestLoopRootNode rootNode = new TestLoopRootNode(loop, desc, iterationSlot);
+        var builder = FrameDescriptor.newBuilder();
+        int iterationSlot = builder.addSlot(FrameSlotKind.Int, "iteration", null);
+        FrameDescriptor frameDescriptor = builder.build();
+        CheckStackWalkBody loop = new CheckStackWalkBody(osrThreshold * 2, frameDescriptor, iterationSlot);
+        TestLoopRootNode rootNode = new TestLoopRootNode(loop, frameDescriptor, iterationSlot);
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
 
         target.call(ARGUMENTS);

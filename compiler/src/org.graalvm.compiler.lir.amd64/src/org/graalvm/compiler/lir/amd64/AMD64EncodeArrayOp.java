@@ -36,7 +36,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -83,7 +83,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
     private final CharsetName charset;
 
     public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset) {
-        super(TYPE, tool, YMM);
+        super(TYPE, tool, null, YMM);
 
         this.resultValue = result;
         this.originSrcValue = src;
@@ -136,8 +136,8 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
         masm.movl(result, len);
 
-        masm.leaq(src, new AMD64Address(src, len, Scale.Times2));
-        masm.leaq(dst, new AMD64Address(dst, len, Scale.Times1));
+        masm.leaq(src, new AMD64Address(src, len, Stride.S2));
+        masm.leaq(dst, new AMD64Address(dst, len, Stride.S1));
         masm.negq(len);
 
         if (supportsAVX2AndYMM() || masm.supports(CPUFeature.SSE4_2)) {
@@ -158,14 +158,14 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
                 masm.jmp(labelChars32Check);
 
                 masm.bind(labelCopy32Chars);
-                masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -64));
-                masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -32));
+                masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -64));
+                masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Stride.S2, -32));
                 masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, YMM);
                 masm.vptest(vectorTemp2, vectorTemp1);
                 masm.jcc(ConditionFlag.NotZero, labelCopy32CharsExit, true);
                 masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, YMM);
                 masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, YMM);
-                masm.vmovdqu(new AMD64Address(dst, len, Scale.Times1, -32), vectorTemp4);
+                masm.vmovdqu(new AMD64Address(dst, len, Stride.S1, -32), vectorTemp4);
 
                 masm.bind(labelChars32Check);
                 masm.addqAndJcc(len, 32, ConditionFlag.LessEqual, labelCopy32Chars, false);
@@ -183,20 +183,20 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
             masm.bind(labelCopy16Chars);
 
             if (supportsAVX2AndYMM()) {
-                masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Scale.Times2, -32));
+                masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Stride.S2, -32));
                 masm.vptest(vectorTemp2, vectorTemp1);
                 masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);
                 masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, YMM);
                 masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, YMM);
             } else {
                 if (masm.supports(CPUFeature.AVX)) {
-                    masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
-                    masm.movdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -16));
+                    masm.movdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -32));
+                    masm.movdqu(vectorTemp4, new AMD64Address(src, len, Stride.S2, -16));
                     masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, XMM);
                 } else {
-                    masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
+                    masm.movdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -32));
                     masm.por(vectorTemp2, vectorTemp3);
-                    masm.movdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -16));
+                    masm.movdqu(vectorTemp4, new AMD64Address(src, len, Stride.S2, -16));
                     masm.por(vectorTemp2, vectorTemp4);
                 }
 
@@ -205,7 +205,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
                 masm.packuswb(vectorTemp3, vectorTemp4);
             }
 
-            masm.movdqu(new AMD64Address(dst, len, Scale.Times1, -16), vectorTemp3);
+            masm.movdqu(new AMD64Address(dst, len, Stride.S1, -16), vectorTemp3);
 
             masm.bind(labelChars16Check);
             masm.addqAndJcc(len, 16, ConditionFlag.LessEqual, labelCopy16Chars, false);
@@ -214,12 +214,12 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
             masm.subqAndJcc(len, 8, ConditionFlag.Greater, labelCopy8CharsExit, true);
 
             masm.bind(labelCopy8Chars);
-            masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -16));
+            masm.movdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -16));
             masm.ptest(vectorTemp3, vectorTemp1);
             masm.jccb(ConditionFlag.NotZero, labelCopy8CharsExit);
 
             masm.packuswb(vectorTemp3, vectorTemp1);
-            masm.movq(new AMD64Address(dst, len, Scale.Times1, -8), vectorTemp3);
+            masm.movq(new AMD64Address(dst, len, Stride.S1, -8), vectorTemp3);
 
             masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, labelCopy8Chars, true);
 
@@ -228,10 +228,10 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
         }
 
         masm.bind(labelCopy1Char);
-        masm.movzwl(temp5, new AMD64Address(src, len, Scale.Times2, 0));
+        masm.movzwl(temp5, new AMD64Address(src, len, Stride.S2, 0));
         masm.testlAndJcc(temp5, shortMask, ConditionFlag.NotZero, labelCopy1CharExit, true);
 
-        masm.movb(new AMD64Address(dst, len, AMD64Address.Scale.Times1, 0), temp5);
+        masm.movb(new AMD64Address(dst, len, Stride.S1, 0), temp5);
         masm.addqAndJcc(len, 1, ConditionFlag.Less, labelCopy1Char, true);
 
         masm.bind(labelCopy1CharExit);

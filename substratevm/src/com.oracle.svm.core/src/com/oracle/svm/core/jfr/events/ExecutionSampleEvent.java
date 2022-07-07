@@ -69,7 +69,7 @@ public final class ExecutionSampleEvent {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ExecutionSample);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putThread(data, isolateThread);
-            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ExecutionSample.getId(), 0));
+            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ExecutionSample, 0));
             JfrNativeEventWriter.putLong(data, JfrThreadState.getId(threadState));
             JfrNativeEventWriter.endSmallEvent(data);
         }

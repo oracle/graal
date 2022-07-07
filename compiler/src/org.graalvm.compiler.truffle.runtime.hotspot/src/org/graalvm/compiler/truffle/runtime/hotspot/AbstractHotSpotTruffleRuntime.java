@@ -691,12 +691,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         try {
             int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
                             Integer.class, "address");
-            long threadEETopOffset = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            long threadEETopOffset = getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
             long eetop = UNSAFE.getLong(Thread.currentThread(), threadEETopOffset);
             return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
     }
 
     @Override
@@ -723,7 +728,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
         static {
             try {
-                THREAD_EETOP_OFFSET = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+                THREAD_EETOP_OFFSET = getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
             } catch (Exception e) {
                 throw new InternalError(e);
             }

@@ -80,9 +80,9 @@ public class DataPatchTest extends HotSpotGraalCompilerTest {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 CompressEncoding encoding = runtime().getVMConfig().getOopEncoding();
-                ValueNode compressed = b.add(HotSpotCompressionNode.compress(arg, encoding));
+                ValueNode compressed = b.add(HotSpotCompressionNode.compress(b.getGraph(), arg, encoding));
                 ValueNode proxy = b.add(new OpaqueNode(compressed));
-                b.addPush(JavaKind.Object, HotSpotCompressionNode.uncompress(proxy, encoding));
+                b.addPush(JavaKind.Object, HotSpotCompressionNode.uncompress(b.getGraph(), proxy, encoding));
                 return true;
             }
         });

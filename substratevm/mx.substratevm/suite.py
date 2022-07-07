@@ -230,6 +230,8 @@ suite = {
                     "jdk.jfr.events",
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
+                ],
+                "jdk.jfr@11..18": [
                     "jdk.jfr.internal.handlers",
                 ],
             },
@@ -407,13 +409,28 @@ suite = {
             "workingSets": "SVM",
         },
 
+
+        "com.oracle.graal.reachability": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.graal.pointsto",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "11+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
                 "com.oracle.svm.core",
-                "com.oracle.graal.pointsto",
+                "com.oracle.graal.reachability"
             ],
             "requires" : [
                 "java.desktop",
@@ -818,6 +835,8 @@ suite = {
                     "jdk.internal.misc",
                 ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.code.site",
                     "jdk.vm.ci.runtime",
                 ],
             },
@@ -1159,6 +1178,7 @@ suite = {
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
+                    "java.util.spi.ResourceBundleControlProvider",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [

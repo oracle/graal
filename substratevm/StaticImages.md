@@ -1,2 +1,2 @@
 ### Native-Image Docs Have Been Moved
-This file can now be found [here](../docs/reference-manual/native-image/StaticImages.md)
+This file can now be found [here](../docs/reference-manual/native-image/StaticLinking.md)

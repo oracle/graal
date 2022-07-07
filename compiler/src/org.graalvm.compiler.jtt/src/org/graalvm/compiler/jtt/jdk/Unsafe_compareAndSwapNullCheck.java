@@ -39,7 +39,7 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
     static final long valueOffset;
     static {
         try {
-            valueOffset = UNSAFE.objectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
+            valueOffset = getObjectFieldOffset(Unsafe_compareAndSwapNullCheck.class.getDeclaredField("value"));
         } catch (Exception ex) {
             throw new Error(ex);
         }

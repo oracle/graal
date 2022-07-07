@@ -32,48 +32,61 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 
-@TargetClass(className = "java.lang.Continuation", onlyWith = LoomJDK.class)
+@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = JDK19OrLater.class)
 public final class Target_java_lang_Continuation {
     @Alias//
+    @TargetElement(onlyWith = LoomJDK.class)//
     Runnable target;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = LoomJDK.class)//
     public Continuation internal;
 
     @Alias//
+    @TargetElement(onlyWith = LoomJDK.class)//
     short cs;
     @Alias//
+    @TargetElement(onlyWith = LoomJDK.class)//
     Object yieldInfo;
     @Alias//
+    @TargetElement(onlyWith = LoomJDK.class)//
     byte flags;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    @TargetElement(onlyWith = LoomJDK.class)//
     // Checkstyle: stop
     static byte FLAG_SAFEPOINT_YIELD = 1 << 1;
     // Checkstyle: resume
 
     @SuppressWarnings("unused")
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     public Target_java_lang_Continuation(Target_java_lang_ContinuationScope scope, Runnable target) {
     }
 
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     public static native boolean yield(Target_java_lang_ContinuationScope scope);
 
     @Alias//
+    @TargetElement(onlyWith = LoomJDK.class)//
     boolean done;
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private boolean isEmpty() {
         return internal.isEmpty();
     }
 
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     public native Target_java_lang_ContinuationScope getScope();
 
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     public native Target_java_lang_Continuation getParent();
 
     /**
@@ -85,6 +98,7 @@ public final class Target_java_lang_Continuation {
      * {@link Target_java_lang_Continuation#postYieldCleanup(int)}.
      */
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     public native void run();
 
     /**
@@ -92,29 +106,36 @@ public final class Target_java_lang_Continuation {
      * {@link Target_java_lang_Continuation#doYield(int)}.
      */
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     native boolean yield0(Target_java_lang_ContinuationScope scope, Target_java_lang_Continuation child);
 
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     private native void setMounted(boolean mounted);
 
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     private native void postYieldCleanup(int origRefSP);
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private void mount() {
         setMounted(true);
     }
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private void unmount() {
         setMounted(false);
     }
 
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     public native boolean isPreempted();
 
     @SuppressWarnings("unused")
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     @NeverInline("access stack pointer")
     private static int isPinned0(Target_java_lang_ContinuationScope scope) {
         return LoomSupport.isPinned(
@@ -123,11 +144,13 @@ public final class Target_java_lang_Continuation {
     }
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     boolean isStarted() {
         return internal.isStarted();
     }
 
     @Alias
+    @TargetElement(onlyWith = LoomJDK.class)
     native boolean isDone();
 
     @Alias
@@ -135,6 +158,7 @@ public final class Target_java_lang_Continuation {
     public static native Target_java_lang_Continuation getCurrentContinuation(Target_java_lang_ContinuationScope scope);
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     static void enterSpecial(Target_java_lang_Continuation cont, boolean isContinue) {
         enter(cont, isContinue);
     }
@@ -143,6 +167,7 @@ public final class Target_java_lang_Continuation {
      * Yields to nth continuation as the nth nearest enterSpecial returns.
      */
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private static int doYield(int scopes) {
         assert scopes == 0;
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
@@ -157,12 +182,14 @@ public final class Target_java_lang_Continuation {
     }
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private void finish() {
         done = true;
         assert isEmpty();
     }
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private static void enter(Target_java_lang_Continuation cont, boolean isContinue) {
         if (!isContinue) {
             assert cont.internal == null;
@@ -173,6 +200,7 @@ public final class Target_java_lang_Continuation {
     }
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private void enter0() {
         try {
             target.run();
@@ -182,6 +210,7 @@ public final class Target_java_lang_Continuation {
     }
 
     @Substitute
+    @TargetElement(onlyWith = LoomJDK.class)
     private int tryForceYield0(Target_java_lang_Thread thread) {
         Target_java_lang_Continuation cont = thread.getContinuation();
         Target_java_lang_Continuation innermost = cont;

@@ -52,13 +52,19 @@ import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
-import org.graalvm.compiler.replacements.ArrayIndexOf;
-import org.graalvm.compiler.replacements.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsForeignCalls;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 
@@ -203,21 +209,21 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     private static ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, AMD64HotSpotLIRGenerator gen) {
         if (valueNode instanceof ArrayIndexOfNode) {
-            return ArrayIndexOf.getStub((ArrayIndexOfNode) valueNode);
+            return ArrayIndexOfForeignCalls.getStub((ArrayIndexOfNode) valueNode);
         } else if (valueNode instanceof ArrayEqualsNode) {
-            return AMD64ArrayEqualsStub.getArrayEqualsStub((ArrayEqualsNode) valueNode, gen);
+            return AMD64ArrayEqualsForeignCalls.getArrayEqualsStub((ArrayEqualsNode) valueNode, gen);
         } else if (valueNode instanceof ArrayRegionEqualsNode) {
-            return AMD64ArrayEqualsStub.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, gen);
+            return AMD64ArrayEqualsForeignCalls.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, gen);
         } else if (valueNode instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-            return AMD64ArrayEqualsWithMaskStub.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, gen);
+            return AMD64ArrayEqualsWithMaskForeignCalls.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, gen);
         } else if (valueNode instanceof ArrayCompareToNode) {
-            return AMD64ArrayCompareToStub.getStub((ArrayCompareToNode) valueNode);
+            return ArrayCompareToForeignCalls.getStub((ArrayCompareToNode) valueNode);
         } else if (valueNode instanceof ArrayRegionCompareToNode) {
-            return AMD64ArrayRegionCompareToStub.getStub((ArrayRegionCompareToNode) valueNode);
+            return ArrayRegionCompareToForeignCalls.getStub((ArrayRegionCompareToNode) valueNode);
         } else if (valueNode instanceof AMD64CalcStringAttributesNode) {
-            return AMD64CalcStringAttributesStub.getStub((AMD64CalcStringAttributesNode) valueNode);
+            return AMD64CalcStringAttributesForeignCalls.getStub((AMD64CalcStringAttributesNode) valueNode);
         } else if (valueNode instanceof ArrayCopyWithConversionsNode) {
-            return AMD64ArrayCopyWithConversionsStub.getStub((ArrayCopyWithConversionsNode) valueNode);
+            return ArrayCopyWithConversionsForeignCalls.getStub((ArrayCopyWithConversionsNode) valueNode);
         }
         return null;
     }

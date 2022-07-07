@@ -105,7 +105,7 @@ class SamplerThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setThreadLocalBuffer(SamplerBuffer buffer) {
-        buffer.setOwner(SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread()));
+        buffer.setOwner(SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread()));
         localBuffer.set(buffer);
     }
 

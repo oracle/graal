@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 final class InteropAccessor extends Accessor {
 
     static final InteropAccessor ACCESSOR = new InteropAccessor();

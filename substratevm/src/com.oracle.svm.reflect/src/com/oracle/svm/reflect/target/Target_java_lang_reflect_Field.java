@@ -32,7 +32,6 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -45,11 +44,14 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
 import com.oracle.svm.reflect.hosted.ReflectionMetadataComputer;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -87,7 +89,16 @@ public final class Target_java_lang_reflect_Field {
     native Target_java_lang_reflect_Field copy();
 
     @Alias
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor(boolean overrideFinalCheck);
+
+    @Alias//
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor();
+
+    @Alias//
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native Target_jdk_internal_reflect_FieldAccessor acquireOverrideFieldAccessor();
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME, onlyWith = JDK17OrLater.class)
@@ -101,6 +112,7 @@ public final class Target_java_lang_reflect_Field {
 
     /** @see com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor#deleteErrorMessage */
     @Substitute
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     Target_jdk_internal_reflect_FieldAccessor getFieldAccessor(@SuppressWarnings("unused") Object obj) {
         boolean ov = override;
         Target_jdk_internal_reflect_FieldAccessor accessor = (ov) ? overrideFieldAccessor : fieldAccessor;
@@ -113,6 +125,38 @@ public final class Target_java_lang_reflect_Field {
                             "." + field.getName() + " is reachable: " + deletedReason);
         }
         return acquireFieldAccessor(ov);
+    }
+
+    /** @see com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor#deleteErrorMessage */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    Target_jdk_internal_reflect_FieldAccessor getFieldAccessor() {
+        Target_jdk_internal_reflect_FieldAccessor accessor = fieldAccessor;
+        if (accessor != null) {
+            return accessor;
+        }
+        if (deletedReason != null) {
+            Field field = SubstrateUtil.cast(this, Field.class);
+            throw VMError.unsupportedFeature("Unsupported field " + field.getDeclaringClass().getTypeName() +
+                            "." + field.getName() + " is reachable: " + deletedReason);
+        }
+        return acquireFieldAccessor();
+    }
+
+    /** @see com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor#deleteErrorMessage */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    Target_jdk_internal_reflect_FieldAccessor getOverrideFieldAccessor() {
+        Target_jdk_internal_reflect_FieldAccessor accessor = overrideFieldAccessor;
+        if (accessor != null) {
+            return accessor;
+        }
+        if (deletedReason != null) {
+            Field field = SubstrateUtil.cast(this, Field.class);
+            throw VMError.unsupportedFeature("Unsupported field " + field.getDeclaringClass().getTypeName() +
+                            "." + field.getName() + " is reachable: " + deletedReason);
+        }
+        return acquireOverrideFieldAccessor();
     }
 
     @Substitute

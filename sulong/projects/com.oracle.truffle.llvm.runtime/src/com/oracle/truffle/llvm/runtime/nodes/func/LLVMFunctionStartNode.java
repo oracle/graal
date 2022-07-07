@@ -31,13 +31,19 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.dsl.AOTSupport;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.DummyReceiver;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -148,7 +154,7 @@ public final class LLVMFunctionStartNode extends LLVMRootNode implements LLVMHas
     @Override
     protected ExecutionSignature prepareForAOT() {
         super.prepareForAOT();
-        AOTSupport.prepareForAOT(this);
+        customPrepareForAOT(this);
         // TODO: use the FunctionDefinition to prepare the right signature
         return ExecutionSignature.GENERIC;
     }
@@ -156,5 +162,51 @@ public final class LLVMFunctionStartNode extends LLVMRootNode implements LLVMHas
     @Override
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
         return LLVMManagedPointer.cast(LLVMLanguage.getContext().getSymbolResolved(rootFunction, BranchProfile.getUncached())).getObject();
+    }
+
+    private static void customPrepareForAOT(RootNode root) {
+        root.atomic(() -> {
+            final LLVMLanguage language = LLVMLanguage.get(root);
+            NodeUtil.forEachChild(root, new ReplacingAOTNodeVisitor(language, root));
+        });
+    }
+
+    private static final class ReplacingAOTNodeVisitor implements NodeVisitor {
+
+        private final LLVMLanguage language;
+        private final RootNode root;
+
+        private ReplacingAOTNodeVisitor(LLVMLanguage language, RootNode root) {
+            this.language = language;
+            this.root = root;
+        }
+
+        @Override
+        public boolean visit(Node n) {
+            Node node = n;
+
+            boolean prepareForAOT = true;
+
+            if (node.isAdoptable() && node instanceof Library) {
+                // DummyReceiver holds the knowledge of library nodes that should be replaced in
+                // the context of the current platform
+                Library repl = DummyReceiver.getAOTLibraryReplacement((Library) node);
+                if (repl != null) {
+                    node = node.replace(repl);
+                }
+                // Dummy library replacements do not undergo the AOT preparation
+                prepareForAOT = repl == null;
+            }
+
+            if (prepareForAOT && node instanceof GenerateAOT.Provider) {
+                GenerateAOT.Provider provider = (GenerateAOT.Provider) node;
+                if (node.isAdoptable() && node.getRootNode() == null) {
+                    throw new AssertionError("Node is not yet adopted before prepare " + node);
+                }
+                provider.prepareForAOT(language, root);
+            }
+
+            return NodeUtil.forEachChild(node, this);
+        }
     }
 }

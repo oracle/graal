@@ -40,12 +40,12 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.Configuration;
-import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
 
@@ -254,16 +254,27 @@ public class SubstrateJVM {
         return stackTraceRepo.getStackTraceId(skipCount, false);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getStackTraceId(JfrEvent eventType, int skipCount) {
+        return getStackTraceId(eventType.getId(), skipCount);
+    }
+
     /** See {@link JVM#getThreadId}. */
-    public long getThreadId(Thread thread) {
-        return thread.getId();
+    public static long getThreadId(Thread thread) {
+        if (HasJfrSupport.get()) {
+            return JavaThreads.getThreadId(thread);
+        }
+        return 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadId(IsolateThread isolateThread) {
-        long threadId = threadLocal.getTraceId(isolateThread);
-        VMError.guarantee(threadId > 0);
-        return threadId;
+    public static long getThreadId(IsolateThread isolateThread) {
+        if (HasJfrSupport.get()) {
+            long threadId = get().threadLocal.getTraceId(isolateThread);
+            VMError.guarantee(threadId > 0);
+            return threadId;
+        }
+        return 0;
     }
 
     /** See {@link JVM#storeMetadataDescriptor}. */
@@ -408,7 +419,7 @@ public class SubstrateJVM {
 
     /** See {@link JVM#flush}. */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public boolean flush(EventWriter writer, int uncommittedSize, int requestedSize) {
+    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 

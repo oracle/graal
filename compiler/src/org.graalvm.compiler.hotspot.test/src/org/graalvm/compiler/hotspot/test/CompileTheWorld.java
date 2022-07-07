@@ -100,6 +100,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalIsolate;
@@ -675,7 +676,7 @@ public final class CompileTheWorld {
         CTWThread(Runnable r, LibGraalParams libgraal) {
             super(r);
             this.libgraal = libgraal;
-            setName("CTWThread-" + getId());
+            setName("CTWThread-" + GraalServices.getThreadId(this));
             setPriority(Thread.MAX_PRIORITY);
             setDaemon(true);
         }

@@ -34,6 +34,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -310,7 +311,7 @@ class CompilationWatchDog implements Runnable, AutoCloseable {
                 watchDog = new CompilationWatchDog(currentThread, startDelayMilliseconds, stackTraceIntervalMilliseconds, nonFatalIdenticalCompilationSnapshots);
                 WATCH_DOGS.set(watchDog);
                 GraalServiceThread thread = new GraalServiceThread(CompilationWatchDog.class.getSimpleName(), watchDog);
-                thread.setName(thread.getId() + " " + watchDog.toString());
+                thread.setName(GraalServices.getThreadId(thread) + " " + watchDog.toString());
                 thread.setPriority(Thread.MAX_PRIORITY);
                 thread.setDaemon(true);
                 thread.start();

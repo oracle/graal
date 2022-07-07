@@ -279,9 +279,10 @@ $GRAALVM_HOME/bin/wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
 
 More details can be found in the [WebAssembly reference manual](../../reference-manual/wasm/README.md).
 
-## Native Images
+## Native Image
 
-With GraalVM Enterpise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and smaller footprint for your application.
+With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
+
 The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image
@@ -314,7 +315,7 @@ Hello, World!
 
 More detailed documentation on this innovative technology is available in the [Native Image reference manual](../../reference-manual/native-image/README.md).
 
-## Polyglot Capabilities of Native Images
+## Polyglot Capabilities of Native Image
 
 GraalVM Enterprise makes it possible to use polyglot capabilities when building native executables.
 Take this example of a JSON pretty-printer Java program that embeds some JavaScript code:
@@ -338,16 +339,16 @@ public class PrettyPrintJSON {
   }
 }
 ```
-Compile it and build a native image for it. The `--language:js` argument ensures that JavaScript is available in the generated binary:
+Compile it and build a native executable for it. The `--language:js` argument ensures
+that JavaScript is available in the generated image:
 
 ```shell
 javac PrettyPrintJSON.java
 native-image --language:js --initialize-at-build-time PrettyPrintJSON
 ```
 
-The generatation will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
-Additionally, the generatation requires large amounts of physical memory, especially if you build a native executable with
-the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
+The generatation of the native executable will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
+Additionally, the building requires large amounts of physical memory, especially if you build a native executable with the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
 
 The resulting binary can now perform JSON pretty-printing:
 

@@ -52,7 +52,8 @@ public class NativeImageResourceUtils {
     public static final class TestFeature implements Feature {
         @Override
         public void afterRegistration(AfterRegistrationAccess access) {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.configure");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, TestFeature.class, false, "org.graalvm.sdk", "org.graalvm.nativeimage.impl");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, TestFeature.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.configure");
         }
 
         @Override

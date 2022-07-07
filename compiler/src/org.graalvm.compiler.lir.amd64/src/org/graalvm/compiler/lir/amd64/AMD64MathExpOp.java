@@ -46,6 +46,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
@@ -306,7 +307,7 @@ public final class AMD64MathExpOp extends AMD64MathIntrinsicUnaryOp {
         masm.psllq(xmm7, 46);
         masm.subpd(xmm0, xmm3);
         masm.leaq(r11, recordExternalAddress(crb, tblAddr));
-        masm.movdqu(xmm2, new AMD64Address(rcx, r11, AMD64Address.Scale.Times1));
+        masm.movdqu(xmm2, new AMD64Address(rcx, r11, Stride.S1));
         masm.mulpd(xmm4, xmm0);
         masm.movapd(xmm6, xmm0);
         masm.movapd(xmm1, xmm0);
