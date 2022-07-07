@@ -473,7 +473,7 @@ public final class EspressoOptions {
 
     @Option(help = "Use Custom ClassLoader for Bindings, allowing the addition of new locations for loading.", //
                     category = OptionCategory.INTERNAL, //
-                    stability = OptionStability.STABLE, //
+                    stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> UseBindingsLoader = new OptionKey<>(false);
 
