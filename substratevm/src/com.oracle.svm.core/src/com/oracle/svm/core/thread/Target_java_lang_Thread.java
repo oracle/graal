@@ -565,6 +565,12 @@ public final class Target_java_lang_Thread {
         return PlatformThreads.getAllStackTraces();
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private static Thread[] getAllThreads() {
+        return PlatformThreads.getAllThreads();
+    }
+
     /**
      * In the JDK, this is a no-op except on Windows. The JDK resets the interrupt event used by
      * Process.waitFor ResetEvent((HANDLE) JVM_GetThreadInterruptEvent()); Our implementation in
