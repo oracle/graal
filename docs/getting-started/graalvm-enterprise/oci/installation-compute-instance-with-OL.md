@@ -1,27 +1,27 @@
 ---
 layout: ohc
-permalink: /getting-started/oci/compute-instances/
+permalink: /getting-started/oci/compute-instance/
 ---
 
-# Get Started with GraalVM Enterprise on OCI
+# GraalVM Enterprise on OCI Compute Instances with Oracle Linux
 
-[Oracle Cloud Infrastructure (OCI)](https://www.oracle.com/cloud) offers Oracle GraalVM Enterprise Edition for free to its customers.
-GraalVM Enterprise support is included in the Oracle Cloud subscription.
-
-This guide focuses on installing GraalVM Enterprise on the Oracle Cloud Infrastructure Virtual Machine (VM) Compute Instance.
+This guide focuses on installing GraalVM Enterprise on an Oracle Cloud Infrastructure (OCI) Compute instance with Oracle Linux 7,8.
 For users who prefer a Bare Metal Machine instance, see [this documentation](https://cloud.oracle.com/iaas/whitepapers/deploying_custom_os_images.pdf).
 For complete beginners, [start with this tutorial for creating and launching your first Linux instance](https://docs.cloud.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm?tocpath=Getting%20Started%7CTutorial%20-%20Launching%20Your%20First%20Linux%20Instance%7C_____0).
 
+> Note: [Oracle Cloud Infrastructure (OCI)](https://www.oracle.com/cloud) provides Oracle GraalVM Enterprise Edition to its customers for free.
+GraalVM Enterprise support is included in a Oracle Cloud subscription.
+
 ### Prerequisites
 
-To replicate the steps in this guide, [create a compute VM instance and connect to it](https://docs.cloud.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm?tocpath=Getting%20Started%7CTutorial%20-%20Launching%20Your%20First%20Linux%20Instance%7C_____0).
+To replicate the steps in this guide, [create a Compute instance and connect to it](https://docs.cloud.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm?tocpath=Getting%20Started%7CTutorial%20-%20Launching%20Your%20First%20Linux%20Instance%7C_____0).
 
 ## Install GraalVM Enterprise
 
 For convenience, GraalVM Enterpriise RPMs are available in the Oracle YUM repository. 
-Each RPM is self-contained and will automatically pull in all the required dependencies.
+Each RPM is self-contained and will automatically pull in all required dependencies.
 
-That means that OCI customers can use the GraalVM Enterprise environment in their cloud instances by installing it with `yum` - a package-management utility for the Linux operating systems.
+That means that OCI customers can use the GraalVM Enterprise environment in their compute instances by installing it with `yum` - a package-management utility for the Linux operating system.
 
 The following instructions have been tested on an OCI Compute Instance with **Oracle Linux 7.9** and **VM.Standard.E4.Flex** with 1 OCPU and 16 GB RAM.
 Use the following command to connect to the OCI Compute Instance from a Unix-style system:
@@ -171,12 +171,12 @@ The `yum upgrade` command can be used to update on the same year package line, f
    ```shell
    sudo yum upgrade graalvm22-ee-11-jdk
    ```
-   As there are no newer package available, you will see the `No packages marked for update` message.
+   As there is no newer package available, you will see the `No packages marked for update` message.
 
-It will update the whole system and remove the obsolete GraalVM Enterprise installation.
+It will update the whole system and remove any obsolete GraalVM Enterprise installation.
 
-## Learn More
+### Related Documentation
 
-- Run the [Get Started with GraalVM on Oracle Linux in OCI](https://luna.oracle.com/lab/3b0dcf97-22d0-489b-a049-5d269199fa00) interactive workshop to get hands-on lab experience installing GraalVM Enterprise on Oracle Linux 8 (all the necessary compute resources are provisioned).
+- [Get Started with GraalVM on Oracle Linux in OCI](https://luna.oracle.com/lab/3b0dcf97-22d0-489b-a049-5d269199fa00): Run the interactive workshop to install GraalVM Enterprise on Oracle Linux 8 (all the necessary cloud resources are provisioned).
 
-- Take the [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1) interactive lab to see how GraalVM Enterprise accelerates Java applications in Oracle Cloud.
+- [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1): Run the interactive workshop to see how GraalVM Enterprise accelerates Java applications in OCI.
