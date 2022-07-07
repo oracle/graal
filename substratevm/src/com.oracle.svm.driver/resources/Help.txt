@@ -30,6 +30,7 @@ where options include:
     -D<name>=<value>      set a system property
     -J<flag>              pass <flag> directly to the JVM running the image generator
     -O<level>             0 - no optimizations, 1 - basic optimizations (default).
+    --diagnostics-mode    enable diagnostics output: class initialization, substitutions, etc.
     --verbose             enable verbose output
     --version             print product version and exit
     --help                print this help message
