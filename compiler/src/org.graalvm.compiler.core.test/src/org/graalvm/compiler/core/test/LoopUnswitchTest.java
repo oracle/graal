@@ -63,7 +63,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public static int test1Snippet(int a) {
         int sum = 0;
         for (int i = 0; i < 1000; i++) {
-            if (a > 2) {
+            if (GraalDirectives.injectBranchProbability(0.5, a > 2)) {
                 sum += 2;
             } else {
                 sum += a;
@@ -135,7 +135,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public static int test3Snippet(int a, int b) {
         int sum = 0;
         for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); ++i) {
-            if (a > 0) {
+            if (GraalDirectives.injectBranchProbability(0.5, a > 0)) {
                 switch (b) {
                     case 0:
                         sum += 1;
