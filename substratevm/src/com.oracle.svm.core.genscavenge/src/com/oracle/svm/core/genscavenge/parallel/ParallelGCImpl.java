@@ -6,7 +6,6 @@ import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -22,7 +21,8 @@ public class ParallelGCImpl extends ParallelGC {
     private static final TaskQueue.Consumer PROMOTE_TASK =
             obj -> getVisitor().doVisitObject(obj);
 
-    private static boolean enabled;
+    private static volatile boolean enabled;
+    private static volatile Throwable throwable;
 
     @Override
     public void startWorkerThreads() {
@@ -40,7 +40,7 @@ public class ParallelGCImpl extends ParallelGC {
                         QUEUE.consume(PROMOTE_TASK);
                     }
                 } catch (Throwable e) {
-                    VMError.shouldNotReachHere(e.getClass().getName());
+                    throwable = e;
                 }
         });
         t.setName("ParallelGCWorker-" + n);
@@ -74,6 +74,15 @@ public class ParallelGCImpl extends ParallelGC {
 
     public static TaskQueue.Stats getStats() {
         return QUEUE.stats;
+    }
+
+    public static void checkThrowable() {
+        if (throwable != null) {
+            Log.log().string("PGC error : ").string(throwable.getClass().getName())
+                    .string(" : ").string(throwable.getMessage()).newline();
+            throwable.printStackTrace();
+            throw new Error(throwable);
+        }
     }
 }
 
