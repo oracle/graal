@@ -1025,7 +1025,7 @@ public final class InspectorDebugger extends DebuggerDomain {
 
         private CharSequence getSourceMapURL(Source source, int lastLine) {
             String mapKeyword = "sourceMappingURL=";
-            int mapKeywordLenght = mapKeyword.length();
+            int mapKeywordLength = mapKeyword.length();
             CharSequence line = source.getCharacters(lastLine + 1);
             int lineLength = line.length();
             int i = 0;
@@ -1041,8 +1041,8 @@ public final class InspectorDebugger extends DebuggerDomain {
             while (i < lineLength && Character.isWhitespace(line.charAt(i))) {
                 i++;
             }
-            if (i + mapKeywordLenght < lineLength && line.subSequence(i, i + mapKeywordLenght).equals(mapKeyword)) {
-                i += mapKeywordLenght;
+            if (i + mapKeywordLength < lineLength && line.subSequence(i, i + mapKeywordLength).equals(mapKeyword)) {
+                i += mapKeywordLength;
             } else {
                 return null;
             }
