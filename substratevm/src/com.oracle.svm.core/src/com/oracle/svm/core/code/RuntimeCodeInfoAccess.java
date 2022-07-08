@@ -238,8 +238,8 @@ public final class RuntimeCodeInfoAccess {
         CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
     }
 
-    public static void makeCodeMemoryWriteableNonExecutable(CodePointer start, UnsignedWord size) {
-        CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
+    public static void makeCodeMemoryExecutableWritable(CodePointer start, UnsignedWord size) {
+        CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE, CommittedMemoryProvider.Access.EXECUTE));
     }
 
     @Platforms(Platform.MACOS_AARCH64.class) private static final FastThreadLocalInt jitProtectDepth = FastThreadLocalFactory.createInt("jitProtectDepth");

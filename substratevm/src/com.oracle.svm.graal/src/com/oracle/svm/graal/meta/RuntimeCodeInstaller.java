@@ -38,6 +38,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -128,11 +129,15 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                 dataOffset = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset), CommittedMemoryProvider.get().getGranularity()));
             }
             codeAndDataMemorySize = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset + dataSize), CommittedMemoryProvider.get().getGranularity()));
+
             code = allocateCodeMemory(codeAndDataMemorySize);
             compiledBytes = compilation.getTargetCode();
 
-            if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-                makeCodeMemoryWriteableNonExecutable(code.add(dataOffset), codeAndDataMemorySize - dataOffset);
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
+                UnsignedWord alignedAfterCodeOffset = UnsignedUtils.roundUp(WordFactory.unsigned(codeSize), CommittedMemoryProvider.get().getGranularity());
+                assert alignedAfterCodeOffset.belowOrEqual(codeAndDataMemorySize);
+
+                makeCodeMemoryExecutableWritable(code, alignedAfterCodeOffset);
             }
 
             codeObservers = ImageSingletons.lookup(InstalledCodeObserverSupport.class).createObservers(debug, method, compilation, code, codeSize);
@@ -210,7 +215,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
             // remove write access from code
             if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-                makeCodeMemoryReadOnly(code, codeSize);
+                makeCodeMemoryExecutableReadOnly(code, WordFactory.unsigned(codeSize));
             }
 
             /* Write primitive constants to the buffer, record object constants with offsets */
