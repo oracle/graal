@@ -63,8 +63,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.monitor.JavaMonitor;
 
 import jdk.internal.misc.Unsafe;
-import src.com.oracle.svm.core.src.com.oracle.svm.core.monitor.GraalAbstractQueuedSynchronizer;
-import src.com.oracle.svm.core.src.com.oracle.svm.core.monitor.GraalReentrantLock;
+import com.oracle.svm.core.monitor.GraalAbstractQueuedSynchronizer;
+import com.oracle.svm.core.monitor.GraalReentrantLock;
 
 /**
  * Implementation of synchronized-related operations.
@@ -189,7 +189,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Condition yet. This marker value is needed to identify monitor conditions for
      * {@link #maybeAdjustNewParkStatus}.
      */
-    static final GraalAbstractQueuedSynchronizer.GraalConditionObject MONITOR_WITHOUT_CONDITION = null;//(GraalAbstractQueuedSynchronizer.GraalConditionObject ) new GraalReentrantLock().newCondition();
+    static final GraalAbstractQueuedSynchronizer.GraalConditionObject MONITOR_WITHOUT_CONDITION = (GraalAbstractQueuedSynchronizer.GraalConditionObject ) new GraalReentrantLock().newCondition();
 
     // Checkstyle: stop
     /** Substituted in {@link Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport} */

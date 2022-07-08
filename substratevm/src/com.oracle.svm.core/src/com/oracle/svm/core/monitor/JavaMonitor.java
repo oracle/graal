@@ -34,7 +34,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
-import src.com.oracle.svm.core.src.com.oracle.svm.core.monitor.GraalReentrantLock;
+import com.oracle.svm.core.monitor.GraalReentrantLock;
 
 public class JavaMonitor extends GraalReentrantLock {
     private static final long serialVersionUID = 3921577070627519721L;

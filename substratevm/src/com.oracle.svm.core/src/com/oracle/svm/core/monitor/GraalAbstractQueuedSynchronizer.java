@@ -1,4 +1,4 @@
-package src.com.oracle.svm.core.src.com.oracle.svm.core.monitor;
+package com.oracle.svm.core.monitor;
 
 import jdk.internal.misc.Unsafe;
 
