@@ -931,8 +931,8 @@ public final class EspressoContext {
     }
 
     public void unregisterThread(StaticObject self) {
-        threadRegistry.unregisterThread(self);
-        if (shouldReportVMEvents) {
+        boolean unregistered = threadRegistry.unregisterThread(self);
+        if (shouldReportVMEvents && unregistered) {
             eventListener.threadDied(self);
         }
     }
