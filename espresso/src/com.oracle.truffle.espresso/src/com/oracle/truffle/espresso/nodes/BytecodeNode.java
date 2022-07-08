@@ -594,8 +594,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     static void clearPrimitive(VirtualFrame frame, int slot) {
         frame.clearPrimitiveStatic(slot);
     }
+
     static void clear(VirtualFrame frame, int slot) {
-        frame.clear(slot);
+        clearPrimitive(frame, slot);
+        clearReference(frame, slot);
     }
 
     // endregion Operand stack accessors

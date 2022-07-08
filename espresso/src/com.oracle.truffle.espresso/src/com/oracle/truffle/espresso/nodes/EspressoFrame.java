@@ -46,61 +46,68 @@ final class EspressoFrame {
     public static FrameDescriptor createFrameDescriptor(int locals, int stack) {
         int slotCount = locals + stack;
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(slotCount + VALUES_START);
-        int bciSlot = builder.addSlot(FrameSlotKind.Int, null, null); // BCI
+        int bciSlot = builder.addSlot(FrameSlotKind.Static, null, null); // BCI
         assert bciSlot == BCI_SLOT;
-        int valuesStart = builder.addSlots(slotCount, FrameSlotKind.Illegal); // locals + stack
+        int valuesStart = builder.addSlots(slotCount, FrameSlotKind.Static); // locals + stack
         assert valuesStart == VALUES_START;
         return builder.build();
     }
 
     public static void dup1(VirtualFrame frame, int top) {
         // value1 -> value1, value1
-        frame.copy(top - 1, top);
+        copy(frame, top - 1, top);
     }
 
     public static void dupx1(VirtualFrame frame, int top) {
         // value2, value1 -> value1, value2, value1
-        frame.copy(top - 1, top);
-        frame.copy(top - 2, top - 1);
-        frame.copy(top, top - 2);
+        copy(frame, top - 1, top);
+        copy(frame, top - 2, top - 1);
+        copy(frame, top, top - 2);
     }
 
     public static void dupx2(VirtualFrame frame, int top) {
         // value3, value2, value1 -> value1, value3, value2, value1
-        frame.copy(top - 1, top);
-        frame.copy(top - 2, top - 1);
-        frame.copy(top - 3, top - 2);
-        frame.copy(top, top - 3);
+        copy(frame, top - 1, top);
+        copy(frame, top - 2, top - 1);
+        copy(frame, top - 3, top - 2);
+        copy(frame, top, top - 3);
     }
 
     public static void dup2(VirtualFrame frame, int top) {
         // {value2, value1} -> {value2, value1}, {value2, value1}
-        frame.copy(top - 2, top);
-        frame.copy(top - 1, top + 1);
+        copy(frame, top - 2, top);
+        copy(frame, top - 1, top + 1);
     }
 
     public static void swapSingle(VirtualFrame frame, int top) {
         // value2, value1 -> value1, value2
-        frame.swap(top - 1, top - 2);
+        frame.swapPrimitiveStatic(top - 1, top - 2);
+        frame.swapObjectStatic(top - 1, top - 2);
     }
 
     public static void dup2x1(VirtualFrame frame, int top) {
         // value3, {value2, value1} -> {value2, value1}, value3, {value2, value1}
-        frame.copy(top - 2, top);
-        frame.copy(top - 1, top + 1);
-        frame.copy(top - 3, top - 1);
-        frame.copy(top, top - 3);
-        frame.copy(top + 1, top - 2);
+        copy(frame, top - 2, top);
+        copy(frame, top - 1, top + 1);
+        copy(frame, top - 3, top - 1);
+        copy(frame, top, top - 3);
+        copy(frame, top + 1, top - 2);
     }
 
     public static void dup2x2(VirtualFrame frame, int top) {
         // {value4, value3}, {value2, value1} -> {value2, value1}, {value4, value3}, {value2,
         // value1}
-        frame.copy(top - 1, top + 1);
-        frame.copy(top - 2, top);
-        frame.copy(top - 3, top - 1);
-        frame.copy(top - 4, top - 2);
-        frame.copy(top, top - 4);
-        frame.copy(top + 1, top - 3);
+        copy(frame, top - 1, top + 1);
+        copy(frame, top - 2, top);
+        copy(frame, top - 3, top - 1);
+        copy(frame, top - 4, top - 2);
+        copy(frame, top, top - 4);
+        copy(frame, top + 1, top - 3);
+    }
+
+    private static void copy(VirtualFrame frame, int src, int dst) {
+        frame.copyPrimitiveStatic(src, dst);
+        frame.copyObjectStatic(src, dst);
     }
 }
+
