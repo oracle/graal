@@ -3014,7 +3014,12 @@ public final class TruffleString extends AbstractTruffleString {
             a.boundsCheckRaw(rawIndex);
             Object arrayA = toIndexableNode.execute(a, a.data());
             int codeRangeA = getCodeRangeNode.execute(a);
-            return rawLengthOfCodePointNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, rawIndex, errorHandling) << expectedEncoding.naturalStride;
+            int rawLength = rawLengthOfCodePointNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, rawIndex, errorHandling);
+            if (errorHandling == ErrorHandling.RETURN_NEGATIVE && rawLength < 0) {
+                return rawLength;
+            } else {
+                return rawLength << expectedEncoding.naturalStride;
+            }
         }
 
         /**

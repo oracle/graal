@@ -354,7 +354,7 @@ final class Encodings {
         if (isUTF16Surrogate(c)) {
             if (isUTF16HighSurrogate(c)) {
                 if (i + 1 == length) {
-                    return -2;
+                    return -3;
                 }
                 if (isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1))) {
                     return 2;
