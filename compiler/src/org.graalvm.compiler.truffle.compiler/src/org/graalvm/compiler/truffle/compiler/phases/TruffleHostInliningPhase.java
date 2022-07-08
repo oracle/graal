@@ -30,28 +30,34 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -115,6 +121,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     static final String INDENT = "  ";
     private static final int TRIVIAL_SIZE = 30;
     private static final int TRIVIAL_INVOKES = 0;
+    private static final int MAX_PEEK_PROPAGATE_DEOPT = 3;
 
     protected final CanonicalizerPhase canonicalizer;
 
@@ -134,8 +141,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return TruffleCompilerRuntime.getRuntimeIfAvailable().isInInterpreter(translateMethod(targetMethod));
     }
 
-    protected boolean isTruffleBoundary(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerRuntime.getRuntimeIfAvailable().isTruffleBoundary(translateMethod(targetMethod));
+    protected String isTruffleBoundary(ResolvedJavaMethod targetMethod) {
+        if (TruffleCompilerRuntime.getRuntimeIfAvailable().isTruffleBoundary(translateMethod(targetMethod))) {
+            return "truffle boundary";
+        }
+        return null;
     }
 
     private boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod targetMethod) {
@@ -166,9 +176,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     private void runImpl(InliningPhaseContext context) {
-        int sizeLimit;
         final ResolvedJavaMethod rootMethod = context.graph.method();
 
+        int sizeLimit;
+        int exploreLimit;
         if (context.isBytecodeSwitch) {
             /*
              * We use a significantly higher limit for method with @BytecodeInterpreterSwitch
@@ -176,8 +187,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
              * all together and fail if the graph becomes too big.
              */
             sizeLimit = Options.TruffleHostInliningByteCodeInterpreterBudget.getValue(context.graph.getOptions());
+            exploreLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
         } else {
             sizeLimit = Options.TruffleHostInliningBaseBudget.getValue(context.graph.getOptions());
+            exploreLimit = sizeLimit;
         }
 
         if (sizeLimit < 0) {
@@ -191,16 +204,15 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         debug.dump(DebugContext.VERBOSE_LEVEL, context.graph, "Before Truffle host inlining");
 
         CallTree root = new CallTree(rootMethod);
-
         int round = 0;
         int inlineIndex = 0;
         int previousInlineIndex = -1;
         boolean budgetLimitReached = false;
-        List<CallTree> toProcess = null;
+        final List<CallTree> toProcess = new ArrayList<>();
         EconomicSet<Node> canonicalizableNodes = EconomicSet.create();
 
         int graphSize = 0;
-        int beforeGraphSize = 0;
+        int beforeGraphSize = -1;
         try {
             /*
              * We perform inlining until we reach a fixed point, no further calls were inlined in
@@ -218,63 +230,79 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 }
 
                 graphSize = NodeCostUtil.computeNodesSize(context.graph.getNodes());
+
+                /*
+                 * First fixed point pass for all invokes that are force inlined. This is a fixed
+                 * point algorithm in order to transitively resolve force inlines. This is currently
+                 * used for bytecode switches that are composed of multiple methods.
+                 */
                 if (round == 0) {
                     beforeGraphSize = graphSize;
-                    root.graphSize = graphSize;
-                    root.children = exploreGraph(context, null, root, context.graph, round, sizeLimit, 0);
-                    toProcess = new ArrayList<>(root.children.size());
-                    toProcess.addAll(root.children);
-                } else {
-                    budgetLimitReached = false;
-                    toProcess.clear();
-                    exploreAndQueueInlinableCalls(context, root, toProcess, round, sizeLimit);
+
+                    root.cost = graphSize;
+                    root.children = exploreGraph(context, root, context.graph, round);
+
+                    final List<CallTree> targets = new ArrayList<>(root.children);
+                    do {
+                        targets.clear();
+
+                        traverseShell(context, root, (call) -> {
+                            if (!call.forceShallowInline) {
+                                /*
+                                 * We only care about force inlines for this pass.
+                                 */
+                                return;
+                            }
+                            targets.add(call);
+                        });
+
+                        for (CallTree call : targets) {
+                            assert call.forceShallowInline;
+                            if (!shouldInline(context, call)) {
+                                /*
+                                 * Some other condition might prevent inlining here.
+                                 */
+                                continue;
+                            }
+
+                            assert call.children == null && call.exploredIndex == -1 : "force shallow inline already explored";
+                            call.children = exploreGraph(context, call, lookupGraph(context, call.getTargetMethod()), round);
+
+                            graphSize += call.cost;
+
+                            inlineCall(context, canonicalizableNodes, context.graph, call, inlineIndex++);
+                        }
+
+                        // fixed point until no new targets are found through shallow inlining
+                    } while (!targets.isEmpty());
                 }
 
                 /*
-                 * First pass for all invokes that are force inlined. This is a fixed point
-                 * algorithm in order to transitively resolve force inlines. This is currently used
-                 * for bytecode switches that are composed of multiple methods.
+                 * Second pass explore unexplored subtrees and prepare a graph for the entire
+                 * subtree.
                  */
-                List<CallTree> newTargets;
-                List<CallTree> targets = toProcess;
-                do {
-                    newTargets = new ArrayList<>();
-                    for (CallTree call : targets) {
-                        if (!call.forceShallowInline) {
-                            /*
-                             * We only care about force inlines for this pass.
-                             */
-                            continue;
-                        }
-                        if (!shouldInline(context, call)) {
-                            /*
-                             * Some other condition might prevent inlining here.
-                             */
-                            continue;
-                        }
+                toProcess.clear();
 
-                        assert call.children == null && call.exploredIndex == -1 : "force shallow inline already explored";
-                        call.children = exploreGraph(context, null, call, lookupGraph(context, call.getTargetMethod()), round, sizeLimit, 0);
-                        newTargets.addAll(call.children);
-
-                        graphSize += call.graphSize;
-                        inline(context, canonicalizableNodes, call, inlineIndex++, false);
+                final int finalRound = round;
+                traverseShell(context, root, (call) -> {
+                    if (shouldInline(context, call)) {
+                        if (!call.isExplored()) {
+                            call.subtreeGraph = exploreAndPrepareGraph(context, call, finalRound, exploreLimit);
+                        }
+                        // decision may have changed after preparation
+                        if (shouldInline(context, call)) {
+                            toProcess.add(call);
+                        }
                     }
+                });
 
-                    toProcess.addAll(newTargets);
-                    targets = newTargets;
-
-                    // fixed point until no new targets are found through shallow inlining
-                } while (!newTargets.isEmpty());
-
-                recomputeSubtreeStatistics(context, root);
-
-                // ORDER BY call.subTreeInvokes ASC, call.subTreeSize ASC
+                // ORDER BY call.subTreeFastPathInvokes ASC, call.subTreeCost ASC
                 Collections.sort(toProcess);
 
                 /*
-                 * Second pass for everything else. We use a priority queue to prioritize work on
-                 * the most promising methods first in case the budget gets tight.
+                 * Third pass for inlining sub prepared subtrees as a whole. We use a priority queue
+                 * to prioritize work on the most promising subtrees first in case the budget gets
+                 * tight.
                  */
                 for (CallTree call : toProcess) {
                     if (!shouldInline(context, call)) {
@@ -293,8 +321,9 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
                     assert !call.forceShallowInline : "should already be inlined";
 
-                    graphSize += call.subTreeSize;
-                    inline(context, canonicalizableNodes, call, inlineIndex++, true);
+                    graphSize += call.subTreeCost;
+
+                    inlineSubtree(context, canonicalizableNodes, call, ++inlineIndex);
 
                     if (debug.isDumpEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
                         debug.dump(DebugContext.VERY_DETAILED_LEVEL, context.graph, "After Truffle host inlining %s", call.getTargetMethod().format("%H.%n(%P)"));
@@ -324,47 +353,21 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                                 printCallTree(context, root));
             }
         }
-
     }
 
     private static final AtomicLong totalCostCounter = new AtomicLong();
-
-    /*
-     * Inline decisions might have changed due to invokes dying or subtree invoke limit reached, so
-     * we need to compute the statistics again with a separate pass on the call tree.
-     */
-    private int recomputeSubtreeStatistics(InliningPhaseContext context, CallTree caller) {
-        int subtreeSize = caller.graphSize;
-        int subtreeInvokes = caller.invokes;
-        int invokes = 0;
-        if (caller.children != null) {
-            for (CallTree callee : caller.children) {
-                if (callee.isInlined() || shouldInline(context, callee)) {
-                    subtreeSize += recomputeSubtreeStatistics(context, callee);
-                    subtreeInvokes += callee.subTreeInvokes;
-                } else if (countToInvokes(callee)) {
-                    subtreeInvokes++;
-                    invokes++;
-                }
-            }
-        }
-        caller.invokes = invokes;
-        caller.subTreeInvokes = subtreeInvokes;
-        caller.subTreeSize = subtreeSize;
-        return subtreeSize;
-    }
 
     private static boolean isInBudget(CallTree call, int graphSize, int sizeLimit) {
         if (call.forceShallowInline) {
             return true;
         }
-        int newSize = graphSize + call.subTreeSize;
+        int newSize = graphSize + call.subTreeCost;
         if (newSize <= sizeLimit) {
             call.reason = "within budget";
             return true;
         }
 
-        boolean trivial = call.subTreeInvokes == TRIVIAL_INVOKES && call.subTreeSize < TRIVIAL_SIZE;
+        boolean trivial = call.subTreeFastPathInvokes == TRIVIAL_INVOKES && call.subTreeCost < TRIVIAL_SIZE;
         if (trivial) {
             call.reason = "out of budget but simple enough";
             return true;
@@ -376,7 +379,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     /**
      * Explores the specified graph and returns the list of callees that are potentially inlineable.
-     * Recursive exploration will only be triggered for calls that are already inlinable.
      * <p>
      * This method follows the same rules as the {@link PartialEvaluator} for recursive exploration.
      * For example, methods dominated by a call to
@@ -384,8 +386,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * The same applies to calls protected by {@link CompilerDirectives#inInterpreter()} or methods
      * annotated by {@link TruffleBoundary}.
      */
-    private List<CallTree> exploreGraph(InliningPhaseContext context, CallTree root, CallTree caller, StructuredGraph graph,
-                    int exploreRound, int exploreBudget, int depth) {
+    private List<CallTree> exploreGraph(InliningPhaseContext context, CallTree caller, StructuredGraph graph, int exploreRound) {
         caller.exploredIndex = exploreRound;
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, false);
@@ -399,6 +400,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          * interpreter.
          */
         for (Block block : cfg.reversePostOrder()) {
+
             if (block.getEndNode() instanceof IfNode) {
                 /*
                  * Calls protected by inInterpreter within if conditions must mark all false
@@ -421,14 +423,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             boolean guardedByInInterpreter = false;
 
             for (FixedNode node : block.getNodes()) {
-                if (root != null && root.explorationIncomplete) {
-                    /*
-                     * Stop exploration as soon as the root gets marked incomplete, meaning too big
-                     * to explore.
-                     */
-                    return children;
-                }
-
                 if (node instanceof FixedGuardNode) {
                     /*
                      * Some if conditions may have already been converted to guards at this point.
@@ -444,7 +438,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
                                 if (targetMethod != null && isInInterpreter(targetMethod)) {
-
                                     Block dominatedSilbling = block.getFirstDominated();
                                     while (dominatedSilbling != null) {
                                         inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
@@ -485,11 +478,12 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         caller.propagatesDeopt = true;
                     }
                 }
+
                 boolean inInterpreter = guardedByInInterpreter || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
 
                 /*
                  * The idea is to support composed bytecodes witches from multiple methods. For that
-                 * we always need to inline all bytecodes witches first.
+                 * we always need to inline all bytecode switches first.
                  */
                 boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(invoke.getTargetMethod());
 
@@ -503,18 +497,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                     continue;
                 }
 
-                /*
-                 * The explore root determines where the statistics for the subtree are collected.
-                 */
-                CallTree exploreRoot;
-                if (root == null) {
-                    exploreRoot = callee;
-                } else {
-                    exploreRoot = root;
-                }
-
                 if (shouldInline(context, callee)) {
-                    callee.children = exploreInlinableCall(context, exploreRoot, callee, exploreRound, exploreBudget, depth);
+                    if (!callee.propagatesDeopt) {
+                        callee.propagatesDeopt = peekPropagatesDeopt(context, getTargetMethod(context, callee), 0);
+                    }
 
                     if (callee.propagatesDeopt) {
                         deoptimizedBlocks.add(block.getBeginNode());
@@ -527,40 +513,49 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         }
                     }
 
-                    caller.subTreeInvokes += callee.subTreeInvokes;
-                } else {
-                    /*
-                     * We do not count deoptimized invokes as actual invokes. We do not want that
-                     * slow-path code influences inline prioritization. Note that invokes are still
-                     * accounted for in the node cost.
-                     */
-                    if (countToInvokes(callee)) {
-
-                        /*
-                         * We propagate the subTreeSize to all callers until we reach the
-                         * exploreRoot.
-                         */
-                        caller.subTreeInvokes++;
-                        caller.invokes++;
-                    }
-                }
-
-                if (!caller.isInlined() && caller.subTreeInvokes >= context.maxSubtreeInvokes) {
-                    /*
-                     * We can just as well stop exploring if we already reached the number of
-                     * invokes.
-                     */
-                    if (!context.printExplored) {
-                        /*
-                         * We only stop exploring if we do not print the explored.
-                         */
-                        caller.explorationIncomplete = true;
-                        return children;
-                    }
                 }
             }
         }
+
         return children;
+    }
+
+    /**
+     * Peeks down the first block of a maximum of 5 calls to find a
+     * transferToInterpeterAndInvalidate().
+     */
+    private boolean peekPropagatesDeopt(InliningPhaseContext context, ResolvedJavaMethod method, int depth) {
+        if (depth > MAX_PEEK_PROPAGATE_DEOPT) {
+            return false;
+        }
+
+        StructuredGraph graph = lookupGraph(context, method);
+        FixedNode current = graph.start();
+        while (current instanceof FixedWithNextNode) {
+            current = ((FixedWithNextNode) current).next();
+
+            if (current instanceof Invoke) {
+                Invoke invoke = (Invoke) current;
+                ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
+                if (targetMethod == null) {
+                    continue;
+                }
+                if (isTransferToInterpreterMethod(targetMethod)) {
+                    return true;
+                } else if (invoke.getInvokeKind().isDirect()) {
+                    if (!targetMethod.canBeInlined()) {
+                        continue;
+                    }
+                    if (peekPropagatesDeopt(context, targetMethod, depth)) {
+                        return true;
+                    }
+                }
+            }
+            if (current instanceof AbstractEndNode) {
+                break;
+            }
+        }
+        return false;
     }
 
     /**
@@ -590,7 +585,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * tree. So the outcome of this method may also be that the exploration was
      * {@link CallTree#explorationIncomplete incomplete}.
      */
-    private List<CallTree> exploreInlinableCall(InliningPhaseContext context, CallTree exploreRoot, CallTree callee, int exploreRound, int exploreBudget, int depth) {
+    private List<CallTree> exploreInlinableCall(InliningPhaseContext context, CallTree exploreRoot, CallTree callee, int exploreRound, int exploreBudget) {
         StructuredGraph calleeGraph;
         ResolvedJavaMethod targetMethod;
         if (callee.invoke.getInvokeKind().isDirect()) {
@@ -602,9 +597,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         calleeGraph = lookupGraph(context, targetMethod);
         assert calleeGraph != null : "There must be a graph available for an inlinable call.";
-        callee.graphSize = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
-        if (shouldContinueExploring(context, exploreBudget, callee.graphSize, depth)) {
-            return exploreGraph(context, exploreRoot, callee, calleeGraph, exploreRound, exploreBudget - callee.graphSize, depth + 1);
+        callee.cost = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
+        int depth = callee.getDepth();
+
+        if (shouldContinueExploring(context, exploreBudget, callee.cost, depth)) {
+            return exploreGraph(context, callee, calleeGraph, exploreRound);
         } else {
             /*
              * We reached the limits of what we want to explore. This means this call is unlikely to
@@ -616,9 +613,172 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
+    /**
+     * Traverses and notifies the consumer for all inlined calls of a call tree.
+     */
+    private static void traverseInlined(InliningPhaseContext context, CallTree call, Consumer<CallTree> consumer) {
+        if (call.isInlined()) {
+            assert call.children != null : "not yet explored";
+            for (CallTree callee : call.children) {
+                traverseInlined(context, callee, consumer);
+            }
+            consumer.accept(call);
+        }
+    }
+
+    /**
+     * Traverses and notifies the consumer for all not inlined shell of a call tree. Is not invoked
+     * for the root.
+     */
+    private static void traverseShell(InliningPhaseContext context, CallTree call, Consumer<CallTree> consumer) {
+        assert call.children != null : "not yet explored";
+        for (CallTree callee : call.children) {
+            traverseShellRec(context, callee, consumer);
+        }
+    }
+
+    private static void traverseShellRec(InliningPhaseContext context, CallTree call, Consumer<CallTree> consumer) {
+        if (call.isInlined()) {
+            for (CallTree callee : call.children) {
+                traverseShellRec(context, callee, consumer);
+            }
+        } else {
+            consumer.accept(call);
+        }
+    }
+
+    /**
+     * Explores an already {@link #shouldInline(InliningPhaseContext, CallTree) inlinable} call
+     * recursively. Determines whether the budget is exceeded when recursively exploring the call
+     * tree. So the outcome of this method may also be that the exploration was
+     * {@link CallTree#explorationIncomplete incomplete}. While exploring it already inlines all the
+     * methods that {@link #shouldInline(InliningPhaseContext, CallTree) should inline}. This makes
+     * sure that costs for inlining this subtree are accurate.
+     */
+    private StructuredGraph exploreAndPrepareGraph(InliningPhaseContext context, CallTree root, int exploreRound, int exploreBudget) {
+        assert !root.isExplored();
+
+        root.children = exploreInlinableCall(context, root, root, exploreRound, exploreBudget);
+        if (root.explorationIncomplete) {
+            return null;
+        }
+
+        // after exploration may no longer be inlined
+        if (!shouldInline(context, root)) {
+            return null;
+        }
+
+        StructuredGraph graph = lookupGraph(context, getTargetMethod(context, root));
+        StructuredGraph mutableGraph = (StructuredGraph) graph.copy((map) -> {
+            for (CallTree callee : root.children) {
+                callee.invoke = (Invoke) map.get(callee.invoke.asFixedNode());
+            }
+        }, context.graph.getDebug());
+
+        EconomicSet<Node> canonicalizableNodes = EconomicSet.create();
+        enhandeParameters(canonicalizableNodes, mutableGraph, root);
+
+        int currentGraphSize;
+        int inlineIndex = 0;
+        int prevInlineIndex = -1;
+
+        boolean incomplete = false;
+        List<CallTree> toProcess = new ArrayList<>();
+
+        while (inlineIndex > prevInlineIndex) { // there has been progress
+            prevInlineIndex = inlineIndex;
+
+            if (!canonicalizableNodes.isEmpty()) {
+                canonicalizer.applyIncremental(mutableGraph, context.highTierContext, canonicalizableNodes);
+                canonicalizableNodes.clear();
+                currentGraphSize = NodeCostUtil.computeNodesSize(mutableGraph.getNodes());
+            } else {
+                currentGraphSize = root.cost;
+            }
+
+            toProcess.clear();
+            traverseShell(context, root, toProcess::add);
+
+            incomplete = false;
+
+            int fastPathInvokes = 0;
+            for (CallTree callee : toProcess) {
+                if (fastPathInvokes > context.maxSubtreeInvokes) {
+                    incomplete = true;
+                    break;
+                }
+
+                if (shouldInline(context, callee)) {
+                    callee.children = exploreInlinableCall(context, root, callee, exploreRound, exploreBudget - currentGraphSize);
+
+                    if (root.explorationIncomplete) {
+                        root.explorationIncomplete = false;
+                        incomplete = true;
+                        break;
+                    }
+
+                    inlineCall(context, canonicalizableNodes, mutableGraph, callee, inlineIndex++);
+                    currentGraphSize += callee.cost;
+                } else {
+                    if (isFastPathInvoke(callee)) {
+                        fastPathInvokes++;
+                    }
+                }
+            }
+
+            root.subTreeFastPathInvokes = fastPathInvokes;
+            root.subTreeCost = currentGraphSize;
+        }
+
+        if (incomplete) {
+            root.explorationIncomplete = true;
+            return null;
+        }
+        return mutableGraph;
+    }
+
+    private static void enhandeParameters(EconomicSet<Node> canonicalizableNodes, StructuredGraph graph, CallTree root) {
+        for (ParameterNode formalParameter : graph.getNodes(ParameterNode.TYPE).snapshot()) {
+            int index = formalParameter.index();
+            ValueNode actualParameter = root.invoke.callTarget().arguments().get(index);
+            if (actualParameter.isConstant()) {
+                ConstantNode constant = (ConstantNode) actualParameter.copyWithInputs(false);
+                ConstantNode uniqueConstant = graph.unique(constant);
+                // The source position comes from the containing graph so it's not valid in the
+                // context of this graph.
+                uniqueConstant.clearNodeSourcePosition();
+                formalParameter.replaceAndDelete(uniqueConstant);
+
+                enqueueUsages(canonicalizableNodes, uniqueConstant);
+
+            } else {
+
+                Stamp originalStamp = formalParameter.stamp(NodeView.DEFAULT);
+                Stamp improvedStamp = originalStamp.tryImproveWith(actualParameter.stamp(NodeView.DEFAULT));
+
+                if (improvedStamp != null) {
+                    assert !originalStamp.equals(improvedStamp);
+                    assert originalStamp.tryImproveWith(improvedStamp) != null;
+                    formalParameter.setStamp(improvedStamp);
+
+                    enqueueUsages(canonicalizableNodes, formalParameter);
+                }
+            }
+        }
+    }
+
+    private static void enqueueUsages(EconomicSet<Node> canonicalizableNodes, Node node) {
+        if (!canonicalizableNodes.add(node)) {
+            return;
+        }
+        for (Node usage : node.usages()) {
+            enqueueUsages(canonicalizableNodes, usage);
+        }
+    }
+
     private static boolean shouldContinueExploring(InliningPhaseContext context, int exploreBudget, int graphSize, int depth) {
         int useBudget = Math.max(TRIVIAL_SIZE, exploreBudget);
-        return graphSize <= useBudget && depth < Options.TruffleHostInliningMaxExplorationDepth.getValue(context.options);
+        return graphSize <= useBudget && depth <= Options.TruffleHostInliningMaxExplorationDepth.getValue(context.options);
     }
 
     /**
@@ -626,7 +786,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * deliberately do not want to count invokes in slow-paths or dead invokes for this statistics
      * as they should not influence decisions.
      */
-    private static boolean countToInvokes(CallTree call) {
+    private static boolean isFastPathInvoke(CallTree call) {
         if (call.deoptimized) {
             return false;
         }
@@ -668,7 +828,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
+        ResolvedJavaMethod targetMethod = invoke.getTargetMethod() == null ? call.getTargetMethod() : invoke.getTargetMethod();
         if (!shouldInlineTarget(context, call, targetMethod)) {
             return false;
         }
@@ -740,7 +900,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          * More than one non-slow-path invoke. This may happen if method has many truffle boundary
          * or non-direct virtual calls.
          */
-        if (call.subTreeInvokes >= context.maxSubtreeInvokes) {
+        if (call.subTreeFastPathInvokes >= context.maxSubtreeInvokes) {
             call.reason = "call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md";
             return false;
         }
@@ -772,13 +932,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        if (isTruffleBoundary(targetMethod)) {
+        String boundary = isTruffleBoundary(targetMethod);
+        if (boundary != null) {
             /*
              * Similar to runtime compilations, truffle boundary calls indicate the slow path
              * execution of a mode. We shouldn't force any additional inlining heuristics for such
              * methods as we do not know
              */
-            call.reason = "truffle boundary";
+            call.reason = boundary;
             return false;
         }
 
@@ -824,32 +985,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
         return true;
-    }
-
-    /**
-     * Invoked for each round after the first round to explore and decide inlining decisions for
-     * inlinable subtrees which are not yet inlined.
-     */
-    private void exploreAndQueueInlinableCalls(InliningPhaseContext context, CallTree call, Collection<CallTree> toProcess, int round, int exploreBudget) {
-        if (call.isInlined()) {
-            for (CallTree callee : call.children) {
-                exploreAndQueueInlinableCalls(context, callee, toProcess, round, exploreBudget);
-            }
-        } else {
-            if (shouldInline(context, call)) {
-                if (call.exploredIndex == -1) {
-                    /*
-                     * If a call is not yet explored but shouldInline returns true, this means it
-                     * just became inlinable through canonicalization. So we need to explore before
-                     * we can make a decision on it.
-                     */
-                    call.subTreeInvokes = 0;
-                    call.subTreeSize = 0;
-                    call.children = exploreInlinableCall(context, call, call, round, exploreBudget, 1);
-                }
-                toProcess.add(call);
-            }
-        }
     }
 
     /**
@@ -909,62 +1044,86 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return true;
     }
 
-    private void inline(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, CallTree call, int inlineIndex, boolean recursive) {
-        assert call.invoke.asFixedNode().graph() == context.graph : "invalid graph";
+    private void inlineSubtree(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, CallTree call, int inlineIndex) {
+        assert call.subtreeGraph != null;
+        final UnmodifiableEconomicMap<Node, Node> oldToNew = inlineGraph(context, canonicalizableNodes, context.graph, call, call.subtreeGraph);
+        call.subtreeGraph = null;
+
+        /*
+         * Update invoke nodes in the inlined subtree.
+         */
+        traverseShell(context, call, (c) -> {
+            if (c.invoke.isAlive()) {
+                c.invoke = (Invoke) oldToNew.get(c.invoke.asFixedNode());
+            }
+        });
+        /*
+         * Mark the entire subtree as inlined. Technically only the call would be enough to mark but
+         * we want to identify components for the inlining decision in the graph.
+         */
+        call.inlinedIndex = inlineIndex;
+        traverseInlined(context, call, (c) -> c.inlinedIndex = inlineIndex);
+    }
+
+    private void inlineCall(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, StructuredGraph targetGraph, CallTree call, int inlineIndex) {
+        assert call.invoke.asFixedNode().graph() == targetGraph : "invalid graph";
         assert call.children != null : "Call not yet explored or marked incomplete.";
         assert shouldInline(context, call) : "Call should be inlined.";
 
+        StructuredGraph graph = lookupGraph(context, getTargetMethod(context, call));
+        UnmodifiableEconomicMap<Node, Node> oldToNew = inlineGraph(context, canonicalizableNodes, targetGraph, call, graph);
+
         call.reason = null;
         call.inlinedIndex = inlineIndex;
-        UnmodifiableEconomicMap<Node, Node> oldToNew = inline(context, canonicalizableNodes, call);
 
         // update new invokes
         for (CallTree child : call.children) {
             child.invoke = (Invoke) oldToNew.get(child.invoke.asFixedNode());
             assert child.invoke != null : "new invoke not found";
         }
-
-        if (!recursive) {
-            /*
-             * For force shallow inlining we just inline one level.
-             */
-            return;
-        }
-
-        for (CallTree child : call.children) {
-            /*
-             * We need to recheck whether the call is still inlinable. We cannot reuse a previous
-             * decision as the call may have become dead in the meantime.
-             */
-            if (shouldInline(context, child)) {
-                inline(context, canonicalizableNodes, child, inlineIndex, false);
-            }
-        }
     }
 
-    private UnmodifiableEconomicMap<Node, Node> inline(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, CallTree call) {
+    private UnmodifiableEconomicMap<Node, Node> inlineGraph(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, StructuredGraph targetGraph, CallTree call,
+                    StructuredGraph inlineGraph) {
         Invoke invoke = call.invoke;
-        ResolvedJavaMethod targetMethod;
-        if (invoke.getInvokeKind().isDirect()) {
-            targetMethod = invoke.getTargetMethod();
-        } else {
-            targetMethod = call.monomorphicTargetMethod;
+        ResolvedJavaMethod targetMethod = getTargetMethod(context, call);
+
+        if (!invoke.getInvokeKind().isDirect()) {
             assert targetMethod != null;
             JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getTypeProfile();
             SpeculationLog.SpeculationReason speculationReason = InliningUtil.createSpeculation(invoke, typeProfile);
-            SpeculationLog speculationLog = context.graph.getSpeculationLog();
+            SpeculationLog speculationLog = targetGraph.getSpeculationLog();
 
             ResolvedJavaType resolvedType = typeProfile.getTypes()[0].getType();
             InliningUtil.insertTypeGuard(context.highTierContext, invoke, resolvedType, speculationLog.speculate(speculationReason));
-            InliningUtil.replaceInvokeCallTarget(invoke, context.graph, InvokeKind.Special, targetMethod);
+            InliningUtil.replaceInvokeCallTarget(invoke, targetGraph, InvokeKind.Special, targetMethod);
         }
-        StructuredGraph inlineGraph = lookupGraph(context, targetMethod);
+
+        assert call.invoke.asFixedNode().graph() == targetGraph;
+        assert inlineGraph.method().equals(targetMethod);
+
+        return inlineForCanonicalization(canonicalizableNodes, invoke, targetMethod, inlineGraph);
+    }
+
+    private static UnmodifiableEconomicMap<Node, Node> inlineForCanonicalization(EconomicSet<Node> canonicalizableNodes, Invoke invoke, ResolvedJavaMethod inlineMethod, StructuredGraph inlineGraph) {
         AtomicReference<UnmodifiableEconomicMap<Node, Node>> duplicates = new AtomicReference<>();
-        canonicalizableNodes.addAll(InliningUtil.inlineForCanonicalization(invoke, inlineGraph, true, targetMethod,
+        canonicalizableNodes.addAll(InliningUtil.inlineForCanonicalization(invoke, inlineGraph, true, inlineMethod,
                         (d) -> duplicates.set(d),
                         "Truffle Host Inlining",
                         "Truffle Host Inlining"));
         return duplicates.get();
+    }
+
+    private ResolvedJavaMethod getTargetMethod(InliningPhaseContext context, CallTree call) {
+        assert shouldInline(context, call);
+        ResolvedJavaMethod targetMethod;
+        if (call.invoke.getInvokeKind().isDirect()) {
+            targetMethod = call.invoke.getTargetMethod();
+        } else {
+            targetMethod = call.monomorphicTargetMethod;
+            assert targetMethod != null;
+        }
+        return targetMethod;
     }
 
     private StructuredGraph lookupGraph(InliningPhaseContext context, ResolvedJavaMethod method) {
@@ -1121,6 +1280,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      */
     static final class CallTree implements Comparable<CallTree> {
 
+        public StructuredGraph subtreeGraph;
+
         /**
          * The invoke node in the parent graph.
          */
@@ -1183,20 +1344,18 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          * Number of non-inlinable invokes in the subtree that are not dominated by a transfer to
          * interpreter call.
          */
-        int subTreeInvokes;
-
-        int invokes;
+        int subTreeFastPathInvokes = -1;
 
         /**
          * Sum of all Graal nodes of the entire subtree of all methods that were determined to be
          * inlined during subtree exploration.
          */
-        int subTreeSize;
+        int subTreeCost = -1;
 
         /**
          * Cost of of all graal nodes in this method. The size is computed during exploration.
          */
-        int graphSize;
+        int cost = -1;
 
         /**
          * True if the subtree could not fully be explored.
@@ -1205,6 +1364,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         int exploredIndex = -1;
 
+        final int depth;
+
         CallTree(CallTree parent, Invoke invoke, boolean deoptimized, boolean inInterpreter, boolean forceShallowInline) {
             this.invoke = invoke;
             this.deoptimized = deoptimized;
@@ -1212,6 +1373,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             this.parent = parent;
             this.cachedTargetMethod = invoke.getTargetMethod();
             this.forceShallowInline = forceShallowInline;
+            this.depth = parent.depth + 1;
             Objects.requireNonNull(cachedTargetMethod);
         }
 
@@ -1222,6 +1384,15 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             this.forceShallowInline = false;
             this.cachedTargetMethod = root;
             this.parent = null;
+            this.depth = 0;
+        }
+
+        int getDepth() {
+            return depth;
+        }
+
+        boolean isExplored() {
+            return exploredIndex > -1;
         }
 
         ResolvedJavaMethod getTargetMethod() {
@@ -1247,9 +1418,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         @Override
         public int compareTo(CallTree o) {
-            int compare = Integer.compare(subTreeInvokes, o.subTreeInvokes);
+            assert subTreeFastPathInvokes != -1 && subTreeCost != -1 : "unexpected comparison";
+
+            int compare = Integer.compare(subTreeFastPathInvokes, o.subTreeFastPathInvokes);
             if (compare == 0) {
-                return Integer.compare(subTreeSize, o.subTreeSize);
+                return Integer.compare(subTreeCost, o.subTreeCost);
             }
             return compare;
         }
@@ -1269,12 +1442,19 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             if (invoke == null) {
                 return "Root[" + targetMethod.format("%H.%n") + "]";
             } else {
+                boolean fastPathInvoke = isFastPathInvoke(this);
                 return String.format(
                                 "%-" + maxIndent +
-                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, inInterpreter %5s, propDeopt %5s, graphSize %4s, subTreeCost %4s, invokes %4s, subTreeInvokes %4s, forced %5s, incomplete %5s,  reason %s]",
-                                indent + buildLabel(), inlinedIndex, exploredIndex, monomorphicTargetMethod != null, deoptimized, inInterpreter, propagatesDeopt, graphSize, subTreeSize, invokes,
-                                subTreeInvokes,
-                                forceShallowInline,
+                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, inInterpreter %5s, propDeopt %5s, invoke %5s, cost %4s, subTreeCost %4s, treeInvokes %4s,  incomplete %5s, reason %s]",
+                                indent + buildLabel(),
+                                formatOptionalInt(hasCutoffParent() ? -1 : inlinedIndex),
+                                formatOptionalInt(exploredIndex),
+                                monomorphicTargetMethod != null,
+                                deoptimized, inInterpreter, propagatesDeopt,
+                                fastPathInvoke,
+                                formatOptionalInt(cost),
+                                formatOptionalInt(subTreeCost),
+                                formatOptionalInt(subTreeFastPathInvokes),
                                 explorationIncomplete,
                                 reason);
             }
@@ -1283,14 +1463,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         private String buildLabel() {
             String label;
             if (reason == null && inlinedIndex == -1) {
-                label = "NEW";
+                label = "NEW     ";
             } else if (inlinedIndex != -1) {
-                label = "INLINE";
+                label = hasCutoffParent() ? "EXPLORED" : "INLINE  ";
             } else {
                 if (invoke.isAlive()) {
-                    label = "CUTOFF";
+                    label = "CUTOFF  ";
                 } else {
-                    label = "DEAD";
+                    label = "DEAD    ";
                 }
             }
             StringBuilder b = new StringBuilder(label);
@@ -1301,6 +1481,25 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             }
             b.append(name);
             return b.toString();
+        }
+
+        static String formatOptionalInt(int value) {
+            if (value < 0) {
+                return "-";
+            } else {
+                return String.valueOf(value);
+            }
+        }
+
+        private boolean hasCutoffParent() {
+            CallTree current = this.parent;
+            while (current != null) {
+                if (!current.isInlined() && !current.isRoot()) {
+                    return true;
+                }
+                current = current.parent;
+            }
+            return false;
         }
 
         @Override

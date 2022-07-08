@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @RunWith(Parameterized.class)
 public class HostInliningTest extends GraalCompilerTest {
 
-    static final int NODE_COST_LIMIT = 500;
+    static final int NODE_COST_LIMIT = 1000;
 
     public enum TestRun {
         WITH_CONVERT_TO_GUARD,
@@ -122,6 +122,8 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testExplorationDepth2Fail");
         runTest("testBytecodeSwitchtoBytecodeSwitch");
         runTest("testInliningCutoff");
+        runTest("testNonDirectCalls");
+        runTest("testConstantFolding");
     }
 
     @SuppressWarnings("try")
@@ -368,18 +370,20 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     interface A {
-        void foo();
+        int foo();
     }
 
     static final class B_extends_A implements A {
         @Override
-        public void foo() {
+        public int foo() {
+            return 1;
         }
     }
 
     static final class C_extends_A implements A {
         @Override
-        public void foo() {
+        public int foo() {
+            return 2;
         }
     }
 
@@ -663,6 +667,77 @@ public class HostInliningTest extends GraalCompilerTest {
     @ExpectNotInlined({"inliningCutoff"})
     static int testInliningCutoff(int value) {
         return inliningCutoff(value);
+    }
+
+    @BytecodeInterpreterSwitch
+    static int testNonDirectCalls(int value) {
+        return nonDirectCalls(value, new B_extends_A()) + nonDirectCalls(value, new C_extends_A());
+    }
+
+    private static int nonDirectCalls(int value, A a) {
+        // more than 10 indirect calls
+        int sum = value;
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        return sum;
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined({"truffleBoundary"})
+    static int testConstantFolding(int value) {
+        return constantFolding(1) + constantFolding(12) + value;
+    }
+
+    private static int constantFolding(int value) {
+        // more than 10 indirect calls
+        switch (value) {
+            case 0:
+                truffleBoundary();
+                break;
+            case 1:
+                truffleBoundary();
+                break;
+            case 2:
+                truffleBoundary();
+                break;
+            case 3:
+                truffleBoundary();
+                break;
+            case 4:
+                truffleBoundary();
+                break;
+            case 5:
+                truffleBoundary();
+                break;
+            case 6:
+                truffleBoundary();
+                break;
+            case 7:
+                truffleBoundary();
+                break;
+            case 8:
+                truffleBoundary();
+                break;
+            case 9:
+                truffleBoundary();
+                break;
+            case 10:
+                truffleBoundary();
+                break;
+            case 11:
+                truffleBoundary();
+                break;
+        }
+        return value;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
