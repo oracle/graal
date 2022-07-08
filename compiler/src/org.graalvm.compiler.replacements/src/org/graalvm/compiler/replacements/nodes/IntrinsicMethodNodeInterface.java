@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -39,9 +40,7 @@ import jdk.vm.ci.meta.Value;
  * Mixin for nodes that represent an entire custom assembly method. These nodes can either emit the
  * method body or a foreign call to a stub containing the method body.
  */
-public interface IntrinsicMethod extends LIRLowerable {
-
-    ValueNode asNode();
+public interface IntrinsicMethodNodeInterface extends ValueNodeInterface, LIRLowerable {
 
     StructuredGraph graph();
 

@@ -50,6 +50,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaKind;
@@ -92,7 +93,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
         this.arrayBValue = this.arrayBValueTemp = arrayB;
         this.lengthValue = this.lengthValueTemp = length;
         this.strideValue = stride;
-        this.temp = allocateTempRegisters(tool, 2);
+        this.temp = allocateTempRegisters(tool, AMD64Kind.QWORD, 2);
         this.vectorTemp = allocateVectorRegisters(tool, JavaKind.Byte, 3);
     }
 

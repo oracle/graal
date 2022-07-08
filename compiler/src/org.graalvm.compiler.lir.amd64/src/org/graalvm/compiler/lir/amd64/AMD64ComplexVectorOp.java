@@ -178,10 +178,10 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         }
     }
 
-    protected Value[] allocateTempRegisters(LIRGeneratorTool tool, int n) {
+    protected Value[] allocateTempRegisters(LIRGeneratorTool tool, AMD64Kind kind, int n) {
         Value[] temp = new Value[n];
         for (int i = 0; i < temp.length; i++) {
-            temp[i] = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            temp[i] = tool.newVariable(LIRKind.value(kind));
         }
         return temp;
     }
