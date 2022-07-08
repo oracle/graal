@@ -24,16 +24,19 @@ You can get Oracle GraalVM Enterprise Edition by:
 
 Choose your operating system and proceed to the installation steps for your specific platform:
 
+* Oracle Cloud 
+  * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-yum.md)
+  * [OCI DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
 * [Linux](installation-linux.md)
 * [Linux ARM64](installation-linux-aarch64.md)
-* [Oracle Linux](oci/compute-instances.md)
 * [macOS](installation-macos.md)
 * [Windows](installation-windows.md)
+* [Container Images](container-images/graalvm-ee-container-images.md)
 
-## Start Running Applications
+## Running Applications
 
 The core distribution of GraalVM includes the JVM and the GraalVM compiler.
-Having downloaded and installed GraalVM, you can already run any Java application unmodified.
+Having installed GraalVM, you can already run any Java application unmodified.
 
 Other languages support can be installed on request, using **gu** -- the GraalVM Updater tool to install additional language runtimes and utilities.
 Further below you will find information on how to add other optionally available GraalVM runtimes including JavaScript, Node.js, LLVM, Ruby, R, Python, and WebAssembly.
@@ -94,7 +97,7 @@ Both `node` and  `npm` launchers then become available in the `$GRAALVM_HOME/bin
 
 ```shell
 $GRAALVM_HOME/bin/node -v
-v16.14.2
+$GRAALVM_HOME/bin/npm show <package name> version
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM Enterprise, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
@@ -314,85 +317,6 @@ Hello, World!
 ```
 
 More detailed documentation on this innovative technology is available in the [Native Image reference manual](../../reference-manual/native-image/README.md).
-
-## Polyglot Capabilities of Native Image
-
-GraalVM Enterprise makes it possible to use polyglot capabilities when building native executables.
-Take this example of a JSON pretty-printer Java program that embeds some JavaScript code:
-
-```java
-import java.io.*;
-import java.util.stream.*;
-import org.graalvm.polyglot.*;
-
-public class PrettyPrintJSON {
-  public static void main(String[] args) throws java.io.IOException {
-    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-    String input = reader.lines()
-    .collect(Collectors.joining(System.lineSeparator()));
-    try (Context context = Context.create("js")) {
-      Value parse = context.eval("js", "JSON.parse");
-      Value stringify = context.eval("js", "JSON.stringify");
-      Value result = stringify.execute(parse.execute(input), null, 2);
-      System.out.println(result.asString());
-    }
-  }
-}
-```
-Compile it and build a native executable for it. The `--language:js` argument ensures
-that JavaScript is available in the generated image:
-
-```shell
-javac PrettyPrintJSON.java
-native-image --language:js --initialize-at-build-time PrettyPrintJSON
-```
-
-The generatation of the native executable will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
-Additionally, the building requires large amounts of physical memory, especially if you build a native executable with the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
-
-The resulting binary can now perform JSON pretty-printing:
-
-```shell
-./prettyprintjson <<EOF
-{"GraalVM":{"description":"Language Abstraction Platform","supports":["combining languages","embedding languages","creating native images"],"languages": ["Java","JavaScript","Node.js", "Python", "Ruby","R","LLVM"]}}
-EOF
-```
-
-Here is the JSON output from the native executable:
-```json
-{
-  "GraalVM": {
-    "description": "Language Abstraction Platform",
-    "supports": [
-      "combining languages",
-      "embedding languages",
-      "creating native images"
-    ],
-    "languages": [
-      "Java",
-      "JavaScript",
-      "Node.js",
-      "Python",
-      "Ruby",
-      "R",
-      "LLVM"
-    ]
-  }
-}
-```
-
-The native executable runs much faster than running the same code on the JVM directly:
-```shell
-time java PrettyPrintJSON < test.json > /dev/null
-real	0m1.806s
-user	0m3.651s
-sys	0m0.341s
-
-time ./prettyprintjson < test.json > /dev/null
-real	0m0.041s
-user	0m0.011s
-sys	0m0.013s
-```
 
 ## Combine Languages
 

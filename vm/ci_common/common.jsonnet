@@ -470,7 +470,7 @@ local devkits = common_json.devkits;
 
   darwin_deploy: self.maven_download_unix + {
     environment+: {
-      PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:/usr/local/bin:$PATH',
+      PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH:/usr/local/bin',
     },
   },
 
@@ -483,7 +483,13 @@ local devkits = common_json.devkits;
     ['python3', '-c', "from os import environ; open('../' + environ['BUILD_NAME'], 'a').close()"],
   ],
 
-  deploy_graalvm_linux_amd64: {
+  build_base_graalvm_image(os, arch, java_version): [
+      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
+      $.mx_vm_common + vm.vm_profiles + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_base_build(os, arch, java_version),
+
+  deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
     run: [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
@@ -492,11 +498,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + [
-      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-      $.mx_vm_common + vm.vm_profiles + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build + [
+    ] + vm.collect_profiles() + $.build_base_graalvm_image("linux", "amd64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -507,7 +509,7 @@ local devkits = common_json.devkits;
     timelimit: "1:30:00"
   },
 
-  deploy_graalvm_linux_aarch64: {
+  deploy_graalvm_linux_aarch64(java_version): vm.check_structure + {
     run: [
       ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
       $.mx_vm_installables + ['graalvm-show'],
@@ -517,11 +519,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + [
-      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-      $.mx_vm_common + vm.vm_profiles + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build + [
+    ] + vm.collect_profiles() + $.build_base_graalvm_image("linux", "aarch64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -531,14 +529,10 @@ local devkits = common_json.devkits;
     timelimit: '1:30:00',
   },
 
-  deploy_graalvm_base_darwin_amd64: {
+  deploy_graalvm_base_darwin_amd64(java_version): vm.check_structure + {
     run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
-    ] + vm.collect_profiles() + [
-      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-      $.mx_vm_common + vm.vm_profiles + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build + [
+    ] + vm.collect_profiles() + $.build_base_graalvm_image("darwin", "amd64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -564,15 +558,11 @@ local devkits = common_json.devkits;
     timelimit: '3:00:00',
   },
 
-  deploy_graalvm_base_darwin_aarch64: {
+  deploy_graalvm_base_darwin_aarch64(java_version): vm.check_structure + {
     run: [
       # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
       ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
-    ] + vm.collect_profiles() + [
-      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-      $.mx_vm_common + vm.vm_profiles + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build + [
+    ] + vm.collect_profiles() + $.build_base_graalvm_image("darwin", "aarch64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -598,14 +588,10 @@ local devkits = common_json.devkits;
     timelimit: '3:00:00',
   },
 
-  deploy_graalvm_base_windows_amd64: {
+  deploy_graalvm_base_windows_amd64(java_version): vm.check_structure + {
     run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
-    ] + vm.collect_profiles() + [
-      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-      $.mx_vm_common + vm.vm_profiles + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build + [
+    ] + vm.collect_profiles() + $.build_base_graalvm_image("windows", "amd64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -631,13 +617,10 @@ local devkits = common_json.devkits;
     timelimit: '1:30:00',
   },
 
-  deploy_graalvm_ruby: {
+  deploy_graalvm_ruby(os, arch, java_version): vm.check_structure + {
     run: vm.collect_profiles() + [
       ['set-export', 'VM_ENV', "${VM_ENV}-ruby"],
-      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-      $.mx_vm_common + vm.vm_profiles + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build + [
+    ] + $.build_base_graalvm_image(os, arch, java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -651,38 +634,38 @@ local devkits = common_json.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java11_linux_amd64: vm.vm_java_11_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'post-merge-deploy-vm-java11-linux-amd64', diskspace_required: vm.diskspace_required.java11_linux_mad64},
-  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_mad64},
+  deploy_vm_java11_linux_amd64: vm.vm_java_11_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java11") + {name: 'post-merge-deploy-vm-java11-linux-amd64', diskspace_required: vm.diskspace_required.java11_linux_mad64},
+  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_mad64},
 
   # Linux/AARCH64
-  deploy_vm_java11_linux_aarch64: vm.vm_java_11 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64 + {name: 'daily-deploy-vm-java11-linux-aarch64'},
-  deploy_vm_java17_linux_aarch64: vm.vm_java_17 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64 + {name: 'daily-deploy-vm-java17-linux-aarch64'},
+  deploy_vm_java11_linux_aarch64: vm.vm_java_11 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java11") + {name: 'daily-deploy-vm-java11-linux-aarch64'},
+  deploy_vm_java17_linux_aarch64: vm.vm_java_17 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java17") + {name: 'daily-deploy-vm-java17-linux-aarch64'},
 
   # Darwin/AMD64
-  deploy_vm_base_java11_darwin_amd64: vm.vm_java_11_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64 + {name: 'daily-deploy-vm-base-java11-darwin-amd64'},
+  deploy_vm_base_java11_darwin_amd64: vm.vm_java_11_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java11") + {name: 'daily-deploy-vm-base-java11-darwin-amd64'},
   deploy_vm_installable_java11_darwin_amd64: vm.vm_java_11_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64 + {name: 'daily-deploy-vm-installable-java11-darwin-amd64', diskspace_required: "31GB"},
-  deploy_vm_base_java17_darwin_amd64: vm.vm_java_17_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64 + {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
+  deploy_vm_base_java17_darwin_amd64: vm.vm_java_17_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java17") + {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
   deploy_vm_installable_java17_darwin_amd64: vm.vm_java_17_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64 + {name: 'daily-deploy-vm-installable-java17-darwin-amd64', diskspace_required: "31GB"},
 
   # Darwin/AARCH64
-  deploy_vm_base_java11_darwin_aarch64: vm.vm_java_11 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64 + {name: 'daily-deploy-vm-base-java11-darwin-aarch64'},
+  deploy_vm_base_java11_darwin_aarch64: vm.vm_java_11 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java11") + {name: 'daily-deploy-vm-base-java11-darwin-aarch64'},
   deploy_vm_installable_java11_darwin_aarch64: vm.vm_java_11 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64 + {name: 'daily-deploy-vm-installable-java11-darwin-aarch64', diskspace_required: "31GB"},
-  deploy_vm_base_java17_darwin_aarch64: vm.vm_java_17 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64 + {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
+  deploy_vm_base_java17_darwin_aarch64: vm.vm_java_17 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java17") + {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
   deploy_vm_installable_java17_darwin_aarch64: vm.vm_java_17 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64 + {name: 'daily-deploy-vm-installable-java17-darwin-aarch64', diskspace_required: "31GB"},
 
   # Windows/AMD64
-  deploy_vm_base_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_jdk11 + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_base_windows_amd64 + {name: 'daily-deploy-vm-base-java11-windows-amd64'},
+  deploy_vm_base_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_jdk11 + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_base_windows_amd64("java11") + {name: 'daily-deploy-vm-base-java11-windows-amd64'},
   deploy_vm_installable_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_jdk11 + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_installables_windows_amd64 + {name: 'daily-deploy-vm-installable-java11-windows-amd64', diskspace_required: "31GB"},
-  deploy_vm_base_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_jdk17 + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_base_windows_amd64 + {name: 'daily-deploy-vm-base-java17-windows-amd64'},
+  deploy_vm_base_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_jdk17 + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_base_windows_amd64("java17") + {name: 'daily-deploy-vm-base-java17-windows-amd64'},
   deploy_vm_installable_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_jdk17 + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_installables_windows_amd64 + {name: 'daily-deploy-vm-installable-java17-windows-amd64', diskspace_required: "31GB"},
 
   #
   # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
   #
 
-  deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
-  deploy_vm_ruby_java11_darwin_amd64: vm.vm_java_11 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
-  deploy_vm_ruby_java11_darwin_aarch64: vm.vm_java_11 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
+  deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java11') + {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
+  deploy_vm_ruby_java11_darwin_amd64: vm.vm_java_11 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java11') + {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
+  deploy_vm_ruby_java11_darwin_aarch64: vm.vm_java_11 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java11') + {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
 
   local builds = [
     #
