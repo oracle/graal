@@ -196,9 +196,13 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private static Method getMethodToFetchMetaspaceMethod(Class<?> method) throws NoSuchMethodException {
         // The exact method depends on the JVMCI version.
         try {
-            return method.getDeclaredMethod("getMetaspaceMethod");
+            return method.getDeclaredMethod("getMethodPointer");
         } catch (NoSuchMethodException e) {
-            return method.getDeclaredMethod("getMetaspacePointer");
+            try {
+                return method.getDeclaredMethod("getMetaspaceMethod");
+            } catch (NoSuchMethodException e2) {
+                return method.getDeclaredMethod("getMetaspacePointer");
+            }
         }
     }
 }
