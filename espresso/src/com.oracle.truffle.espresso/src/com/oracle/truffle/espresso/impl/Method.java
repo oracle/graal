@@ -1196,38 +1196,45 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public CallTarget getCallTarget() {
-            if (callTarget == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                Meta meta = getMeta();
-                checkPoisonPill(meta);
-                synchronized (this) {
-                    if (callTarget != null) {
-                        return callTarget;
-                    }
-                    if (proxy != null) {
-                        this.callTarget = proxy.getCallTarget();
-                        return callTarget;
-                    }
-
-                    /*
-                     * The substitution factory does the validation e.g. some substitutions only
-                     * apply for classes/methods in the boot or platform class loaders. A warning is
-                     * logged is the validation fails.
-                     */
-                    EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
-                    if (redirectedMethod != null) {
-                        callTarget = redirectedMethod.getCallTarget();
-                        return callTarget;
-                    }
-
-                    CallTarget target = findCallTarget();
-                    if (target != null) {
-                        callTarget = target;
-                        return callTarget;
-                    }
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, callTarget == null)) {
+                if (CompilerDirectives.isCompilationConstant(this)) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
+                resolveCallTarget();
             }
             return callTarget;
+        }
+
+        @TruffleBoundary
+        private void resolveCallTarget() {
+            Meta meta = getMeta();
+            checkPoisonPill(meta);
+            synchronized (this) {
+                if (callTarget != null) {
+                    return;
+                }
+                if (proxy != null) {
+                    this.callTarget = proxy.getCallTarget();
+                    return;
+                }
+
+                /*
+                 * The substitution factory does the validation e.g. some substitutions only apply
+                 * for classes/methods in the boot or platform class loaders. A warning is logged is
+                 * the validation fails.
+                 */
+                EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
+                if (redirectedMethod != null) {
+                    callTarget = redirectedMethod.getCallTarget();
+                    return;
+                }
+
+                CallTarget target = findCallTarget();
+                if (target != null) {
+                    callTarget = target;
+                    return;
+                }
+            }
         }
 
         private CallTarget findCallTarget() {

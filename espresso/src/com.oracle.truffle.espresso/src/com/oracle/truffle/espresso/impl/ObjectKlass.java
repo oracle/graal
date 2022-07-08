@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
@@ -374,7 +373,7 @@ public final class ObjectKlass extends Klass {
         throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
     }
 
-    @ExplodeLoop
+    @TruffleBoundary
     private void actualInit() {
         checkErroneousInitialization();
         getInitLock().lock();
@@ -561,26 +560,33 @@ public final class ObjectKlass extends Klass {
     public void ensureLinked() {
         if (!isLinked()) {
             checkErroneousVerification();
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getInitLock().lock();
-            try {
-                if (!isLinkingOrLinked()) {
-                    initState = LINKING;
-                    if (getSuperKlass() != null) {
-                        getSuperKlass().ensureLinked();
-                    }
-                    for (ObjectKlass interf : getSuperInterfaces()) {
-                        interf.ensureLinked();
-                    }
-                    prepare();
-                    verify();
-                    initState = LINKED;
-                }
-            } finally {
-                getInitLock().unlock();
+            if (CompilerDirectives.isCompilationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            checkErroneousVerification();
+            doLink();
         }
+    }
+
+    @TruffleBoundary
+    private void doLink() {
+        getInitLock().lock();
+        try {
+            if (!isLinkingOrLinked()) {
+                initState = LINKING;
+                if (getSuperKlass() != null) {
+                    getSuperKlass().ensureLinked();
+                }
+                for (ObjectKlass interf : getSuperInterfaces()) {
+                    interf.ensureLinked();
+                }
+                prepare();
+                verify();
+                initState = LINKED;
+            }
+        } finally {
+            getInitLock().unlock();
+        }
+        checkErroneousVerification();
     }
 
     void initializeImpl() {
@@ -588,7 +594,9 @@ public final class ObjectKlass extends Klass {
             // Allow folding the exception path if erroneous
             checkErroneousVerification();
             checkErroneousInitialization();
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (CompilerDirectives.isCompilationConstant(this)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
             ensureLinked();
             actualInit();
         }
