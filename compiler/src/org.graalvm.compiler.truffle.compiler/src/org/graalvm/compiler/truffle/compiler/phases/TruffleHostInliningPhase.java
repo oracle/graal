@@ -717,12 +717,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         break;
                     }
 
-                    inlineCall(context, canonicalizableNodes, mutableGraph, callee, inlineIndex++);
-                    currentGraphSize += callee.cost;
-                } else {
-                    if (isFastPathInvoke(callee)) {
-                        fastPathInvokes++;
+                    if (shouldInline(context, callee)) {
+                        inlineCall(context, canonicalizableNodes, mutableGraph, callee, inlineIndex++);
+                        currentGraphSize += callee.cost;
+                        continue;
                     }
+                }
+                if (isFastPathInvoke(callee)) {
+                    fastPathInvokes++;
                 }
             }
 
