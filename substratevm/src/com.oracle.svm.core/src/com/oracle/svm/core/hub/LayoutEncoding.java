@@ -269,6 +269,12 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInline(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
+        return getSizeFromEncoding(obj, encoding);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSizeFromEncoding(Object obj, int encoding) {
         if (isArrayLike(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
         } else {

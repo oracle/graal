@@ -31,9 +31,17 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -376,36 +384,45 @@ public final class Space {
         return copy;
     }
 
-    @AlwaysInline("GC performance")
+///    @AlwaysInline("GC performance")
     Object promoteAlignedObjectParallel(Object original, Space originalSpace) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(original);
 
-        UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
+        Log trace = Log.log();
+        ObjectHeaderImpl impl = ObjectHeaderImpl.getObjectHeaderImpl();
+        Pointer originalMemory = Word.objectToUntrackedPointer(original);
+        UnsignedWord originalHeader = ObjectHeaderImpl.readHeaderFromPointer(originalMemory);
+        if (ObjectHeaderImpl.isForwardedHeader(originalHeader)) {
+            trace.string("PP forward obj ").zhex(originalMemory).newline();
+            return ObjectHeaderImpl.getForwardedObject(originalMemory, originalHeader);
+        }
+
+        UnsignedWord size = getSizeFromHeader(original, originalHeader, impl);
+        assert size.notEqual(0) : "zero obj size"; ///debug,rm
+        assert size.aboveThan(0) : "negative obj size";
         Pointer copyMemory = allocateMemory(size);
         if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
+            Log.log().string("SPC catch prob\n");
             return null;
         }
         Object copy = copyMemory.toObject();
         if (copy == null) {
+            Log.log().string("SPC catch null\n");
             return null;
         }
 
-        // Read original header
-        Pointer originalMemory = Word.objectToUntrackedPointer(original);
-        assert ObjectHeaderImpl.getHubOffset() == 0;
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(originalMemory);
         // Install forwarding pointer into the original header
-        /// mv CAS code from OHI here
-        Object forward = ObjectHeaderImpl.installForwardingPointer(original, copy);
+        assert ObjectHeaderImpl.getHubOffset() == 0; ///PGC prerequisite
+        Object forward = ObjectHeaderImpl.installForwardingPointerParallel(original, originalHeader, copy);
 
         if (forward == copy) {
-            // We have won the race, now we must copy the object bits. First install the original header
+            // We have won the race, now we must copy the object bits. First install the original originalHeader
             int headerSize = ObjectHeaderImpl.getReferenceSize();
             if (headerSize == Integer.BYTES) {
-                copyMemory.writeInt(0, (int) header.rawValue());
+                copyMemory.writeInt(0, (int) originalHeader.rawValue());
             } else {
-                copyMemory.writeWord(0, header);
+                copyMemory.writeWord(0, originalHeader);
             }
             // copy the rest of original object
             UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(headerSize), copyMemory.add(headerSize), size.subtract(headerSize));
@@ -419,9 +436,28 @@ public final class Space {
             ParallelGCImpl.queue(copyMemory);
             return copy;
         } else {
+            /// DEBUG: make a long array to make heap verifier happy
+            UnmanagedMemoryUtil.fillLongs(copyMemory, size, 0L);
+            DynamicHub fillClass = DynamicHub.fromClass(Object[].class);
+            Word fillHeader = ObjectHeaderImpl.encodeAsObjectHeader(fillClass, false, false);
+            int headerSize = ObjectHeaderImpl.getReferenceSize();
+            copyMemory.writeWord(0, fillHeader);
+            copyMemory.writeWord(headerSize, size.unsignedDivide(headerSize).subtract(2).shiftLeft(4 * headerSize));
+//            Log.log().string("PP fill ").zhex(copyMemory)
+//                    .string(" len ").signed(size.rawValue() / headerSize - 2).newline();
+//            Log.log().string("  hdr: ").zhex(copyMemory.readWord(0))
+//                    .string(" ").zhex(copyMemory.readWord(headerSize))
+//                    .newline();
+            /// END DEBUG
             /// Now the allocated memory is lost. Retract in TLAB?
             return forward;
         }
+    }
+
+    @AlwaysInline("GC performance")
+    public static UnsignedWord getSizeFromHeader(Object obj, UnsignedWord header, ObjectHeaderImpl impl) {
+        int encoding = impl.dynamicHubFromObjectHeader(header).getLayoutEncoding();
+        return LayoutEncoding.getSizeFromEncoding(obj, encoding);
     }
 
     @AlwaysInline("GC performance")
