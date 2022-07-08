@@ -14,11 +14,16 @@ The Gradle plugin for GraalVM Native Image works with the `application` plugin a
 
 This guide shows you how to use the Native Image Gradle plugin to build a native executable from a Java application, add support for dynamic features, and run JUnit tests.
 
-You will use a **Fortune demo** application that simulates the traditional [fortune Unix program](https://en.wikipedia.org/wiki/Fortune_(Unix)). The data for the fortune phrases is provided by [YourFortune](https://github.com/your-fortune).
+You will use a **Fortune demo** application that simulates the traditional [fortune Unix program](https://en.wikipedia.org/wiki/Fortune_(Unix)). The data for the fortune phrases is provided by [YourFortune](https://github.com/your-fortune). 
+
+There are two ways to build a native executable from a Java application--both are demonstrated below:
+
+- [Build a Native Executable with Resources Autodetection](#build-a-native-executable-with-resources-autodetection)
+- [Build a Native Executable Detecting Resources with the Agent](#build-a-native-executable-detecting-resources-with-the-agent)
 
 We recommend that you follow the instructions and create the application step-by-step. Alternatively, you can use an existing project: clone the [GraalVM demos repository](https://github.com/graalvm/graalvm-demos) and navigate into the `fortune-demo/gradle/fortune` directory:
 ```shell
-git clone https://github.com/graalvm/graalvm-demos && cd fortune-demo/gradle/fortune
+git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-demo/fortune-gradle
 ```
 
 > You must have [GraalVM installed with Native Image support](../README.md#install-native-image). 
@@ -183,9 +188,9 @@ git clone https://github.com/graalvm/graalvm-demos && cd fortune-demo/gradle/for
     ```
     Note that the `pluginManagement {}` block must appear before any other statements in the file.
     
-## Build a Native Executable with Gradle
+## Build a Native Executable with Resources Autodetection
 
-You can already build a native executable by running `./gradlew nativeCompile` or run it directly by invoking `./gradlew nativeRun`. However, at this stage, running the native executable will fail, because this application requires additional metadata: you need to provide it with a list of resources to load.
+You can already build a native executable by running `./gradlew nativeCompile` or run it directly by invoking `./gradlew nativeRun`. However, at this stage, running the native executable will fail because this application requires additional metadata: you need to provide it with a list of resources to load.
 
 1. Instruct the plugin to automatically detect resources to be included in the native executable. Add this to your `build.gradle` file:
 
@@ -211,7 +216,7 @@ You can already build a native executable by running `./gradlew nativeCompile` o
         }
     }
     ```
-    Another workaround to this is to disable toolchain detection with this command `toolchainDetection = false`.
+    The workaround to this is to disable toolchain detection with this command `toolchainDetection = false`.
 
 2. Compile the project and build a native executable at one step:
 
@@ -221,26 +226,27 @@ You can already build a native executable by running `./gradlew nativeCompile` o
 
     The native executable, named _fortune_, is created in the _/fortune/build/native/nativeCompile_ directory.
 
-3.  Run the application from the native executable:
+3.  Run the native executable:
 
     ```shell
     ./fortune/build/native/nativeCompile/fortune
     ```
     The application starts and prints a random quote.
 
-To see the benefits of running your application as a native executable, `time` how long it takes and compare the results with running on the JVM.
+Configuring the `graalvmNative` plugin to automatically detect resources (`resources.autodetect()`) to be included in a binary is the one way to make this example work. 
+Using `resources.autodetect()` solution works because the application uses resources (_fortunes.json_) which are directly available in the `src/main/resources` location.
 
-## Provide Metadata with the Agent
+But then, the guide explains that for the sake of demonstration, we can use the agent to do the same.
 
-In the real-world scenario, your application will, most likely, call either the Java Native Interface (JNI), Java Reflection, Dynamic Proxy objects, or class path resources - the [dynamic features that require metadata](../ReachabilityMetadata.md). 
+## Build a Native Executable by Detecting Resources with the Agent
 
 The Native Image Gradle plugin simplifies generation of the required metadata by injecting the [Java agent](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#agent-support) automatically for you at compile time. 
-To enable the agent, just pass the `-Pagent` option to any Gradle tasks that extends `JavaForkOptions` (for example, `test`, `run`). 
+To enable the agent, just pass the `-Pagent` option to any Gradle tasks that extends `JavaForkOptions` (for example, `test` or `run`). 
 
-The configuration block you added before took care of detecting resources, but it would potentially add more than what you need, and would not be able to deal with more advanced use cases like Dynamic Proxy.
-For the sake of the demonstration, remove the `resources.autodetect()` confguration block so that we can try an alternative variant.
+The configuration block you added takes care of detecting resources, but it potentially adds more than what you need, and may not deal with more advanced use cases such as dynamic proxies.
+To demonstrate this approach, remove the `resources.autodetect()` configuration block.
 
-See below how to collect metadata with the agent, and build a native executable applying the provided configuration.
+The following steps illustrate how to collect metadata using the agent, and then build a native executable using that metadata.
 
 1. Run your application with the agent enabled:
 
@@ -261,11 +267,14 @@ See below how to collect metadata with the agent, and build a native executable 
     ```
     The native executable, named _fortune_, is created in the _build/native/nativeCompile_ directory.
 
-4. Run the application from the native executable:
+4. Run the native executable:
 
     ```shell
     ./fortune/build/native/nativeCompile/fortune
     ```
+    The application starts and prints a random quote.
+
+To see the benefits of running your application as a native executable, `time` how long it takes and compare the results with running as a Java application.
 
 You can customize the plugin. For example, change the name of the native executable and pass additional parameters to the plugin in the _build.gradle_ file, as follows:
 
@@ -332,35 +341,17 @@ If you need to test collecting metadata with the agent, add the `-Pagent` option
     ./gradlew -Pagent test
     ```
     It runs your application on the JVM with the agent, collects the metadata and uses it for testing on `native-image`.
-    The generated configuration files can be found in the `${buildDir}/native/agent-output/${taskName}` directory.In this case, for example, `build/native/agent-output/test`. The Native Image Gradle plugin will also substitute `{output_dir}` in the agent options to point to this directory.
+    The generated configuration files (containing the metadata) can be found in the _${buildDir}/native/agent-output/${taskName}_ directory. In this case, for example, _build/native/agent-output/test_. The Native Image Gradle plugin will also substitute `{output_dir}` in the agent options to point to this directory.
 
-2. Test building a native executable using metadata acquired by the agent:
+2. Build a native executable using the metadata collected by the agent:
 
     ```shell
     ./gradlew -Pagent nativeTest
     ```
 
-## Add GraalVM Reachability Metadata Support
-
-Since release 0.9.11, the Native Image Gradle plugin adds experimental support for the [GraalVM Reachability Metadata repository](https://github.com/graalvm/graalvm-reachability-metadata/). 
-This repository provides GraalVM configuration for libraries which do not officially support GraalVM native.
-The support needs to be enabled explicitly.
-
-Register the metadata repository in the _settings.gradle_ file:
-
-```xml
-graalvmNative {
-    metadataRepository {
-        enabled = true
-        version = "1.0.0"
-    }
-}
-```
-The plugin will automatically download the metadata from the repository.
-
 ### Summary
 
-The configuration of Native Image Gradle plugin could go much further than this guide. Check the [plugin documentation](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html).
+The Native Image Gradle plugin has many more configuration options. For more information, see the [plugin documentation](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html).
 
 Note that if your application does not call dynamically any classes at run time, the execution with the agent is needless. 
 Your workflow in that case is just:
