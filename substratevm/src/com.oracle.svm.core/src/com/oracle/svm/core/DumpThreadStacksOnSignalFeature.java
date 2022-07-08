@@ -92,6 +92,10 @@ class DumpAllStacks implements SignalHandler {
                     /* Skip the signal handler stack */
                     continue;
                 }
+                if (VMThreads.SafepointBehavior.isCrashedThread(vmThread)) {
+                    /* The Java frame anchors or the values on the stack may be corrupt. */
+                    continue;
+                }
                 try {
                     dumpStack(log, vmThread);
                 } catch (Exception e) {

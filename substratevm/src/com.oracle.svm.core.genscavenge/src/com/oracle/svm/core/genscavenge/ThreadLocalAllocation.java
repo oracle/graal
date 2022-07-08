@@ -418,6 +418,10 @@ public final class ThreadLocalAllocation {
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                if (VMThreads.SafepointBehavior.isCrashedThread(vmThread)) {
+                    /* Ignore crashed threads because the TLAB can be corrupt. */
+                    continue;
+                }
                 disableAndFlushForThread(vmThread);
             }
         } else {

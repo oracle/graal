@@ -906,6 +906,10 @@ public class SubstrateDiagnostics {
                     if (vmThread == CurrentIsolate.getCurrentThread()) {
                         continue;
                     }
+                    if (VMThreads.SafepointBehavior.isCrashedThread(vmThread)) {
+                        /* The Java frame anchors or the values on the stack may be corrupt. */
+                        continue;
+                    }
                     if (printed >= MAX_THREADS_TO_PRINT) {
                         log.string("... (truncated)").newline();
                         break;

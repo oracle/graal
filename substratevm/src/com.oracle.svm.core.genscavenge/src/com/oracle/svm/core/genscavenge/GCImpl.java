@@ -865,6 +865,10 @@ public final class GCImpl implements GC {
                          */
                         continue;
                     }
+                    if (VMThreads.SafepointBehavior.isCrashedThread(vmThread)) {
+                        /* The Java frame anchors or the values on the stack may be corrupt. */
+                        continue;
+                    }
                     if (JavaStackWalker.initWalk(walk, vmThread)) {
                         walkStack(walk);
                     }

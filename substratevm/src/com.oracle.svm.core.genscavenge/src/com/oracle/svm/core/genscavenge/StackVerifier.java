@@ -61,6 +61,10 @@ final class StackVerifier {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
+                if (VMThreads.SafepointBehavior.isCrashedThread(vmThread)) {
+                    /* The Java frame anchors or the values on the stack may be corrupt. */
+                    continue;
+                }
                 JavaStackWalker.walkThread(vmThread, STACK_FRAME_VISITOR);
             }
         }

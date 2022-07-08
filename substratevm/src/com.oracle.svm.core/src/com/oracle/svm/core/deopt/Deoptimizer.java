@@ -319,6 +319,10 @@ public final class Deoptimizer {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
+                if (VMThreads.SafepointBehavior.isCrashedThread(vmThread)) {
+                    /* The Java frame anchors or the values on the stack may be corrupt. */
+                    continue;
+                }
                 StackFrameVisitor deoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, vmThread);
                 JavaStackWalker.walkThread(vmThread, deoptVisitor);
             }

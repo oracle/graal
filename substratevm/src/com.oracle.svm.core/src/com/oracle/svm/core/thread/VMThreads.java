@@ -869,13 +869,11 @@ public abstract class VMThreads {
          * thread status).
          * 
          * NOTE: Be careful with this method and make sure that this thread does not allocate any
-         * Java objects as this could result deadlocks. This method will only work prevent
-         * safepoints reliably if it is called from a thread with
-         * {@link StatusSupport#STATUS_IN_JAVA}.
+         * Java objects as this could result deadlocks. This method will only prevent safepoints
+         * reliably if it is called from a thread with {@link StatusSupport#STATUS_IN_JAVA}.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
         public static void preventSafepoints() {
-            // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);
         }
 
@@ -896,6 +894,11 @@ public abstract class VMThreads {
         public static void markThreadAsCrashed() {
             // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(THREAD_CRASHED);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isCrashedThread(IsolateThread thread) {
+            return safepointBehaviorTL.getVolatile(thread) == THREAD_CRASHED;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
