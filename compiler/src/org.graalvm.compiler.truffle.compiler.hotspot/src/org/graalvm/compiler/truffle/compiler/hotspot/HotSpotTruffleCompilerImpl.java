@@ -129,7 +129,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
         HotSpotKnownTruffleTypes knownTruffleTypes = new HotSpotKnownTruffleTypes(backend.getProviders().getMetaAccess());
         final PartialEvaluatorConfiguration lastTierPe = createPartialEvaluatorConfiguration(hotspotGraalRuntime.getCompilerConfigurationName());
-        final TruffleTierConfiguration lastTierSetup = new TruffleTierConfiguration(lastTierPe, backend, options, knownTruffleTypes);
+        LIRSuites lastTierLirSuites = backend.getSuites().getDefaultLIRSuites(options);
+        Suites lastTierSuites = backend.getSuites().getDefaultSuites(options);
+        Providers lastTierProviders = backend.getProviders();
+        HotSpotTruffleProfilingInstrumentation.installGuest(options, lastTierSuites.getLowTier());
+        final TruffleTierConfiguration lastTierSetup = new TruffleTierConfiguration(lastTierPe, backend, lastTierProviders, lastTierSuites, lastTierLirSuites, knownTruffleTypes);
 
         CompilerConfigurationFactory lowTierCompilerConfigurationFactory = new EconomyCompilerConfigurationFactory();
         CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
@@ -140,6 +144,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Providers firstTierProviders = firstTierBackend.getProviders();
         PartialEvaluatorConfiguration firstTierPe = new EconomyPartialEvaluatorConfiguration();
         firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
+
+        HotSpotTruffleProfilingInstrumentation.installGuest(options, firstTierSuites.getLowTier());
         TruffleTierConfiguration firstTierSetup = new TruffleTierConfiguration(firstTierPe, firstTierBackend, firstTierProviders, firstTierSuites, firstTierLirSuites, knownTruffleTypes);
         final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection, firstTierSetup, lastTierSetup, knownTruffleTypes);
 

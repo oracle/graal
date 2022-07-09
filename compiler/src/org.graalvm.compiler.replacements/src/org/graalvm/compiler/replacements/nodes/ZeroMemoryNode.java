@@ -71,6 +71,10 @@ public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable, Sin
         return false;
     }
 
+    public ValueNode getLength() {
+        return length;
+    }
+
     @NodeIntrinsic
     public static native void zero(Word address, long length, @ConstantNodeParameter boolean isAligned, @ConstantNodeParameter LocationIdentity locationIdentity);
 

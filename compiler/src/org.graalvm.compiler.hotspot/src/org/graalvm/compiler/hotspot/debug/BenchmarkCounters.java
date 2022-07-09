@@ -274,13 +274,14 @@ public class BenchmarkCounters {
                 if (Options.BenchmarkCounterPrintingCutoff.getValue(options)) {
                     long cutoff = sorted.size() < 10 ? 1 : Math.max(1, sum / 100);
                     int cnt = sorted.size();
+                    final int minRows = 10;
 
                     // remove everything below cutoff and keep at most maxRows
                     Iterator<Map.Entry<Long, String>> iter = sorted.entrySet().iterator();
                     while (iter.hasNext()) {
                         Map.Entry<Long, String> entry = iter.next();
                         long counter = entry.getKey() / array.length;
-                        if (counter < cutoff || cnt > maxRows) {
+                        if (counter == 0 || (cnt > minRows && counter < cutoff) || cnt > maxRows) {
                             iter.remove();
                         }
                         cnt--;

@@ -17,6 +17,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Removed deprecated `UnionAssumption`, `AlwaysValidAssumption` and `NeverValidAssumption`. The API was deprecated in 22.1.
     
 * (GR-35797) The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
+* GR-39190 Implemented Truffle counters using Graal IR instrumentation for guest and host code. See the [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/Profiling.md#host-profiling-using-graal-ir-instrumentation) for usage instructions.
 
 ## Version 22.2.0
 

@@ -43,4 +43,6 @@ public interface TruffleSourceLanguagePosition {
     int getNodeId();
 
     String getNodeClassName();
+
+    String getQualifiedRootName();
 }
