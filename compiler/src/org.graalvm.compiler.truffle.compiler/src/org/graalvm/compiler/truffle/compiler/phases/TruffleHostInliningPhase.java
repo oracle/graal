@@ -114,7 +114,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         public static final OptionKey<Integer> TruffleHostInliningMaxExplorationDepth = new OptionKey<>(1000);
 
         @Option(help = "Maximum number of subtree invokes for a subtree to get inlined until it is considered too complex.")//
-        public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(10);
+        public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(20);
 
     }
 
