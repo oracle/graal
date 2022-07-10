@@ -147,7 +147,6 @@ public final class UnalignedHeapChunk {
 
     @AlwaysInline("GC performance")
     public static boolean walkObjectsInline(UnalignedHeader that, ObjectVisitor visitor) {
-        Log.log().string("UA walk unaligned in chunk ").zhex(that).newline();
         return HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
     }
 

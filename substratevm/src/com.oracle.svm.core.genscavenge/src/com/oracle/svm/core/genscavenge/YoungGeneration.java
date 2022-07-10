@@ -145,13 +145,6 @@ public final class YoungGeneration extends Generation {
     }
 
     void swapSpaces() {
-//        try (Log trace = Log.log()) {
-//            trace.string(">>> eden ind=").unsigned(getEden().getInd()).newline();
-//            for (int i = 0; i < maxSurvivorSpaces; i++) {
-//                trace.string(">>> ss").unsigned(i).string(" ind=")
-//                        .unsigned(getSurvivorFromSpaceAt(i).getInd()).newline();
-//            }
-//        }
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorFromSpaceAt(i).isEmpty() : "Survivor fromSpace should be empty.";
             assert getSurvivorFromSpaceAt(i).getChunkBytes().equal(0) : "Chunk bytes must be 0";

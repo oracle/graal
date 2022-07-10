@@ -24,6 +24,10 @@ public class TaskQueue {
         stats = new Stats();
     }
 
+    private Log log() {
+        return Log.noopLog();
+    }
+
     private int next(int index) {
         return (index + 1) % SIZE;
     }
@@ -40,7 +44,7 @@ public class TaskQueue {
         try {
             mutex.lock();
             while (!canPut()) {
-                Log.log().string("TQ cannot put task\n");
+                log().string("TQ cannot put task\n");
                 cond.block();
             }
             data[putIndex] = ptr;
@@ -57,7 +61,7 @@ public class TaskQueue {
         mutex.lock();
         try {
             while (!canGet()) {
-                Log.log().string("TQ cannot get task\n");
+                log().string("TQ cannot get task\n");
                 idleCount++;
                 cond.block();
                 idleCount--;
@@ -81,7 +85,7 @@ public class TaskQueue {
     }
 
     public void waitUntilIdle(int expectedIdleCount) {
-        Log log = Log.log().string("TQ waitForIdle\n");
+        log().string("TQ waitForIdle\n");
         while (true) {
             try {
                 mutex.lock();
@@ -89,7 +93,7 @@ public class TaskQueue {
                     cond.block();
                 }
                 if (idleCount >= expectedIdleCount) {
-                    log.string("TQ waitForIdle over\n");
+                    log().string("TQ waitForIdle over\n");
                     return;
                 }
             } finally {

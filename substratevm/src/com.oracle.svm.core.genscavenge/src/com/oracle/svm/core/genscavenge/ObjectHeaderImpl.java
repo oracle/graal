@@ -349,46 +349,41 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
     }
 
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-
     @AlwaysInline("GC performance")
     static Object installForwardingPointerParallel(Object original, UnsignedWord originalHeader, Object copy) {
         // create forwarding header
         UnsignedWord forwardHeader;
+        boolean hasShift = false;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
-                assert false: "getCompressEncoding().hasShift()";
-                // Compression with a shift uses all bits of a reference, so store the forwarding
-                // pointer in the location following the hub pointer.
                 forwardHeader = WordFactory.unsigned(0xf0f0f0f0f0f0f0f0L);
-                ObjectAccess.writeObject(original, getHubOffset() + getReferenceSize(), copy); ///non mt safe
+                hasShift = true;
             } else {
                 forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
             }
         } else {
             forwardHeader = Word.objectToUntrackedPointer(copy);
         }
-        UnsignedWord bits = getHeaderBitsFromHeader(forwardHeader);
-        if (!bits.equal(0)) {
-            Log.log().string("OHI catch hdrbits in hdr ").unsigned(forwardHeader)
-                    .string(" from obj ").object(copy).newline();
-        }
+        assert getHeaderBitsFromHeader(forwardHeader).equal(0);
         forwardHeader = forwardHeader.or(FORWARDED_BIT);
 
         // try installing the new header
+        Pointer originalPtr = Word.objectToUntrackedPointer(original);
         long witness;
         if (getReferenceSize() == Integer.BYTES) {
-            witness = UNSAFE.compareAndExchangeInt(original, getHubOffset(),
-                    (int) originalHeader.rawValue(), (int) forwardHeader.rawValue());
+            witness = originalPtr.compareAndSwapInt(getHubOffset(),
+                    (int) originalHeader.rawValue(), (int) forwardHeader.rawValue(), LocationIdentity.ANY_LOCATION);
         } else {
-            witness = UNSAFE.compareAndExchangeLong(original, getHubOffset(),
-                    originalHeader.rawValue(), forwardHeader.rawValue());
+            witness = originalPtr.compareAndSwapLong(getHubOffset(),
+                    originalHeader.rawValue(), forwardHeader.rawValue(), LocationIdentity.ANY_LOCATION);
         }
-        Pointer originalPtr = Word.objectToUntrackedPointer(original);
         assert isPointerToForwardedObject(originalPtr);
         if (witness != originalHeader.rawValue()) {
-            Log.log().string("PP collision for obj ").zhex(originalPtr).newline();
             return getForwardedObject(originalPtr, WordFactory.unsigned(witness));
+        } else if (hasShift) {
+            // Compression with a shift uses all bits of a reference, so store the forwarding
+            // pointer in the location following the hub pointer.
+            ObjectAccess.writeObject(original, getHubOffset() + getReferenceSize(), copy);
         }
         return copy;
     }

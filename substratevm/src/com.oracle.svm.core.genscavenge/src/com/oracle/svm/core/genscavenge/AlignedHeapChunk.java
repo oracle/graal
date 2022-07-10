@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.annotate.NeverInline;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -139,7 +138,7 @@ public final class AlignedHeapChunk {
         return HeapChunk.walkObjectsFrom(that, getObjectsStart(that), visitor);
     }
 
-    @NeverInline("GC performance")
+    @AlwaysInline("GC performance")
     static boolean walkObjectsInline(AlignedHeader that, ObjectVisitor visitor) {
         return HeapChunk.walkObjectsFromInline(that, getObjectsStart(that), visitor);
     }

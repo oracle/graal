@@ -187,12 +187,10 @@ public final class Space {
                 result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
             }
             if (result.isNonNull()) {
-//                Log.log().string("    alloc fast ").zhex(result).newline();
                 return result;
             }
             /* Slow-path: try allocating a new chunk for the requested memory. */
             result = allocateInNewChunk(objectSize);
-//            Log.log().string("    alloc slow ").zhex(result).newline();
             return result;
         } finally {
             mutex.unlock();
@@ -384,31 +382,26 @@ public final class Space {
         return copy;
     }
 
-///    @AlwaysInline("GC performance")
+    @AlwaysInline("GC performance")
     Object promoteAlignedObjectParallel(Object original, Space originalSpace) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(original);
 
-        Log trace = Log.log();
         ObjectHeaderImpl impl = ObjectHeaderImpl.getObjectHeaderImpl();
         Pointer originalMemory = Word.objectToUntrackedPointer(original);
         UnsignedWord originalHeader = ObjectHeaderImpl.readHeaderFromPointer(originalMemory);
         if (ObjectHeaderImpl.isForwardedHeader(originalHeader)) {
-            trace.string("PP forward obj ").zhex(originalMemory).newline();
             return ObjectHeaderImpl.getForwardedObject(originalMemory, originalHeader);
         }
 
         UnsignedWord size = getSizeFromHeader(original, originalHeader, impl);
-        assert size.notEqual(0) : "zero obj size"; ///debug,rm
-        assert size.aboveThan(0) : "negative obj size";
+        assert size.aboveThan(0);
         Pointer copyMemory = allocateMemory(size);
         if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
-            Log.log().string("SPC catch prob\n");
             return null;
         }
         Object copy = copyMemory.toObject();
         if (copy == null) {
-            Log.log().string("SPC catch null\n");
             return null;
         }
 
@@ -443,11 +436,6 @@ public final class Space {
             int headerSize = ObjectHeaderImpl.getReferenceSize();
             copyMemory.writeWord(0, fillHeader);
             copyMemory.writeWord(headerSize, size.unsignedDivide(headerSize).subtract(2).shiftLeft(4 * headerSize));
-//            Log.log().string("PP fill ").zhex(copyMemory)
-//                    .string(" len ").signed(size.rawValue() / headerSize - 2).newline();
-//            Log.log().string("  hdr: ").zhex(copyMemory.readWord(0))
-//                    .string(" ").zhex(copyMemory.readWord(headerSize))
-//                    .newline();
             /// END DEBUG
             /// Now the allocated memory is lost. Retract in TLAB?
             return forward;
@@ -491,7 +479,6 @@ public final class Space {
 
     /** Promote an AlignedHeapChunk by moving it to this space. */
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
-        /// called from GCImpl.promoteChunksWithPinnedObjects() early in the GC routine
         assert this != originalSpace && originalSpace.isFromSpace();
 
         originalSpace.mutex.lock();
