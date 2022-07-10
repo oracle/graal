@@ -6,7 +6,7 @@ import com.oracle.svm.core.log.Log;
 import org.graalvm.word.Pointer;
 
 public class TaskQueue {
-    private static final int SIZE = 1024; ///handle overflow
+    private static final int SIZE = 1024 * 1024; ///handle overflow
 
     final Stats stats;
 
