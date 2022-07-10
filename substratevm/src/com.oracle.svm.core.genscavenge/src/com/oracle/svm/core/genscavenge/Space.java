@@ -494,8 +494,21 @@ public final class Space {
         /// called from GCImpl.promoteChunksWithPinnedObjects() early in the GC routine
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        originalSpace.extractAlignedHeapChunk(chunk);
-        appendAlignedHeapChunk(chunk);
+        originalSpace.mutex.lock();
+        mutex.lock();
+        try {
+            originalSpace.extractAlignedHeapChunk(chunk);
+            appendAlignedHeapChunk(chunk);
+        } finally {
+            mutex.unlock();
+            originalSpace.mutex.unlock();
+        }
+
+        if (ParallelGCImpl.isEnabled()) {
+            if (!AlignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
+                throw VMError.shouldNotReachHere();
+            }
+        }
 
         if (this.isOldSpace()) {
             if (originalSpace.isYoungSpace()) {
@@ -511,9 +524,15 @@ public final class Space {
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        Log.log().string("UA promote chunk ").zhex(chunk).newline();
-        originalSpace.extractUnalignedHeapChunk(chunk);
-        appendUnalignedHeapChunk(chunk);
+        originalSpace.mutex.lock();
+        mutex.lock();
+        try {
+            originalSpace.extractUnalignedHeapChunk(chunk);
+            appendUnalignedHeapChunk(chunk);
+        } finally {
+            mutex.unlock();
+            originalSpace.mutex.unlock();
+        }
 
         if (ParallelGCImpl.isEnabled()) {
             if (!UnalignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
