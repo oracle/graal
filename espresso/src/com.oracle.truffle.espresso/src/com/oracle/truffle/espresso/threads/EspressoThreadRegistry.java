@@ -155,10 +155,10 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
      * for all non-daemon thread completion.
      */
     @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
-    public void unregisterThread(StaticObject thread) {
+    public boolean unregisterThread(StaticObject thread) {
         if (!activeThreads.remove(thread)) {
             // Already unregistered
-            return;
+            return false;
         }
         logger.fine(() -> {
             String guestName = getThreadAccess().getThreadName(thread);
@@ -199,6 +199,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         }
         getLanguage().getThreadLocalState().clearCurrentThread(thread);
         getContext().notifyShutdownSynchronizer();
+        return true;
     }
 
     /**
