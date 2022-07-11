@@ -174,7 +174,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @param node2 the second node
      * @return the cost to relabel the first node to the second
      */
-    private int relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
+    private static int relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
         assert !nodesEqual(node1, node2);
         if (node1 instanceof OptimizationPhase && node2 instanceof OptimizationPhase) {
             return PHASE_RENAME_COST;
@@ -190,7 +190,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @param node2 the second node
      * @return true iff the nodes are equal
      */
-    private boolean nodesEqual(OptimizationTreeNode node1, OptimizationTreeNode node2) {
+    private static boolean nodesEqual(OptimizationTreeNode node1, OptimizationTreeNode node2) {
         if (node1 instanceof OptimizationPhase && node2 instanceof OptimizationPhase) {
             return node1.getName().equals(node2.getName());
         }

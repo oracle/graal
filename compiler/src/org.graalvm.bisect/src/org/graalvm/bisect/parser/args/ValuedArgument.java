@@ -67,7 +67,8 @@ abstract class ValuedArgument<T> extends Argument {
     }
 
     @Override
-    public int parse(String[] args, int offset) throws InvalidArgumentException {
+    public int parse(String[] args, int offsetBase) throws InvalidArgumentException {
+        int offset = offsetBase;
         if (isOptionArgument()) {
             assert args[offset].equals(getName());
             ++offset;
@@ -85,8 +86,8 @@ abstract class ValuedArgument<T> extends Argument {
     /**
      * Parse the argument value from a string.
      *
-     * @param value the value that is parsed
+     * @param s the value that is parsed
      * @throws InvalidArgumentException the value could not be parsed
      */
-    protected abstract void parseValue(String value) throws InvalidArgumentException;
+    protected abstract void parseValue(String s) throws InvalidArgumentException;
 }

@@ -152,6 +152,7 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
      *
      * @return {@link DebugContext} with the {@link GraalOptions#OptimizationLog OptimizationLog} option enabled
      */
+    @Override
     protected DebugContext getDebugContext() {
         EconomicMap<OptionKey<?>, Object> extraOptions = EconomicMap.create();
         extraOptions.put(GraalOptions.OptimizationLog, true);

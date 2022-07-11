@@ -33,9 +33,9 @@ public class DoubleArgument extends ValuedArgument<Double> {
     }
 
     @Override
-    protected void parseValue(String value) throws InvalidArgumentException {
+    protected void parseValue(String s) throws InvalidArgumentException {
         try {
-            this.value = Double.parseDouble(value);
+            this.value = Double.parseDouble(s);
         } catch (NumberFormatException e) {
             throw new InvalidArgumentException(getName(), e.getMessage());
         }

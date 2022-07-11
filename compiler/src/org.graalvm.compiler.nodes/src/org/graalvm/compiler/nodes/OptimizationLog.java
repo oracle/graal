@@ -178,6 +178,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Converts the optimization subtree to an object that can be formatted as JSON.
+         *
          * @return a representation of the optimization subtree that can be formatted as JSON
          */
         abstract EconomicMap<String, Object> asJsonMap();
@@ -213,6 +214,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Creates a subphase of this phase, sets it as the current phase and returns its instance.
+         *
          * @param subphaseName the name of the newly created phase
          * @return the newly created phase
          */
@@ -543,11 +545,11 @@ public class OptimizationLog implements CompilationListener {
     }
 
     private String parseCompilationId() {
-        String compilationId = graph.compilationId().toString(CompilationIdentifier.Verbosity.ID);
-        int dash = compilationId.indexOf('-');
+        String fullCompilationId = graph.compilationId().toString(CompilationIdentifier.Verbosity.ID);
+        int dash = fullCompilationId.indexOf('-');
         if (dash == -1) {
-            return compilationId;
+            return fullCompilationId;
         }
-        return compilationId.substring(dash + 1);
+        return fullCompilationId.substring(dash + 1);
     }
 }

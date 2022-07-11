@@ -38,10 +38,6 @@ import org.graalvm.bisect.core.ExperimentId;
  * Represents files belonging to a single experiment.
  */
 public class ExperimentFilesImpl implements ExperimentFiles {
-    public ExperimentId getExperimentId() {
-        return experimentId;
-    }
-
     private final ExperimentId experimentId;
     private final String optimizationLogPath;
     private final String proftoolOutputPath;
@@ -61,10 +57,12 @@ public class ExperimentFilesImpl implements ExperimentFiles {
         this.proftoolOutputPath = proftoolOutputPath;
     }
 
+    @Override
     public Reader getProftoolOutput() throws FileNotFoundException {
         return new FileReader(proftoolOutputPath);
     }
 
+    @Override
     public List<Reader> getOptimizationLogs() throws IOException {
         File[] files = new File(optimizationLogPath).listFiles();
         if (files == null) {
@@ -75,5 +73,10 @@ public class ExperimentFilesImpl implements ExperimentFiles {
             readers.add(new FileReader(file));
         }
         return readers;
+    }
+
+    @Override
+    public ExperimentId getExperimentId() {
+        return experimentId;
     }
 }

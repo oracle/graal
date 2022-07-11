@@ -33,9 +33,9 @@ public class IntegerArgument extends ValuedArgument<Integer> {
     }
 
     @Override
-    protected void parseValue(String value) throws InvalidArgumentException {
+    protected void parseValue(String s) throws InvalidArgumentException {
         try {
-            this.value = Integer.parseInt(value);
+            this.value = Integer.parseInt(s);
         } catch (NumberFormatException e) {
             throw new InvalidArgumentException(getName(), e.getMessage());
         }

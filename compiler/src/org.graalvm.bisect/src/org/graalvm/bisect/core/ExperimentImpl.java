@@ -161,22 +161,22 @@ public class ExperimentImpl implements Experiment {
     public void writeMethodCompilationList(Writer writer, String compilationMethodName) {
         writer.writeln("In experiment " + experimentId);
         writer.increaseIndent();
-        List<ExecutedMethod> executedMethods = methodsByName.get(compilationMethodName);
-        if (executedMethods == null) {
+        List<ExecutedMethod> methods = methodsByName.get(compilationMethodName);
+        if (methods == null) {
             writer.writeln("No compilations");
             writer.decreaseIndent();
             return;
         }
-        executedMethods = executedMethods.stream()
+        methods = methods.stream()
                         .sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod()))
                         .collect(Collectors.toList());
-        long hotMethodCount = executedMethods.stream()
+        long hotMethodCount = methods.stream()
                         .filter(ExecutedMethod::isHot)
                         .count();
-        writer.writeln(executedMethods.size() + " compilations (" + hotMethodCount + " of which are hot)");
+        writer.writeln(methods.size() + " compilations (" + hotMethodCount + " of which are hot)");
         writer.writeln("Compilations");
         writer.increaseIndent();
-        for (ExecutedMethod executedMethod : executedMethods) {
+        for (ExecutedMethod executedMethod : methods) {
             writer.writeln(executedMethod.getCompilationId() + " (" + executedMethod.createSummaryOfMethodExecution() + ((executedMethod.isHot()) ? ") *hot*" : ")"));
         }
         writer.decreaseIndent(2);

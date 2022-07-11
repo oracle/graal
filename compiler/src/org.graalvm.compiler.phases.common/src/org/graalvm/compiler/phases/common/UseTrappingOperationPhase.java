@@ -215,7 +215,6 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
 
     protected void replaceWithTrappingVersion(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation,
                     LowTierContext context) {
-        DebugContext debug = deopt.getDebug();
         StructuredGraph graph = deopt.graph();
         AbstractBeginNode nonTrappingContinuation = trueSuccessorIsDeopt() ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
         AbstractBeginNode trappingContinuation = trueSuccessorIsDeopt() ? ifNode.trueSuccessor() : ifNode.falseSuccessor();

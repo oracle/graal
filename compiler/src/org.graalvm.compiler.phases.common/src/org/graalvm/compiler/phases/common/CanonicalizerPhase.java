@@ -353,13 +353,13 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         }
         // Perform GVN after possibly inferring the stamp since a stale stamp will inhibit GVN.
-        if (features.contains(GVN) && tryGlobalValueNumbering(node, nodeClass, tool)) {
+        if (features.contains(GVN) && tryGlobalValueNumbering(node, nodeClass)) {
             return true;
         }
         return false;
     }
 
-    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass, Tool tool) {
+    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
         if (nodeClass.valueNumberable()) {
             Node newNode = node.graph().findDuplicate(node);
             if (newNode != null) {

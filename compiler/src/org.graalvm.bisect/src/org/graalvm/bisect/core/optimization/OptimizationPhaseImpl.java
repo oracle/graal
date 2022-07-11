@@ -91,8 +91,8 @@ public class OptimizationPhaseImpl implements OptimizationPhase {
         while (!stack.isEmpty()) {
             OptimizationTreeNode treeNode = stack.pop();
             if (treeNode instanceof OptimizationPhase) {
-                List<OptimizationTreeNode> children = treeNode.getChildren();
-                ListIterator<OptimizationTreeNode> iterator = children.listIterator(children.size());
+                List<OptimizationTreeNode> treeNodeChildren = treeNode.getChildren();
+                ListIterator<OptimizationTreeNode> iterator = treeNodeChildren.listIterator(treeNodeChildren.size());
                 while (iterator.hasPrevious()) {
                     stack.push(iterator.previous());
                 }

@@ -92,9 +92,9 @@ public class GreedyMethodMatcher implements MethodMatcher {
         return Long.compare(b.getPeriod(), a.getPeriod());
     }
 
-    private void analyzeExtraMethods(EconomicMap<String, List<ExecutedMethod>> methodMap1,
+    private static void analyzeExtraMethods(EconomicMap<String, List<ExecutedMethod>> methodMap1,
                     EconomicMap<String, List<ExecutedMethod>> methodMap2,
-                                     MethodMatchingImpl matching,
+                    MethodMatchingImpl matching,
                     Experiment lhsExperiment) {
         EconomicSet<String> difference = EconomicMapUtil.keySet(methodMap1);
         difference.removeAll(EconomicMapUtil.keySet(methodMap2));
