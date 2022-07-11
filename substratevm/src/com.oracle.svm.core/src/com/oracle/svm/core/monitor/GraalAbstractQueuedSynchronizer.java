@@ -28,7 +28,6 @@ package com.oracle.svm.core.monitor;
 
 import jdk.internal.misc.Unsafe;
 
-import java.lang.ref.ReferenceQueue;
 import java.util.Date;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
@@ -636,7 +635,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
 final class Target_java_util_concurrent_locks_LockSupport {
     @Alias
     @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
-    public native static void setCurrentBlocker(Object blocker);
+    public static native void setCurrentBlocker(Object blocker);
 }
 
 @TargetClass(value = Unsafe.class)
@@ -647,10 +646,10 @@ final class Target_jdk_internal_misc_Unsafe {
 
     @Alias
     @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
-    public native boolean weakCompareAndSetReference(Object o, long offset, Object expected, Object x) ;
+    public native boolean weakCompareAndSetReference(Object o, long offset, Object expected, Object x);
     @Alias
-	@TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK11OrEarlier.class)
-	public native boolean compareAndSetObject(Object o, long offset, Object expected, Object x);
+    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK11OrEarlier.class)
+    public native boolean compareAndSetObject(Object o, long offset, Object expected, Object x);
     @Alias
     @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK11OrEarlier.class)
     public native void putObject(Object o, long offset, Object x);
