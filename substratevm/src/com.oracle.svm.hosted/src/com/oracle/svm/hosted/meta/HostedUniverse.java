@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -293,7 +294,7 @@ public class HostedUniverse implements Universe {
     protected List<HostedField> orderedFields;
     protected List<HostedMethod> orderedMethods;
 
-    Map<String, Integer> uniqueHostedMethodNames = new HashMap<>();
+    Map<String, Integer> uniqueHostedMethodNames = new ConcurrentHashMap<>();
 
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
