@@ -85,7 +85,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Override
-    public boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
+    public int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
         int vmAccessBits = VirtualMemoryProvider.Access.NONE;
         if (accessFlags.contains(CommittedMemoryProvider.Access.READ)) {
             vmAccessBits |= VirtualMemoryProvider.Access.READ;
@@ -99,8 +99,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
             }
             vmAccessBits |= VirtualMemoryProvider.Access.EXECUTE;
         }
-        int success = VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
-        return success == 0;
+        return VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
     }
 
     @Override
