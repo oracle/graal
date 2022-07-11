@@ -257,7 +257,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         } else if (DumpOnError.getValue(options)) {
             // If DumpOnError is enabled create a DebugContext with only scopes enabled and the
             // debugHandlersFactory configured. This ensures that the snippet graphs can be found
-            // from the scope context and that the dump handlers are available actually write out
+            // from the scope context and that the dump handlers are available to write out
             // the graph dumps.
             return openDebugContext(idPrefix, method, options, outer, true);
         }
