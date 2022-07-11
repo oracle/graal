@@ -341,14 +341,14 @@ final class Encodings {
         return codepoint < 0x10000 ? 1 : 2;
     }
 
-    static int utf16BrokenGetCodePointLength(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
-        return utf16BrokenGetCodePointLength(arrayA, a.offset(), a.length(), i, errorHandling);
+    static int utf16BrokenGetCodePointByteLength(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
+        return utf16BrokenGetCodePointByteLength(arrayA, a.offset(), a.length(), i, errorHandling);
     }
 
-    static int utf16BrokenGetCodePointLength(Object arrayA, int offset, int length, int i, ErrorHandling errorHandling) {
+    static int utf16BrokenGetCodePointByteLength(Object arrayA, int offset, int length, int i, ErrorHandling errorHandling) {
         char c = readS1(arrayA, offset, length, i);
         if (errorHandling == ErrorHandling.BEST_EFFORT) {
-            return isUTF16HighSurrogate(c) && i + 1 < length && isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1)) ? 2 : 1;
+            return isUTF16HighSurrogate(c) && i + 1 < length && isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1)) ? 4 : 2;
         }
         assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
         if (isUTF16Surrogate(c)) {
@@ -357,12 +357,12 @@ final class Encodings {
                     return -3;
                 }
                 if (isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1))) {
-                    return 2;
+                    return 4;
                 }
             }
             return -1;
         }
-        return 1;
+        return 2;
     }
 
     static int utf16Encode(int codepoint, byte[] bytes, int index) {

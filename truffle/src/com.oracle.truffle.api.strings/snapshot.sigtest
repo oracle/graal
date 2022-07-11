@@ -310,8 +310,6 @@ meth public static com.oracle.truffle.api.strings.TruffleString fromCharArrayUTF
 meth public static com.oracle.truffle.api.strings.TruffleString fromCharArrayUTF16Uncached(char[],int,int)
 meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
-meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[])
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[],int,int)
 meth public static com.oracle.truffle.api.strings.TruffleString fromJavaStringUncached(java.lang.String,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -639,10 +637,8 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public final com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
-meth public final com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode getUncached()
 supr com.oracle.truffle.api.nodes.Node

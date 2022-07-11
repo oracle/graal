@@ -389,66 +389,69 @@ final class TStringInternalNodes {
 
     @ImportStatic(TStringGuards.class)
     @GenerateUncached
-    abstract static class RawLengthOfCodePointNode extends Node {
+    abstract static class ByteLengthOfCodePointNode extends Node {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling);
+        abstract int execute(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isFixedWidth(codeRangeA)", "isBestEffort(errorHandling)"})
-        int doFixed(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
-            return 1;
+        int doFixed(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
+            return 1 << encNaturalStride;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isUpToValidFixedWidth(codeRangeA)", "isReturnNegative(errorHandling)"})
-        int doFixedValidReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
-            return 1;
+        int doFixedValidReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
+            return 1 << encNaturalStride;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isAscii(encoding)", "isBrokenFixedWidth(codeRangeA)", "isReturnNegative(errorHandling)"})
-        int doASCIIBrokenReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
+        int doASCIIBrokenReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
             return readS0(a, arrayA, index) < 0x80 ? 1 : -1;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isUTF32(encoding)", "isBrokenFixedWidth(codeRangeA)", "isReturnNegative(errorHandling)"})
-        int doUTF32BrokenReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int index, ErrorHandling errorHandling,
+        int doUTF32BrokenReturnNegative(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling,
                         @Cached CodePointAtRawNode codePointAtRawNode) {
-            return codePointAtRawNode.execute(a, arrayA, codeRangeA, encoding, index, ErrorHandling.RETURN_NEGATIVE) < 0 ? -1 : 1;
+            return codePointAtRawNode.execute(a, arrayA, codeRangeA, encoding, index, ErrorHandling.RETURN_NEGATIVE) < 0 ? -1 : 4;
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"isUTF8(encoding)", "isValidMultiByte(codeRangeA)"})
-        int utf8Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index,
-                        @SuppressWarnings("unused") ErrorHandling errorHandling) {
+        int utf8Valid(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
             int firstByte = readS0(a, arrayA, index);
             return firstByte <= 0x7f ? 1 : Encodings.utf8CodePointLength(firstByte);
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"isUTF8(encoding)", "isBrokenMultiByte(codeRangeA)"})
-        int utf8Broken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index, ErrorHandling errorHandling) {
+        int utf8Broken(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
             return Encodings.utf8GetCodePointLength(a, arrayA, index, errorHandling);
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"isUTF16(encoding)", "isValidMultiByte(codeRangeA)"})
-        int utf16Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index,
-                        @SuppressWarnings("unused") ErrorHandling errorHandling) {
+        int utf16Valid(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
             assert isStride1(a);
-            return Encodings.isUTF16HighSurrogate(TStringOps.readS1(a, arrayA, index)) ? 2 : 1;
+            return Encodings.isUTF16HighSurrogate(TStringOps.readS1(a, arrayA, index)) ? 4 : 2;
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"isUTF16(encoding)", "isBrokenMultiByte(codeRangeA)"})
-        int utf16Broken(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") int encoding, int index, ErrorHandling errorHandling) {
+        int utf16Broken(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
             assert isStride1(a);
-            return Encodings.utf16BrokenGetCodePointLength(a, arrayA, index, errorHandling);
+            return Encodings.utf16BrokenGetCodePointByteLength(a, arrayA, index, errorHandling);
         }
 
+        @SuppressWarnings("unused")
         @TruffleBoundary
         @Specialization(guards = "isUnsupportedEncoding(encoding)")
-        int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, int encoding, int index, ErrorHandling errorHandling) {
+        int unsupported(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int encNaturalStride, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
             JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
             int cpLength = JCodings.getInstance().getCodePointLength(jCoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());

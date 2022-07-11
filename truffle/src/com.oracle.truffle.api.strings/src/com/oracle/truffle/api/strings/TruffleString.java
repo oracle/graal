@@ -150,12 +150,12 @@ public final class TruffleString extends AbstractTruffleString {
     private TruffleString(Object data, int offset, int length, int stride, int encoding, int codePointLength, int codeRange, boolean isCacheHead) {
         super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0);
         assert codePointLength >= 0;
-        assert codeRangeIsValid(encoding, codeRange);
+        assert validateCodeRange(encoding, codeRange);
         this.codePointLength = codePointLength;
         this.codeRange = (byte) codeRange;
     }
 
-    private static boolean codeRangeIsValid(int encoding, int codeRange) {
+    private static boolean validateCodeRange(int encoding, int codeRange) {
         assert isByte(codeRange);
         assert TSCodeRange.isCodeRange(codeRange);
         assert !isAscii(encoding) || is7Bit(codeRange) || isBrokenFixedWidth(codeRange);
@@ -1482,7 +1482,8 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Error handling instructions for string operations.
+     * Error handling instructions for operations that return integer values, such as indices or
+     * code points.
      * 
      * @since 22.3
      */
@@ -1502,7 +1503,7 @@ public final class TruffleString extends AbstractTruffleString {
         BEST_EFFORT,
 
         /**
-         * This mode will cause a negative value or {@code null} to be returned in all error cases.
+         * This mode will cause a negative value to be returned in all error cases.
          *
          * For example: return-negative error handling will cause {@link CodePointAtByteIndexNode}
          * to return a negative value when reading an invalid codepoint from a
@@ -1526,47 +1527,32 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Creates a new TruffleString from a given code point, with best-effort error handling.
+         * Creates a new TruffleString from a given code point.
          *
          * @since 22.1
          */
         public final TruffleString execute(int codepoint, Encoding encoding) {
-            return execute(codepoint, encoding, ErrorHandling.BEST_EFFORT);
+            return execute(codepoint, encoding, encoding == Encoding.UTF_16);
         }
 
         /**
          * Creates a new TruffleString from a given code point.
-         * 
-         * @deprecated since 22.3, use {@link #execute(int, Encoding, ErrorHandling)} instead.
          *
-         * @since 22.2
-         */
-        @Deprecated(since = "22.3")
-        public final TruffleString execute(int codepoint, Encoding encoding, boolean allowUTF16Surrogates) {
-            return execute(codepoint, encoding, allowUTF16Surrogates ? ErrorHandling.BEST_EFFORT : ErrorHandling.RETURN_NEGATIVE);
-        }
-
-        /**
-         * Creates a new TruffleString from a given code point.
-         * 
-         * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT},
-         *            {@link Character#isSurrogate(char) UTF-16 surrogate values} passed as
-         *            {@code codepoint} will be encoded on a best-effort basis <i>iff</i>
-         *            {@code encoding} is {@link Encoding#UTF_16} or {@link Encoding#UTF_32}. In all
-         *            other cases, invalid codepoints will still cause this node to return
-         *            {@code null}. This parameter is expected to be
-         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-         *            constant}.
+         * If {@code allowUTF16Surrogates} is {@code true}, {@link Character#isSurrogate(char)
+         * UTF-16 surrogate values} passed as {@code codepoint} will not result in a {@code null}
+         * return value, but instead be encoded on a best-effort basis. This option is only
+         * supported on {@link TruffleString.Encoding#UTF_16} and
+         * {@link TruffleString.Encoding#UTF_32}.
          *
          * @return a new {@link TruffleString}, or {@code null} if the given codepoint is not
          *         defined in the given encoding.
          *
-         * @since 22.3
+         * @since 22.2
          */
-        public abstract TruffleString execute(int codepoint, Encoding encoding, ErrorHandling errorHandling);
+        public abstract TruffleString execute(int codepoint, Encoding encoding, boolean allowUTF16Surrogates);
 
         @Specialization
-        static TruffleString fromCodePoint(int c, Encoding enc, ErrorHandling errorHandling,
+        static TruffleString fromCodePoint(int c, Encoding enc, boolean allowUTF16Surrogates,
                         @Cached ConditionProfile bytesProfile,
                         @Cached ConditionProfile utf8Profile,
                         @Cached ConditionProfile utf16Profile,
@@ -1574,7 +1560,8 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ConditionProfile exoticProfile,
                         @Cached ConditionProfile bmpProfile,
                         @Cached BranchProfile invalidCodePoint) {
-            CompilerAsserts.partialEvaluationConstant(errorHandling);
+            assert !allowUTF16Surrogates || isUTF16Or32(enc) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
+            CompilerAsserts.partialEvaluationConstant(allowUTF16Surrogates);
             if (Integer.toUnsignedLong(c) > 0x10ffff) {
                 invalidCodePoint.enter();
                 return null;
@@ -1614,7 +1601,7 @@ public final class TruffleString extends AbstractTruffleString {
                 if (bmpProfile.profile(c <= 0xffff)) {
                     length = 1;
                     if (Encodings.isUTF16Surrogate(c)) {
-                        if (errorHandling == ErrorHandling.BEST_EFFORT) {
+                        if (allowUTF16Surrogates) {
                             codeRange = TSCodeRange.getBrokenMultiByte();
                         } else {
                             invalidCodePoint.enter();
@@ -1633,7 +1620,7 @@ public final class TruffleString extends AbstractTruffleString {
                 assert c > 0xff;
                 if (c <= 0xffff) {
                     if (Encodings.isUTF16Surrogate(c)) {
-                        if (errorHandling == ErrorHandling.BEST_EFFORT) {
+                        if (allowUTF16Surrogates) {
                             codeRange = TSCodeRange.getBrokenFixedWidth();
                         } else {
                             invalidCodePoint.enter();
@@ -1711,25 +1698,11 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link FromCodePointNode}.
      *
-     * @deprecated since 22.3, use {@link #fromCodePointUncached(int, Encoding, ErrorHandling)}
-     *             instead.
-     *
      * @since 22.2
      */
-    @Deprecated(since = "22.3")
     @TruffleBoundary
     public static TruffleString fromCodePointUncached(int codepoint, Encoding encoding, boolean allowUTF16Surrogates) {
         return FromCodePointNode.getUncached().execute(codepoint, encoding, allowUTF16Surrogates);
-    }
-
-    /**
-     * Shorthand for calling the uncached version of {@link FromCodePointNode}.
-     *
-     * @since 22.3
-     */
-    @TruffleBoundary
-    public static TruffleString fromCodePointUncached(int codepoint, Encoding encoding, ErrorHandling errorHandling) {
-        return FromCodePointNode.getUncached().execute(codepoint, encoding, errorHandling);
     }
 
     /**
@@ -3007,19 +2980,14 @@ public final class TruffleString extends AbstractTruffleString {
         static int translate(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding, ErrorHandling errorHandling,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
-                        @Cached TStringInternalNodes.RawLengthOfCodePointNode rawLengthOfCodePointNode) {
+                        @Cached TStringInternalNodes.ByteLengthOfCodePointNode byteLengthOfCodePointNode) {
             CompilerAsserts.partialEvaluationConstant(errorHandling);
             a.checkEncoding(expectedEncoding);
             int rawIndex = rawIndex(byteIndex, expectedEncoding);
             a.boundsCheckRaw(rawIndex);
             Object arrayA = toIndexableNode.execute(a, a.data());
             int codeRangeA = getCodeRangeNode.execute(a);
-            int rawLength = rawLengthOfCodePointNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, rawIndex, errorHandling);
-            if (errorHandling == ErrorHandling.RETURN_NEGATIVE && rawLength < 0) {
-                return rawLength;
-            } else {
-                return rawLength << expectedEncoding.naturalStride;
-            }
+            return byteLengthOfCodePointNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, expectedEncoding.naturalStride, rawIndex, errorHandling);
         }
 
         /**

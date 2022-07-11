@@ -81,7 +81,7 @@ public class TStringTests {
             char c = s.charAt(i);
             int iBytes = i << 1;
             int lengthBytes = s.length() << 1;
-            TruffleString cs = TruffleString.FromCodePointNode.getUncached().execute(c, TruffleString.Encoding.UTF_16, TruffleString.ErrorHandling.BEST_EFFORT);
+            TruffleString cs = TruffleString.FromCodePointNode.getUncached().execute(c, TruffleString.Encoding.UTF_16, true);
             Assert.assertEquals(c, ts.readCharUTF16Uncached(i));
             Assert.assertEquals(c, ts.codePointAtIndexUncached(i, TruffleString.Encoding.UTF_16));
             Assert.assertEquals(c, ts.codePointAtByteIndexUncached(iBytes, TruffleString.Encoding.UTF_16));
