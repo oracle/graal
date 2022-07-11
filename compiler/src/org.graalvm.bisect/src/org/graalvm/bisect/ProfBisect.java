@@ -54,7 +54,7 @@ public class ProfBisect {
     public static void main(String[] args) {
         ArgumentParser argumentParser = new ArgumentParser(
                         "mx profbisect",
-                        "Compares performed optimizations in hot methods of two experiments.");
+                        "Compares the optimization log of hot compilation units of two experiments.");
         IntegerArgument hotMinArgument = argumentParser.addIntegerArgument(
                         "--hot-min-limit", 1,
                         "the minimum number of methods to mark as hot");

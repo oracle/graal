@@ -1400,7 +1400,7 @@ mx.update_commands(_suite, {
     'graaljdk-home': [print_graaljdk_home, '[options]'],
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
-    'profbisect': [prof_bisect, 'Compares performed optimizations in hot methods of two experiments.'],
+    'profbisect': [prof_bisect, 'Compares the optimization log of hot compilation units of two experiments.'],
 })
 
 def mx_post_parse_cmd_line(opts):
