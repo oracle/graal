@@ -599,8 +599,13 @@ public abstract class AbstractTruffleString {
      * Shorthand for calling the uncached version of
      * {@link TruffleString.CodePointIndexToByteIndexNode}.
      *
+     * @deprecated since 22.3, use
+     *             {@link #byteLengthOfCodePointUncached(int, Encoding, TruffleString.ErrorHandling)}
+     *             instead.
+     * 
      * @since 22.1
      */
+    @Deprecated(since = "22.3")
     @TruffleBoundary
     public final int byteLengthOfCodePointUncached(int byteIndex, TruffleString.Encoding expectedEncoding) {
         return TruffleString.ByteLengthOfCodePointNode.getUncached().execute(this, byteIndex, expectedEncoding);
@@ -642,8 +647,13 @@ public abstract class AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.CodePointAtIndexNode}.
      *
+     * @deprecated since 22.3, use
+     *             {@link #codePointAtIndexUncached(int, Encoding, TruffleString.ErrorHandling)}
+     *             instead.
+     * 
      * @since 22.1
      */
+    @Deprecated(since = "22.3")
     @TruffleBoundary
     public final int codePointAtIndexUncached(int i, TruffleString.Encoding expectedEncoding) {
         return TruffleString.CodePointAtIndexNode.getUncached().execute(this, i, expectedEncoding);
@@ -662,8 +672,13 @@ public abstract class AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.CodePointAtByteIndexNode}.
      *
+     * @deprecated since 22.3, use
+     *             {@link #codePointAtByteIndexUncached(int, Encoding, TruffleString.ErrorHandling)}
+     *             instead.
+     * 
      * @since 22.1
      */
+    @Deprecated(since = "22.3")
     @TruffleBoundary
     public final int codePointAtByteIndexUncached(int i, TruffleString.Encoding expectedEncoding) {
         return TruffleString.CodePointAtByteIndexNode.getUncached().execute(this, i, expectedEncoding);

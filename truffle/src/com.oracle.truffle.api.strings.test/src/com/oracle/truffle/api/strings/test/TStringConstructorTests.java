@@ -76,8 +76,8 @@ public class TStringConstructorTests extends TStringTestBase {
     public void testFromCodePoint() throws Exception {
         forAllEncodingsAndCodePoints((TruffleString.Encoding encoding, int codepoint) -> {
             TruffleString s = fromCodePointUncached(codepoint, encoding);
-            Assert.assertEquals(codepoint, s.codePointAtIndexUncached(0, encoding));
-            Assert.assertEquals(codepoint, s.codePointAtByteIndexUncached(0, encoding));
+            Assert.assertEquals(codepoint, s.codePointAtIndexUncached(0, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
+            Assert.assertEquals(codepoint, s.codePointAtByteIndexUncached(0, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
             Assert.assertTrue(s.isValidUncached(encoding));
         });
     }
@@ -125,8 +125,8 @@ public class TStringConstructorTests extends TStringTestBase {
                     TruffleStringIterator it = s.createCodePointIteratorUncached(encoding);
                     for (int i = 0; i < 128; i++) {
                         Assert.assertEquals(i, s.readByteUncached(byteIndex(i, encoding) + readByteOffset, encoding));
-                        Assert.assertEquals(i, s.codePointAtByteIndexUncached(byteIndex(i, encoding), encoding));
-                        Assert.assertEquals(i, s.codePointAtIndexUncached(i, encoding));
+                        Assert.assertEquals(i, s.codePointAtByteIndexUncached(byteIndex(i, encoding), encoding, TruffleString.ErrorHandling.BEST_EFFORT));
+                        Assert.assertEquals(i, s.codePointAtIndexUncached(i, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
                         Assert.assertTrue(it.hasNext());
                         Assert.assertEquals(i, it.nextUncached());
                         Assert.assertEquals(i, s.indexOfCodePointUncached(i, 0, 128, encoding));
@@ -228,8 +228,8 @@ public class TStringConstructorTests extends TStringTestBase {
                     s.copyToNativeMemoryNodeUncached(0, pointerObject, 0, array.length, encoding);
                     Assert.assertTrue(pointerObject.contentEquals(array));
                     for (int i = 0; i < codepoints.length; i++) {
-                        Assert.assertEquals(codepoints[i], s.codePointAtIndexUncached(i, encoding));
-                        Assert.assertEquals(codepoints[i], s.codePointAtByteIndexUncached(byteIndices[i], encoding));
+                        Assert.assertEquals(codepoints[i], s.codePointAtIndexUncached(i, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
+                        Assert.assertEquals(codepoints[i], s.codePointAtByteIndexUncached(byteIndices[i], encoding, TruffleString.ErrorHandling.BEST_EFFORT));
                         Assert.assertEquals(i, s.indexOfCodePointUncached(codepoints[i], 0, codepoints.length, encoding));
                         Assert.assertEquals(byteIndices[i], s.byteIndexOfCodePointUncached(codepoints[i], 0, byteLength, encoding));
                         Assert.assertEquals(i, s.lastIndexOfCodePointUncached(codepoints[i], codepoints.length, 0, encoding));

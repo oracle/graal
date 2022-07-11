@@ -2952,8 +2952,13 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Get the number of bytes occupied by the codepoint starting at {@code byteIndex}.
          *
+         * @deprecated since 22.3, use
+         *             {@link #execute(AbstractTruffleString, int, Encoding, ErrorHandling)}
+         *             instead.
+         *
          * @since 22.1
          */
+        @Deprecated(since = "22.3")
         public final int execute(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding) {
             return execute(a, byteIndex, expectedEncoding, ErrorHandling.BEST_EFFORT);
         }
@@ -3143,8 +3148,12 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Decode and return the codepoint at codepoint index {@code i}.
          *
+         * @deprecated since 22.3, use
+         *             {@link #execute(AbstractTruffleString, int, Encoding, ErrorHandling)}
+         *             instead.
          * @since 22.1
          */
+        @Deprecated(since = "22.3")
         public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
             return execute(a, i, expectedEncoding, ErrorHandling.BEST_EFFORT);
         }
@@ -3223,8 +3232,13 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Decode and return the codepoint at byte index {@code i}.
          *
+         * @deprecated since 22.3, use
+         *             {@link #execute(AbstractTruffleString, int, Encoding, ErrorHandling)}
+         *             instead.
+         *
          * @since 22.1
          */
+        @Deprecated(since = "22.3")
         public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
             return execute(a, i, expectedEncoding, ErrorHandling.BEST_EFFORT);
         }
@@ -4878,54 +4892,40 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.3
          */
-        public enum Reason {
+        enum Reason {
 
             /**
              * The string was empty, or contained no digits.
-             *
-             * @since 22.3
              */
             EMPTY("no digits found"),
 
             /**
              * An invalid codepoint was encountered during parsing.
-             *
-             * @since 22.3
              */
             INVALID_CODEPOINT("invalid codepoint"),
 
             /**
              * A '+' or '-' sign without any subsequent digits was encountered.
-             *
-             * @since 22.3
              */
             LONE_SIGN("lone '+' or '-'"),
 
             /**
              * The parsed number was too large to fit in an {@code int}/{@code long}.
-             *
-             * @since 22.3
              */
             OVERFLOW("overflow"),
 
             /**
              * Invalid codepoints encountered when parsing a hex number.
-             *
-             * @since 22.3
              */
             MALFORMED_HEX_ESCAPE("malformed hex escape sequence"),
 
             /**
              * Multiple decimal points encountered.
-             *
-             * @since 22.3
              */
             MULTIPLE_DECIMAL_POINTS("multiple decimal points"),
 
             /**
              * The given radix is unsupported.
-             *
-             * @since 22.3
              */
             UNSUPPORTED_RADIX("unsupported radix");
 
@@ -4945,7 +4945,7 @@ public final class TruffleString extends AbstractTruffleString {
             }
         }
 
-        private final AbstractTruffleString string;
+        @SuppressFBWarnings(value = {"SE_BAD_FIELD"}, justification = "This Exception is not expected to be serialized") private final AbstractTruffleString string;
         private final int regionOffset;
         private final int regionLength;
         private final Reason reason;
@@ -4964,44 +4964,34 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Returns the {@link Reason} for this exception. Use this to build custom error messages.
-         * 
-         * @since 22.3
          */
-        public Reason getReason() {
+        Reason getReason() {
             return reason;
         }
 
         /**
          * Returns the string that was attempted to parse.
-         *
-         * @since 22.3
          */
-        public AbstractTruffleString getString() {
+        AbstractTruffleString getString() {
             return string;
         }
 
         /**
          * Returns the byte offset to error region, or -1 if not applicable.
-         * 
-         * @since 22.3
          */
-        public int getRegionByteOffset() {
+        int getRegionByteOffset() {
             return regionOffset < 0 ? regionOffset : regionOffset << string.stride();
         }
 
         /**
          * Returns the error region's length in bytes, or -1 if not applicable.
-         *
-         * @since 22.3
          */
-        public int getRegionByteLength() {
+        int getRegionByteLength() {
             return regionLength < 0 ? regionLength : regionLength << string.stride();
         }
 
         /**
-         * Returns a default error message comprised of all information available through
-         * {@link #getString()}, {@link #getReason()}, {@link #getRegionByteOffset()} and
-         * {@link #getRegionByteLength()}. Not designed to be used on fast paths.
+         * Returns a detailed error message. Not designed to be used on fast paths.
          *
          * @since 22.3
          */
@@ -5009,8 +4999,8 @@ public final class TruffleString extends AbstractTruffleString {
         @Override
         public String getMessage() {
             StringBuilder sb = new StringBuilder();
-            sb.append("error parsing \"").append(string).append("\": ");
-            sb.append(reason.message);
+            sb.append("error parsing \"").append(getString()).append("\": ");
+            sb.append(getReason().message);
             if (regionOffset >= 0) {
                 if (regionLength == 1) {
                     sb.append(" at byte index ").append(getRegionByteOffset());

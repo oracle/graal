@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,54 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.api.strings;
 
-package com.oracle.truffle.api.strings.test.ops;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-import static org.junit.runners.Parameterized.Parameter;
+/**
+ * Used to suppress <a href="https://spotbugs.readthedocs.io">SpotBugs</a> warnings.
+ */
+@Retention(RetentionPolicy.CLASS)
+@interface SuppressFBWarnings {
+    /**
+     * @see "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html"
+     */
+    String[] value();
 
-import java.util.Arrays;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.test.TStringTestBase;
-
-@RunWith(Parameterized.class)
-public class TStringCodePointAtIndexTest extends TStringTestBase {
-
-    @Parameter(value = 0) public TruffleString.CodePointAtIndexNode node;
-    @Parameter(value = 1) public TruffleString.ErrorHandling errorHandling;
-
-    @Parameters(name = "{0} {1}")
-    public static Iterable<Object[]> data() {
-        return crossProductErrorHandling(Arrays.asList(TruffleString.CodePointAtIndexNode.create(), TruffleString.CodePointAtIndexNode.getUncached()));
-    }
-
-    @Test
-    public void testAll() throws Exception {
-        forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            for (int i = 0; i < codepoints.length; i++) {
-                int result = node.execute(a, i, encoding, errorHandling);
-                if (errorHandling == TruffleString.ErrorHandling.RETURN_NEGATIVE && (codepoints.length == 1 && !isValid || !isValidCodePoint(codepoints[i], encoding))) {
-                    Assert.assertTrue(result < 0);
-                } else {
-                    Assert.assertEquals(codepoints[i], result);
-                }
-            }
-        });
-    }
-
-    @Test
-    public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute(s, 0, e, errorHandling));
-    }
-
-    @Test
-    public void testOutOfBounds() throws Exception {
-        checkOutOfBounds(false, false, (a, i, encoding) -> node.execute(a, i, encoding, errorHandling));
-    }
+    /**
+     * Reason why the warning is suppressed. Use a SpotBugs issue id where appropriate.
+     */
+    String justification() default "";
 }

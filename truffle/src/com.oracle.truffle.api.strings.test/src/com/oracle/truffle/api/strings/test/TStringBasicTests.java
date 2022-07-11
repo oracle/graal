@@ -54,7 +54,7 @@ public class TStringBasicTests extends TStringTestBase {
         forAllEncodingsAndCodePoints((TruffleString.Encoding encoding, int codepoint) -> {
             TruffleString s = TruffleString.fromCodePointUncached(codepoint, encoding);
             for (int i : new int[]{Integer.MIN_VALUE, Integer.MIN_VALUE + 1, -1, 1, Integer.MAX_VALUE - 1, Integer.MAX_VALUE}) {
-                expectOutOfBoundsException(() -> s.codePointAtIndexUncached(i, encoding));
+                expectOutOfBoundsException(() -> s.codePointAtIndexUncached(i, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
             }
         });
     }
@@ -82,7 +82,7 @@ public class TStringBasicTests extends TStringTestBase {
 
     private static void testTransCode(int codepoint, TruffleString.Encoding encodingA) throws Exception {
         TruffleString stringA = TruffleString.fromCodePointUncached(codepoint, encodingA);
-        Assert.assertEquals(codepoint, stringA.codePointAtIndexUncached(0, encodingA));
+        Assert.assertEquals(codepoint, stringA.codePointAtIndexUncached(0, encodingA, TruffleString.ErrorHandling.BEST_EFFORT));
         if (isAsciiCompatible(encodingA)) {
             for (TruffleString.Encoding encodingB : TruffleString.Encoding.values()) {
                 if (isAsciiCompatible(encodingB) && codepoint <= 0x7f) {
@@ -103,26 +103,27 @@ public class TStringBasicTests extends TStringTestBase {
     private static void switchEncodingEquivalentCodePoint(int codepoint, TruffleString.Encoding encodingA, TruffleString stringA, TruffleString.Encoding encodingB) throws Exception {
         if (encodingA != TruffleString.Encoding.BYTES && encodingB != TruffleString.Encoding.BYTES) {
             TruffleString stringB = stringA.switchEncodingUncached(encodingB);
-            Assert.assertEquals(codepoint, stringB.codePointAtIndexUncached(0, encodingB));
-            Assert.assertEquals(codepoint, stringB.switchEncodingUncached(encodingA).codePointAtIndexUncached(0, encodingA));
+            Assert.assertEquals(codepoint, stringB.codePointAtIndexUncached(0, encodingB, TruffleString.ErrorHandling.BEST_EFFORT));
+            Assert.assertEquals(codepoint, stringB.switchEncodingUncached(encodingA).codePointAtIndexUncached(0, encodingA, TruffleString.ErrorHandling.BEST_EFFORT));
         }
     }
 
     private static void testEncodeDecode(int codepoint, TruffleString.Encoding encoding) {
-        Assert.assertEquals(codepoint, TruffleString.fromCodePointUncached(codepoint, encoding).codePointAtIndexUncached(0, encoding));
-        Assert.assertEquals(codepoint, TruffleString.fromCodePointUncached(codepoint, encoding).createCodePointIteratorUncached(encoding).nextUncached());
-        Assert.assertEquals(codepoint, TruffleString.fromCodePointUncached(codepoint, encoding).createBackwardCodePointIteratorUncached(encoding).previousUncached());
+        TruffleString tStringCP = TruffleString.fromCodePointUncached(codepoint, encoding);
+        Assert.assertEquals(codepoint, tStringCP.codePointAtIndexUncached(0, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
+        Assert.assertEquals(codepoint, tStringCP.createCodePointIteratorUncached(encoding).nextUncached());
+        Assert.assertEquals(codepoint, tStringCP.createBackwardCodePointIteratorUncached(encoding).previousUncached());
         if (isAsciiCompatible(encoding) && codepoint <= 0x7f || isUTF(encoding)) {
-            String javaString = TruffleString.fromCodePointUncached(codepoint, encoding).toJavaStringUncached();
+            String javaString = tStringCP.toJavaStringUncached();
             Assert.assertEquals(codepoint, javaString.codePointAt(0));
-            Assert.assertEquals(codepoint, TruffleString.fromJavaStringUncached(javaString, TruffleString.Encoding.UTF_16).codePointAtIndexUncached(0, TruffleString.Encoding.UTF_16));
+            Assert.assertEquals(codepoint, TruffleString.fromJavaStringUncached(javaString, TruffleString.Encoding.UTF_16).codePointAtIndexUncached(0, TruffleString.Encoding.UTF_16,
+                            TruffleString.ErrorHandling.BEST_EFFORT));
             for (int first : new int[]{'x', codepoint}) {
-                Assert.assertEquals(codepoint, TruffleString.fromCodePointUncached(first, encoding).concatUncached(
-                                TruffleString.fromCodePointUncached(codepoint, encoding), encoding, true).codePointAtIndexUncached(1, encoding));
-                Assert.assertEquals(codepoint, TruffleString.fromCodePointUncached(first, encoding).concatUncached(
-                                TruffleString.fromCodePointUncached(codepoint, encoding), encoding, true).substringUncached(1, 1, encoding, true).codePointAtIndexUncached(0, encoding));
-                TruffleStringIterator it = TruffleString.fromCodePointUncached(first, encoding).concatUncached(
-                                TruffleString.fromCodePointUncached(codepoint, encoding), encoding, true).createCodePointIteratorUncached(encoding);
+                TruffleString tStringFirst = TruffleString.fromCodePointUncached(first, encoding);
+                Assert.assertEquals(codepoint, tStringFirst.concatUncached(tStringCP, encoding, true).codePointAtIndexUncached(1, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
+                Assert.assertEquals(codepoint, tStringFirst.concatUncached(tStringCP, encoding, true).substringUncached(1, 1, encoding, true).codePointAtIndexUncached(0, encoding,
+                                TruffleString.ErrorHandling.BEST_EFFORT));
+                TruffleStringIterator it = tStringFirst.concatUncached(tStringCP, encoding, true).createCodePointIteratorUncached(encoding);
                 Assert.assertEquals(first, it.nextUncached());
                 Assert.assertEquals(codepoint, it.nextUncached());
                 Assert.assertEquals(codepoint, it.previousUncached());
