@@ -129,7 +129,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Gets the name of the event that occurred, which describes this optimization entry.
-         * 
+         *
          * @return the name of the event that occurred
          */
         public String getEventName() {
@@ -138,7 +138,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Gets the map representation of this optimization entry.
-         * 
+         *
          * @return the map representation of this optimization entry
          */
         public EconomicMap<String, Object> getMap() {
@@ -165,8 +165,8 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * Represents a node in the tree of optimizations. The tree of optimizations consists of internal nodes
-     * (optimization phases) and leaf nodes (individual optimizations).
+     * Represents a node in the tree of optimizations. The tree of optimizations consists of
+     * optimization phases and individual optimizations.
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
     public abstract static class OptimizationTreeNode extends Node {
@@ -204,7 +204,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Gets the name of the phase described by this scope.
-         * 
+         *
          * @return the name of the phase described by this scope
          */
         public CharSequence getPhaseName() {
@@ -225,7 +225,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Adds a node to the graph as a child of this phase.
-         * 
+         *
          * @param node the node to be added as a child
          */
         private void addChild(OptimizationTreeNode node) {
@@ -263,7 +263,7 @@ public class OptimizationLog implements CompilationListener {
         /**
          * Gets child nodes (successors) in the graph, i.e., optimizations and phases triggered
          * inside this phase.
-         * 
+         *
          * @return child nodes (successors) in the graph
          */
         public NodeSuccessorList<OptimizationTreeNode> getChildren() {
@@ -279,7 +279,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Notifies the log that an allocation was virtualized.
-         * 
+         *
          * @param virtualObjectNode the virtualized node
          */
         public void allocationRemoved(VirtualObjectNode virtualObjectNode) {
@@ -288,7 +288,7 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Notifies the log that an object was materialized.
-         * 
+         *
          * @param virtualObjectNode the object that was materialized
          */
         public void objectMaterialized(VirtualObjectNode virtualObjectNode) {
@@ -314,8 +314,10 @@ public class OptimizationLog implements CompilationListener {
     private final Graph optimizationTree;
 
     /**
-     * Constructs an optimization log bound with a given graph. Optimization {@link OptimizationEntry entries} are stored
-     * iff {@link GraalOptions#OptimizationLog} is enabled.
+     * Constructs an optimization log bound with a given graph. Optimization
+     * {@link OptimizationEntry entries} are stored iff {@link GraalOptions#OptimizationLog} is
+     * enabled.
+     *
      * @param graph the bound graph
      */
     public OptimizationLog(StructuredGraph graph) {
@@ -341,10 +343,12 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * Returns {@code true} iff {@link GraalOptions#OptimizationLog optimization log} is enabled. This option concerns
-     * only the detailed JSON optimization log; {@link DebugContext#counter(CharSequence) counters},
-     * {@link DebugContext#dump(int, Object, String) dumping} and the textual {@link DebugContext#log(String) log} are
-     * controlled by their respective options.
+     * Returns {@code true} iff {@link GraalOptions#OptimizationLog optimization log} is enabled.
+     * This option concerns only the detailed JSON optimization log;
+     * {@link DebugContext#counter(CharSequence) counters},
+     * {@link DebugContext#dump(int, Object, String) dumping} and the textual
+     * {@link DebugContext#log(String) log} are controlled by their respective options.
+     *
      * @return whether {@link GraalOptions#OptimizationLog optimization log} is enabled
      */
     public boolean isOptimizationLogEnabled() {
@@ -365,45 +369,10 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * Increments a {@link org.graalvm.compiler.debug.CounterKey counter}, {@link DebugContext#log(String) logs},
-     * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
-     * feature is enabled.
-     * @param optimizationClass the class that performed the optimization
-     * @param eventName the name of the event that occurred
-     * @param bci the bci of the most relevant node (use {@link #NO_BCI} if no bci is appropriate)
-     * @return an optimization entry in the optimization log that can take more properties
-     */
-    public OptimizationEntry report(Class<?> optimizationClass, String eventName, int bci) {
-        boolean isCountEnabled = graph.getDebug().isCountEnabled();
-        boolean isLogEnabled = graph.getDebug().isLogEnabledForMethod();
-        boolean isDumpEnabled = graph.getDebug().isDumpEnabled(DebugContext.DETAILED_LEVEL);
-
-        if (!isCountEnabled && !isLogEnabled && !isDumpEnabled && !optimizationLogEnabled) {
-            return OPTIMIZATION_ENTRY_EMPTY;
-        }
-
-        String optimizationName = getOptimizationName(optimizationClass);
-        if (isCountEnabled) {
-            DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
-        }
-        if (isLogEnabled) {
-            graph.getDebug().log("Performed %s %s at bci %i", optimizationName, eventName, bci);
-        }
-        if (isDumpEnabled) {
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, eventName);
-        }
-        if (optimizationLogEnabled) {
-            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, bci);
-            currentPhase.addChild(optimizationEntry);
-            return optimizationEntry;
-        }
-        return OPTIMIZATION_ENTRY_EMPTY;
-    }
-
-    /**
-     * Increments a {@link org.graalvm.compiler.debug.CounterKey counter}, {@link DebugContext#log(String) logs},
-     * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
-     * feature is enabled.
+     * Increments a {@link org.graalvm.compiler.debug.CounterKey counter},
+     * {@link DebugContext#log(String) logs}, {@link DebugContext#dump(int, Object, String) dumps}
+     * and appends to the optimization log if each respective feature is enabled.
+     *
      * @param optimizationClass the class that performed the optimization
      * @param eventName the name of the event that occurred
      * @param node the most relevant node
@@ -418,7 +387,7 @@ public class OptimizationLog implements CompilationListener {
             return OPTIMIZATION_ENTRY_EMPTY;
         }
 
-        int bci = OptimizationLogUtil.findBCI(node);
+        int bci = findBCI(node);
         String optimizationName = getOptimizationName(optimizationClass);
         if (isCountEnabled) {
             DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
@@ -438,7 +407,30 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
+     * Returns the bci of a node. First, it tries to get from the {@link FrameState} after the
+     * execution of this node, then it tries to use the node's
+     * {@link org.graalvm.compiler.graph.NodeSourcePosition}. If everything fails, it returns
+     * {@code OptimizationLog#NO_BCI}.
+     *
+     * @param node the node whose bci we want to find
+     * @return the bci of the node ({@code OptimizationLog#NO_BCI} if no fitting bci found)
+     */
+    private static int findBCI(Node node) {
+        if (node instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) node;
+            if (stateSplit.stateAfter() != null) {
+                return stateSplit.stateAfter().bci;
+            }
+        }
+        if (node.getNodeSourcePosition() != null) {
+            return node.getNodeSourcePosition().getBCI();
+        }
+        return OptimizationLog.NO_BCI;
+    }
+
+    /**
      * Returns the optimization name based on the name of the class that performed an optimization.
+     *
      * @param optimizationClass the class that performed an optimization
      * @return the name of the optimization
      */
@@ -470,7 +462,7 @@ public class OptimizationLog implements CompilationListener {
             assert partialEscapeLog != null;
             MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.virtualNodes.getEntries();
             while (cursor.advance()) {
-                report(PartialEscapeLog.class, "AllocationVirtualized", OptimizationLogUtil.findBCI(cursor.getKey()))
+                report(PartialEscapeLog.class, "AllocationVirtualized", cursor.getKey())
                                 .setProperty("materializations", cursor.getValue());
             }
             partialEscapeLog = null;
@@ -481,7 +473,7 @@ public class OptimizationLog implements CompilationListener {
      * Gets the log that keeps track of virtualized allocations during partial escape analysis. Must
      * be called between {@link #enterPartialEscapeAnalysis()} and
      * {@link #exitPartialEscapeAnalysis()}.
-     * 
+     *
      * @return the log that keeps track of virtualized allocations during partial escape analysis
      */
     public PartialEscapeLog getPartialEscapeLog() {
@@ -491,7 +483,7 @@ public class OptimizationLog implements CompilationListener {
 
     /**
      * Gets the tree of optimizations.
-     * 
+     *
      * @return the tree of optimizations
      */
     public Graph getOptimizationTree() {
@@ -501,7 +493,7 @@ public class OptimizationLog implements CompilationListener {
     /**
      * Gets the scope of the most recently opened phase (from unclosed phases) or null if the
      * optimization log is not enabled.
-     * 
+     *
      * @return the scope of the most recently opened phase (from unclosed phases) or null
      */
     public OptimizationPhaseScope getCurrentPhase() {
