@@ -1924,7 +1924,6 @@ suite = {
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
         "org.graalvm.nativebridge.processor.test",
-        "org.graalvm.bisect.test",
       ],
       "distDependencies" : [
         "GRAAL_ONLY_TEST",
@@ -2174,6 +2173,20 @@ suite = {
     "GRAAL_BISECT": {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.bisect"],
+      "maven": False,
+    },
+
+    "GRAAL_BISECT_TEST" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.bisect.test",
+      ],
+      "distDependencies" : [
+        "GRAAL_BISECT",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
       "maven": False,
     },
   },
