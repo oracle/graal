@@ -1,5 +1,4 @@
-# common
-local common = import 'common.json';
+# Common
 local graal_common = import 'graal-common.json';
 
 # Compiler
