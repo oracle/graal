@@ -4726,7 +4726,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return toHost.execute(context, objects.getMetaParents(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    throw unsupported(context, receiver, "throwException()", "isException()");
+                    throw unsupported(context, receiver, "getMetaParents()", "hasMetaParents()");
                 }
             }
         }
