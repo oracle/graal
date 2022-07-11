@@ -77,6 +77,20 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         "engine.ThrowOnMaxOSRCompilationReAttemptsReached", "true");
     }
 
+    @TruffleBoundary(allowInlining = false)
+    private static void boundaryCall() {
+    }
+
+    private static void checkInInterpreter() {
+        Assert.assertTrue(CompilerDirectives.inInterpreter());
+        boundaryCall(); // prevents compiler from optimizing the branch away.
+    }
+
+    private static void checkInCompiledCode() {
+        Assert.assertTrue(CompilerDirectives.inCompiledCode());
+        boundaryCall(); // prevents compiler from optimizing the branch away.
+    }
+
     /*
      * Test that an infinite interpreter loop triggers OSR.
      */
@@ -820,10 +834,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             }
         }
 
-        @TruffleBoundary
-        void boundaryCall() {
-        }
-
         void checkField() {
             if (CompilerDirectives.inCompiledCode() && !loaded) {
                 // the boundary call prevents Truffle from moving the deopt earlier,
@@ -1160,6 +1170,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
             checkRegularState(osrFrame);
             setOSRState(osrFrame);
+            checkInCompiledCode();
             return 42;
         }
 
@@ -1167,19 +1178,19 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
             super.copyIntoOSRFrame(osrFrame, parentFrame, target, targetMetadata);
             // Copying should not trigger a deopt.
-            Assert.assertTrue(CompilerDirectives.inCompiledCode());
+            checkInCompiledCode();
         }
 
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
             super.restoreParentFrame(osrFrame, parentFrame);
             // Frame restoration is done in interpreter to get smaller graphs.
-            Assert.assertFalse(CompilerDirectives.inCompiledCode());
+            checkInInterpreter();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Assert.assertFalse(CompilerDirectives.inCompiledCode());
+            checkInInterpreter();
             setRegularState(frame);
             return executeLoop(frame);
         }
@@ -1367,11 +1378,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
             return doExecute(osrFrame);
-        }
-
-        @Override
-        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-            super.restoreParentFrame(osrFrame, parentFrame);
         }
     }
 
