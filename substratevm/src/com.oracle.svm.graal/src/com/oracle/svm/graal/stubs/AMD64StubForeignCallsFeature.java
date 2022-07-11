@@ -34,6 +34,7 @@ import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCa
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
@@ -52,6 +53,7 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(ArrayEqualsForeignCalls.STUBS, SVMArrayEqualsForeignCalls.class, true, SSE2),
                         new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AMD64, SVMArrayIndexOfForeignCalls.class, true, SSE2),
                         new StubDescriptor(ArrayRegionCompareToForeignCalls.STUBS, SVMArrayRegionCompareToForeignCalls.class, true, SSE2),
+                        new StubDescriptor(VectorizedMismatchForeignCalls.STUB, SVMAMD64VectorizedMismatchForeignCalls.class, true, SSE2),
         });
     }
 }

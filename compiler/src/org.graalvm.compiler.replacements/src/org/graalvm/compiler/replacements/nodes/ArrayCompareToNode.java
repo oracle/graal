@@ -24,14 +24,13 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1024;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -41,14 +40,12 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
 
@@ -56,7 +53,7 @@ import jdk.vm.ci.meta.Value;
  * Compares two arrays lexicographically.
  */
 @NodeInfo(cycles = CYCLES_1024, size = SIZE_16)
-public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements LIRLowerable, Canonicalizable, Virtualizable {
+public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, Virtualizable {
 
     public static final NodeClass<ArrayCompareToNode> TYPE = NodeClass.create(ArrayCompareToNode.class);
 
@@ -169,22 +166,24 @@ public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null,
-                                gen.operand(arrayA), gen.operand(lengthA), gen.operand(arrayB), gen.operand(lengthB));
-                gen.setResult(this, result);
-                return;
-            }
-        }
-        generateArrayCompareTo(gen);
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return ArrayCompareToForeignCalls.getStub(this);
     }
 
-    protected void generateArrayCompareTo(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitArrayCompareTo(strideA, strideB, getRuntimeCheckedCPUFeatures(),
-                        gen.operand(arrayA), gen.operand(lengthA), gen.operand(arrayB), gen.operand(lengthB));
-        gen.setResult(this, result);
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{arrayA, lengthA, arrayB, lengthB};
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitArrayCompareTo(
+                        strideA,
+                        strideB,
+                        getRuntimeCheckedCPUFeatures(),
+                        gen.operand(arrayA),
+                        gen.operand(lengthA),
+                        gen.operand(arrayB),
+                        gen.operand(lengthB)));
     }
 }

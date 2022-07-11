@@ -42,7 +42,7 @@ import org.graalvm.word.LocationIdentity;
  * {@link ArrayEqualsNode}. These methods are compiled as stubs and later called via foreign call.
  */
 @NodeInfo
-public abstract class PureFunctionStubIntrinsicNode extends FixedWithNextNode implements MemoryAccess {
+public abstract class PureFunctionStubIntrinsicNode extends FixedWithNextNode implements MemoryAccess, IntrinsicMethodNodeInterface {
 
     public static final NodeClass<PureFunctionStubIntrinsicNode> TYPE = NodeClass.create(PureFunctionStubIntrinsicNode.class);
 

@@ -104,13 +104,12 @@ public class ArrayIndexOfForeignCalls {
     };
 
     public static ForeignCallDescriptor getStub(ArrayIndexOfNode indexOfNode) {
-        return getStub(indexOfNode.getStride(), indexOfNode.getNumberOfValues(), indexOfNode.isFindTwoConsecutive(), indexOfNode.isWithMask());
-    }
-
-    public static ForeignCallDescriptor getStub(Stride stride, int valueCount, boolean findTwoConsecutive, boolean withMask) {
+        Stride stride = indexOfNode.getStride();
+        int valueCount = indexOfNode.getNumberOfValues();
+        boolean findTwoConsecutive = indexOfNode.isFindTwoConsecutive();
         GraalError.guarantee(stride == Stride.S1 || stride == Stride.S2 || stride == Stride.S4, "unsupported stride");
         GraalError.guarantee(valueCount >= 1 && valueCount <= 4, "unsupported valueCount");
-        if (withMask) {
+        if (indexOfNode.isWithMask()) {
             if (findTwoConsecutive) {
                 GraalError.guarantee(valueCount == 4, "findTwoConsecutive with mask requires 4 values");
                 switch (stride) {
