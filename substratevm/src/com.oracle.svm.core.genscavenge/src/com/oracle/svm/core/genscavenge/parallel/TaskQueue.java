@@ -6,7 +6,7 @@ import com.oracle.svm.core.log.Log;
 import org.graalvm.word.Pointer;
 
 public class TaskQueue {
-    private static final int SIZE = 1024 * 1024; ///handle overflow
+    private static final int SIZE = 128 * 1024;
 
     final Stats stats;
 
@@ -40,20 +40,21 @@ public class TaskQueue {
         return next(putIndex) != getIndex;
     }
 
-    public void put(Pointer ptr) {
+    public boolean put(Pointer ptr) {
         try {
             mutex.lock();
-            while (!canPut()) {
+            if (!canPut()) {
                 log().string("TQ cannot put task\n");
-                cond.block();
+                return false;
             }
             data[putIndex] = ptr;
-        } finally {
             putIndex = next(putIndex);
             stats.noteTask(putIndex, getIndex);
+        } finally {
             mutex.unlock();
-            cond.broadcast();
         }
+        cond.broadcast();
+        return true;
     }
 
     public void consume(Consumer consumer) {
@@ -67,11 +68,11 @@ public class TaskQueue {
                 idleCount--;
             }
             ptr = data[getIndex];
-        } finally {
             getIndex = next(getIndex);
+        } finally {
             mutex.unlock();
-            cond.broadcast();
         }
+        cond.broadcast();
         consumer.accept(ptr.toObject());
     }
 

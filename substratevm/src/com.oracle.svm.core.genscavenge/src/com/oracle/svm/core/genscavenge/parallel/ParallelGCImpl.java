@@ -53,7 +53,9 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public static void queue(Pointer ptr) {
-        QUEUE.put(ptr);
+        if (!QUEUE.put(ptr)) {
+            PROMOTE_TASK.accept(ptr.toObject());
+        }
     }
 
     public static void waitForIdle() {
