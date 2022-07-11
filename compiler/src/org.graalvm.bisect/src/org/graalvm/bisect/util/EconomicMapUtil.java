@@ -36,8 +36,8 @@ import org.graalvm.collections.MapCursor;
 public final class EconomicMapUtil {
     /**
      * Compares maps for equality. The maps are equal iff their keys are equal with respect to the
-     * {@link org.graalvm.collections.Equivalence equivalence strategy} of the first map and the values are equal
-     * as determined by the {@link Objects#equals(Object, Object) equals} method.
+     * {@link org.graalvm.collections.Equivalence equivalence strategy} of the first map and the
+     * values are equal as determined by the {@link Objects#equals(Object, Object) equals} method.
      *
      * @param lhs the first map to be compared
      * @param rhs the second map to be compared

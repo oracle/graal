@@ -80,7 +80,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
         int m = node1.getChildren().size();
         int n = node2.getChildren().size();
         boolean rootsEqual = nodesEqual(node1, node2);
-        int[][] delta = new int[m + 1][n +  1];
+        int[][] delta = new int[m + 1][n + 1];
         delta[0][0] = rootsEqual ? 0 : relabelCost(node1, node2);
         // scripts[i][j] is the edit script between the (i - 1)-th and (j - 1)-th child's subtree
         EditScript[][] scripts = new EditScript[m + 1][n + 1];

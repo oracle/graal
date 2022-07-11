@@ -29,9 +29,9 @@ package org.graalvm.bisect.parser.args;
  */
 public abstract class Argument {
     /**
-     * The prefix of an option argument. Each argument may be an option argument or a positional argument. Option
-     * arguments are explicitly named in the program arguments. Positional arguments are parsed implicitly by their
-     * relative position in the program arguments.
+     * The prefix of an option argument. Each argument may be an option argument or a positional
+     * argument. Option arguments are explicitly named in the program arguments. Positional
+     * arguments are parsed implicitly by their relative position in the program arguments.
      */
     public static final String OPTION_PREFIX = "--";
 
@@ -42,6 +42,7 @@ public abstract class Argument {
 
     /**
      * Gets whether this argument is required.
+     * 
      * @return true iff this argument is required
      */
     public boolean isRequired() {
@@ -49,8 +50,9 @@ public abstract class Argument {
     }
 
     /**
-     * Gets whether the argument was set. The argument is set when it is constructed with a default value or its value
-     * is parsed from the program arguments.
+     * Gets whether the argument was set. The argument is set when it is constructed with a default
+     * value or its value is parsed from the program arguments.
+     * 
      * @return true iff the argument was set
      */
     public boolean isSet() {
@@ -64,6 +66,7 @@ public abstract class Argument {
 
     /**
      * Gets the help message.
+     * 
      * @return the help message
      */
     public String getHelp() {
@@ -76,12 +79,14 @@ public abstract class Argument {
     private final String help;
 
     /**
-     * Was the argument's value already set to the default value or parsed from the program arguments?
+     * Was the argument's value already set to the default value or parsed from the program
+     * arguments?
      */
     protected boolean set = false;
 
     /**
      * Gets the argument name.
+     * 
      * @return the argument name
      */
     public String getName() {
@@ -90,6 +95,7 @@ public abstract class Argument {
 
     /**
      * Constructs an argument.
+     * 
      * @param name the name of the argument
      * @param required is the argument required
      * @param help the help message
@@ -101,7 +107,9 @@ public abstract class Argument {
     }
 
     /**
-     * Parse the argument's value from a given offset in the program arguments and return the next offset.
+     * Parse the argument's value from a given offset in the program arguments and return the next
+     * offset.
+     * 
      * @param args the program arguments
      * @param offset the index in the program arguments where this argument begins
      * @return next value of the offset where the next argument is expected to begin
@@ -111,6 +119,7 @@ public abstract class Argument {
 
     /**
      * Finds out whether this argument is an option argument by looking at its prefix.
+     * 
      * @return true iff this argument is an option argument
      */
     public boolean isOptionArgument() {

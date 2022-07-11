@@ -63,7 +63,8 @@ public class MethodMatcherTest {
         MethodMatcher matcher = new GreedyMethodMatcher();
         MethodMatching matching = matcher.match(experiment1, experiment2);
 
-        // only hot methods should be considered, therefore we expect zero matches and no extra methods
+        // only hot methods should be considered, therefore we expect zero matches and no extra
+        // methods
         assertEquals(0, matching.getMatchedMethods().size());
         assertEquals(0, matching.getExtraMethods().size());
 

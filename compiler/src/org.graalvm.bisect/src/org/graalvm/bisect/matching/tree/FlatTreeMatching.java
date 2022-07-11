@@ -32,7 +32,8 @@ import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 import org.graalvm.bisect.util.Writer;
 
 /**
- * Describes a matching of flattened optimization trees, which is a wrapper of {@link OptimizationMatching}.
+ * Describes a matching of flattened optimization trees, which is a wrapper of
+ * {@link OptimizationMatching}.
  */
 public class FlatTreeMatching implements TreeMatching {
     final OptimizationMatching optimizationMatching;
@@ -69,9 +70,9 @@ public class FlatTreeMatching implements TreeMatching {
      * @param optimizationMatching the optimization matching
      */
     private static void summarizeOptimizationsForExperiment(
-            Writer writer,
-            ExperimentId experimentId,
-            OptimizationMatching optimizationMatching) {
+                    Writer writer,
+                    ExperimentId experimentId,
+                    OptimizationMatching optimizationMatching) {
         List<Optimization> optimizations = optimizationMatching.getExtraOptimizations(experimentId);
         if (optimizations.isEmpty()) {
             return;

@@ -64,10 +64,7 @@ public class MatchedExecutedMethod {
      * @param writer the destination writer
      */
     public void writeHeader(Writer writer) {
-        writer.writeln("Compilation " + method1.getCompilationId() + " (" + method1.createSummaryOfMethodExecution()
-                        + ") in experiment " + method1.getExperiment()
-                                        .getExperimentId()
-                + " vs compilation " + method2.getCompilationId() + " (" + method2.createSummaryOfMethodExecution()
-                        + ") in experiment " + method2.getExperiment().getExperimentId());
+        writer.writeln("Compilation " + method1.getCompilationId() + " (" + method1.createSummaryOfMethodExecution() + ") in experiment " + method1.getExperiment().getExperimentId() +
+                        " vs compilation " + method2.getCompilationId() + " (" + method2.createSummaryOfMethodExecution() + ") in experiment " + method2.getExperiment().getExperimentId());
     }
 }

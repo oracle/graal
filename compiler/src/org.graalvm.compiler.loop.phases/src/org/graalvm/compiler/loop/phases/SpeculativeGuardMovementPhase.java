@@ -385,8 +385,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 newCompare = ShortCircuitOrNode.and(test1, guard.isNegated(), test2, guard.isNegated(), BranchProbabilityData.unknown());
 
                 /*
-                 * the fact that the guard was negated was integrated in the ShortCircuitOr so it needs
-                 * to be reset here
+                 * the fact that the guard was negated was integrated in the ShortCircuitOr so it
+                 * needs to be reset here
                  */
                 if (guard.isNegated()) {
                     guard.negate();

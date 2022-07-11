@@ -172,7 +172,8 @@ public class EditScript implements TreeMatching {
     }
 
     /**
-     * An operation that changes the label - the {@link OptimizationTreeNode#getName() name} of a node.
+     * An operation that changes the label - the {@link OptimizationTreeNode#getName() name} of a
+     * node.
      */
     public static class Relabel extends DeltaNode {
         /**

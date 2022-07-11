@@ -44,9 +44,8 @@ public class FlatTreeMatcher implements TreeMatcher {
     @Override
     public FlatTreeMatching match(ExecutedMethod method1, ExecutedMethod method2) {
         OptimizationMatching optimizationMatching = optimizationMatcher.match(
-                method1.getOptimizationsRecursive(),
-                method2.getOptimizationsRecursive()
-        );
+                        method1.getOptimizationsRecursive(),
+                        method2.getOptimizationsRecursive());
         return new FlatTreeMatching(optimizationMatching);
     }
 }

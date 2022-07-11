@@ -31,7 +31,8 @@ import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
 
 /**
- * Creates a matching between optimizations of two executed methods based on set intersection/difference.
+ * Creates a matching between optimizations of two executed methods based on set
+ * intersection/difference.
  */
 public class SetBasedOptimizationMatcher implements OptimizationMatcher {
     /**
@@ -61,10 +62,10 @@ public class SetBasedOptimizationMatcher implements OptimizationMatcher {
     }
 
     private static void identifyExtraOptimizations(
-            List<Optimization> optimizations,
-            Set<Optimization> toRemoveSet,
-            OptimizationMatchingImpl matching,
-            ExperimentId lhsExperimentId) {
+                    List<Optimization> optimizations,
+                    Set<Optimization> toRemoveSet,
+                    OptimizationMatchingImpl matching,
+                    ExperimentId lhsExperimentId) {
         for (Optimization optimization : optimizations) {
             if (!toRemoveSet.contains(optimization)) {
                 matching.addExtraOptimization(optimization, lhsExperimentId);

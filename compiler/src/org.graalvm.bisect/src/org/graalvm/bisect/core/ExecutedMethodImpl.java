@@ -59,10 +59,10 @@ public class ExecutedMethodImpl implements ExecutedMethod {
     private boolean hot;
 
     public ExecutedMethodImpl(String compilationId,
-                              String compilationMethodName,
-                              OptimizationPhase rootPhase,
-                              long period,
-                              Experiment experiment) {
+                    String compilationMethodName,
+                    OptimizationPhase rootPhase,
+                    long period,
+                    Experiment experiment) {
         this.compilationId = compilationId;
         this.compilationMethodName = compilationMethodName;
         this.period = period;

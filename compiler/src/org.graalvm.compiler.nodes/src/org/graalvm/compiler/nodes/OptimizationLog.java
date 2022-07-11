@@ -56,8 +56,8 @@ import org.graalvm.util.json.JSONFormatter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about optimizations performed
- * in a single compilation and dumps them to a JSON file.
+ * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about
+ * optimizations performed in a single compilation and dumps them to a JSON file.
  */
 public class OptimizationLog implements CompilationListener {
     /**
@@ -92,8 +92,8 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * Represents one performed optimization stored in the optimization log. Additional properties are stored and
-     * immediately evaluated. This is a leaf node in the optimization tree.
+     * Represents one performed optimization stored in the optimization log. Additional properties
+     * are stored and immediately evaluated. This is a leaf node in the optimization tree.
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#eventName}")
     public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
@@ -147,11 +147,13 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * A dummy optimization entry that does not store nor evaluate its properties. Used in case the optimization log is
-     * disabled. The rationale is that it should not do any work if the log is disabled.
+     * A dummy optimization entry that does not store nor evaluate its properties. Used in case the
+     * optimization log is disabled. The rationale is that it should not do any work if the log is
+     * disabled.
      */
     private static final class OptimizationEntryEmpty implements OptimizationEntry {
-        private OptimizationEntryEmpty() { }
+        private OptimizationEntryEmpty() {
+        }
 
         @Override
         public <V> OptimizationEntry setLazyProperty(String key, Supplier<V> valueSupplier) {
@@ -185,9 +187,9 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * Represents an optimization phase, which can trigger its own subphases and/or individual optimizations. It is a
-     * node in the tree of optimizations that holds its subphases and individual optimizations in the order they were
-     * performed.
+     * Represents an optimization phase, which can trigger its own subphases and/or individual
+     * optimizations. It is a node in the tree of optimizations that holds its subphases and
+     * individual optimizations in the order they were performed.
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Phase", nameTemplate = "{p#phaseName/s}")
     public static class OptimizationPhaseScope extends OptimizationTreeNode implements DebugContext.CompilerPhaseScope {
@@ -241,7 +243,8 @@ public class OptimizationLog implements CompilationListener {
         }
 
         /**
-         * Notifies the phase that it has ended. Sets the current phase to the parent phase of this phase.
+         * Notifies the phase that it has ended. Sets the current phase to the parent phase of this
+         * phase.
          */
         @Override
         public void close() {
@@ -254,9 +257,7 @@ public class OptimizationLog implements CompilationListener {
             map.put("phaseName", phaseName);
             List<EconomicMap<String, Object>> optimizations = null;
             if (children != null) {
-                optimizations = children.stream()
-                        .map(OptimizationTreeNode::asJsonMap)
-                        .collect(Collectors.toList());
+                optimizations = children.stream().map(OptimizationTreeNode::asJsonMap).collect(Collectors.toList());
             }
             map.put("optimizations", optimizations);
             return map;
@@ -327,11 +328,10 @@ public class OptimizationLog implements CompilationListener {
         optimizationLogEnabled = GraalOptions.OptimizationLog.getValue(graph.getOptions());
         if (optimizationLogEnabled) {
             if (!GraalOptions.TrackNodeSourcePosition.getValue(graph.getOptions()) &&
-                !nodeSourcePositionWarningEmitted.getAndSet(true)) {
+                            !nodeSourcePositionWarningEmitted.getAndSet(true)) {
                 TTY.println(
-                        "Warning: Optimization log without node source position tracking (-Dgraal.%s) yields inferior results",
-                        GraalOptions.TrackNodeSourcePosition.getName()
-                );
+                                "Warning: Optimization log without node source position tracking (-Dgraal.%s) yields inferior results",
+                                GraalOptions.TrackNodeSourcePosition.getName());
             }
             compilationId = parseCompilationId();
             currentPhase = new OptimizationPhaseScope(this, "RootPhase");
@@ -464,8 +464,7 @@ public class OptimizationLog implements CompilationListener {
             assert partialEscapeLog != null;
             MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.virtualNodes.getEntries();
             while (cursor.advance()) {
-                report(PartialEscapeLog.class, "AllocationVirtualized", cursor.getKey())
-                                .setProperty("materializations", cursor.getValue());
+                report(PartialEscapeLog.class, "AllocationVirtualized", cursor.getKey()).setProperty("materializations", cursor.getValue());
             }
             partialEscapeLog = null;
         }
@@ -504,8 +503,9 @@ public class OptimizationLog implements CompilationListener {
 
     /**
      * If the optimization log is enabled, prints the optimization log of this compilation to
-     * {@code optimization_log/compilation-id.json} in the
-     * {@link DebugOptions#getDumpDirectoryName dump directory}. Directories are created if they do not exist.
+     * {@code optimization_log/compilation-id.json} in the {@link DebugOptions#getDumpDirectoryName
+     * dump directory}. Directories are created if they do not exist.
+     * 
      * @throws IOException failed to create a directory or the file
      */
     public void printToFileIfEnabled() throws IOException {
@@ -514,10 +514,9 @@ public class OptimizationLog implements CompilationListener {
         }
         String filename = compilationId + ".json";
         Path path = Path.of(
-                DebugOptions.getDumpDirectoryName(graph.getOptions()),
-                "optimization_log",
-                filename
-        );
+                        DebugOptions.getDumpDirectoryName(graph.getOptions()),
+                        "optimization_log",
+                        filename);
         Files.createDirectories(path.getParent());
         String json = JSONFormatter.formatJSON(asJsonMap());
         PrintStream stream = new PrintStream(Files.newOutputStream(path));

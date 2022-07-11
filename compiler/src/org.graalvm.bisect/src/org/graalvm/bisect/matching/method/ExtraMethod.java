@@ -31,7 +31,8 @@ import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.util.Writer;
 
 /**
- * Represents a Java method that was not matched with any other Java method from the other experiment.
+ * Represents a Java method that was not matched with any other Java method from the other
+ * experiment.
  */
 public class ExtraMethod {
     /**

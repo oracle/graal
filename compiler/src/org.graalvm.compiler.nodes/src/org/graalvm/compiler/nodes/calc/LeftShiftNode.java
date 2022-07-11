@@ -84,6 +84,7 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
      * {@linkplain LeftShiftNode#getX()} and {@linkplain LeftShiftNode#getY()} inputs represent
      * numeric integers and {@linkplain LeftShiftNode#getY()} is a constant value. The resulting
      * {@linkplain MulNode} replaces the current node in the {@linkplain LeftShiftNode#graph()}.
+     * 
      * @return true iff node was replaced
      */
     public boolean tryReplaceWithMulNode() {

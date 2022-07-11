@@ -100,8 +100,7 @@ public class ProfBisect {
         hotMethodPolicy.setHotMethodPercentile(percentileArgument.getValue());
 
         ExperimentFiles experimentFiles1 = new ExperimentFilesImpl(
-                ExperimentId.ONE, proftoolArgument1.getValue(), optimizationLogArgument1.getValue()
-        );
+                        ExperimentId.ONE, proftoolArgument1.getValue(), optimizationLogArgument1.getValue());
         ExperimentParser parser1 = new ExperimentParser(experimentFiles1);
         Experiment experiment1 = parseOrExit(parser1);
         hotMethodPolicy.markHotMethods(experiment1);
@@ -109,8 +108,7 @@ public class ProfBisect {
         writer.writeln();
 
         ExperimentFiles experimentFiles2 = new ExperimentFilesImpl(
-                ExperimentId.TWO, proftoolArgument2.getValue(), optimizationLogArgument2.getValue()
-        );
+                        ExperimentId.TWO, proftoolArgument2.getValue(), optimizationLogArgument2.getValue());
         ExperimentParser parser2 = new ExperimentParser(experimentFiles2);
         Experiment experiment2 = parseOrExit(parser2);
         hotMethodPolicy.markHotMethods(experiment2);
@@ -127,9 +125,8 @@ public class ProfBisect {
             for (MatchedExecutedMethod matchedExecutedMethod : matchedMethod.getMatchedExecutedMethods()) {
                 matchedExecutedMethod.writeHeader(writer);
                 TreeMatching treeMatching = treeMatcher.match(
-                        matchedExecutedMethod.getMethod1(),
-                        matchedExecutedMethod.getMethod2()
-                );
+                                matchedExecutedMethod.getMethod1(),
+                                matchedExecutedMethod.getMethod2());
                 writer.increaseIndent();
                 treeMatching.write(writer);
                 writer.decreaseIndent();
@@ -149,8 +146,7 @@ public class ProfBisect {
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println(
-                    "Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId()
-            );
+                            "Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId());
             System.exit(1);
         } catch (ExperimentParserException e) {
             System.err.println(e.getMessage());

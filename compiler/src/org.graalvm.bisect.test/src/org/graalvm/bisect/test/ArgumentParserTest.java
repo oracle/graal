@@ -40,6 +40,7 @@ import org.junit.Test;
 
 public class ArgumentParserTest {
     private static final double DELTA = 0.000001;
+
     private static class ProgramArguments {
         static final double DEFAULT_DOUBLE = 3.14;
         static final int DEFAULT_INT = 42;

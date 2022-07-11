@@ -53,82 +53,81 @@ public class ExperimentParserTest {
         @Override
         public Reader getProftoolOutput() {
             return new StringReader("{\n" +
-                    "    \"executionId\": \"16102\",\n" +
-                    "    \"totalPeriod\": 263869257616,\n" +
-                    "    \"code\": [\n" +
-                    "        {\n" +
-                    "            \"compileId\": null,\n" +
-                    "            \"name\": \"flush_icache_stub\",\n" +
-                    "            \"level\": null,\n" +
-                    "            \"period\": 155671948\n" +
-                    "        },\n" +
-                    "        {\n" +
-                    "            \"compileId\": \"2390\",\n" +
-                    "            \"name\": \"2390: java.util.HashMap$HashIterator.nextNode()\",\n" +
-                    "            \"level\": 4,\n" +
-                    "            \"period\": 264224374\n" +
-                    "        },\n" +
-                    "        {\n" +
+                            "    \"executionId\": \"16102\",\n" +
+                            "    \"totalPeriod\": 263869257616,\n" +
+                            "    \"code\": [\n" +
+                            "        {\n" +
+                            "            \"compileId\": null,\n" +
+                            "            \"name\": \"flush_icache_stub\",\n" +
+                            "            \"level\": null,\n" +
+                            "            \"period\": 155671948\n" +
+                            "        },\n" +
+                            "        {\n" +
+                            "            \"compileId\": \"2390\",\n" +
+                            "            \"name\": \"2390: java.util.HashMap$HashIterator.nextNode()\",\n" +
+                            "            \"level\": 4,\n" +
+                            "            \"period\": 264224374\n" +
+                            "        },\n" +
+                            "        {\n" +
                             "            \"compileId\": \"3677%\",\n" +
-                    "            \"name\": \"3677: org.example.singleByteZero(org.example.Blackhole, org.example.CopyBenchmarkSimple$Context)\",\n" +
-                    "            \"level\": 4,\n" +
-                    "            \"period\": 158328120602\n" +
-                    "        }\n" +
-                    "    ]\n" +
-                    "}");
+                            "            \"name\": \"3677: org.example.singleByteZero(org.example.Blackhole, org.example.CopyBenchmarkSimple$Context)\",\n" +
+                            "            \"level\": 4,\n" +
+                            "            \"period\": 158328120602\n" +
+                            "        }\n" +
+                            "    ]\n" +
+                            "}");
         }
 
         @Override
         public List<Reader> getOptimizationLogs() {
             return List.of(
-                    new StringReader("{\n" +
-                            "    \"compilationId\": \"2390\",\n" +
-                            "    \"executionId\": \"16102\",\n" +
-                            "    \"compilationMethodName\": \"java.util.HashMap$HashIterator.nextNode()\",\n" +
-                            "    \"rootPhase\": {\n" +
-                            "        \"phaseName\": \"RootPhase\",\n" +
-                            "        \"optimizations\": [\n" +
-                            "           {\n" +
-                            "               \"phaseName\": \"SomeTier\",\n" +
-                            "               \"optimizations\": [\n" +
-                            "                   {\n" +
-                            "                       \"optimizationName\": \"LoopTransformation\",\n" +
-                            "                       \"eventName\": \"PartialUnroll\",\n" +
-                            "                       \"bci\": 68\n," +
-                            "                       \"unrollFactor\": 1\n" +
-                            "                   },\n" +
-                            "                   {\n" +
-                            "                       \"phaseName\": \"EmptyPhase\",\n" +
-                            "                       \"optimizations\": null\n" +
-                            "                   }\n" +
-                            "               ]\n" +
-                            "           }\n" +
-                            "       ]\n" +
-                            "   }\n" +
-                            "}"),
-                    new StringReader("{\n" +
-                            "    \"compilationId\": \"3677\",\n" +
-                            "    \"executionId\": \"16102\",\n" +
-                            "    \"compilationMethodName\": \"org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)\",\n" +
-                            "    \"rootPhase\": {\n" +
-                            "        \"phaseName\": \"RootPhase\",\n" +
-                            "        \"optimizations\": [\n" +
-                            "            {\n" +
-                            "                \"optimizationName\": \"LoopTransformation\",\n" +
-                            "                \"eventName\": \"PartialUnroll\",\n" +
-                            "                \"bci\": 2\n," +
-                            "                \"unrollFactor\": 1\n" +
-                            "            },\n" +
-                            "            {\n" +
-                            "                \"optimizationName\": \"LoopTransformation\",\n" +
-                            "                \"eventName\": \"PartialUnroll\",\n" +
-                            "                \"bci\": -1\n," +
-                            "                \"unrollFactor\": 2\n" +
-                            "            }\n" +
-                            "        ]\n" +
-                            "    }\n" +
-                            "}")
-            );
+                            new StringReader("{\n" +
+                                            "    \"compilationId\": \"2390\",\n" +
+                                            "    \"executionId\": \"16102\",\n" +
+                                            "    \"compilationMethodName\": \"java.util.HashMap$HashIterator.nextNode()\",\n" +
+                                            "    \"rootPhase\": {\n" +
+                                            "        \"phaseName\": \"RootPhase\",\n" +
+                                            "        \"optimizations\": [\n" +
+                                            "           {\n" +
+                                            "               \"phaseName\": \"SomeTier\",\n" +
+                                            "               \"optimizations\": [\n" +
+                                            "                   {\n" +
+                                            "                       \"optimizationName\": \"LoopTransformation\",\n" +
+                                            "                       \"eventName\": \"PartialUnroll\",\n" +
+                                            "                       \"bci\": 68\n," +
+                                            "                       \"unrollFactor\": 1\n" +
+                                            "                   },\n" +
+                                            "                   {\n" +
+                                            "                       \"phaseName\": \"EmptyPhase\",\n" +
+                                            "                       \"optimizations\": null\n" +
+                                            "                   }\n" +
+                                            "               ]\n" +
+                                            "           }\n" +
+                                            "       ]\n" +
+                                            "   }\n" +
+                                            "}"),
+                            new StringReader("{\n" +
+                                            "    \"compilationId\": \"3677\",\n" +
+                                            "    \"executionId\": \"16102\",\n" +
+                                            "    \"compilationMethodName\": \"org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)\",\n" +
+                                            "    \"rootPhase\": {\n" +
+                                            "        \"phaseName\": \"RootPhase\",\n" +
+                                            "        \"optimizations\": [\n" +
+                                            "            {\n" +
+                                            "                \"optimizationName\": \"LoopTransformation\",\n" +
+                                            "                \"eventName\": \"PartialUnroll\",\n" +
+                                            "                \"bci\": 2\n," +
+                                            "                \"unrollFactor\": 1\n" +
+                                            "            },\n" +
+                                            "            {\n" +
+                                            "                \"optimizationName\": \"LoopTransformation\",\n" +
+                                            "                \"eventName\": \"PartialUnroll\",\n" +
+                                            "                \"bci\": -1\n," +
+                                            "                \"unrollFactor\": 2\n" +
+                                            "            }\n" +
+                                            "        ]\n" +
+                                            "    }\n" +
+                                            "}"));
         }
     }
 
@@ -146,8 +145,8 @@ public class ExperimentParserTest {
             switch (executedMethod.getCompilationId()) {
                 case "2390": {
                     assertEquals(
-                            "java.util.HashMap$HashIterator.nextNode()",
-                            executedMethod.getCompilationMethodName());
+                                    "java.util.HashMap$HashIterator.nextNode()",
+                                    executedMethod.getCompilationMethodName());
                     OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
                     OptimizationPhaseImpl someTier = new OptimizationPhaseImpl("SomeTier");
                     rootPhase.addChild(someTier);
@@ -158,8 +157,8 @@ public class ExperimentParserTest {
                 }
                 case "3677": {
                     assertEquals(
-                            "org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)",
-                            executedMethod.getCompilationMethodName());
+                                    "org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)",
+                                    executedMethod.getCompilationMethodName());
                     OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
                     rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, EconomicMapUtil.of("unrollFactor", 1)));
                     rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", -1, EconomicMapUtil.of("unrollFactor", 2)));

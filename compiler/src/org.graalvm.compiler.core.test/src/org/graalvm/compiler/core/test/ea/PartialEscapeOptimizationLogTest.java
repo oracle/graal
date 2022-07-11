@@ -37,8 +37,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Tests that the {@link OptimizationLog} collects virtualized allocations and the number of materializations
- * per allocation.
+ * Tests that the {@link OptimizationLog} collects virtualized allocations and the number of
+ * materializations per allocation.
  */
 public class PartialEscapeOptimizationLogTest extends EATestBase {
     @Test
@@ -115,8 +115,8 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
     }
 
     /**
-     * Escape analyzes the snippet and asserts that the optimization log collects the expected number
-     * of virtualized allocations and materializations.
+     * Escape analyzes the snippet and asserts that the optimization log collects the expected
+     * number of virtualized allocations and materializations.
      *
      * @param snippet the snippet to be escape analyzed
      * @param allocationsRemoved the expected number of virtualized allocations
@@ -125,10 +125,7 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
     private void testOptimizationLog(String snippet, int allocationsRemoved, int materializations) {
         prepareGraph(snippet, false);
         try {
-            NodeIterable<OptimizationLog.OptimizationEntryImpl> entries = graph.getOptimizationLog()
-                    .getOptimizationTree()
-                    .getNodes()
-                    .filter(OptimizationLog.OptimizationEntryImpl.class);
+            NodeIterable<OptimizationLog.OptimizationEntryImpl> entries = graph.getOptimizationLog().getOptimizationTree().getNodes().filter(OptimizationLog.OptimizationEntryImpl.class);
             int actualAllocationsRemoved = 0;
             int actualMaterializations = 0;
             for (OptimizationLog.OptimizationEntryImpl entry : entries) {
@@ -147,10 +144,12 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
 
     /**
      * Gets a {@link DebugContext} object corresponding to {@code options} but with the option
-     * {@link GraalOptions#OptimizationLog OptimizationLog} enabled, creating a new one if none currently exists.
-     * Debug contexts created by this method will have their {@link DebugDumpHandler}s closed in {@link #afterTest()}.
+     * {@link GraalOptions#OptimizationLog OptimizationLog} enabled, creating a new one if none
+     * currently exists. Debug contexts created by this method will have their
+     * {@link DebugDumpHandler}s closed in {@link #afterTest()}.
      *
-     * @return {@link DebugContext} with the {@link GraalOptions#OptimizationLog OptimizationLog} option enabled
+     * @return {@link DebugContext} with the {@link GraalOptions#OptimizationLog OptimizationLog}
+     *         option enabled
      */
     @Override
     protected DebugContext getDebugContext() {

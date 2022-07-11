@@ -116,8 +116,7 @@ public class SelkowTreeMatcherTest {
                         new EditScript.Identity(foo, foo, 2),
                         new EditScript.Identity(bar, bar, 2),
                         new EditScript.Identity(toBeUnchaged, toBeUnchaged, 1),
-                        new EditScript.Insert(toBeInserted, 1)
-        );
+                        new EditScript.Insert(toBeInserted, 1));
         Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
     }
 }

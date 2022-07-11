@@ -34,8 +34,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
 /**
- * Matches methods of two experiments by compilation method names and then greedily matches their respective
- * compilations by descending execution periods.
+ * Matches methods of two experiments by compilation method names and then greedily matches their
+ * respective compilations by descending execution periods.
  */
 public class GreedyMethodMatcher implements MethodMatcher {
     /**
@@ -63,23 +63,16 @@ public class GreedyMethodMatcher implements MethodMatcher {
         for (String compilationMethodName : intersection) {
             MatchedMethod matchedMethod = matching.addMatchedMethod(compilationMethodName);
             IteratorUtil.zipLongest(
-                    methodMap1.get(compilationMethodName)
-                            .stream()
-                            .sorted(GreedyMethodMatcher::greaterPeriodComparator)
-                            .iterator(),
-                    methodMap2.get(compilationMethodName)
-                            .stream()
-                            .sorted(GreedyMethodMatcher::greaterPeriodComparator)
-                            .iterator()
-            ).forEachRemaining(pair -> {
-                if (pair.bothNotNull()) {
-                    matchedMethod.addMatchedExecutedMethod(pair.getLhs(), pair.getRhs());
-                } else if (pair.getLhs() == null) {
-                    matchedMethod.addExtraExecutedMethod(pair.getRhs());
-                } else {
-                    matchedMethod.addExtraExecutedMethod(pair.getLhs());
-                }
-            });
+                            methodMap1.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator).iterator(),
+                            methodMap2.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator).iterator()).forEachRemaining(pair -> {
+                                if (pair.bothNotNull()) {
+                                    matchedMethod.addMatchedExecutedMethod(pair.getLhs(), pair.getRhs());
+                                } else if (pair.getLhs() == null) {
+                                    matchedMethod.addExtraExecutedMethod(pair.getRhs());
+                                } else {
+                                    matchedMethod.addExtraExecutedMethod(pair.getLhs());
+                                }
+                            });
         }
 
         analyzeExtraMethods(methodMap1, methodMap2, matching, experiment1);

@@ -81,9 +81,9 @@ public class ExperimentParser {
         for (ExecutedMethodBuilder methodBuilder : methodByCompilationId.values()) {
             if (!Objects.equals(methodBuilder.getExecutionId(), proftoolLog.executionId)) {
                 throw new ExperimentParserException(
-                        "Execution ID mismatch: " + proftoolLog.executionId  +
-                        " vs " + methodBuilder.getExecutionId(),
-                        experimentFiles.getExperimentId());
+                                "Execution ID mismatch: " + proftoolLog.executionId +
+                                                " vs " + methodBuilder.getExecutionId(),
+                                experimentFiles.getExperimentId());
             }
         }
 
@@ -101,11 +101,10 @@ public class ExperimentParser {
         }
 
         ExperimentImpl experiment = new ExperimentImpl(
-                proftoolLog.executionId,
-                experimentFiles.getExperimentId(),
-                proftoolLog.totalPeriod,
-                proftoolLog.code.size()
-        );
+                        proftoolLog.executionId,
+                        experimentFiles.getExperimentId(),
+                        proftoolLog.totalPeriod,
+                        proftoolLog.code.size());
         for (ExecutedMethodBuilder builder : methodByCompilationId.values()) {
             builder.setExperiment(experiment);
             experiment.addExecutedMethod(builder.build());
@@ -114,15 +113,14 @@ public class ExperimentParser {
     }
 
     private ExecutedMethodBuilder parseCompiledMethod(Reader optimizationLog)
-            throws IOException, ExperimentParserException {
+                    throws IOException, ExperimentParserException {
         JSONParser parser = new JSONParser(optimizationLog);
         EconomicMap<String, Object> log = expectMap(parser.parse(), "root");
         ExecutedMethodBuilder builder = new ExecutedMethodBuilder();
         builder.setExecutionId(expectString(log.get("executionId"), "root.executionId"));
         builder.setCompilationId(expectString(log.get("compilationId"), "root.compilationId"));
         builder.setCompilationMethodName(
-                expectString(log.get("compilationMethodName"), "root.compilationMethodName")
-        );
+                        expectString(log.get("compilationMethodName"), "root.compilationMethodName"));
         EconomicMap<String, Object> rootPhase = expectMap(log.get("rootPhase"), "root.rootPhase");
         builder.setRootPhase(parseOptimizationPhase(rootPhase));
         return builder;
@@ -216,9 +214,8 @@ public class ExperimentParser {
             return ((Number) object).intValue();
         }
         throw new ExperimentParserException(
-                "expected " + path + " to be an int",
-                experimentFiles.getExperimentId()
-        );
+                        "expected " + path + " to be an int",
+                        experimentFiles.getExperimentId());
     }
 
     private Integer expectIntegerNullable(Object object, String path) throws ExperimentParserException {

@@ -50,8 +50,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class OptimizationLogTest extends GraalCompilerTest {
     /**
-     * A mock optimization phase that combines direct optimization reporting and the application of child phases
-     * that report their own optimizations.
+     * A mock optimization phase that combines direct optimization reporting and the application of
+     * child phases that report their own optimizations.
      */
     private static final class ReportNodePhase extends BasePhase<CoreProviders> {
         private final Supplier<Integer> barPropertySupplier;
@@ -62,9 +62,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
-            graph.getOptimizationLog().report(getClass(), "StartNodeReported", graph.start())
-                    .setProperty("foo", 42)
-                    .setLazyProperty("bar", barPropertySupplier);
+            graph.getOptimizationLog().report(getClass(), "StartNodeReported", graph.start()).setProperty("foo", 42).setLazyProperty("bar", barPropertySupplier);
             new ReportAddNodePhase().apply(graph, context);
             new ReportReturnNodePhase().apply(graph, context);
         }
@@ -93,8 +91,8 @@ public class OptimizationLogTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests that the optimization tree is correctly built when the mock {@link ReportNodePhase}
-     * is applied to the graph of {@link #addSnippet(int, int)}.
+     * Tests that the optimization tree is correctly built when the mock {@link ReportNodePhase} is
+     * applied to the graph of {@link #addSnippet(int, int)}.
      */
     @Test
     public void buildOptimizationTreeWhenEnabled() {
@@ -136,9 +134,10 @@ public class OptimizationLogTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests that there is no reporting going on when the optimization log is disabled. In particular,
-     * the optimization tree shall not be built and {@link org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntry#setLazyProperty(String, Supplier) lazy properties}
-     * shall not be consumed.
+     * Tests that there is no reporting going on when the optimization log is disabled. In
+     * particular, the optimization tree shall not be built and
+     * {@link org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntry#setLazyProperty(String, Supplier)
+     * lazy properties} shall not be consumed.
      */
     @Test
     public void noReportingWhenDisabled() {
@@ -158,12 +157,14 @@ public class OptimizationLogTest extends GraalCompilerTest {
     }
 
     /**
-     * Parses the graph {@link #parseEager eagerly} and potentially applies extra options or sets a compilation listener.
-     * Always enables {@link GraalOptions#TrackNodeSourcePosition node source position tracking}.
+     * Parses the graph {@link #parseEager eagerly} and potentially applies extra options or sets a
+     * compilation listener. Always enables {@link GraalOptions#TrackNodeSourcePosition node source
+     * position tracking}.
      *
      * @param methodName the name of the method to be parsed
      * @param enableOptimizationLog the value of the {@link GraalOptions#OptimizationLog} option
-     * @param setCompilationListener the graph's {@link OptimizationLog} will be set as the compilation listener iff set
+     * @param setCompilationListener the graph's {@link OptimizationLog} will be set as the
+     *            compilation listener iff set
      * @return the parsed graph
      */
     private StructuredGraph parseGraph(String methodName, boolean enableOptimizationLog, boolean setCompilationListener) {
@@ -173,9 +174,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
         extraOptions.put(GraalOptions.TrackNodeSourcePosition, true);
         OptionValues options = new OptionValues(getInitialOptions(), extraOptions);
         DebugContext debugContext = getDebugContext(options, null, method);
-        StructuredGraph.Builder builder = new StructuredGraph.Builder(options, debugContext, null)
-                .method(method)
-                .compilationId(getCompilationId(method));
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(options, debugContext, null).method(method).compilationId(getCompilationId(method));
         StructuredGraph graph = parse(builder, getEagerGraphBuilderSuite());
         if (setCompilationListener) {
             debugContext.setCompilationListener(graph.getOptimizationLog());

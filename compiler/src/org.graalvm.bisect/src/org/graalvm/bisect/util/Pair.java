@@ -26,6 +26,7 @@ package org.graalvm.bisect.util;
 
 /**
  * Represents an ordered pair of two items of the same type.
+ * 
  * @param <T> the type of the item
  */
 public class Pair<T> {

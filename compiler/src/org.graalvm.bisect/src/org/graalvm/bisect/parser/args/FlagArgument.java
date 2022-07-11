@@ -25,8 +25,8 @@
 package org.graalvm.bisect.parser.args;
 
 /**
- * A boolean flag argument that is {@code false} when not present in the program arguments
- * and {@code true} when it is present.
+ * A boolean flag argument that is {@code false} when not present in the program arguments and
+ * {@code true} when it is present.
  */
 public class FlagArgument extends Argument {
     private boolean value;

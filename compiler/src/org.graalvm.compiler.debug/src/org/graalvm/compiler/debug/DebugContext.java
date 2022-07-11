@@ -441,7 +441,9 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Sets the compilation listener, which will be notified about subsequent inlinings and entered phases.
+     * Sets the compilation listener, which will be notified about subsequent inlinings and entered
+     * phases.
+     * 
      * @param compilationListener the new compilation listener
      */
     public void setCompilationListener(CompilationListener compilationListener) {

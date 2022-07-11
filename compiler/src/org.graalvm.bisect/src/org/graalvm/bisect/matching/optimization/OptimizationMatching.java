@@ -30,7 +30,8 @@ import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
 
 /**
- * Describes a matching of optimizations between two compilations of the same method in two experiments.
+ * Describes a matching of optimizations between two compilations of the same method in two
+ * experiments.
  */
 public interface OptimizationMatching {
     /**

@@ -404,9 +404,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 if (performReplacement(node, canonical, tool)) {
                     Node finalCanonical = canonical;
                     StructuredGraph graph = (StructuredGraph) node.graph();
-                    graph.getOptimizationLog().report(CanonicalizerPhase.class, "CanonicalReplacement", node)
-                                    .setLazyProperty("replacedNodeClass", nodeClass::shortName)
-                                    .setLazyProperty("canonicalNodeClass", () -> {
+                    graph.getOptimizationLog().report(CanonicalizerPhase.class, "CanonicalReplacement", node).setLazyProperty("replacedNodeClass", nodeClass::shortName).setLazyProperty(
+                                    "canonicalNodeClass", () -> {
                                         if (finalCanonical == null) {
                                             return null;
                                         }

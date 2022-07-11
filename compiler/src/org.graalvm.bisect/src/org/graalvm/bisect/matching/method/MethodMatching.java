@@ -27,7 +27,8 @@ package org.graalvm.bisect.matching.method;
 import java.util.List;
 
 /**
- * Represents a matching between methods of two experiments and the matching of their respective compilations.
+ * Represents a matching between methods of two experiments and the matching of their respective
+ * compilations.
  */
 public interface MethodMatching {
     /**

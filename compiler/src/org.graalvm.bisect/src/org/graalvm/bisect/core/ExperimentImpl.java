@@ -74,10 +74,10 @@ public class ExperimentImpl implements Experiment {
     private final Map<String, List<ExecutedMethod>> methodsByName;
 
     public ExperimentImpl(
-            String executionId,
-            ExperimentId experimentId,
-            long totalPeriod,
-            int totalProftoolMethods) {
+                    String executionId,
+                    ExperimentId experimentId,
+                    long totalPeriod,
+                    int totalProftoolMethods) {
         this.executedMethods = new ArrayList<>();
         this.executionId = executionId;
         this.experimentId = experimentId;
@@ -167,12 +167,8 @@ public class ExperimentImpl implements Experiment {
             writer.decreaseIndent();
             return;
         }
-        methods = methods.stream()
-                        .sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod()))
-                        .collect(Collectors.toList());
-        long hotMethodCount = methods.stream()
-                        .filter(ExecutedMethod::isHot)
-                        .count();
+        methods = methods.stream().sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod())).collect(Collectors.toList());
+        long hotMethodCount = methods.stream().filter(ExecutedMethod::isHot).count();
         writer.writeln(methods.size() + " compilations (" + hotMethodCount + " of which are hot)");
         writer.writeln("Compilations");
         writer.increaseIndent();
@@ -191,7 +187,9 @@ public class ExperimentImpl implements Experiment {
     }
 
     /**
-     * Add an executed method to this experiment. The executed method's experiment must be set to this instance.
+     * Add an executed method to this experiment. The executed method's experiment must be set to
+     * this instance.
+     * 
      * @param executedMethod the executed method to be added
      */
     public void addExecutedMethod(ExecutedMethod executedMethod) {

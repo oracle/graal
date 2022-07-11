@@ -42,12 +42,13 @@ public class ArgumentParser {
      */
     private final String description;
     /**
-     * The map of argument names to option arguments. Option argument names start with the "--" prefix. They may be
-     * required or optional.
+     * The map of argument names to option arguments. Option argument names start with the "--"
+     * prefix. They may be required or optional.
      */
     private final Map<String, Argument> optionArguments = new LinkedHashMap<>();
     /**
-     * The list of positional arguments. The argument names do not start with a prefix and are always required.
+     * The list of positional arguments. The argument names do not start with a prefix and are
+     * always required.
      */
     private final List<Argument> positionalArguments = new ArrayList<>();
 
@@ -100,8 +101,8 @@ public class ArgumentParser {
      * @throws UnknownArgumentException a value was provided for an unknown argument
      */
     public void parse(String[] args) throws InvalidArgumentException,
-            MissingArgumentException,
-            UnknownArgumentException {
+                    MissingArgumentException,
+                    UnknownArgumentException {
         int nextPositionalArg = 0;
         for (int index = 0; index < args.length;) {
             String arg = args[index];
