@@ -32,7 +32,11 @@ import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
@@ -59,6 +63,7 @@ import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -211,7 +216,22 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
+            // The INSTANCEOF byte code refers to a type that could not be resolved.
+            // INSTANCEOF must not throw an exception if the object is null.
+            BeginNode nullObj = graph.add(new BeginNode());
+            BeginNode nonNullObj = graph.add(new BeginNode());
+            append(new IfNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)),
+                            nullObj, nonNullObj, BranchProbabilityNode.NOT_FREQUENT_PROFILE));
+
+            // Case where the object is not null, and type could not be resolved: Throw an
+            // exception.
+            lastInstr = nonNullObj;
             handleUnresolvedType(type);
+
+            // Case where the object is null: INSTANCEOF does not care about the type.
+            // Push zero to the byte code stack, then continue running normally.
+            lastInstr = nullObj;
+            frameState.push(JavaKind.Int, appendConstant(JavaConstant.INT_0));
         }
 
         @Override
