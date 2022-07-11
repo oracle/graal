@@ -60,7 +60,7 @@ public class MatchedExecutedMethod {
 
     /**
      * Writes a string describing this pair of matched compilations.
-     * 
+     *
      * @param writer the destination writer
      */
     public void writeHeader(Writer writer) {

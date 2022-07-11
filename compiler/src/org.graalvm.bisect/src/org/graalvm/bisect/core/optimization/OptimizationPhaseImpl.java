@@ -33,8 +33,20 @@ import java.util.Objects;
 
 import org.graalvm.bisect.util.Writer;
 
+/**
+ * Represents an optimization phase in the optimization tree. Allows the children to be
+ * incrementally added.
+ */
 public class OptimizationPhaseImpl implements OptimizationPhase {
+    /**
+     * The name of this optimization phase, which corresponds to the name of its class.
+     */
     private final String name;
+    /**
+     * The list of children of this node in the optimization tree, i.e., the list of subphases and
+     * optimizations triggered in this phase. If there are no children, the field can be
+     * {@code null} to save space.
+     */
     private List<OptimizationTreeNode> children = null;
 
     public OptimizationPhaseImpl(String name) {
@@ -50,7 +62,7 @@ public class OptimizationPhaseImpl implements OptimizationPhase {
 
     /**
      * Gets the name of the optimization phase.
-     * 
+     *
      * @return the name of the optimization phase
      */
     @Override
@@ -60,7 +72,7 @@ public class OptimizationPhaseImpl implements OptimizationPhase {
 
     /**
      * Gets the list of optimization phases triggered inside this phase.
-     * 
+     *
      * @return the list of phases triggered by this phase
      */
     @Override

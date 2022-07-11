@@ -53,6 +53,7 @@ public class ArgumentParser {
 
     /**
      * Constructs an argument parser.
+     *
      * @param prog the name of the program
      * @param description the description of the program
      */
@@ -63,6 +64,7 @@ public class ArgumentParser {
 
     /**
      * Creates a usage string describing the arguments.
+     *
      * @return the usage string
      */
     public String createUsage() {
@@ -89,7 +91,9 @@ public class ArgumentParser {
     }
 
     /**
-     * Parses the program arguments, sets the parsed values to {@link Argument} objects and verifies constraints.
+     * Parses the program arguments, sets the parsed values to {@link Argument} objects and verifies
+     * constraints.
+     *
      * @param args the list of program arguments
      * @throws InvalidArgumentException the provided argument has an invalid value
      * @throws MissingArgumentException a required argument is missing in the program arguments
@@ -127,6 +131,7 @@ public class ArgumentParser {
 
     /**
      * Adds an argument to the list of program arguments.
+     *
      * @param argument the program argument to be added
      */
     private void addArgument(Argument argument) {
@@ -138,7 +143,9 @@ public class ArgumentParser {
     }
 
     /**
-     * Adds an optional program argument that expects an integer. The argument name must include the "--" prefix.
+     * Adds an optional program argument that expects an integer. The argument name must include the
+     * "--" prefix.
+     *
      * @param name the name of the argument
      * @param defaultValue the value of the argument when no value is set in the program arguments
      * @param help the help message in the program usage string
@@ -152,7 +159,9 @@ public class ArgumentParser {
     }
 
     /**
-     * Adds an optional program argument that expects a double. The argument name must include the "--" prefix.
+     * Adds an optional program argument that expects a double. The argument name must include the
+     * "--" prefix.
+     *
      * @param name the name of the argument
      * @param defaultValue the value of the argument when no value is set in the program arguments
      * @param help the help message in the program usage string
@@ -166,6 +175,7 @@ public class ArgumentParser {
 
     /**
      * Adds a required program argument that expects a string.
+     *
      * @param name the name of the argument
      * @param help the help message in the program usage string
      * @return the created argument instance
@@ -179,7 +189,7 @@ public class ArgumentParser {
     /**
      * Adds a flag holding a boolean that is true iff the option is present in the program
      * arguments.
-     * 
+     *
      * @param name the name of the argument
      * @param help the help message in the program usage string
      * @return the created argument instance

@@ -36,7 +36,6 @@ public class Pair<T> {
 
     /**
      * Gets the first item.
-     * @return the first item
      */
     public T getLhs() {
         return lhs;
@@ -44,7 +43,6 @@ public class Pair<T> {
 
     /**
      * Gets the second item.
-     * @return the second item
      */
     public T getRhs() {
         return rhs;
@@ -52,6 +50,7 @@ public class Pair<T> {
 
     /**
      * Returns whether both items are non-null.
+     *
      * @return flag indication whether both items are non-null
      */
     public boolean bothNotNull() {

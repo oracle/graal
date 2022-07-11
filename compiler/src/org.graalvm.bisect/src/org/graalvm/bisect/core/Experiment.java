@@ -30,41 +30,43 @@ import java.util.Map;
 import org.graalvm.bisect.util.Writer;
 
 /**
- * A parsed experiment consisting of all graal-compiled methods and metadata.
+ * An experiment consisting of all graal-compiled methods and metadata.
  */
 public interface Experiment {
     /**
      * Gets the experiment ID.
-     * @return the experiment ID
      */
     ExperimentId getExperimentId();
 
     /**
      * Gets the execution ID.
-     * @return the execution ID
      */
     String getExecutionId();
 
     /**
      * Gets the total period of all executed methods including non-graal executions.
+     *
      * @return the total period of execution
      */
     long getTotalPeriod();
 
     /**
-     * Gets the sum of periods of all graal-compiled methods.
+     * Gets the sum of the periods of all graal-compiled methods.
+     *
      * @return the total period of graal-compiled methods
      */
     long getGraalPeriod();
 
     /**
      * Gets the list of all graal-compiled methods, including non-hot methods.
+     *
      * @return the list of graal-compiled methods
      */
     List<ExecutedMethod> getExecutedMethods();
 
     /**
      * Groups hot graal-compiled methods by compilation method name.
+     *
      * @see ExecutedMethod#getCompilationMethodName()
      * @return a map of lists of executed methods grouped by compilation method name
      */
@@ -72,6 +74,7 @@ public interface Experiment {
 
     /**
      * Gets a list of methods with the given compilation method name.
+     *
      * @param compilationMethodName the compilation method name
      * @return a list of methods with matching compilation method name
      */
@@ -81,7 +84,7 @@ public interface Experiment {
      * Writes a summary of the experiment. Includes the number of methods collected (proftool and
      * optimization log), relative period of graal-compiled methods, the number and relative period
      * of hot methods.
-     * 
+     *
      * @param writer the destination writer
      */
     void writeExperimentSummary(Writer writer);
@@ -89,7 +92,7 @@ public interface Experiment {
     /**
      * Writes the list of compilations (including compilation ID, share of the execution and hotness
      * for each compilation) for a method with header identifying this experiment.
-     * 
+     *
      * @param writer the destination writer
      * @param compilationMethodName the compilation method name to summarize
      */

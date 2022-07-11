@@ -29,20 +29,18 @@ import java.util.List;
 import org.graalvm.bisect.util.Writer;
 
 /**
- * Represents a node in the optimization tree.
+ * Represents a node in the optimization tree. The nodes in the optimization tree are phases and
+ * individual optimizations, which are always leaf nodes. The children of an optimization phase are
+ * its subphases and performed optimizations.
  */
 public interface OptimizationTreeNode {
     /**
      * Gets the children of this node.
-     * 
-     * @return the children of this node
      */
     List<OptimizationTreeNode> getChildren();
 
     /**
      * Gets the name of this node.
-     * 
-     * @return the name of this node
      */
     String getName();
 
@@ -56,7 +54,7 @@ public interface OptimizationTreeNode {
 
     /**
      * Writes the representation of this node without its subtree to the destination writer.
-     * 
+     *
      * @param writer the destination writer
      */
     void writeHead(Writer writer);

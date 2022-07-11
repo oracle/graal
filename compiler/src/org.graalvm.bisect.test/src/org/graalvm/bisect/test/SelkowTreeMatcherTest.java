@@ -59,7 +59,7 @@ public class SelkowTreeMatcherTest {
 
     /**
      * Tests that the Selkow tree matcher identifies the correct edit operations in dfs preorder.
-     * 
+     *
      * // @formatter:off
      * <pre>
      *                method1

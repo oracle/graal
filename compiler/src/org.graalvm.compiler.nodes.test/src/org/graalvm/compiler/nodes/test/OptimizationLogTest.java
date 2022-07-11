@@ -53,7 +53,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
      * A mock optimization phase that combines direct optimization reporting and the application of child phases
      * that report their own optimizations.
      */
-    private static class ReportNodePhase extends BasePhase<CoreProviders> {
+    private static final class ReportNodePhase extends BasePhase<CoreProviders> {
         private final Supplier<Integer> barPropertySupplier;
 
         private ReportNodePhase(Supplier<Integer> valueSupplier) {
@@ -70,7 +70,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
         }
     }
 
-    private static class ReportAddNodePhase extends BasePhase<CoreProviders> {
+    private static final class ReportAddNodePhase extends BasePhase<CoreProviders> {
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
             for (AddNode addNode : graph.getNodes().filter(AddNode.class)) {
@@ -79,7 +79,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
         }
     }
 
-    private static class ReportReturnNodePhase extends BasePhase<CoreProviders> {
+    private static final class ReportReturnNodePhase extends BasePhase<CoreProviders> {
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
             for (ReturnNode returnNode : graph.getNodes().filter(ReturnNode.class)) {
@@ -142,7 +142,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
      */
     @Test
     public void noReportingWhenDisabled() {
-        StructuredGraph graph = parseGraph("addSnippet",false, false);
+        StructuredGraph graph = parseGraph("addSnippet", false, false);
         OptimizationLog optimizationLog = graph.getOptimizationLog();
         Assert.assertFalse(optimizationLog.isOptimizationLogEnabled());
 

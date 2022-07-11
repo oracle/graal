@@ -28,16 +28,14 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
-import org.graalvm.bisect.matching.optimization.OptimizationMatcher;
-import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
-import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 import org.graalvm.bisect.core.optimization.OptimizationImpl;
+import org.graalvm.bisect.matching.optimization.OptimizationMatcher;
+import org.graalvm.bisect.matching.optimization.OptimizationMatching;
+import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
 import org.junit.Test;
-
 
 public class OptimizationMatcherTest {
     @Test

@@ -85,7 +85,7 @@ public class MatchedMethod {
 
     /**
      * Writes the name of the method and the list of compilations for each experiment.
-     * 
+     *
      * @param writer the destination writer
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment
@@ -100,7 +100,7 @@ public class MatchedMethod {
 
     /**
      * Writes the header and the optimization tree for each extra (unpaired) executed method.
-     * 
+     *
      * @param writer the destination writer
      */
     public void writeExtraExecutedMethods(Writer writer) {

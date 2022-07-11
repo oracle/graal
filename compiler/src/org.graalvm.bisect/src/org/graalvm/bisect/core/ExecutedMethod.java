@@ -24,10 +24,10 @@
  */
 package org.graalvm.bisect.core;
 
+import java.util.List;
+
 import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
-
-import java.util.List;
 
 /**
  * Represents a graal-compiled and executed method.
@@ -35,40 +35,47 @@ import java.util.List;
 public interface ExecutedMethod {
     /**
      * Gets the experiment to which this executed method belongs.
-     * @return the experiment to which this executed method belongs
      */
     Experiment getExperiment();
 
     /**
-     * Creates and returns a summary that specifies the execution time of this method relative to the total execution
-     * time and relative to the execution time of graal-compiled methods.
+     * Creates and returns a summary that specifies the execution time of this method relative to
+     * the total execution time and relative to the execution time of graal-compiled methods.
+     *
      * @return a summary of the relative execution time
      */
     String createSummaryOfMethodExecution();
 
     /**
-     * Gets the compilation ID of the executed method as reported in the optimization log. Matches "compileId" in the
-     * proftool output.
+     * Gets the compilation ID of the executed method as reported in the optimization log. Matches
+     * "compileId" in the proftool output.
+     *
      * @return the compilation ID
      */
     String getCompilationId();
 
     /**
-     * Gets the full signature of the method including parameter types as reported in the optimization log. Multiple
-     * executed methods may share the same compilation method name, because a method may get compiled several times. It
-     * can be used to identify a group of compilations of a single Java method.
+     * Gets the full signature of the method including parameter types as reported in the
+     * optimization log. Multiple executed methods may share the same compilation method name,
+     * because a method may get compiled several times. It can be used to identify a group of
+     * compilations of a single Java method.
+     *
      * @return the compilation method name
      */
     String getCompilationMethodName();
 
     /**
-     * Gets the root optimization phase of this method, which holds all optimization phases applied in this compilation.
+     * Gets the root optimization phase of this method, which holds all optimization phases applied
+     * in this compilation.
+     *
      * @return the root optimization phase
      */
     OptimizationPhase getRootPhase();
 
     /**
-     * Creates and returns a list of all optimizations performed during compilation of this method, preserving the order.
+     * Creates and returns a list of all optimizations performed during compilation of this method,
+     * preserving the order.
+     *
      * @return the list of optimizations
      */
     default List<Optimization> getOptimizationsRecursive() {
@@ -77,6 +84,7 @@ public interface ExecutedMethod {
 
     /**
      * Gets the hot flag of the executed method. The hotness is not included in the proftool output.
+     *
      * @return the hot status of the method
      * @see HotMethodPolicy
      */
@@ -84,12 +92,14 @@ public interface ExecutedMethod {
 
     /**
      * Sets the hot status of the method.
+     *
      * @param hot the hot status of the method
      */
     void setHot(boolean hot);
 
     /**
      * Gets the period of execution as reported by proftool.
+     *
      * @return the period of execution
      */
     long getPeriod();

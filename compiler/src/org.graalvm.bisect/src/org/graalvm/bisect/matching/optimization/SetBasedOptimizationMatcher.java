@@ -24,11 +24,11 @@
  */
 package org.graalvm.bisect.matching.optimization;
 
-import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.core.optimization.Optimization;
-
 import java.util.List;
 import java.util.Set;
+
+import org.graalvm.bisect.core.ExperimentId;
+import org.graalvm.bisect.core.optimization.Optimization;
 
 /**
  * Creates a matching between optimizations of two executed methods based on set intersection/difference.
@@ -36,9 +36,11 @@ import java.util.Set;
 public class SetBasedOptimizationMatcher implements OptimizationMatcher {
     /**
      * Creates a matching between optimizations of two executed methods coming from two experiments.
-     * The set intersection is the list of matched optimizations. The intersection preserves the order of optimizations
-     * from the first experiment. The set difference of the two list of optimizations is the list of extra
-     * optimizations. The lists of extra optimizations preserve their original order.
+     * The set intersection is the list of matched optimizations. The intersection preserves the
+     * order of optimizations from the first experiment. The set difference of the two list of
+     * optimizations is the list of extra optimizations. The lists of extra optimizations preserve
+     * their original order.
+     *
      * @param optimizations1 a list of optimizations from a method in the first experiment
      * @param optimizations2 a list of optimizations from a method in the second experiment
      * @return an object that describes matched and extra optimizations

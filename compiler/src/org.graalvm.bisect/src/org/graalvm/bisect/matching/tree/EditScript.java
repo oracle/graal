@@ -32,7 +32,7 @@ import org.graalvm.bisect.util.Writer;
 
 /**
  * Represents a sequence of operations that modify a rooted, ordered and labeled tree.
- * 
+ *
  * The allowed operations in an edit script are usually defined as subtree insertion, subtree
  * deletion and node relabelling. However, we want the edit script to be easily convertible to a
  * delta tree. Delta tree is a tree that contains the union of all nodes of the compared tree and
@@ -51,7 +51,7 @@ public class EditScript implements TreeMatching {
      * 0). Remembering the depth allows us to easily {@link DeltaNode#write write} the delta tree in
      * dfs preorder.
      */
-    public static abstract class DeltaNode {
+    public abstract static class DeltaNode {
         protected final OptimizationTreeNode left;
         protected final OptimizationTreeNode right;
         protected final int depth;
@@ -91,7 +91,7 @@ public class EditScript implements TreeMatching {
          * destination writer. When an entire subtree is deleted/inserted, we create only one delta
          * node for the whole subtree - in that case, this method writes the entire subtree.
          * Otherwise, this object represents exactly one delta node and only prints itself.
-         * 
+         *
          * @param writer the destination writer
          */
         public abstract void write(Writer writer);
@@ -103,7 +103,7 @@ public class EditScript implements TreeMatching {
     public static class Identity extends DeltaNode {
         /**
          * Constructor of an identity operation.
-         * 
+         *
          * @param left the matched node from the first (left) tree
          * @param right the matched node from the second (right) tree
          * @param depth the depth of the nodes
@@ -128,7 +128,7 @@ public class EditScript implements TreeMatching {
     public static class Insert extends DeltaNode {
         /**
          * Constructor of a subtree insert operation.
-         * 
+         *
          * @param node the root of the subtree that is inserted
          * @param depth the depth of the root of the inserted subtree
          */
@@ -153,7 +153,7 @@ public class EditScript implements TreeMatching {
 
         /**
          * Constructor of a subtree delete operation.
-         * 
+         *
          * @param node the root of the subtree that is deleted
          * @param depth the depth of the root of the deleted subtree
          */
@@ -177,7 +177,7 @@ public class EditScript implements TreeMatching {
     public static class Relabel extends DeltaNode {
         /**
          * Constructor of a relabelling operation.
-         * 
+         *
          * @param left the node which holds the original name from the first (left) tree
          * @param right the node which hold the new name from the second (right) tree
          * @param depth the depth of the nodes
@@ -218,7 +218,7 @@ public class EditScript implements TreeMatching {
 
     /**
      * Prepends a subtree insert operation to this edit script.
-     * 
+     *
      * @param node the root of the inserted subtree
      * @param depth the depth of the node
      */
@@ -228,7 +228,7 @@ public class EditScript implements TreeMatching {
 
     /**
      * Prepends a subtree delete operation to this edit script.
-     * 
+     *
      * @param node the root of the deleted subtree
      * @param depth the depth of the node
      */
@@ -238,7 +238,7 @@ public class EditScript implements TreeMatching {
 
     /**
      * Prepends a relabelling operation to this edit script.
-     * 
+     *
      * @param node1 the node with the original name from the first (left) tree
      * @param node2 the node with the new name from the second (right) tree
      * @param depth the depth of the nodes
@@ -249,7 +249,7 @@ public class EditScript implements TreeMatching {
 
     /**
      * Prepends an identity operation to this edit script.
-     * 
+     *
      * @param node1 the matched node from the first (left) tree
      * @param node2 the matched node from the second (right) tree
      * @param depth the depth of the nodes
@@ -261,7 +261,7 @@ public class EditScript implements TreeMatching {
     /**
      * Prepends the operations of the other edit script to the operations of this edit script. The
      * other edit script will be empty after the concatenation.
-     * 
+     *
      * @param otherScript the other edit script which will be emptied
      */
     public void concat(EditScript otherScript) {
@@ -272,7 +272,7 @@ public class EditScript implements TreeMatching {
     /**
      * Writes the delta subtree represented by this edit script in dfs preorder to the destination
      * writer.
-     * 
+     *
      * @param writer the destination writer
      */
     @Override
@@ -284,6 +284,7 @@ public class EditScript implements TreeMatching {
 
     /**
      * Gets the list of operations.
+     *
      * @return the list of operations
      */
     public ConcatList<DeltaNode> getDeltaNodes() {

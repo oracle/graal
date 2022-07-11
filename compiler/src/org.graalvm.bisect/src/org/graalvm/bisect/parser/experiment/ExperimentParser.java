@@ -57,9 +57,11 @@ public class ExperimentParser {
     }
 
     /**
-     * Parses the experiment by combining proftool output and an optimization log. The optimization log is read first
-     * and all compiled methods are parsed. The proftool output is then used to add information about execution periods.
-     * Method compilations from the optimization log are matched with the proftool output according to compilation IDs.
+     * Parses the experiment by combining proftool output and an optimization log. The optimization
+     * log is read first and all compiled methods are parsed. The proftool output is then used to
+     * add information about execution periods. Method compilations from the optimization log are
+     * matched with the proftool output according to compilation IDs.
+     *
      * @return the parsed experiment
      * @throws IOException failed to read the experiment files
      * @throws ExperimentParserException the experiment files had an in incorrect format

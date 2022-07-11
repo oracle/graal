@@ -45,7 +45,7 @@ public class ExtraExecutedMethod {
      * Writes a string that describes the compilation ID of this method, including
      * {@link ExecutedMethod#createSummaryOfMethodExecution() the summary of its execution} and its
      * experiment ID.
-     * 
+     *
      * @param writer the destination writer
      */
     public void writeHeader(Writer writer) {

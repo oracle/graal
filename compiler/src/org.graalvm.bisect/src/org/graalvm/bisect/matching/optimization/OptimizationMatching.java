@@ -24,18 +24,19 @@
  */
 package org.graalvm.bisect.matching.optimization;
 
+import java.util.List;
+
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
-
-import java.util.List;
 
 /**
  * Describes a matching of optimizations between two compilations of the same method in two experiments.
  */
 public interface OptimizationMatching {
     /**
-     * Gets a list of optimizations from an experiment that were not matched with any other optimization from the other
-     * method.
+     * Gets a list of optimizations from an experiment that were not matched with any other
+     * optimization from the other method.
+     *
      * @param experimentId the experiment ID of the returned optimizations
      * @return a list of extra optimizations
      */
@@ -43,6 +44,7 @@ public interface OptimizationMatching {
 
     /**
      * Gets a list of optimization that were present in both compiled methods.
+     *
      * @return a list of optimizations present in both compiled methods
      */
     List<Optimization> getMatchedOptimizations();

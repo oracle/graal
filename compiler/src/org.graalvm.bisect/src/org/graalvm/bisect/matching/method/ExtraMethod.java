@@ -72,7 +72,7 @@ public class ExtraMethod {
      * Writes a header identifying this method and
      * {@link Experiment#writeMethodCompilationList(Writer, String) the list of compilations} of
      * this method.
-     * 
+     *
      * @param writer the destination writer
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment
@@ -88,7 +88,7 @@ public class ExtraMethod {
     /**
      * Writes the full description of the method. Includes {@link #writeHeaderAndCompilationList a
      * header and the list of compilations} and optimization trees for each compilation.
-     * 
+     *
      * @param writer the destination writer
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment

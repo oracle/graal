@@ -39,12 +39,14 @@ import org.graalvm.bisect.util.IteratorUtil;
  */
 public class GreedyMethodMatcher implements MethodMatcher {
     /**
-     * Matches pairs of methods by their signature and then greedily matches their respective compilation (executions).
-     * For a given Java method (in both experiments), the hottest executions (with the longest execution period) are
-     * matched first. Then again the pair of the hottest execution is paired until no more pairs are left. Only hot
-     * executions and methods that have a hot execution are considered. Returns an object describing the pairs of
-     * matched methods, matched executed methods and also the list of (executed) methods that do not have a pair - extra
-     * methods.
+     * Matches pairs of methods by their signature and then greedily matches their respective
+     * compilation (executions). For a given Java method (in both experiments), the hottest
+     * executions (with the longest execution period) are matched first. Then again the pair of the
+     * hottest execution is paired until no more pairs are left. Only hot executions and methods
+     * that have a hot execution are considered. Returns an object describing the pairs of matched
+     * methods, matched executed methods and also the list of (executed) methods that do not have a
+     * pair - extra methods.
+     *
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment
      * @return the description of the computed matching

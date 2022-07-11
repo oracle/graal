@@ -33,13 +33,43 @@ import java.util.stream.Collectors;
 
 import org.graalvm.bisect.util.Writer;
 
+/**
+ * An experiment consisting of all graal-compiled methods and metadata. Additionally, this class
+ * allows its {@link ExecutedMethod executed methods} to be added incrementally. This is necessary
+ * to be able to create an instance of the experiment first and then bind the {@link ExecutedMethod
+ * executed methods} with their {@link Experiment}.
+ */
 public class ExperimentImpl implements Experiment {
+    /**
+     * The list of graal-compiled executed methods belonging to this experiment. The list is empty
+     * initially and gets built incrementally via {@link #addExecutedMethod(ExecutedMethod)}.
+     */
     private final List<ExecutedMethod> executedMethods;
+    /**
+     * The execution ID of this experiment.
+     */
     private final String executionId;
+    /**
+     * The ID of this experiment.
+     */
     private final ExperimentId experimentId;
+    /**
+     * The total period of all executed methods including non-graal executions.
+     */
     private final long totalPeriod;
+    /**
+     * The total number of methods collected by proftool.
+     */
     private final int totalProftoolMethods;
+    /**
+     * A cached sum of execution periods of the {@link #executedMethods}. Initially {@code null} and
+     * computed on demand.
+     */
     private Long graalPeriod;
+    /**
+     * Maps {@link ExecutedMethod#getCompilationMethodName() compilation method names} to methods
+     * with a matching name in this experiment.
+     */
     private final Map<String, List<ExecutedMethod>> methodsByName;
 
     public ExperimentImpl(
@@ -70,6 +100,12 @@ public class ExperimentImpl implements Experiment {
         return totalPeriod;
     }
 
+    /**
+     * Gets the sum of the periods of all graal-compiled methods.
+     *
+     * @implNote The sum is cached.
+     * @return the total period of graal-compiled methods
+     */
     @Override
     public long getGraalPeriod() {
         if (graalPeriod != null) {

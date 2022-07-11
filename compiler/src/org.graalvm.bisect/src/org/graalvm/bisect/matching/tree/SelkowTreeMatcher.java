@@ -32,8 +32,10 @@ import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.core.optimization.OptimizationTreeNode;
 
 /**
- * Creates a matching by computing an optimal edit script between two optimizations trees. The allowed set of operations
- * is leaf insertion, leaf deletion and node relabelling.
+ * Creates a matching by computing an optimal edit script between two optimizations trees using
+ * <a href="https://doi.org/10.1016/0020-0190(77)90064-3">Selkow's tree edit distance</a>. The
+ * allowed set of operations is leaf insertion, leaf deletion and node relabelling. The original
+ * algorithm is extended with the collection of performed operations.
  */
 public class SelkowTreeMatcher implements TreeMatcher {
     /**
@@ -129,7 +131,8 @@ public class SelkowTreeMatcher implements TreeMatcher {
     }
 
     /**
-     * Gets the size of node's subtree with memoization.
+     * Gets the size of the node's subtree with memoization.
+     *
      * @param node the root of the subtree
      * @return the size of the node's subtree
      */
@@ -147,6 +150,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
 
     /**
      * Gets the cost of the insertion of the node's subtree.
+     *
      * @param node the root of the subtree to be inserted
      * @return the cost to insert the node's subtree
      */
@@ -155,7 +159,8 @@ public class SelkowTreeMatcher implements TreeMatcher {
     }
 
     /**
-     * Gets the cost of deletion of the node's subtree
+     * Gets the cost of deletion of the node's subtree.
+     *
      * @param node the root of the subtree to be deleted
      * @return the cost to delete the node's subtree
      */
@@ -166,7 +171,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
     /**
      * Gets the cost of relabelling the first node to the second node assuming that they are not
      * {@link #nodesEqual equal}.
-     * 
+     *
      * @param node1 the first node
      * @param node2 the second node
      * @return the cost to relabel the first node to the second
@@ -182,7 +187,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
     /**
      * Tests the equality of two nodes. Phases are compared by name, other types are compared by
      * content.
-     * 
+     *
      * @param node1 the first node
      * @param node2 the second node
      * @return true iff the nodes are equal

@@ -33,7 +33,7 @@ import java.util.List;
  * @param <T> the element type
  */
 public class ConcatList<T> implements Iterable<T> {
-    private static class ConcatListIterator<T> implements Iterator<T> {
+    private static final class ConcatListIterator<T> implements Iterator<T> {
         private Node<T> node;
         private ConcatListIterator(Node<T> node) {
             this.node = node;
@@ -57,7 +57,7 @@ public class ConcatList<T> implements Iterable<T> {
         return new ConcatListIterator<>(head);
     }
 
-    private static class Node<T> {
+    private static final class Node<T> {
         private Node<T> next;
         private final T item;
 
@@ -80,7 +80,7 @@ public class ConcatList<T> implements Iterable<T> {
             assert tail == null;
             tail = head = next;
         } else {
-            assert tail != null && tail.next == null;;
+            assert tail != null && tail.next == null;
             tail.next = next;
             tail = next;
         }
@@ -88,7 +88,7 @@ public class ConcatList<T> implements Iterable<T> {
 
     /**
      * Adds an item to the front of the list.
-     * 
+     *
      * @param item the item to be added
      */
     public void prepend(T item) {
@@ -98,7 +98,6 @@ public class ConcatList<T> implements Iterable<T> {
             tail = head = front;
         } else {
             assert tail != null && tail.next == null;
-            ;
             front.next = head;
             head = front;
         }
@@ -122,7 +121,7 @@ public class ConcatList<T> implements Iterable<T> {
             head = otherList.head;
             tail = otherList.tail;
         } else {
-            assert tail != null && tail.next == null;;
+            assert tail != null && tail.next == null;
             tail.next = otherList.head;
             tail = otherList.tail;
         }

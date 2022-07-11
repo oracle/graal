@@ -36,6 +36,7 @@ public class FlatTreeMatcher implements TreeMatcher {
 
     /**
      * Creates a matching of optimization trees by flattening them to lists of optimization.
+     *
      * @param method1 the method from the first experiment
      * @param method2 the method from the second experiment
      * @return a description of matched and extra optimizations

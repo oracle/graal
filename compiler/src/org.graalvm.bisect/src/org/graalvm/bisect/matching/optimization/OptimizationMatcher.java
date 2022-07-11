@@ -24,9 +24,9 @@
  */
 package org.graalvm.bisect.matching.optimization;
 
-import org.graalvm.bisect.core.optimization.Optimization;
-
 import java.util.List;
+
+import org.graalvm.bisect.core.optimization.Optimization;
 
 /**
  * Creates a matching between optimizations of two executed methods.
@@ -34,6 +34,7 @@ import java.util.List;
 public interface OptimizationMatcher {
     /**
      * Creates a matching between optimizations of two executed methods.
+     *
      * @param optimizations1 a list of optimizations from a method in the first experiment
      * @param optimizations2 a list of optimizations from a method in the second experiment
      * @return an object that describes matched and extra optimizations

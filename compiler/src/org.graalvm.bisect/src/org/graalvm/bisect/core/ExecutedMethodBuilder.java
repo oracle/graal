@@ -26,12 +26,40 @@ package org.graalvm.bisect.core;
 
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
 
-
 /**
  * Builder for an executed method. Used during parsing to build a complete executed method.
  * @see ExecutedMethod
  */
 public class ExecutedMethodBuilder {
+    /**
+     * The execution ID as parsed from the optimization log.
+     */
+    private String executionId;
+    /**
+     * The compilation ID of the executed method as reported in the optimization log. Matches
+     * "compileId" in the proftool output.
+     */
+    private String compilationId;
+    /**
+     * The full signature of the method including parameter types as reported in the optimization
+     * log.
+     */
+    private String compilationMethodName;
+    /**
+     * The root optimization phase of this method, which holds all optimization phases applied in
+     * this compilation.
+     */
+    private OptimizationPhase rootPhase;
+    /**
+     * The experiment to which this executed method belongs.
+     */
+    private Experiment experiment;
+    /**
+     * The period of execution of this method as reported by proftool. If not explicitly set, assume
+     * that the method was not executed.
+     */
+    private long period = 0;
+
     public void setCompilationId(String compilationId) {
         this.compilationId = compilationId;
     }
@@ -60,22 +88,11 @@ public class ExecutedMethodBuilder {
         this.experiment = experiment;
     }
 
-    private String executionId;
-    private String compilationId;
-    private String compilationMethodName;
-    private OptimizationPhase rootPhase;
-    private Experiment experiment;
-
-    /**
-     * The period of execution of this method as reported by proftool. If not explicitly set, assume that the method was
-     * not executed.
-     */
-    private long period = 0;
-
     public ExecutedMethod build() {
         assert compilationId != null;
         assert compilationMethodName != null;
         assert experiment != null;
+        assert experiment.getExecutionId().equals(executionId);
         return new ExecutedMethodImpl(compilationId, compilationMethodName, rootPhase, period, experiment);
     }
 

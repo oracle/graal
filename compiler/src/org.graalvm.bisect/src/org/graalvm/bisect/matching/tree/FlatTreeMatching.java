@@ -42,7 +42,9 @@ public class FlatTreeMatching implements TreeMatching {
     }
 
     /**
-     * Writes the list optimizations in both experiments and the lists of optimizations that are only in one experiment.
+     * Writes the list optimizations in both experiments and the lists of optimizations that are
+     * only in one experiment.
+     *
      * @param writer the destination writer
      */
     @Override
@@ -61,6 +63,7 @@ public class FlatTreeMatching implements TreeMatching {
 
     /**
      * Writes the list of optimizations only in one of the experiments.
+     *
      * @param writer the destination writer
      * @param experimentId write optimizations that are only in this experiment
      * @param optimizationMatching the optimization matching

@@ -24,12 +24,12 @@
  */
 package org.graalvm.bisect.parser.experiment;
 
-import org.graalvm.bisect.core.ExperimentId;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
+
+import org.graalvm.bisect.core.ExperimentId;
 
 /**
  * Represents a list of files from which an experiment is parsed.
@@ -37,19 +37,22 @@ import java.util.List;
 public interface ExperimentFiles {
     /**
      * Gets the ID of the experiment to which the files belong.
+     *
      * @return the ID of the experiment
      */
     ExperimentId getExperimentId();
 
     /**
      * Gets the {@link Reader} reading the JSON output of proftool (mx profjson).
+     *
      * @return the reader with the proftool output
      */
     Reader getProftoolOutput() throws FileNotFoundException;
 
     /**
-     * Gets the list of readers reading an optimization log. Each reader should describe one compiled method. All read
-     * files must belong to one experiment with a matching execution ID.
+     * Gets the list of readers reading an optimization log. Each reader should describe one
+     * compiled method. All read files must belong to one experiment with a matching execution ID.
+     *
      * @return the list of readers each reading an optimization log
      */
     List<Reader> getOptimizationLogs() throws IOException;

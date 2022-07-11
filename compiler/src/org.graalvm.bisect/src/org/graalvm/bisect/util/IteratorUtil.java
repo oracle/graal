@@ -28,9 +28,10 @@ import java.util.Iterator;
 
 public final class IteratorUtil {
     /**
-     * Combines two iterators into an iterator of pairs with as many elements as the longer iterator. Elements are
-     * paired in the order of the original iterators. When one of the iterators is exhausted, {@code null}s are returned
-     * in its place.
+     * Combines two iterators into an iterator of pairs with as many elements as the longer
+     * iterator. Elements are paired in the order of the original iterators. When one of the
+     * iterators is exhausted, {@code null}s are returned in its place.
+     *
      * @param lhs the first iterator
      * @param rhs the second iterator
      * @param <T> the element type

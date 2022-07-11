@@ -84,7 +84,7 @@ abstract class ValuedArgument<T> extends Argument {
 
     /**
      * Parse the argument value from a string.
-     * 
+     *
      * @param value the value that is parsed
      * @throws InvalidArgumentException the value could not be parsed
      */

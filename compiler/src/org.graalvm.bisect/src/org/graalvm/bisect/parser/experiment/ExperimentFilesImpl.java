@@ -24,8 +24,6 @@
  */
 package org.graalvm.bisect.parser.experiment;
 
-import org.graalvm.bisect.core.ExperimentId;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -33,6 +31,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.graalvm.bisect.core.ExperimentId;
 
 /**
  * Represents files belonging to a single experiment.
@@ -47,10 +47,13 @@ public class ExperimentFilesImpl implements ExperimentFiles {
     private final String proftoolOutputPath;
 
     /**
-     * Constructs experiment files from paths to the proftool output and the directory with an optimization log.
+     * Constructs experiment files from paths to the proftool output and the directory with an
+     * optimization log.
+     *
      * @param experimentId the ID of this experiment
      * @param proftoolOutputPath the file path to the JSON proftool output (mx profjson)
-     * @param optimizationLogPath the path to the directory which contains optimization logs of the same execution
+     * @param optimizationLogPath the path to the directory which contains optimization logs of the
+     *            same execution
      */
     public ExperimentFilesImpl(ExperimentId experimentId, String proftoolOutputPath, String optimizationLogPath) {
         this.experimentId = experimentId;

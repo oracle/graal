@@ -130,7 +130,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
 
     /**
      * Adds an effect that reports an optimization if the optimization log is enabled.
-     * 
+     *
      * @param optimizationLog the optimization log
      * @param logConsumer the function that reports a transformation
      */

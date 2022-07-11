@@ -39,7 +39,7 @@ import org.graalvm.bisect.parser.args.UnknownArgumentException;
 import org.junit.Test;
 
 public class ArgumentParserTest {
-    private final static double DELTA = 0.000001;
+    private static final double DELTA = 0.000001;
     private static class ProgramArguments {
         static final double DEFAULT_DOUBLE = 3.14;
         static final int DEFAULT_INT = 42;
@@ -76,7 +76,7 @@ public class ArgumentParserTest {
         programArguments.argumentParser.parse(args);
         assertEquals(args[2], programArguments.stringArgument.getValue());
         assertEquals(1.23, programArguments.doubleArgument.getValue(), DELTA);
-        assertEquals(123, programArguments.integerArgument.getValue().intValue());;
+        assertEquals(123, programArguments.integerArgument.getValue().intValue());
         assertTrue(programArguments.flagArgument.getValue());
     }
 

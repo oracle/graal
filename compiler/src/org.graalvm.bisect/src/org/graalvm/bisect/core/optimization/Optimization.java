@@ -33,21 +33,25 @@ import org.graalvm.bisect.util.Writer;
  */
 public interface Optimization extends OptimizationTreeNode {
     /**
-     * Gets the name of this optimization. Corresponds to the name of the compiler phase or another class which
-     * performed this optimization.
+     * Gets the name of this optimization. Corresponds to the name of the compiler phase or another
+     * class which performed this optimization.
+     *
      * @return the name of this optimization
      */
     String getOptimizationName();
 
     /**
-     * Gets the map of additional properties of this optimization, mapped by the name of the property.
+     * Gets the map of additional properties of this optimization, mapped by property name.
+     *
      * @return the map of additional properties
      */
     Map<String, Object> getProperties();
 
     /**
-     * Gets the bci of the position where the optimization was performed. The bci can come from a NodeSourcePosition
-     * of a given node or from a FrameState. The value {@link #NO_BCI} means that no fitting bci could be assigned.
+     * Gets the bci of the position where this optimization was performed. The bci can come from a
+     * NodeSourcePosition of a given node or from a FrameState. The value {@link #NO_BCI} means that
+     * no fitting bci could be assigned.
+     *
      * @return the byte code index of this optimization
      */
     int getBCI();
@@ -57,6 +61,12 @@ public interface Optimization extends OptimizationTreeNode {
      */
     int NO_BCI = -1;
 
+    /**
+     * Writes the representation of this subtree to the destination writer. This is equivalent to
+     * writing the representation of this node, because an optimization has no children.
+     *
+     * @param writer the destination writer
+     */
     @Override
     default void writeRecursive(Writer writer) {
         writeHead(writer);

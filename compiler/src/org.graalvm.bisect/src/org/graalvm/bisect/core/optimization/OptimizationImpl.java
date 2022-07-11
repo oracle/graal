@@ -30,10 +30,29 @@ import java.util.Objects;
 
 import org.graalvm.bisect.util.Writer;
 
+/**
+ * Represents an optimization in a compiled method at a particular BCI.
+ */
 public class OptimizationImpl implements Optimization {
+    /**
+     * Gets the bci of the position where this optimization was performed. The bci can come from a
+     * NodeSourcePosition of a given node or from a FrameState. The value {@link #NO_BCI} means that
+     * no fitting bci could be assigned.
+     */
     private final int bci;
+    /**
+     * The name of this optimization. Corresponds to the name of the compiler phase or another class
+     * which performed this optimization.
+     */
     private final String optimizationName;
+    /**
+     * The name of the event that occurred, which describes this optimization entry.
+     */
     private final String eventName;
+    /**
+     * The map of additional properties of this optimization, mapped by property name. If there are
+     * no properties, the field can be {@code null} to save space.
+     */
     private final Map<String, Object> properties;
 
     public OptimizationImpl(String optimizationName, String eventName, int bci, Map<String, Object> properties) {
@@ -51,7 +70,7 @@ public class OptimizationImpl implements Optimization {
     /**
      * Gets the name of the event that occurred. Compared to {@link #getOptimizationName()}, it
      * should return a more specific description of the optimization.
-     * 
+     *
      * @return the name of the event that occurred
      */
     @Override
@@ -61,6 +80,9 @@ public class OptimizationImpl implements Optimization {
 
     @Override
     public Map<String, Object> getProperties() {
+        if (properties == null) {
+            return Map.of();
+        }
         return properties;
     }
 

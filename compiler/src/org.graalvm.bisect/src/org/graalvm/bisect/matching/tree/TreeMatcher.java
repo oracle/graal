@@ -32,6 +32,7 @@ import org.graalvm.bisect.core.ExecutedMethod;
 public interface TreeMatcher {
     /**
      * Matches the optimization trees of the provided methods.
+     *
      * @param method1 the method from the first experiment
      * @param method2 the method from the second experiment
      * @return a description of the computed tree matching

@@ -30,6 +30,10 @@ import java.util.List;
 import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.Experiment;
 
+/**
+ * Represents a matching between methods of two experiments and the matching of their respective
+ * compilations. The matching is built incrementally by adding matched/extra methods.
+ */
 class MethodMatchingImpl implements MethodMatching {
     private final ArrayList<MatchedMethod> matchedMethods = new ArrayList<>();
     private final ArrayList<ExtraMethod> extraMethods = new ArrayList<>();

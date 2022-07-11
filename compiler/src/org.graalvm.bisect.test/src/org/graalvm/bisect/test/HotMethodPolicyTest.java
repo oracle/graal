@@ -24,9 +24,12 @@
  */
 package org.graalvm.bisect.test;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.Set;
+
 import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.ExecutedMethodImpl;
-import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.ExperimentImpl;
 import org.graalvm.bisect.core.HotMethodPolicy;
@@ -34,21 +37,16 @@ import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
-
 public class HotMethodPolicyTest {
     @Test
     public void testHotMethodPolicy() {
         OptimizationPhase rootPhase = new OptimizationPhaseImpl("RootPhase");
         ExperimentImpl experiment = new ExperimentImpl("1", ExperimentId.ONE, 100, 100);
-        experiment.addExecutedMethod(new ExecutedMethodImpl("foo1", "foo", rootPhase,5, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("foo2", "foo", rootPhase,35, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("foo3", "foo", rootPhase,30, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("bar1", "bar", rootPhase,20, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("baz1", "bar", rootPhase,10, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("foo1", "foo", rootPhase, 5, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("foo2", "foo", rootPhase, 35, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("foo3", "foo", rootPhase, 30, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("bar1", "bar", rootPhase, 20, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("baz1", "bar", rootPhase, 10, experiment));
 
         HotMethodPolicy hotMethodPolicy = new HotMethodPolicy();
         hotMethodPolicy.markHotMethods(experiment);

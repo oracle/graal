@@ -33,7 +33,8 @@ import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
 
 /**
- * A mutable matching of optimizations between two compilations of the same method in two experiments.
+ * A matching of optimizations between two compilations of the same method in two experiments. Built
+ * incrementally by adding matched/extra optimizations.
  */
 class OptimizationMatchingImpl implements OptimizationMatching {
     private final Map<ExperimentId, List<Optimization>> extraOptimizations = new HashMap<>();

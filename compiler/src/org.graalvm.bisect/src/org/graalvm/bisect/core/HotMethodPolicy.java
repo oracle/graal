@@ -45,11 +45,13 @@ public class HotMethodPolicy {
     private double hotMethodPercentile = 0.9;
 
     /**
-     * Marks the longest executing methods of an experiment as hot. The methods are sorted by decreasing periods
-     * of execution. The first {@link #hotMethodMinLimit} methods are always marked as hot. The methods which fit
-     * into the {@link #hotMethodPercentile} of total graal execution are marked as hot. A maximum of
-     * {@link #hotMethodMaxLimit} is marked as hot. The method calls {@link ExecutedMethod#setHot} for each method of
-     * the experiment to avoid an inconsistent state.
+     * Marks the longest executing methods of an experiment as hot. The methods are sorted by
+     * decreasing periods of execution. The first {@link #hotMethodMinLimit} methods are always
+     * marked as hot. The methods which fit into the {@link #hotMethodPercentile} of total graal
+     * execution are marked as hot. A maximum of {@link #hotMethodMaxLimit} is marked as hot. The
+     * method calls {@link ExecutedMethod#setHot} for each method of the experiment to avoid an
+     * inconsistent state.
+     *
      * @param experiment the experiment which is evaluated for hot methods
      */
     public void markHotMethods(Experiment experiment) {
@@ -67,6 +69,7 @@ public class HotMethodPolicy {
 
     /**
      * Sets the minimum number of methods to mark as hot.
+     *
      * @param hotMethodMinLimit the minimum number of methods to mark as hot
      */
     public void setHotMethodMinLimit(int hotMethodMinLimit) {
@@ -75,6 +78,7 @@ public class HotMethodPolicy {
 
     /**
      * Sets maximum number of methods to mark as hot.
+     *
      * @param hotMethodMaxLimit the maximum number of methods to mark as hot
      */
     public void setHotMethodMaxLimit(int hotMethodMaxLimit) {
@@ -83,7 +87,9 @@ public class HotMethodPolicy {
 
     /**
      * Sets the percentile of the execution period that is spent executing hot methods.
-     * @param hotMethodPercentile the percentile of the execution period that is spent executing hot methods
+     *
+     * @param hotMethodPercentile the percentile of the execution period that is spent executing hot
+     *            methods
      */
     public void setHotMethodPercentile(double hotMethodPercentile) {
         this.hotMethodPercentile = hotMethodPercentile;

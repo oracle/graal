@@ -32,14 +32,14 @@ public interface Writer {
     /**
      * Write a string to the output with the current indentation level without a linefeed at the
      * end.
-     * 
+     *
      * @param output the string to be written
      */
     void write(String output);
 
     /**
      * Writes a string to the output with the current indentation level with a linefeed at the end.
-     * 
+     *
      * @param output the string to be written
      */
     void writeln(String output);
@@ -56,7 +56,7 @@ public interface Writer {
 
     /**
      * Increases the indentation level by a non-negative delta.
-     * 
+     *
      * @param delta the values that is added to the current indentation level
      */
     void increaseIndent(int delta);
@@ -68,14 +68,14 @@ public interface Writer {
 
     /**
      * Decreases the indentation level by a non-negative delta.
-     * 
+     *
      * @param delta the value that is subtracted from the current indentation level
      */
     void decreaseIndent(int delta);
 
     /**
      * Sets a string prefix that is prepended to each written line after the indentation.
-     * 
+     *
      * @param prefix the string prefix that will be prepended to each written line
      */
     void setPrefixAfterIndent(String prefix);

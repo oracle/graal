@@ -46,7 +46,7 @@ public class FlagArgument extends Argument {
 
     /**
      * Gets the value of the flag.
-     * 
+     *
      * @return the value of the flag
      */
     public boolean getValue() {

@@ -26,12 +26,36 @@ package org.graalvm.bisect.core;
 
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
 
+/**
+ * Represents a graal-compiled executed method.
+ */
 public class ExecutedMethodImpl implements ExecutedMethod {
+    /**
+     * The compilation ID of the executed method as reported in the optimization log. Matches
+     * "compileId" in the proftool output.
+     */
     private final String compilationId;
+    /**
+     * The full signature of the method including parameter types as reported in the optimization
+     * log.
+     */
     private final String compilationMethodName;
+    /**
+     * The root optimization phase of this method, which holds all optimization phases applied in
+     * this compilation.
+     */
     private final OptimizationPhase rootPhase;
+    /**
+     * The period of execution as reported by proftool.
+     */
     private final long period;
+    /**
+     * The experiment to which this executed method belongs.
+     */
     private final Experiment experiment;
+    /**
+     * The hot flag of the executed method.
+     */
     private boolean hot;
 
     public ExecutedMethodImpl(String compilationId,

@@ -31,13 +31,16 @@ import java.util.List;
  */
 public interface MethodMatching {
     /**
-     * Gets the list of pairs of matched methods, each of which holds a matching of its compilations.
+     * Gets the list of pairs of matched methods, each of which holds a matching of its
+     * compilations.
+     *
      * @return the list of matched methods
      */
     List<MatchedMethod> getMatchedMethods();
 
     /**
      * Gets the list of the methods that do not have a pair.
+     *
      * @return the list of methods without a pair
      */
     List<ExtraMethod> getExtraMethods();

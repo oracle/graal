@@ -26,10 +26,14 @@ package org.graalvm.bisect.core.optimization;
 
 import java.util.List;
 
+/**
+ * Represents an optimization phase in the optimization tree.
+ */
 public interface OptimizationPhase extends OptimizationTreeNode {
     /**
-     * Creates and returns a list of all optimizations performed directly in this phase and indirectly in its subphases,
-     * preserving the order.
+     * Creates and returns a list of all optimizations performed directly in this phase and
+     * indirectly in its subphases, preserving the order.
+     *
      * @return the list of direct and indirect optimizations
      */
     List<Optimization> getOptimizationsRecursive();
