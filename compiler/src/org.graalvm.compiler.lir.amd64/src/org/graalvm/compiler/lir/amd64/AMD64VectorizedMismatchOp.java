@@ -46,6 +46,7 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
@@ -60,6 +61,13 @@ import jdk.vm.ci.meta.Value;
  * Emits code to find the index of the first non-equal elements in two arrays, using SIMD
  * instructions where possible.
  */
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
+        lineStart = 6453,
+        lineEnd   = 6671,
+        commit    = "4ab77ac60df78eedb16ebe142a51f703165e808d",
+        sha1      = "128d88224b8fc7fa9283072966a28c14fdc1eda5")
+// @formatter:on
 @Opcode("VECTORIZED_MISMATCH")
 public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64VectorizedMismatchOp> TYPE = LIRInstructionClass.create(AMD64VectorizedMismatchOp.class);
