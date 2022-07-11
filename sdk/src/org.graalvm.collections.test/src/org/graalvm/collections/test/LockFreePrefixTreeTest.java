@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,7 @@ public class LockFreePrefixTreeTest {
         }
     }
 
-    private void inParallel(int parallelism, Consumer<Integer> body) {
+    private static void inParallel(int parallelism, Consumer<Integer> body) {
         Thread[] threads = new Thread[parallelism];
         for (int t = 0; t < parallelism; t++) {
             final int threadIndex = t;
@@ -201,13 +201,13 @@ public class LockFreePrefixTreeTest {
                 insert(tree.root(), depth);
             }
 
-            private void insert(LockFreePrefixTree.Node node, int depth) {
-                if (depth == 0) {
+            private void insert(LockFreePrefixTree.Node node, int currentDepth) {
+                if (currentDepth == 0) {
                     node.incValue();
                 } else {
                     for (long i = 1L; i < multiplier; i++) {
                         final LockFreePrefixTree.Node child = node.at(i);
-                        insert(child, depth - 1);
+                        insert(child, currentDepth - 1);
                     }
                 }
             }

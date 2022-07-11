@@ -225,7 +225,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         kit.createReturn(returnValue, returnValue.getStackKind());
     }
 
-    private void patchNodeSourcePosition(InvokeWithExceptionNode invoke) {
+    private static void patchNodeSourcePosition(InvokeWithExceptionNode invoke) {
         NodeSourcePosition position = invoke.getNodeSourcePosition();
         if (position != null && position.getBCI() == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             invoke.setNodeSourcePosition(new NodeSourcePosition(position.getCaller(), position.getMethod(), invoke.bci()));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,6 +83,8 @@ import java.util.function.BiFunction;
  * does the modification, and then increments the seqlock's value by one to make it even again. The
  * volatile access semantics of the seqlock's value, along with the fact that the node's data only
  * "grows" over time, are the properties that ensure the correctness of this implementation.
+ *
+ * @since 22.3
  */
 public class PrefixTree {
     private static final int INITIAL_LINEAR_NODE_SIZE = 3;
@@ -91,11 +93,17 @@ public class PrefixTree {
     private static final long EMPTY_KEY = 0L;
     private static final double HASH_NODE_LOAD_FACTOR = 0.5;
 
-    public interface Visitor<R> {
+    interface Visitor<R> {
         R visit(Node n, List<R> childResults);
     }
 
+    /**
+     * @since 22.3
+     */
     public static final class Node extends AtomicLong {
+
+        private static final long serialVersionUID = -1L;
+
         private volatile long seqlock;
         private volatile long[] keys;
         private volatile Node[] children;
@@ -108,18 +116,42 @@ public class PrefixTree {
             this.arity = 0;
         }
 
+        /**
+         * @return The value of the {@link LockFreePrefixTree.Node}
+         * @since 22.3
+         */
         public long value() {
             return get();
         }
 
+        /**
+         * Increment value.
+         *
+         * @return newly incremented value of the {@link LockFreePrefixTree.Node}.
+         *
+         * @since 22.3
+         */
         public long incValue() {
             return incrementAndGet();
         }
 
+        /**
+         * Set the value for the {@link LockFreePrefixTree.Node}.
+         *
+         * @param value the new value.
+         * @since 22.3
+         */
         public void setValue(long value) {
             set(value);
         }
 
+        /**
+         * Get existing (or create if missing) child with the given key.
+         *
+         * @param key the key of the child.
+         * @return The child with the given childKey.
+         * @since 22.3
+         */
         public Node at(long key) {
             if (key == EMPTY_KEY) {
                 throw new IllegalArgumentException("Key in the prefix tree cannot be 0.");
@@ -128,6 +160,11 @@ public class PrefixTree {
             return child != null ? child : tryAddChild(key);
         }
 
+        /**
+         * @return the value of the seqlock.
+         *
+         * @since 22.3
+         */
         public long seqlockValue() {
             return seqlock;
         }
@@ -149,7 +186,7 @@ public class PrefixTree {
             return child;
         }
 
-        private Node findChild(long[] keysSnapshot, Node[] childrenSnapshot, long key) {
+        private static Node findChild(long[] keysSnapshot, Node[] childrenSnapshot, long key) {
             if (keysSnapshot == null || childrenSnapshot == null) {
                 // No children were fully added yet.
                 return null;
@@ -296,6 +333,7 @@ public class PrefixTree {
             return 0x7fff_ffff & (int) (v ^ (v >> 32));
         }
 
+        @SuppressWarnings("unused")
         private synchronized <R> R bottomUp(Visitor<R> visitor) {
             List<R> results = new ArrayList<>();
             Node[] childrenSnapshot = children;
@@ -307,6 +345,21 @@ public class PrefixTree {
             return visitor.visit(this, results);
         }
 
+        /**
+         * Traverse the tree top-down while maintaining a context.
+         *
+         * The context is a generic data structure corresponding to the depth of the traversal, i.e.
+         * given the currentContext and a createContext function, a new context is created for each
+         * visited child using the createContext function, starting with initialContext.
+         *
+         * @param currentContext The context for the root of the tree
+         * @param createContext A function defining how the context for children is created
+         * @param consumeValue A function that consumes the nodes value
+         * @param <C> The type of the context
+         *
+         * @since 22.3
+         */
+        @SuppressWarnings("unused")
         public synchronized <C> void topDown(C currentContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
             Node[] childrenSnapshot = children;
             long[] keysSnapshot = keys;
@@ -326,6 +379,9 @@ public class PrefixTree {
             }
         }
 
+        /**
+         * @since 22.3
+         */
         @Override
         public String toString() {
             return "Node<" + value() + ">";
@@ -334,19 +390,23 @@ public class PrefixTree {
 
     private final Node root;
 
+    /**
+     * Create new {@link PrefixTree} with root being a Node with key 0.
+     *
+     * @since 22.3
+     */
     public PrefixTree() {
         this.root = new Node();
     }
 
+    /**
+     * The root node of the tree.
+     *
+     * @return the root of the tree
+     *
+     * @since 22.3
+     */
     public Node root() {
         return root;
-    }
-
-    public <R> R bottomUp(Visitor<R> visitor) {
-        return root.bottomUp(visitor);
-    }
-
-    public <C> void topDown(C initialContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
-        root.topDown(initialContext, createContext, consumeValue);
     }
 }

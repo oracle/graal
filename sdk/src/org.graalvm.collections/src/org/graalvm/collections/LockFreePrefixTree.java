@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 
 package org.graalvm.collections;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -72,27 +71,39 @@ import java.util.function.BiFunction;
  * of at least a single thread in the execution. Additionally, any growth operations occur
  * atomically, as we perform a CAS with the reference to the Array to a new, freshly allocated array
  * object.
+ *
+ * @since 22.3
  */
 public class LockFreePrefixTree {
+    /**
+     * @since 22.3
+     */
     public static class Node extends AtomicLong {
 
-        public interface Visitor<R> {
-            R visit(Node n, List<R> childResults);
-        }
+        private static final long serialVersionUID = -1L;
 
         private static final class LinearChildren extends AtomicReferenceArray<Node> {
+
+            private static final long serialVersionUID = -1L;
+
             LinearChildren(int length) {
                 super(length);
             }
         }
 
         private static final class HashChildren extends AtomicReferenceArray<Node> {
+
+            private static final long serialVersionUID = -1L;
+
             HashChildren(int length) {
                 super(length);
             }
         }
 
         private static final class FrozenNode extends Node {
+
+            private static final long serialVersionUID = -1L;
+
             FrozenNode() {
                 super(-1);
             }
@@ -110,40 +121,65 @@ public class LockFreePrefixTree {
 
         private static final int MAX_HASH_SKIPS = 10;
 
-        private static final AtomicReferenceFieldUpdater<Node, AtomicReferenceArray> CHILDREN_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Node.class, AtomicReferenceArray.class, "children");
+        @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<Node, AtomicReferenceArray> CHILDREN_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Node.class,
+                        AtomicReferenceArray.class, "children");
 
         private final long key;
 
         private volatile AtomicReferenceArray<Node> children;
 
-        public Node(long key) {
+        private Node(long key) {
             this.key = key;
         }
 
+        /**
+         * @return The value of the {@link Node}
+         * @since 22.3
+         */
         public long value() {
             return get();
         }
 
-        public long getKey() {
+        private long getKey() {
             return this.key;
         }
 
+        /**
+         * Set the value for the {@link Node}.
+         * 
+         * @param value the new value.
+         * @since 22.3
+         */
         public void setValue(long value) {
             set(value);
         }
 
+        /**
+         * Increment value.
+         * 
+         * @return newly incremented value of the {@link Node}.
+         *
+         * @since 22.3
+         */
         public long incValue() {
             return incrementAndGet();
         }
 
+        /**
+         * Get existing (or create if missing) child with the given key.
+         * 
+         * @param childKey the key of the child.
+         * @return The child with the given childKey.
+         * @since 22.3
+         */
         @SuppressWarnings("unchecked")
-        public Node at(long key) {
+        public Node at(long childKey) {
             ensureChildren();
             while (true) {
                 AtomicReferenceArray<Node> children0 = readChildren();
                 if (children0 instanceof LinearChildren) {
                     // Find first empty slot.
-                    Node newChild = getOrAddLinear(key, children0);
+                    Node newChild = getOrAddLinear(childKey, children0);
                     if (newChild != null) {
                         return newChild;
                     } else {
@@ -152,7 +188,7 @@ public class LockFreePrefixTree {
                     }
                 } else {
                     // children0 instanceof HashChildren.
-                    Node newChild = getOrAddHash(key, children0);
+                    Node newChild = getOrAddHash(childKey, children0);
                     if (newChild != null) {
                         return newChild;
                     } else {
@@ -165,24 +201,24 @@ public class LockFreePrefixTree {
 
         // Postcondition: if return value is null, then no subsequent mutations will be done on the
         // array object ( the children array is full)
-        private Node getOrAddLinear(long key, AtomicReferenceArray<Node> childrenArray) {
+        private static Node getOrAddLinear(long childKey, AtomicReferenceArray<Node> childrenArray) {
             for (int i = 0; i < childrenArray.length(); i++) {
                 Node child = read(childrenArray, i);
                 if (child == null) {
-                    Node newChild = new Node(key);
+                    Node newChild = new Node(childKey);
                     if (cas(childrenArray, i, null, newChild)) {
                         return newChild;
                     } else {
                         // We need to check if the failed CAS was due to another thread inserting
-                        // this key.
+                        // this childKey.
                         Node child1 = read(childrenArray, i);
-                        if (child1.getKey() == key) {
+                        if (child1.getKey() == childKey) {
                             return child1;
                         } else {
                             continue;
                         }
                     }
-                } else if (child.getKey() == key) {
+                } else if (child.getKey() == childKey) {
                     return child;
                 }
             }
@@ -209,20 +245,20 @@ public class LockFreePrefixTree {
             CHILDREN_UPDATER.compareAndSet(this, childrenArray, newChildrenArray);
         }
 
-        private Node getOrAddHash(long key, AtomicReferenceArray<Node> hashTable) {
-            int index = hash(key) % hashTable.length();
+        private static Node getOrAddHash(long childKey, AtomicReferenceArray<Node> hashTable) {
+            int index = hash(childKey) % hashTable.length();
             int skips = 0;
             while (true) {
                 Node node0 = read(hashTable, index);
                 if (node0 == null) {
-                    Node newNode = new Node(key);
+                    Node newNode = new Node(childKey);
                     if (cas(hashTable, index, null, newNode)) {
                         return newNode;
                     } else {
                         // Rechecks same index spot if the node has been inserted by other thread.
                         continue;
                     }
-                } else if (node0 != FROZEN_NODE && node0.getKey() == key) {
+                } else if (node0 != FROZEN_NODE && node0.getKey() == childKey) {
                     return node0;
                 }
                 index = (index + 1) % hashTable.length();
@@ -237,7 +273,7 @@ public class LockFreePrefixTree {
         // This method can only get called in the grow hash function, or when converting from linear
         // to hash, meaning it is only exposed to a SINGLE thread
         // Precondition: reachable from exactly one thread
-        private void addChildToLocalHash(Node node, AtomicReferenceArray<Node> hashTable) {
+        private static void addChildToLocalHash(Node node, AtomicReferenceArray<Node> hashTable) {
             int index = hash(node.getKey()) % hashTable.length();
             while (read(hashTable, index) != null) {
                 index = (index + 1) % hashTable.length();
@@ -260,7 +296,7 @@ public class LockFreePrefixTree {
         }
 
         // Postcondition: Forall element in childrenHash => element != null.
-        private void freezeHash(AtomicReferenceArray<Node> childrenHash) {
+        private static void freezeHash(AtomicReferenceArray<Node> childrenHash) {
             for (int i = 0; i < childrenHash.length(); i++) {
                 if (read(childrenHash, i) == null) {
                     cas(childrenHash, i, null, FROZEN_NODE);
@@ -268,15 +304,15 @@ public class LockFreePrefixTree {
             }
         }
 
-        private boolean cas(AtomicReferenceArray<Node> childrenArray, int i, Node expected, Node updated) {
+        private static boolean cas(AtomicReferenceArray<Node> childrenArray, int i, Node expected, Node updated) {
             return childrenArray.compareAndSet(i, expected, updated);
         }
 
-        private Node read(AtomicReferenceArray<Node> childrenArray, int i) {
+        private static Node read(AtomicReferenceArray<Node> childrenArray, int i) {
             return childrenArray.get(i);
         }
 
-        private void write(AtomicReferenceArray<Node> childrenArray, int i, Node newNode) {
+        private static void write(AtomicReferenceArray<Node> childrenArray, int i, Node newNode) {
             childrenArray.set(i, newNode);
         }
 
@@ -302,7 +338,7 @@ public class LockFreePrefixTree {
             return 0x7fff_ffff & (int) (v ^ (v >> 32));
         }
 
-        public <C> void topDown(C currentContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
+        private <C> void topDown(C currentContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
             AtomicReferenceArray<Node> childrenSnapshot = readChildren();
             consumeValue.accept(currentContext, get());
             if (childrenSnapshot == null) {
@@ -311,13 +347,16 @@ public class LockFreePrefixTree {
             for (int i = 0; i < childrenSnapshot.length(); i++) {
                 Node child = read(childrenSnapshot, i);
                 if (child != null && child != FROZEN_NODE) {
-                    long key = child.getKey();
-                    C extendedContext = createContext.apply(currentContext, key);
+                    long childKey = child.getKey();
+                    C extendedContext = createContext.apply(currentContext, childKey);
                     child.topDown(extendedContext, createContext, consumeValue);
                 }
             }
         }
 
+        /**
+         * @since 22.3
+         */
         @Override
         public String toString() {
             return "Node<" + value() + ">";
@@ -326,14 +365,40 @@ public class LockFreePrefixTree {
 
     private Node root;
 
+    /**
+     * Create new {@link LockFreePrefixTree} with root being a Node with key 0.
+     * 
+     * @since 22.3
+     */
     public LockFreePrefixTree() {
         this.root = new Node(0);
     }
 
+    /**
+     * The root node of the tree.
+     *
+     * @return the root of the tree
+     *
+     * @since 22.3
+     */
     public Node root() {
         return root;
     }
 
+    /**
+     * Traverse the tree top-down while maintaining a context.
+     * 
+     * The context is a generic data structure corresponding to the depth of the traversal, i.e.
+     * given the initialContext and a createContext function, a new context is created for each
+     * visited child using the createContext function, starting with initialContext.
+     * 
+     * @param initialContext The context for the root of the tree
+     * @param createContext A function defining how the context for children is created
+     * @param consumeValue A function that consumes the nodes value
+     * @param <C> The type of the context
+     *
+     * @since 22.3
+     */
     public <C> void topDown(C initialContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
         root.topDown(initialContext, createContext, consumeValue);
     }

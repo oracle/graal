@@ -497,7 +497,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
     }
 
-    static class SpecializationReason implements Comparable<SpecializationReason> {
+    static final class SpecializationReason implements Comparable<SpecializationReason> {
         List<Pair<HostedMethod, Integer>> context;
         Reason reason;
 

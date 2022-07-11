@@ -563,6 +563,7 @@ public abstract class NativeImageCodeCache {
             return false;
         }
 
+        @Override
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
             if (ImageSingletons.contains(ProfilingSampler.class)) {
                 return true;

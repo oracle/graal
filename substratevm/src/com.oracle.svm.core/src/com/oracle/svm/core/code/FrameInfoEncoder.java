@@ -538,8 +538,7 @@ public class FrameInfoEncoder {
         if (needLocalValues) {
             SharedMethod method = (SharedMethod) frame.getMethod();
             if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
-                result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).setMethodId(method);
-                // Debug only.
+                result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
                 ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, result.methodID);
             }
 
