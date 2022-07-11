@@ -142,7 +142,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         // let the shape of the loop decide whether a guest safepoint is needed
                         onSafepointDisabledLoopBegin(loop);
                     }
-                    graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointDisabled", loop.loopBegin());
+                    graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointEliminated", loop.loopBegin());
                 }
             }
         }
