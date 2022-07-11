@@ -138,15 +138,20 @@ public class EffectList implements Iterable<EffectList.Effect> {
         if (!optimizationLog.isOptimizationLogEnabled()) {
             return;
         }
-        add("optimization log", new Effect() {
+        add(new SimpleEffect("optimization log") {
             @Override
             public boolean isVisible() {
                 return false;
             }
 
             @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+            public void apply(StructuredGraph graph) {
                 logConsumer.accept(optimizationLog);
+            }
+
+            @Override
+            public void format(StringBuilder str) {
+
             }
         });
     }
