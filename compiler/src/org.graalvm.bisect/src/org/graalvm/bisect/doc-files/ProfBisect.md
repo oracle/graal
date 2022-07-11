@@ -1,18 +1,27 @@
 # Comparing optimization trees
 
-The `mx profbisect` tool can compare optimization decisions between 2 runs of one application. The profile of the application is captured by [proftool](https://github.com/graalvm/mx/blob/master/README-proftool.md). The data is then used to identify the hottest compilation units. `mx profbisect` pairs hot compilation units across the 2 runs and displays the differences between their optimization trees.
+The `mx profbisect` tool can compare optimization decisions between 2 runs of one application. The profile of the
+application is captured by [proftool](https://github.com/graalvm/mx/blob/master/README-proftool.md). The data is then
+used to identify the hottest compilation units. `mx profbisect` pairs hot compilation units across the 2 runs and
+displays the differences between their optimization trees.
 
 ## Prepare experiment data
 
 First, we choose a benchmark or an application and run it with optimization log, node source positions and proftool.
+Node source positions allow us to correlate individual optimizations with a position in the bytecode and therefore
+compare the optimizations for equality.
 
 ```sh
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=true -Dgraal.DumpPath=/tmp/scrabble_dump
 ```
 
-We do not need to specify `-Dgraal.TrackNodeSourcePositions=true`, because it is inserted implicitly by the `mx benchmark` infrastructure. The dump path is explicitly specified as an absolute path to avoid surprises. If the subject to experiment is not a benchmark supported by `mx`, use `mx profrecord` as per the [proftool documentation](https://github.com/graalvm/mx/blob/master/README-proftool.md).
+We do not need to specify `-Dgraal.TrackNodeSourcePositions=true`, because it is inserted implicitly by
+the `mx benchmark` infrastructure. The dump path is explicitly specified as an absolute path to avoid surprises. If the
+subject to experiment is not a benchmark supported by `mx`, use `mx profrecord` as per
+the [proftool documentation](https://github.com/graalvm/mx/blob/master/README-proftool.md).
 
-The optimization log can be found in `/tmp/scrabble_dump/optimization_log` and the profile in a directory like `./proftool_scrabble_2022-07-05_140847`.
+The optimization log can be found in `/tmp/scrabble_dump/optimization_log` and the profile in a directory
+like `./proftool_scrabble_2022-07-05_140847`.
 
 Before the proftool output can be further processed, it must be converted to a single JSON file.
 
@@ -20,7 +29,8 @@ Before the proftool output can be further processed, it must be converted to a s
 mx profjson -E ./proftool_scrabble_2022-07-05_140847 -o scrabble_prof.json
 ```
 
-Now, we could run the experiment again with a different compiler revision. It is however sufficient to run the same experiment again and get a bit different result, which is caused by the inherent nondeterminism of a JIT compiler.
+Now, we could run the experiment again with a different compiler revision. It is however sufficient to run the same
+experiment again and get a bit different result, which is caused by the inherent nondeterminism of a JIT compiler.
 
 ```sh
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=true -Dgraal.DumpPath=/tmp/scrabble_dump2
@@ -34,8 +44,8 @@ mx profjson -E ./proftool_scrabble_2022-07-05_141855 -o scrabble_prof2.json
 
 ## Compare with profbisect
 
-The `mx profbisect` takes the JSON profiles and optimization logs of 2 experiments and diffs the optimizations performed in their hot methods.
-Run `mx profbisect` without arguments to display its usage.
+The `mx profbisect` takes the JSON profiles and optimization logs of 2 experiments and diffs the optimizations performed
+in their hot methods. Run `mx profbisect` without arguments to display its usage.
 
 ```
 The argument 'proftoolOutput1' is required.
@@ -73,17 +83,25 @@ Experiment 2 with execution ID 23183
 
 ### Hot compilations
 
-Proftool collects samples for all executed methods, which is likely more than the number of graal-compiled methods. The profile determines the share of the time spent executing graal-compiled methods. The tool marks some of the graal-compiled methods with the highest timeshare as *hot*. This is a different term than "hot" in the context of HotSpot. More precisely, the tool marks some of the method *compilations* as hot, whereas all of the methods we have available (rather than their compilations) were considered hot in HotSpot's terminology.
+Proftool collects samples for all executed methods, which is likely more than the number of graal-compiled methods.
+The profile determines the fraction of the time spent executing graal-compiled methods. The tool marks some of the
+graal-compiled methods with the highest timeshare as *hot*. This is a different term than "hot" in the context of
+HotSpot. More precisely, the tool marks some of the method *compilations* as hot, whereas all of the methods we have
+available (rather than their compilations) were considered hot in HotSpot's terminology.
 
 The algorithm to mark hot methods works as follows:
+
 - for each experiment
-    - sort all graal-compiled methods (compilations) by their execution period (highest first)
-    - mark the first 1 compilations as hot (the number can be adjusted by the `--hot-min-limit` parameter)
-    - keep marking the compilations as hot while the total timeshare of hot compilations is less than 90% (`--hot-percentile`) of total graal-compiled method execution and the number of hot compilations is less than 10 (`--hot-max-limit`)
+  - sort all graal-compiled methods (compilations) by their execution period (highest first)
+  - mark the first 1 compilations as hot (the number can be adjusted by the `--hot-min-limit` parameter)
+  - keep marking the compilations as hot while the total timeshare of hot compilations is less than
+    90% (`--hot-percentile`) of total graal-compiled method execution and the number of hot compilations is less than
+    10 (`--hot-max-limit`)
 
 ### Method matching
 
-The result after hot method marking is a set of hot compilations for each experiment. Some of these may be compilations of the same method. The tool can figure this out by grouping the compilations by their compilation method name.
+The result after hot method marking is a set of hot compilations for each experiment. Some of these may be compilations
+of the same method. The tool can figure this out by grouping the compilations by their compilation method name.
 
 From the tool's output:
 
@@ -102,15 +120,20 @@ Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Sp
             9215 (0.06% of graal execution, 0.04% of total)
 ```
 
-We can see that the method compilation name `java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Spliterator)` corresponds to 3 compilations in the 1st experiment and 2 compilations in the 2nd experiment. Some of these compilations were marked as hot.
+We can see that the method compilation
+name `java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Spliterator)`corresponds to 3 compilations
+in the 1st experiment and 2 compilations in the 2nd experiment. Some of these compilations were marked as hot.
 
-In this case, we would like to show the diff between the 2 hot compilations, even though there are 3 * 2 possible pairs of compilations.
-In the general case, the 1st hottest compilation from the 1st experiment is diffed with the 1st hottest compilation from the 2nd experiment, the 2nd hottest is diffed with the 2nd hottest etc. When a hot compilation does not have a pair in the other experiment, the whole optimization tree is simply dumped.
+In this case, we would like to show the diff between the 2 hot compilations, even though there are 3 * 2 possible pairs
+of compilations. In the general case, the 1st hottest compilation from the 1st experiment is diffed with the 1st hottest
+compilation from the 2nd experiment, the 2nd hottest is diffed with the 2nd hottest etc. When a hot compilation does not
+have a pair in the other experiment, the whole optimization tree is simply dumped.
 
 ### Optimization tree diff
 
-The tool displays the diff of optimization trees for each pair of hot compilations. The diff of the optimization tree is reminiscent of the optimization tree
-presented in a previous section. However, each node in the tree (i.e. each optimization phase or individual optimization) has an additional prefix with a meaning:
+The tool displays the diff of optimization trees for each pair of hot compilations. The diff of the optimization tree is
+reminiscent of the optimization tree presented in a previous section. However, each node in the tree (i.e. each
+optimization phase or individual optimization) has an additional prefix with a meaning:
 
 - prefix `-` = this node is present in the 1st compilation but absent in the 2nd compilation
 - prefix `+` = this node is absent in the 1st compilation but present in the 2nd compilation
@@ -133,7 +156,8 @@ Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Sp
                   ...
 ```
 
-We can see a few phase names without any prefix, which means the phases present in both compilations. Further down, we can observe something like this:
+We can see a few phase names without any prefix, which means the phases present in both compilations. Further down, we
+can observe something like this:
 
 ```
 CanonicalizerPhase
@@ -142,4 +166,5 @@ CanonicalizerPhase
     + Canonicalizer CanonicalReplacement at bci 6 {replacedNodeClass: Pi, canonicalNodeClass: Pi}
 ```
 
-The interpretation here is that the `CanonicalizerPhase` was present in both compilations. However, it performed 2 canonical replacements in the 1st compilation and one different replacement in the 2nd compilation.
+The interpretation here is that the `CanonicalizerPhase` was present in both compilations. However, it performed 2
+canonical replacements in the 1st compilation and one different replacement in the 2nd compilation.
