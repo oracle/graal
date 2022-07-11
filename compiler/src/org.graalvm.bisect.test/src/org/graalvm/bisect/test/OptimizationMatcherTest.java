@@ -27,7 +27,6 @@ package org.graalvm.bisect.test;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
@@ -35,18 +34,19 @@ import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.matching.optimization.OptimizationMatcher;
 import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
+import org.graalvm.bisect.util.EconomicMapUtil;
 import org.junit.Test;
 
 public class OptimizationMatcherTest {
     @Test
     public void testSetBasedOptimizationMatcher() {
-        Optimization common1 = new OptimizationImpl("foo", "bar", 1, Map.of("prop", 1));
-        Optimization common2 = new OptimizationImpl("foo", "bar", 1, Map.of("prop", 2));
+        Optimization common1 = new OptimizationImpl("foo", "bar", 1, EconomicMapUtil.of("prop", 1));
+        Optimization common2 = new OptimizationImpl("foo", "bar", 1, EconomicMapUtil.of("prop", 2));
 
         Optimization extra1 = new OptimizationImpl("foo", "bar", 1, null);
-        Optimization extra2 = new OptimizationImpl("foo", "bar", 2, Map.of("prop", 1));
-        Optimization extra3 = new OptimizationImpl("foo", "baz", 1, Map.of("prop", 1));
-        Optimization extra4 = new OptimizationImpl("baz", "bar", 1, Map.of("prop", 1));
+        Optimization extra2 = new OptimizationImpl("foo", "bar", 2, EconomicMapUtil.of("prop", 1));
+        Optimization extra3 = new OptimizationImpl("foo", "baz", 1, EconomicMapUtil.of("prop", 1));
+        Optimization extra4 = new OptimizationImpl("baz", "bar", 1, EconomicMapUtil.of("prop", 1));
 
         List<Optimization> optimizations1 = List.of(extra1, common1, extra2, common2);
         List<Optimization> optimizations2 = List.of(common1, common2, extra3, extra4);

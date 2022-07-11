@@ -25,19 +25,18 @@
 package org.graalvm.bisect.matching.optimization;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * A matching of optimizations between two compilations of the same method in two experiments. Built
  * incrementally by adding matched/extra optimizations.
  */
 class OptimizationMatchingImpl implements OptimizationMatching {
-    private final Map<ExperimentId, List<Optimization>> extraOptimizations = new HashMap<>();
+    private final EconomicMap<ExperimentId, List<Optimization>> extraOptimizations = EconomicMap.create();
     private final List<Optimization> matchedOptimizations = new ArrayList<>();
 
     OptimizationMatchingImpl() {

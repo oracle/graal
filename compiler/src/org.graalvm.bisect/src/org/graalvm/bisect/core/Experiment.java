@@ -25,9 +25,9 @@
 package org.graalvm.bisect.core;
 
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.bisect.util.Writer;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * An experiment consisting of all graal-compiled methods and metadata.
@@ -70,7 +70,7 @@ public interface Experiment {
      * @see ExecutedMethod#getCompilationMethodName()
      * @return a map of lists of executed methods grouped by compilation method name
      */
-    Map<String, List<ExecutedMethod>> groupHotMethodsByName();
+    EconomicMap<String, List<ExecutedMethod>> groupHotMethodsByName();
 
     /**
      * Gets a list of methods with the given compilation method name.

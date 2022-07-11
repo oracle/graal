@@ -24,12 +24,10 @@
  */
 package org.graalvm.bisect.matching.tree;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.core.optimization.OptimizationTreeNode;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * Creates a matching by computing an optimal edit script between two optimizations trees using
@@ -54,11 +52,11 @@ public class SelkowTreeMatcher implements TreeMatcher {
     /**
      * Maps a node to the size of its subtree.
      */
-    private Map<OptimizationTreeNode, Integer> treeSize = null;
+    private EconomicMap<OptimizationTreeNode, Integer> treeSize = null;
 
     @Override
     public EditScript match(ExecutedMethod method1, ExecutedMethod method2) {
-        treeSize = new HashMap<>();
+        treeSize = EconomicMap.create();
         EditScript editScript = new EditScript();
         edit(method1.getRootPhase(), method2.getRootPhase(), editScript, 0);
         treeSize = null;

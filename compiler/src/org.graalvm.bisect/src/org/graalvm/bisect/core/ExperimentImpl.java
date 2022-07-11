@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.graalvm.bisect.util.Writer;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * An experiment consisting of all graal-compiled methods and metadata. Additionally, this class
@@ -121,11 +122,17 @@ public class ExperimentImpl implements Experiment {
     }
 
     @Override
-    public Map<String, List<ExecutedMethod>> groupHotMethodsByName() {
-        Map<String, List<ExecutedMethod>> map = new HashMap<>();
+    public EconomicMap<String, List<ExecutedMethod>> groupHotMethodsByName() {
+        EconomicMap<String, List<ExecutedMethod>> map = EconomicMap.create();
         for (ExecutedMethod method : executedMethods) {
             if (method.isHot()) {
-                List<ExecutedMethod> methods = map.computeIfAbsent(method.getCompilationMethodName(), k -> new ArrayList<>());
+                List<ExecutedMethod> methods;
+                if (map.containsKey(method.getCompilationMethodName())) {
+                    methods = map.get(method.getCompilationMethodName());
+                } else {
+                    methods = new ArrayList<>();
+                    map.put(method.getCompilationMethodName(), methods);
+                }
                 methods.add(method);
             }
         }

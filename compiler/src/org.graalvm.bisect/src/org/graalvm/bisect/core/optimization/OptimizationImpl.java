@@ -25,10 +25,11 @@
 package org.graalvm.bisect.core.optimization;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
+import org.graalvm.bisect.util.EconomicMapUtil;
 import org.graalvm.bisect.util.Writer;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 /**
  * Represents an optimization in a compiled method at a particular BCI.
@@ -53,9 +54,9 @@ public class OptimizationImpl implements Optimization {
      * The map of additional properties of this optimization, mapped by property name. If there are
      * no properties, the field can be {@code null} to save space.
      */
-    private final Map<String, Object> properties;
+    private final EconomicMap<String, Object> properties;
 
-    public OptimizationImpl(String optimizationName, String eventName, int bci, Map<String, Object> properties) {
+    public OptimizationImpl(String optimizationName, String eventName, int bci, EconomicMap<String, Object> properties) {
         this.optimizationName = optimizationName;
         this.eventName = eventName;
         this.bci = bci;
@@ -79,9 +80,9 @@ public class OptimizationImpl implements Optimization {
     }
 
     @Override
-    public Map<String, Object> getProperties() {
+    public EconomicMap<String, Object> getProperties() {
         if (properties == null) {
-            return Map.of();
+            return EconomicMap.emptyMap();
         }
         return properties;
     }
@@ -100,13 +101,14 @@ public class OptimizationImpl implements Optimization {
         }
         sb.append(" {");
         boolean first = true;
-        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+        MapCursor<String, Object> cursor = properties.getEntries();
+        while (cursor.advance()) {
             if (first) {
                 first = false;
             } else {
                 sb.append(", ");
             }
-            sb.append(entry.getKey()).append(": ").append(entry.getValue());
+            sb.append(cursor.getKey()).append(": ").append(cursor.getValue());
         }
         sb.append('}');
         return sb.toString();
@@ -133,7 +135,7 @@ public class OptimizationImpl implements Optimization {
         }
         OptimizationImpl other = (OptimizationImpl) object;
         return bci == other.bci && optimizationName.equals(other.optimizationName) &&
-                eventName.equals(other.eventName) && Objects.equals(properties, other.properties);
+                        eventName.equals(other.eventName) && EconomicMapUtil.equals(properties, other.properties);
     }
 
     @Override

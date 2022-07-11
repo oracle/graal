@@ -24,9 +24,8 @@
  */
 package org.graalvm.bisect.core.optimization;
 
-import java.util.Map;
-
 import org.graalvm.bisect.util.Writer;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * Represents an optimization in a compiled method at a particular BCI.
@@ -45,7 +44,7 @@ public interface Optimization extends OptimizationTreeNode {
      *
      * @return the map of additional properties
      */
-    Map<String, Object> getProperties();
+    EconomicMap<String, Object> getProperties();
 
     /**
      * Gets the bci of the position where this optimization was performed. The bci can come from a

@@ -29,9 +29,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
 
 public class JSONParser {
 
@@ -114,7 +114,7 @@ public class JSONParser {
     }
 
     private Object parseObject() {
-        Map<String, Object> result = new LinkedHashMap<>();
+        EconomicMap<String, Object> result = EconomicMap.create();
         int state = STATE_EMPTY;
 
         assert peek() == '{';
@@ -132,7 +132,7 @@ public class JSONParser {
                     final String id = parseString();
                     expectColon();
                     final Object value = parseLiteral();
-                    final Map<String, Object> object = result;
+                    final EconomicMap<String, Object> object = result;
                     object.put(id, value);
                     state = STATE_ELEMENT_PARSED;
                     break;

@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.Experiment;
@@ -41,6 +40,7 @@ import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
 import org.graalvm.bisect.parser.experiment.ExperimentParserException;
+import org.graalvm.bisect.util.EconomicMapUtil;
 import org.junit.Test;
 
 public class ExperimentParserTest {
@@ -151,7 +151,7 @@ public class ExperimentParserTest {
                     OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
                     OptimizationPhaseImpl someTier = new OptimizationPhaseImpl("SomeTier");
                     rootPhase.addChild(someTier);
-                    someTier.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 68, Map.of("unrollFactor", 1)));
+                    someTier.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 68, EconomicMapUtil.of("unrollFactor", 1)));
                     someTier.addChild(new OptimizationPhaseImpl("EmptyPhase"));
                     assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
@@ -161,8 +161,8 @@ public class ExperimentParserTest {
                             "org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)",
                             executedMethod.getCompilationMethodName());
                     OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
-                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)));
-                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", -1, Map.of("unrollFactor", 2)));
+                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, EconomicMapUtil.of("unrollFactor", 1)));
+                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", -1, EconomicMapUtil.of("unrollFactor", 2)));
                     assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
                 }

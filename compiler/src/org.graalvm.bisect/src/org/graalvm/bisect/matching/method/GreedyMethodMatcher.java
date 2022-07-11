@@ -24,14 +24,14 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.util.EconomicMapUtil;
 import org.graalvm.bisect.util.IteratorUtil;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Matches methods of two experiments by compilation method names and then greedily matches their respective
@@ -54,12 +54,12 @@ public class GreedyMethodMatcher implements MethodMatcher {
      */
     @Override
     public MethodMatching match(Experiment experiment1, Experiment experiment2) {
-        Map<String, List<ExecutedMethod>> methodMap1 = experiment1.groupHotMethodsByName();
-        Map<String, List<ExecutedMethod>> methodMap2 = experiment2.groupHotMethodsByName();
+        EconomicMap<String, List<ExecutedMethod>> methodMap1 = experiment1.groupHotMethodsByName();
+        EconomicMap<String, List<ExecutedMethod>> methodMap2 = experiment2.groupHotMethodsByName();
         MethodMatchingImpl matching = new MethodMatchingImpl();
 
-        Set<String> intersection = new HashSet<>(methodMap1.keySet());
-        intersection.retainAll(methodMap2.keySet());
+        EconomicSet<String> intersection = EconomicMapUtil.keySet(methodMap1);
+        intersection.retainAll(EconomicMapUtil.keySet(methodMap2));
         for (String compilationMethodName : intersection) {
             MatchedMethod matchedMethod = matching.addMatchedMethod(compilationMethodName);
             IteratorUtil.zipLongest(
@@ -92,12 +92,12 @@ public class GreedyMethodMatcher implements MethodMatcher {
         return Long.compare(b.getPeriod(), a.getPeriod());
     }
 
-    private void analyzeExtraMethods(Map<String, List<ExecutedMethod>> methodMap1,
-                                     Map<String, List<ExecutedMethod>> methodMap2,
+    private void analyzeExtraMethods(EconomicMap<String, List<ExecutedMethod>> methodMap1,
+                    EconomicMap<String, List<ExecutedMethod>> methodMap2,
                                      MethodMatchingImpl matching,
                     Experiment lhsExperiment) {
-        Set<String> difference = new HashSet<>(methodMap1.keySet());
-        difference.removeAll(methodMap2.keySet());
+        EconomicSet<String> difference = EconomicMapUtil.keySet(methodMap1);
+        difference.removeAll(EconomicMapUtil.keySet(methodMap2));
         for (String compilationMethodName : difference) {
             matching.addExtraMethod(compilationMethodName, lhsExperiment, methodMap1.get(compilationMethodName));
         }
