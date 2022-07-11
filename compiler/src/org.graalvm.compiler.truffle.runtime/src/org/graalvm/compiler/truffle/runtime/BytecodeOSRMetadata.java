@@ -331,7 +331,7 @@ public final class BytecodeOSRMetadata {
             return;
         }
         compilationReAttempts.inc(target);
-        if (compilationReAttempts.total() >= maxCompilationReAttempts) {
+        if (compilationReAttempts.total() > maxCompilationReAttempts) {
             /*
              * Methods that gets OSR re-compiled too often bailout of OSR compilation. This has two
              * main advantages:

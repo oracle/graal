@@ -74,6 +74,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         setupContext("engine.MultiTier", "false",
                         "engine.OSR", "true",
                         "engine.OSRCompilationThreshold", String.valueOf(osrThreshold),
+                        "engine.OSRMaxCompilationReAttempts", String.valueOf(1),
                         "engine.ThrowOnMaxOSRCompilationReAttemptsReached", "true");
     }
 
