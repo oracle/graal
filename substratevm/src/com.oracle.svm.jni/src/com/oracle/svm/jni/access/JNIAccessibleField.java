@@ -35,6 +35,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -64,6 +65,7 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
      * {@link StaticFieldsSupport#getStaticPrimitiveFields()} or
      * {@link StaticFieldsSupport#getStaticObjectFields()}.
      */
+    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     public static WordBase getOffsetFromId(JNIFieldId id) {
         UnsignedWord result = ((UnsignedWord) id).and(ID_OFFSET_MASK);
         assert result.notEqual(0);
