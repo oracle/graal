@@ -106,7 +106,7 @@ public final class BytecodeOSRMetadata {
      * disabled for this method. All writes should be made through compareAndSet, the exception
      * being setting the #DISABLE value.
      *
-     * Used as a synchronization mechanism.
+     * Used as a non-blocking synchronization mechanism around compilation requests.
      */
     private final AtomicReference<Object> currentlyCompiling = new AtomicReference<>();
     private final ReAttemptsCounter compilationReAttempts = new ReAttemptsCounter();
@@ -145,6 +145,9 @@ public final class BytecodeOSRMetadata {
             compilationMap.clear();
             // We might be disabling OSR while doing an OSR call. Keep around the data necessary to
             // transfer from and restore the parent frame.
+            // In particular, we must keep alive:
+            // - The frame descriptor
+            // - (GR-38296) The map from target to entry description.
         }
     }
 
