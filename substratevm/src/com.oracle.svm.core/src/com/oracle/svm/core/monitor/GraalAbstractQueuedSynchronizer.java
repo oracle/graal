@@ -28,6 +28,7 @@ package com.oracle.svm.core.monitor;
 
 import jdk.internal.misc.Unsafe;
 
+import java.lang.ref.ReferenceQueue;
 import java.util.Date;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
@@ -35,6 +36,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.SubstrateUtil;
 
 /*
 GraalAbstractQueuedSynchronizer is derived from the AbstractQueuedSynchronizer class in the jdk 19 sources. Only the methods required for
@@ -241,13 +247,24 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
     }
 
     private boolean casTail(GraalAbstractQueuedSynchronizer.Node c, GraalAbstractQueuedSynchronizer.Node v) {
-        return U.compareAndSetReference(this, TAIL, c, v);
+        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+        if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+            return u.compareAndSetReference(this, TAIL, c, v);
+        }
+        return u.compareAndSetObject(this, TAIL, c, v);
     }
 
     private void tryInitializeHead() {
         GraalAbstractQueuedSynchronizer.Node h = new GraalAbstractQueuedSynchronizer.ExclusiveNode();
-        if (U.compareAndSetReference(this, HEAD, null, h)) {
-            tail = h;
+        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+        if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+            if (u.compareAndSetReference(this, HEAD, null, h)) {
+                tail = h;
+            }
+        } else {
+            if (u.compareAndSetObject(this, HEAD, null, h)) {
+                tail = h;
+            }
         }
     }
 
@@ -336,11 +353,21 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
 
         final boolean casPrev(GraalAbstractQueuedSynchronizer.Node c, GraalAbstractQueuedSynchronizer.Node v) {
-            return GraalAbstractQueuedSynchronizer.U.weakCompareAndSetReference(this, PREV, c, v);
+            Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+                return u.weakCompareAndSetReference(this, PREV, c, v);
+            } else {
+                return u.compareAndSetObject(this, PREV, c, v);
+            }
         }
 
         final boolean casNext(GraalAbstractQueuedSynchronizer.Node c, GraalAbstractQueuedSynchronizer.Node v) {
-            return GraalAbstractQueuedSynchronizer.U.weakCompareAndSetReference(this, NEXT, c, v);
+            Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+                return u.weakCompareAndSetReference(this, NEXT, c, v);
+            } else {
+                return u.compareAndSetObject(this, NEXT, c, v);
+            }
         }
 
         final int getAndUnsetStatus(int v) {
@@ -348,7 +375,12 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
 
         final void setPrevRelaxed(GraalAbstractQueuedSynchronizer.Node p) {
-            GraalAbstractQueuedSynchronizer.U.putReference(this, PREV, p);
+            Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+                u.putReference(this, PREV, p);
+            } else {
+                u.putObject(this, PREV, p);
+            }
         }
 
         final void setStatusRelaxed(int s) {
@@ -500,7 +532,9 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             }
             GraalAbstractQueuedSynchronizer.ConditionNode node = new GraalAbstractQueuedSynchronizer.ConditionNode();
             int savedState = enableWait(node);
-            LockSupport.setCurrentBlocker(this); // for back-compatibility
+            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+                Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(this); // for back-compatibility
+            }
             boolean interrupted = false;
             boolean cancelled = false;
             boolean rejected = false;
@@ -525,7 +559,9 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
                     Thread.onSpinWait(); // awoke while enqueuing
                 }
             }
-            LockSupport.setCurrentBlocker(null);
+            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+                Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(null);
+            }
             node.clearStatus();
             acquire(node, savedState, false, false, false, 0L);
             if (interrupted) {
@@ -594,4 +630,32 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             throw new IllegalMonitorStateException();
         }
     }
+}
+
+@TargetClass(value = LockSupport.class)
+final class Target_java_util_concurrent_locks_LockSupport {
+    @Alias
+    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
+    public native static void setCurrentBlocker(Object blocker);
+}
+
+@TargetClass(value = Unsafe.class)
+final class Target_jdk_internal_misc_Unsafe {
+    @Alias
+    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
+    public native boolean compareAndSetReference(Object var1, long var2, Object var4, Object var5);
+
+    @Alias
+    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
+    public native boolean weakCompareAndSetReference(Object o, long offset, Object expected, Object x) ;
+    @Alias
+	@TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK11OrEarlier.class)
+	public native boolean compareAndSetObject(Object o, long offset, Object expected, Object x);
+    @Alias
+    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK11OrEarlier.class)
+    public native void putObject(Object o, long offset, Object x);
+
+    @Alias
+    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
+    public native void putReference(Object var1, long var2, Object var4);
 }
