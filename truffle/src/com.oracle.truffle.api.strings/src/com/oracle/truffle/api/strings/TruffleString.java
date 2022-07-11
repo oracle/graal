@@ -2023,7 +2023,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached SwitchEncodingNode switchEncodingNode,
                         @Cached ConditionProfile utf16Profile) {
             if (javaString.isEmpty()) {
-                return Encoding.UTF_16.getEmpty();
+                return encoding.getEmpty();
             }
             TruffleString utf16String = fromJavaStringUTF16Node.execute(javaString, charOffset, length, copy);
             if (utf16Profile.profile(encoding == Encoding.UTF_16)) {
