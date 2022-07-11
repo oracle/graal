@@ -30,22 +30,18 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
-import java.util.Collections;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.function.Predicate;
 
 final class InsightSourceFilter implements Predicate<Source> {
     private final InsightInstrument insight;
     private final ThreadLocal<Boolean> querying;
-    private final Map<Source, Boolean> cache;
     private final InsightInstrument.Key key;
 
     InsightSourceFilter(InsightInstrument insight, InsightInstrument.Key key) {
         this.insight = insight;
         this.key = key;
         this.querying = new ThreadLocal<>();
-        this.cache = Collections.synchronizedMap(new WeakHashMap<>());
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -54,6 +50,11 @@ final class InsightSourceFilter implements Predicate<Source> {
         if (src == null) {
             return false;
         }
+        if (key.isClosed()) {
+            return false;
+        }
+        InsightPerContext ctx = insight.findCtx();
+        Map<Source, Boolean> cache = ctx.getSourceCache(this);
         Boolean previous = cache.get(src);
         if (previous != null) {
             return previous;
