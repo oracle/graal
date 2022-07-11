@@ -98,14 +98,11 @@ meth public final int byteIndexOfStringUncached(com.oracle.truffle.api.strings.T
 meth public final int byteIndexToCodePointIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteLength(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteLengthOfCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public final int byteLengthOfCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int charIndexOfAnyCharUTF16Uncached(int,int,char[])
 meth public final int codePointAtByteIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public final int codePointAtByteIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int codePointAtIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public final int codePointAtIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int codePointIndexToByteIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int codePointLengthUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -370,7 +367,6 @@ CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteLen
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteLengthOfCodePointNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteLengthOfCodePointNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -386,7 +382,6 @@ CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CodePoi
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtByteIndexNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtByteIndexNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -395,7 +390,6 @@ CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CodePoi
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding,com.oracle.truffle.api.strings.TruffleString$ErrorHandling)
 meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtIndexNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointAtIndexNode getUncached()
 supr com.oracle.truffle.api.nodes.Node

@@ -2950,15 +2950,11 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Get the number of bytes occupied by the codepoint starting at {@code byteIndex}.
-         *
-         * @deprecated since 22.3, use
-         *             {@link #execute(AbstractTruffleString, int, Encoding, ErrorHandling)}
-         *             instead.
+         * Get the number of bytes occupied by the codepoint starting at {@code byteIndex}, with
+         * {@link ErrorHandling#BEST_EFFORT best-effort} error handling.
          *
          * @since 22.1
          */
-        @Deprecated(since = "22.3")
         public final int execute(AbstractTruffleString a, int byteIndex, Encoding expectedEncoding) {
             return execute(a, byteIndex, expectedEncoding, ErrorHandling.BEST_EFFORT);
         }
@@ -3146,14 +3142,11 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Decode and return the codepoint at codepoint index {@code i}.
-         *
-         * @deprecated since 22.3, use
-         *             {@link #execute(AbstractTruffleString, int, Encoding, ErrorHandling)}
-         *             instead.
+         * Decode and return the codepoint at codepoint index {@code i}, with
+         * {@link ErrorHandling#BEST_EFFORT best-effort} error handling.
+         * 
          * @since 22.1
          */
-        @Deprecated(since = "22.3")
         public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
             return execute(a, i, expectedEncoding, ErrorHandling.BEST_EFFORT);
         }
@@ -3230,15 +3223,11 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Decode and return the codepoint at byte index {@code i}.
-         *
-         * @deprecated since 22.3, use
-         *             {@link #execute(AbstractTruffleString, int, Encoding, ErrorHandling)}
-         *             instead.
+         * Decode and return the codepoint at byte index {@code i}, with
+         * {@link ErrorHandling#BEST_EFFORT best-effort} error handling.
          *
          * @since 22.1
          */
-        @Deprecated(since = "22.3")
         public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
             return execute(a, i, expectedEncoding, ErrorHandling.BEST_EFFORT);
         }
@@ -4882,6 +4871,7 @@ public final class TruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
+    @SuppressWarnings("serial")
     public static final class NumberFormatException extends Exception {
 
         private static final long serialVersionUID = 0x016db657faff57a2L;
@@ -4945,7 +4935,7 @@ public final class TruffleString extends AbstractTruffleString {
             }
         }
 
-        @SuppressFBWarnings(value = {"SE_BAD_FIELD"}, justification = "This Exception is not expected to be serialized") private final AbstractTruffleString string;
+        private final AbstractTruffleString string;
         private final int regionOffset;
         private final int regionLength;
         private final Reason reason;
