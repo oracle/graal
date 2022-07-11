@@ -866,7 +866,7 @@ public final class GCImpl implements GC {
 
             JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
             JavaStackWalker.initWalk(walk, sp, ip);
-            walkStack(walk, WordFactory.nullPointer());
+            walkStack(walk);
 
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 /*
@@ -884,7 +884,7 @@ public final class GCImpl implements GC {
                         continue;
                     }
                     if (JavaStackWalker.initWalk(walk, vmThread)) {
-                        walkStack(walk, vmThread);
+                        walkStack(walk);
                     }
                 }
             }
@@ -900,7 +900,7 @@ public final class GCImpl implements GC {
      * calls to a stack frame visitor.
      */
     @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
-    private void walkStack(JavaStackWalk walk, IsolateThread thread) {
+    private void walkStack(JavaStackWalk walk) {
         assert VMOperation.isGCInProgress() : "This methods accesses a CodeInfo without a tether";
 
         while (true) {
@@ -913,7 +913,7 @@ public final class GCImpl implements GC {
             DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
             if (deoptFrame == null) {
                 if (codeInfo.isNull()) {
-                    throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame, thread, walk.getAnchor(), walk.getIPCodeInfo(), codeInfo);
+                    throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptFrame);
                 }
 
                 CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);

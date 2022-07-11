@@ -12,7 +12,7 @@ public class TaskQueue {
 
     private final VMMutex mutex;
     private final VMCondition cond;
-    private final Pointer[] data; /// move out of heap?
+    private final Pointer[] data;
     private int idleCount;
     private int getIndex;
     private int putIndex;
@@ -103,8 +103,8 @@ public class TaskQueue {
         }
     }
 
-    public interface Consumer {
-        void accept(Object object); ///j.u.f.Consumer
+    interface Consumer {
+        void accept(Object object);
     }
 
     // Non MT safe, needs locking

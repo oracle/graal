@@ -31,7 +31,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
-import com.oracle.svm.core.annotate.NeverInline;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -78,7 +77,7 @@ final class ReferenceObjectProcessing {
         softReferencesAreWeak = enabled;
     }
 
-    @NeverInline("GC performance")
+    @AlwaysInline("GC performance")
     public static void discoverIfReference(Object object, ObjectReferenceVisitor refVisitor) {
         assert object != null;
         DynamicHub hub = KnownIntrinsics.readHub(object);
@@ -87,7 +86,6 @@ final class ReferenceObjectProcessing {
         }
     }
 
-    @NeverInline("GC performance")
     private static void discover(Object obj, ObjectReferenceVisitor refVisitor) {
         Reference<?> dr = (Reference<?>) obj;
         // The discovered field might contain an object with a forwarding header

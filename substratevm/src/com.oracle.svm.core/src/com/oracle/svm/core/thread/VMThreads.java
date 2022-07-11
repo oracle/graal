@@ -826,7 +826,7 @@ public abstract class VMThreads {
         }
     }
 
-    public static class ParallelGCSupport {
+    public static class ParallelGCSupport {///unused
         private static final FastThreadLocalInt isParallelGCThreadTL = FastThreadLocalFactory.createInt("ParallelGCSupport.isParallelGCThreadTL");
         private static final int REGULAR_THREAD = 0;
         private static final int PARALLEL_GC_THREAD = 1;

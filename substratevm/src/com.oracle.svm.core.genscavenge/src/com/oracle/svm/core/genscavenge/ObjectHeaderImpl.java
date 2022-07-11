@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.log.Log;
-import jdk.internal.misc.Unsafe;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;

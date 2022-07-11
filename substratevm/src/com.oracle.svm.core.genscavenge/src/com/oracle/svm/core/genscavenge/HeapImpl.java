@@ -106,7 +106,6 @@ public final class HeapImpl extends Heap {
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
     private final ImageHeapInfo imageHeapInfo = new ImageHeapInfo();
     private final HeapAccounting accounting = new HeapAccounting();
-    public final Timer timer = new Timer("promoteUnalignedHeapChunk()");
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
     private Reference<?> refPendingList;

@@ -136,10 +136,8 @@ public final class YoungGeneration extends Generation {
     }
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {
-//        getEden().setInd(333);
         getEden().releaseChunks(chunkReleaser);
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-//            getSurvivorFromSpaceAt(i).setInd(100+i);
             getSurvivorFromSpaceAt(i).releaseChunks(chunkReleaser);
         }
     }
@@ -173,7 +171,7 @@ public final class YoungGeneration extends Generation {
     }
 
     boolean scanGreyObjects() {
-        Log trace = Log.log().string("[YoungGeneration.scanGreyObjects:").newline();
+        Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
         boolean needScan = false;
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (getSurvivorGreyObjectsWalker(i).haveGreyObjects()) {
@@ -182,13 +180,11 @@ public final class YoungGeneration extends Generation {
             }
         }
         if (!needScan) {
-            trace.string("]").newline();
             return false;
         }
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            trace.string("[Scanning survivor-").signed(i).newline();
+            trace.string("[Scanning survivor-").signed(i).string("]").newline();
             getSurvivorGreyObjectsWalker(i).walkGreyObjects();
-            trace.string("]").newline();
         }
         trace.string("]").newline();
         return true;

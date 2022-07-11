@@ -112,7 +112,7 @@ final class GreyObjectsWalker {
         }
     }
 
-    @NeverInline("GC performance")
+    @AlwaysInline("GC performance")
     private void walkUnalignedGreyObjects() {
         /* Visit the Objects in the UnalignedChunk after the snapshot UnalignedChunk. */
         UnalignedHeapChunk.UnalignedHeader uChunk;

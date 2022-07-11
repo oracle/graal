@@ -150,7 +150,6 @@ final class Timers {
         referenceObjects.reset();
         releaseSpaces.reset();
         verifyAfter.reset();
-        HeapImpl.getHeapImpl().timer.reset();
         /* The mutator timer is *not* reset here. */
         trace.string("]").newline();
     }
@@ -172,7 +171,6 @@ final class Timers {
             logOneTimer(log, "          ", blackenImageHeapRoots);
             logOneTimer(log, "          ", blackenDirtyCardRoots);
             logOneTimer(log, "          ", scanGreyObjects);
-            logOneTimer(log, "          ", HeapImpl.getHeapImpl().timer);
             logOneTimer(log, "      ", cleanCodeCache);
             logOneTimer(log, "      ", referenceObjects);
             logOneTimer(log, "      ", releaseSpaces);
