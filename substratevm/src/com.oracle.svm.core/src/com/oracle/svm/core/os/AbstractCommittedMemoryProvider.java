@@ -120,15 +120,16 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
-        // NOTE: we do not make the memory executable yet, the caller has to do this in a separate
-        // call while removing write access.
         Pointer reserved = WordFactory.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
             reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
             if (reserved.isNull()) {
                 return nullPointer();
             }
+        }
+        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
+        if (executable) {
+            access |= VirtualMemoryProvider.Access.FUTURE_EXECUTE;
         }
         Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access);
         if (committed.isNull()) {

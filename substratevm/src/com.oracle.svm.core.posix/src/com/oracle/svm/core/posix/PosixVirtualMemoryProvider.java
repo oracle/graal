@@ -39,7 +39,6 @@ import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mprotect;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.munmap;
 import static org.graalvm.word.WordFactory.nullPointer;
 
-import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -123,9 +122,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         mappingSize = UnsignedUtils.roundUp(mappingSize, granularity);
         int flags = MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE();
-        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && executable) {
-            flags |= MAP_JIT();
-        }
+        assert !(executable && Platform.includedIn(Platform.MACOS_AARCH64.class)) : "Memory reserved with MAP_JIT cannot be committed with MAP_FIXED later";
         Pointer mappingBegin = mmap(nullPointer(), mappingSize, PROT_NONE(), flags, NO_FD, NO_FD_OFFSET);
         if (mappingBegin.equal(MAP_FAILED())) {
             return nullPointer();
@@ -175,8 +172,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
             flags |= MAP_FIXED();
         }
 
-        boolean isWX = (access & Access.WRITE) != 0 && (access & Access.EXECUTE) != 0;
-        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && isWX) {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && (access & Access.FUTURE_EXECUTE) != 0) {
             flags |= MAP_JIT();
         }
         /* The memory returned by mmap is guaranteed to be zeroed. */
@@ -192,12 +188,6 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
 
         return mprotect(start, nbytes, accessAsProt(access));
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void jitWriteProtect(boolean protect) {
-        DarwinPthread.pthread_jit_write_protect_np(protect ? 1 : 0);
     }
 
     @Override
