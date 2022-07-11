@@ -30,11 +30,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
-import com.oracle.svm.core.monitor.GraalReentrantLock;
 
 public class JavaMonitor extends GraalReentrantLock {
     private static final long serialVersionUID = 3921577070627519721L;
@@ -42,9 +40,6 @@ public class JavaMonitor extends GraalReentrantLock {
     private long latestJfrTid;
 
     public JavaMonitor() {
-//        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(this, Target_java_util_concurrent_locks_ReentrantLock.class);
-//        Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
-//        sync.objectMonitorCondition = SubstrateUtil.cast(MultiThreadedMonitorSupport.MONITOR_WITHOUT_CONDITION, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject.class);
         setCondition(MultiThreadedMonitorSupport.MONITOR_WITHOUT_CONDITION);
         latestJfrTid = 0;
     }
@@ -61,9 +56,6 @@ public class JavaMonitor extends GraalReentrantLock {
         }
 
         result.latestJfrTid = SubstrateJVM.getThreadId(thread);
-//        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(result, Target_java_util_concurrent_locks_ReentrantLock.class);
-//        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
-
         assert result.getExclusiveOwnerThread() == Thread.currentThread() : "Must be locked by current thread";
         result.setExclusiveOwnerThread(thread);
 

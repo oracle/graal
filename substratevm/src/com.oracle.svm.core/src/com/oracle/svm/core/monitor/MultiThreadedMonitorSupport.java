@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
-import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
@@ -45,7 +44,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
@@ -60,11 +58,9 @@ import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
-import com.oracle.svm.core.monitor.JavaMonitor;
 
 import jdk.internal.misc.Unsafe;
-import com.oracle.svm.core.monitor.GraalAbstractQueuedSynchronizer;
-import com.oracle.svm.core.monitor.GraalReentrantLock;
+
 
 /**
  * Implementation of synchronized-related operations.
@@ -99,7 +95,7 @@ import com.oracle.svm.core.monitor.GraalReentrantLock;
  *
  * {@link Condition} objects are used to implement {@link #wait()} and {@link #notify()}. When an
  * object monitor needs a condition object, it is atomically swapped into its
- * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition} field.
+ * {@link GraalReentrantLock.Sync#graalConditionObject} field.
  */
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
@@ -184,12 +180,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     /**
-     * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition}
      * marker to indicate that the associated lock is an object monitor, but does not have a
      * Condition yet. This marker value is needed to identify monitor conditions for
      * {@link #maybeAdjustNewParkStatus}.
      */
-    static final GraalAbstractQueuedSynchronizer.GraalConditionObject MONITOR_WITHOUT_CONDITION = (GraalAbstractQueuedSynchronizer.GraalConditionObject ) new GraalReentrantLock().newCondition();
+    static final GraalAbstractQueuedSynchronizer.GraalConditionObject MONITOR_WITHOUT_CONDITION = (GraalAbstractQueuedSynchronizer.GraalConditionObject) new GraalReentrantLock().newCondition();
 
     // Checkstyle: stop
     /** Substituted in {@link Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport} */
@@ -328,7 +323,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Override
     public void doRelockObject(Object obj, Object lockData) {
         GraalReentrantLock lock  = (GraalReentrantLock) lockData;
-//        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(lockData, Target_java_util_concurrent_locks_ReentrantLock.class);
 
         /*
          * We need 3 variables for the same value because target classes do not model the
@@ -336,7 +330,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          */
 
         GraalAbstractQueuedSynchronizer qSync = lock.getSync();
-//        Target_java_util_concurrent_locks_AbstractQueuedSynchronizer qSync = SubstrateUtil.cast(lSync, Target_java_util_concurrent_locks_AbstractQueuedSynchronizer.class);
         Target_java_util_concurrent_locks_AbstractOwnableSynchronizer aSync = SubstrateUtil.cast(qSync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
 
         /*
@@ -493,7 +486,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected static boolean isMonitorLock(JavaMonitor lock) {
-//        return lock != null && isMonitorLockSynchronizer(SubstrateUtil.cast(lock, Target_java_util_concurrent_locks_ReentrantLock.class).sync);
         return lock != null && isMonitorLockSynchronizer(lock.getSync());
     }
 
@@ -511,9 +503,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     protected GraalAbstractQueuedSynchronizer.GraalConditionObject getOrCreateCondition(JavaMonitor monitorLock, boolean createIfNotExisting) {
         assert isMonitorLock(monitorLock);
-//        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(monitorLock, Target_java_util_concurrent_locks_ReentrantLock.class);
-//        Target_java_util_concurrent_locks_ReentrantLock_NonfairSync sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class);
-//        GraalAbstractQueuedSynchronizer.GraalConditionObject existingCondition = SubstrateUtil.cast(sync.objectMonitorCondition, GraalAbstractQueuedSynchronizer.GraalConditionObject.class);
         GraalAbstractQueuedSynchronizer.GraalConditionObject existingCondition = monitorLock.getCondition();
         if (existingCondition == MONITOR_WITHOUT_CONDITION) {
             existingCondition = null;
@@ -524,7 +513,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
         GraalAbstractQueuedSynchronizer.GraalConditionObject newCondition = (GraalAbstractQueuedSynchronizer.GraalConditionObject) monitorLock.newCondition();
         if (!UNSAFE.compareAndSetObject(monitorLock.getSync(), SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
-            newCondition = monitorLock.getCondition();//SubstrateUtil.cast(sync.objectMonitorCondition, GraalAbstractQueuedSynchronizer.GraalConditionObject.class);
+            newCondition = monitorLock.getCondition(); //SubstrateUtil.cast(sync.objectMonitorCondition, GraalAbstractQueuedSynchronizer.GraalConditionObject.class);
             assert isMonitorCondition(newCondition) : "race winner must have installed valid condition";
         }
         return newCondition;
@@ -549,23 +538,6 @@ final class Target_java_util_concurrent_locks_AbstractOwnableSynchronizer {
     Thread exclusiveOwnerThread;
 }
 
-//@TargetClass(value = GraalReentrantLock.class, innerClass = "Sync")
-//final class Target_java_util_concurrent_locks_ReentrantLock_Sync {
-//}
-
-//@TargetClass(value = GraalReentrantLock.class, innerClass = "GraalNonfairSync")
-//final class Target_java_util_concurrent_locks_ReentrantLock_NonfairSync {
-    /**
-     * If this is a monitor's synchronizer, either
-     * {@link MultiThreadedMonitorSupport#MONITOR_WITHOUT_CONDITION} to mark it as part of a monitor
-     * that currently has no condition variable, or otherwise, a specific {@link ConditionObject}
-     * that provides conditional waiting for this monitor. If {@code null}, not associated with a
-     * monitor.
-     */
-//    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-//    volatile Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject objectMonitorCondition;
-//}
-
 // Checkstyle: stop
 @TargetClass(MultiThreadedMonitorSupport.class)
 final class Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport {
@@ -575,24 +547,6 @@ final class Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "state", declClass = GraalAbstractQueuedSynchronizer.class) //
     static long SYNC_STATE_FIELD_OFFSET;
 }
-
-//@TargetClass(GraalReentrantLock.class)
-//final class Target_java_util_concurrent_locks_ReentrantLock {
-//    @Alias//
-//    Target_java_util_concurrent_locks_ReentrantLock_Sync sync;
-//}
-
-//@TargetClass(GraalAbstractQueuedSynchronizer.class)
-//final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer {
-//    @Alias //
-//    volatile int state;
-//}
-
-//@TargetClass(value = GraalAbstractQueuedSynchronizer.GraalConditionObject.class)
-//final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject {
-//    /** Enclosing {@link AbstractQueuedSynchronizer} of this nested class. */
-//    @Alias Target_java_util_concurrent_locks_AbstractQueuedSynchronizer this$0;
-//}
 
 @TargetClass(value = ReferenceQueue.class, innerClass = "Lock", onlyWith = JDK17OrEarlier.class)
 final class Target_java_lang_ref_ReferenceQueue_Lock {
