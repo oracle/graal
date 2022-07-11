@@ -226,6 +226,7 @@ suite = {
                 "java.base" : [
                     "sun.invoke.util",
                     "sun.net",
+                    "sun.nio.ch",
                     "sun.reflect.annotation",
                     "sun.reflect.generics.factory",
                     "sun.reflect.generics.reflectiveObjects",

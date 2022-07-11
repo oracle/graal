@@ -32,7 +32,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -616,19 +615,15 @@ public final class JNIFunctions {
 
     @TargetClass(java.nio.Buffer.class)
     static final class Target_java_nio_Buffer {
+        @Alias int capacity;
         @Alias long address;
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static WordPointer GetDirectBufferAddress(JNIEnvironment env, JNIObjectHandle handle) {
-        WordPointer address = WordFactory.nullPointer();
-        Object obj = JNIObjectHandles.getObject(handle);
-        if (obj instanceof Target_java_nio_Buffer) {
-            Target_java_nio_Buffer buf = (Target_java_nio_Buffer) obj;
-            address = WordFactory.pointer(buf.address);
-        }
-        return address;
+        Target_java_nio_Buffer buf = Support.directBufferFromJNIHandle(handle);
+        return (buf == null) ? WordFactory.nullPointer() : WordFactory.pointer(buf.address);
     }
 
     /*
@@ -637,9 +632,9 @@ public final class JNIFunctions {
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOneLong.class)
-    static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle hbuf) {
-        Buffer buffer = JNIObjectHandles.getObject(hbuf);
-        return buffer.capacity();
+    static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle handle) {
+        Target_java_nio_Buffer buf = Support.directBufferFromJNIHandle(handle);
+        return (buf == null) ? -1 : buf.capacity;
     }
 
     /*
@@ -1310,6 +1305,21 @@ public final class JNIFunctions {
                 }
             }
             logHandler.fatalError();
+        }
+
+        /*
+         * Make sure the given handle identifies a direct buffer.
+         *
+         * The object is considered "a buffer" if it implements java.nio.Buffer. The buffer is
+         * considered "direct" if it implements sun.nio.ch.DirectBuffer.
+         */
+        static Target_java_nio_Buffer directBufferFromJNIHandle(JNIObjectHandle handle) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            if (obj instanceof Target_java_nio_Buffer && obj instanceof sun.nio.ch.DirectBuffer) {
+                return (Target_java_nio_Buffer) obj;
+            } else {
+                return null;
+            }
         }
     }
 
