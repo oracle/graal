@@ -60,6 +60,7 @@ import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.services.Services;
 
 public class SubstrateUtil {
@@ -278,21 +279,22 @@ public class SubstrateUtil {
      * name includes a digest of the fully qualified method name, which ensures uniqueness.
      */
     public static String uniqueShortName(ResolvedJavaMethod m) {
-        return uniqueShortName(new StringBuilder(), m);
+        return uniqueShortName("", m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
     }
 
-    public static String uniqueShortName(StringBuilder sb, ResolvedJavaMethod m) {
-        sb.append(m.getDeclaringClass().toClassName()).append(".").append(m.getName()).append("(");
-        for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
-            sb.append(m.getSignature().getParameterType(i, null).toClassName()).append(",");
+    public static String uniqueShortName(String loaderNameAndId, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+        StringBuilder sb = new StringBuilder(loaderNameAndId);
+        sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
+        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
+            sb.append(methodSignature.getParameterType(i, null).toClassName()).append(",");
         }
         sb.append(')');
-        if (!m.isConstructor()) {
-            sb.append(m.getSignature().getReturnType(null).toClassName());
+        if (!isConstructor) {
+            sb.append(methodSignature.getReturnType(null).toClassName());
         }
 
-        return stripPackage(m.getDeclaringClass().toJavaName()) + "_" +
-                        (m.isConstructor() ? "constructor" : m.getName()) + "_" +
+        return stripPackage(declaringClass.toJavaName()) + "_" +
+                        (isConstructor ? "constructor" : methodName) + "_" +
                         SubstrateUtil.digest(sb.toString());
     }
 

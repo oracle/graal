@@ -102,24 +102,15 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     public static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, HostedMethod deoptOrigin) {
-        String name = deoptOrigin != null ? wrapped.getName() + METHOD_NAME_DEOPT_SUFFIX : wrapped.getName();
         LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
-        HostedMethod hostedMethod = new HostedMethod(wrapped, holder, signature, constantPool, handlers, deoptOrigin, name, localVariableTable);
-        hostedMethod = makeUnique(universe, hostedMethod, deoptOrigin, name);
-        universe.orderedMethods.add(hostedMethod);
-        return hostedMethod;
-    }
-
-    private static HostedMethod makeUnique(HostedUniverse universe, HostedMethod method, HostedMethod deoptOrigin, String name) {
-        if (!universe.orderedMethods.contains(method)) {
-            return method;
+        String name = deoptOrigin != null ? wrapped.getName() + METHOD_NAME_DEOPT_SUFFIX : wrapped.getName();
+        String uniqueShortName = SubstrateUtil.uniqueShortName(SubstrateUtil.classLoaderNameAndId(holder.getJavaClass().getClassLoader()), holder, name, signature, wrapped.isConstructor());
+        int collisionCount = universe.uniqueHostedMethodNames.merge(uniqueShortName, 0, (oldValue, value) -> oldValue + 1);
+        if (collisionCount > 0) {
+            name = name + METHOD_NAME_COLLISION_SUFFIX + collisionCount;
+            uniqueShortName = SubstrateUtil.uniqueShortName(SubstrateUtil.classLoaderNameAndId(holder.getJavaClass().getClassLoader()), holder, name, signature, wrapped.isConstructor());
         }
-        int collisionCount = universe.methodNameCollisions.merge(method, 1, (oldValue, value) -> oldValue + 1);
-        String collisionName = name + METHOD_NAME_COLLISION_SUFFIX + collisionCount;
-        HostedMethod hostedMethod = new HostedMethod(method.wrapped, method.holder, method.signature, method.constantPool,
-                        method.handlers, deoptOrigin, collisionName, method.localVariableTable);
-        VMError.guarantee(!universe.orderedMethods.contains(hostedMethod), "HostedMethod name collision handling failed");
-        return hostedMethod;
+        return new HostedMethod(wrapped, holder, signature, constantPool, handlers, deoptOrigin, name, uniqueShortName, localVariableTable);
     }
 
     private static LocalVariableTable createLocalVariableTable(HostedUniverse universe, AnalysisMethod wrapped) {
@@ -146,7 +137,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     }
 
     private HostedMethod(AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool,
-                    ExceptionHandler[] handlers, HostedMethod deoptOrigin, String name, LocalVariableTable localVariableTable) {
+                    ExceptionHandler[] handlers, HostedMethod deoptOrigin, String name, String uniqueShortName, LocalVariableTable localVariableTable) {
         this.wrapped = wrapped;
         this.holder = holder;
         this.signature = signature;
@@ -155,8 +146,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         this.compilationInfo = new CompilationInfo(this, deoptOrigin);
         this.localVariableTable = localVariableTable;
         this.name = name;
-        StringBuilder sb = new StringBuilder(SubstrateUtil.classLoaderNameAndId(holder.getJavaClass().getClassLoader()));
-        this.uniqueShortName = SubstrateUtil.uniqueShortName(sb, this);
+        this.uniqueShortName = uniqueShortName;
     }
 
     @Override

@@ -41,7 +41,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -635,21 +634,18 @@ public class CompileQueue {
          * Deoptimization target code for all methods that were manually marked as deoptimization
          * targets.
          */
-        List<HostedMethod> deoptTargetMethods = universe.getMethods().stream()
+        universe.getMethods().stream()
                         .filter(method -> CompilationInfoSupport.singleton().isDeoptTarget(method))
-                        .collect(Collectors.toList());
-        deoptTargetMethods.forEach(method -> ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason()));
+                        .forEach(method -> ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason()));
 
         /*
          * Deoptimization target code for deoptimization testing: all methods that are not
          * blacklisted are possible deoptimization targets. The methods are also flagged so that all
          * possible deoptimization entry points are emitted.
          */
-        List<HostedMethod> deoptTargetForTestingMethods = universe.getMethods().stream()
+        universe.getMethods().stream()
                         .filter(method -> method.getWrapped().isImplementationInvoked() && canDeoptForTesting(method))
-                        .collect(Collectors.toList());
-        deoptTargetForTestingMethods.forEach(this::ensureParsedForDeoptTesting);
-
+                        .forEach(this::ensureParsedForDeoptTesting);
     }
 
     private void ensureParsedForDeoptTesting(HostedMethod method) {

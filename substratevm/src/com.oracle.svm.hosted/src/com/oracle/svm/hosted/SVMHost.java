@@ -749,8 +749,6 @@ public class SVMHost extends HostVM {
     @Override
     public Comparator<? super ResolvedJavaType> getTypeComparator() {
         return (Comparator<ResolvedJavaType>) (o1, o2) -> {
-            VMError.guarantee(o1 instanceof HostedType, "Expected HostedType. Got " + o1.getClass().getName());
-            VMError.guarantee(o2 instanceof HostedType, "Expected HostedType. Got " + o2.getClass().getName());
             return HostedUniverse.TYPE_COMPARATOR.compare((HostedType) o1, (HostedType) o2);
         };
     }

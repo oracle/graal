@@ -33,9 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeSet;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -294,9 +291,9 @@ public class HostedUniverse implements Universe {
 
     protected List<HostedType> orderedTypes;
     protected List<HostedField> orderedFields;
+    protected List<HostedMethod> orderedMethods;
 
-    TreeSet<HostedMethod> orderedMethods = new TreeSet<>(new MethodComparator(TYPE_COMPARATOR, false));
-    Map<HostedMethod, Integer> methodNameCollisions = new HashMap<>();
+    Map<String, Integer> uniqueHostedMethodNames = new HashMap<>();
 
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
@@ -440,9 +437,7 @@ public class HostedUniverse implements Universe {
     }
 
     public Collection<HostedMethod> getMethods() {
-        return orderedMethods.stream()
-                        .filter(Predicate.not(HostedMethod::isDeoptTarget))
-                        .collect(Collectors.toList());
+        return orderedMethods;
     }
 
     public Inflation getBigBang() {
@@ -520,17 +515,14 @@ public class HostedUniverse implements Universe {
         }
     }
 
-    public static final Comparator<HostedMethod> METHOD_COMPARATOR = new MethodComparator(TYPE_COMPARATOR, true);
+    public static final Comparator<HostedMethod> METHOD_COMPARATOR = new MethodComparator(TYPE_COMPARATOR);
 
     private static final class MethodComparator implements Comparator<HostedMethod> {
 
         private final Comparator<HostedType> typeComparator;
 
-        private final boolean strict;
-
-        private MethodComparator(Comparator<HostedType> typeComparator, boolean strict) {
+        private MethodComparator(Comparator<HostedType> typeComparator) {
             this.typeComparator = typeComparator;
-            this.strict = strict;
         }
 
         @Override
@@ -579,12 +571,7 @@ public class HostedUniverse implements Universe {
                 return result;
             }
 
-            /*
-             * Note that result can still be 0 at this point. This in only allowed during
-             * HostedMethod name collision handling in HostedMethod#create.
-             */
-            VMError.guarantee(!strict, "HostedMethod objects not distinguishable: " + o1 + ", " + o2);
-            return result;
+            throw VMError.shouldNotReachHere("HostedMethod objects not distinguishable: " + o1 + ", " + o2);
         }
     }
 

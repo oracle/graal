@@ -180,6 +180,9 @@ public class UniverseBuilder {
 
             processFieldLocations();
 
+            hUniverse.uniqueHostedMethodNames.clear();
+            hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
+            Collections.sort(hUniverse.orderedMethods, HostedUniverse.METHOD_COMPARATOR);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
             Collections.sort(hUniverse.orderedFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
             profilingInformationBuildTask.join();
