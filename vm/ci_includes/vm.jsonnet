@@ -44,6 +44,12 @@ local jdks = common_json.jdks;
     },
   },
 
+  vm_java_19_llvm:: self.vm_java_19 + {
+    downloads+: {
+      LLVM_JAVA_HOME: jdks['labsjdk-ce-19-llvm'],
+    },
+  },
+
   binaries_repository: 'lafo',
   svm_suite:: '/substratevm',
   libgraal_env: 'libgraal',
