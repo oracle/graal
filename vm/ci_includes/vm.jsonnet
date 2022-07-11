@@ -26,8 +26,8 @@ local jdks = common_json.jdks;
 
   vm_java_19:: graal_common.labsjdk19 + {
     environment+: {
-      BASE_JDK_NAME: jdks['jdk-19-ea'].name,
-      BASE_JDK_VERSION: jdks['jdk-19-ea'].version,
+      BASE_JDK_NAME: jdks['labsjdk-ce-19'].name,
+      BASE_JDK_VERSION: jdks['labsjdk-ce-19'].version,
       BASE_JDK_SHORT_VERSION: '19',
     },
   },

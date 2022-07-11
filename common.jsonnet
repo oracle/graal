@@ -83,21 +83,25 @@
 
   oraclejdk11::          jdk11 + { downloads+: { JAVA_HOME : jdks.oraclejdk11 }},
   oraclejdk17::          jdk17 + { downloads+: { JAVA_HOME : jdks.oraclejdk17 }},
+  oraclejdk19::          jdk19 + { downloads+: { JAVA_HOME : jdks.oraclejdk19 }},
   openjdk11::            jdk11 + { downloads+: { JAVA_HOME : jdks.openjdk11 }},
 
   "labsjdk-ce-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-11"] }},
   "labsjdk-ee-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-11"] }},
   "labsjdk-ce-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17"] }},
   "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
+  "labsjdk-ce-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-19"] }},
+  "labsjdk-ee-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-19"] }},
   "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
   "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
+  "labsjdk-ce-19Debug":: jdk19 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-19Debug"] }},
+  "labsjdk-ee-19Debug":: jdk19 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-19Debug"] }},
   "labsjdk-ce-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-11-llvm"] }},
   "labsjdk-ee-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-11-llvm"] }},
   "labsjdk-ce-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
   "labsjdk-ee-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
-
-  "labsjdk-ce-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
-  "labsjdk-ee-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
+  "labsjdk-ce-19-llvm":: jdk19 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-19-llvm"] }},
+  "labsjdk-ee-19-llvm":: jdk19 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-19-llvm"] }},
 
   # Aliases to edition specific labsjdks
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
