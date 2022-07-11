@@ -2172,8 +2172,16 @@ suite = {
 
     "GRAAL_BISECT": {
       "subDir" : "src",
-      "dependencies" : ["org.graalvm.bisect"],
-      "maven": False,
+      "dependencies" : [
+        "org.graalvm.bisect",
+      ],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK",
+      ],
+      "overlaps" : [
+        "GRAAL",
+      ],
+      "maven" : False,
     },
 
     "GRAAL_BISECT_TEST" : {
