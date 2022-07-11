@@ -1345,6 +1345,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 if (e.getMessage().contains("Max OSR compilation re-attempts reached")) {
                     return RETURN_VALUE;
                 }
+                throw e;
             }
             return FAIL_VALUE;
         }
