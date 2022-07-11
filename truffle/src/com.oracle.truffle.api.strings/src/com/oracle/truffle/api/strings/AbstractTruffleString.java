@@ -606,6 +606,7 @@ public abstract class AbstractTruffleString {
      * @since 22.1
      */
     @Deprecated(since = "22.3")
+    @SuppressWarnings("deprecated")
     @TruffleBoundary
     public final int byteLengthOfCodePointUncached(int byteIndex, TruffleString.Encoding expectedEncoding) {
         return TruffleString.ByteLengthOfCodePointNode.getUncached().execute(this, byteIndex, expectedEncoding);
@@ -654,6 +655,7 @@ public abstract class AbstractTruffleString {
      * @since 22.1
      */
     @Deprecated(since = "22.3")
+    @SuppressWarnings("deprecated")
     @TruffleBoundary
     public final int codePointAtIndexUncached(int i, TruffleString.Encoding expectedEncoding) {
         return TruffleString.CodePointAtIndexNode.getUncached().execute(this, i, expectedEncoding);
@@ -679,6 +681,7 @@ public abstract class AbstractTruffleString {
      * @since 22.1
      */
     @Deprecated(since = "22.3")
+    @SuppressWarnings("deprecated")
     @TruffleBoundary
     public final int codePointAtByteIndexUncached(int i, TruffleString.Encoding expectedEncoding) {
         return TruffleString.CodePointAtByteIndexNode.getUncached().execute(this, i, expectedEncoding);
