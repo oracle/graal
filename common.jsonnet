@@ -107,7 +107,6 @@
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
-  labsjdk11Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-11Debug"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
   labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],
   labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
