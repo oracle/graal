@@ -462,7 +462,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         final boolean isInliningCutoff;
 
         MethodCache(LoopExplosionKind explosionKind, InlineKind inlineKindPE, InlineKind inlineKindNonPE, boolean isInlineable, boolean isTruffleBoundary, boolean isBytecodeInterpreterSwitch,
-                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInInterpreter, boolean isTransferToInterpreterMethod, boolean isUncommon) {
+                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInInterpreter, boolean isTransferToInterpreterMethod, boolean isInliningCutoff) {
             this.explosionKind = explosionKind;
             this.inlineKindPE = inlineKindPE;
             this.inlineKindNonPE = inlineKindNonPE;
@@ -472,7 +472,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
             this.isBytecodeInterpreterSwitchBoundary = isBytecodeInterpreterSwitchBoundary;
             this.isInInterpreter = isInInterpreter;
             this.isTransferToInterpreterMethod = isTransferToInterpreterMethod;
-            this.isInliningCutoff = isUncommon;
+            this.isInliningCutoff = isInliningCutoff;
         }
 
     }

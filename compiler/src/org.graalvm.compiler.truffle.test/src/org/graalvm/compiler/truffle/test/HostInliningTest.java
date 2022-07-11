@@ -600,10 +600,8 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
-    // bytecode dispatches should inline no matter the budget.
-    @NodeCostLimit(0)
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"nonTrivialMethod", "trivalWithBoundary"})
+    @ExpectNotInlined({"truffleBoundary"})
     static int testBytecodeSwitchtoBytecodeSwitch(int value) {
         int result = 0;
         for (int i = 0; i < 8; i++) {
@@ -648,16 +646,11 @@ public class HostInliningTest extends GraalCompilerTest {
             case 6:
                 return 4;
             case 7:
-                // not inlined, as not trivial (invokes >= 0)
                 trivalWithBoundary();
                 return 3;
             case 8:
-                // this is not inlined its not trivial.
                 return nonTrivialMethod(value);
             default:
-                /*
-                 * this call is still inlined because it is trivial.
-                 */
                 trivialMethod();
                 return -1;
         }

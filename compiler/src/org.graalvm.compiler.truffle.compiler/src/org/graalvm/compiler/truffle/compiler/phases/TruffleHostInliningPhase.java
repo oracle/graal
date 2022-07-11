@@ -247,30 +247,27 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         targets.clear();
 
                         traverseShell(context, root, (call) -> {
-                            if (!call.forceShallowInline) {
-                                /*
-                                 * We only care about force inlines for this pass.
-                                 */
-                                return;
+                            if (call.forceShallowInline && shouldInline(context, call)) {
+                                targets.add(call);
                             }
-                            targets.add(call);
                         });
 
                         for (CallTree call : targets) {
                             assert call.forceShallowInline;
                             if (!shouldInline(context, call)) {
-                                /*
-                                 * Some other condition might prevent inlining here.
-                                 */
                                 continue;
                             }
 
                             assert call.children == null && call.exploredIndex == -1 : "force shallow inline already explored";
-                            call.children = exploreGraph(context, call, lookupGraph(context, call.getTargetMethod()), round);
+                            call.children = exploreInlinableCall(context, call, round, sizeLimit);
+                            assert call.cost >= 0 : "cost not yet set";
 
-                            graphSize += call.cost;
-
-                            inlineCall(context, canonicalizableNodes, context.graph, call, inlineIndex++);
+                            if (call.children == null) {
+                                call.explorationIncomplete = true;
+                            } else {
+                                graphSize += call.cost;
+                                inlineCall(context, canonicalizableNodes, context.graph, call, inlineIndex++);
+                            }
                         }
 
                         // fixed point until no new targets are found through shallow inlining
@@ -521,8 +518,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     /**
-     * Peeks down the first block of a maximum of 5 calls to find a
-     * transferToInterpeterAndInvalidate().
+     * Peeks down the first block of a maximum of {@link #MAX_PEEK_PROPAGATE_DEOPT} number of
+     * methods to find a transferToInterpeterAndInvalidate() that dominates the method.
      */
     private boolean peekPropagatesDeopt(InliningPhaseContext context, ResolvedJavaMethod method, int depth) {
         if (depth > MAX_PEEK_PROPAGATE_DEOPT) {
@@ -546,7 +543,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                     if (!targetMethod.canBeInlined()) {
                         continue;
                     }
-                    if (peekPropagatesDeopt(context, targetMethod, depth)) {
+                    if (peekPropagatesDeopt(context, targetMethod, depth + 1)) {
                         return true;
                     }
                 }
@@ -585,7 +582,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * tree. So the outcome of this method may also be that the exploration was
      * {@link CallTree#explorationIncomplete incomplete}.
      */
-    private List<CallTree> exploreInlinableCall(InliningPhaseContext context, CallTree exploreRoot, CallTree callee, int exploreRound, int exploreBudget) {
+    private List<CallTree> exploreInlinableCall(InliningPhaseContext context, CallTree callee, int exploreRound, int exploreBudget) {
         StructuredGraph calleeGraph;
         ResolvedJavaMethod targetMethod;
         if (callee.invoke.getInvokeKind().isDirect()) {
@@ -608,8 +605,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
              * ever get inlined. From now on we should finish the recursive exploration as soon as
              * possible to avoid unnecessary overhead.
              */
-            exploreRoot.explorationIncomplete = true;
-            return Collections.emptyList();
+            return null;
         }
     }
 
@@ -627,8 +623,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     /**
-     * Traverses and notifies the consumer for all not inlined shell of a call tree. Is not invoked
-     * for the root.
+     * Traverses and notifies the consumer for all not inlined outer shell of a call tree. It is not
+     * invoked for the root.
      */
     private static void traverseShell(InliningPhaseContext context, CallTree call, Consumer<CallTree> consumer) {
         assert call.children != null : "not yet explored";
@@ -658,8 +654,9 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     private StructuredGraph exploreAndPrepareGraph(InliningPhaseContext context, CallTree root, int exploreRound, int exploreBudget) {
         assert !root.isExplored();
 
-        root.children = exploreInlinableCall(context, root, root, exploreRound, exploreBudget);
-        if (root.explorationIncomplete) {
+        root.children = exploreInlinableCall(context, root, exploreRound, exploreBudget);
+        if (root.children == null) {
+            root.explorationIncomplete = true;
             return null;
         }
 
@@ -683,7 +680,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         int prevInlineIndex = -1;
 
         boolean incomplete = false;
-        List<CallTree> toProcess = new ArrayList<>();
 
         while (inlineIndex > prevInlineIndex) { // there has been progress
             prevInlineIndex = inlineIndex;
@@ -696,10 +692,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 currentGraphSize = root.cost;
             }
 
-            toProcess.clear();
-            traverseShell(context, root, toProcess::add);
-
+            /*
+             * We reset the incomplete state and try again after canonicalization. Canonicalization
+             * might reduce the node cost and therefore may allow new methods to be inliend.
+             */
             incomplete = false;
+
+            List<CallTree> toProcess = new ArrayList<>();
+            traverseShell(context, root, toProcess::add);
 
             int fastPathInvokes = 0;
             for (CallTree callee : toProcess) {
@@ -709,16 +709,16 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 }
 
                 if (shouldInline(context, callee)) {
-                    callee.children = exploreInlinableCall(context, root, callee, exploreRound, exploreBudget - currentGraphSize);
+                    callee.children = exploreInlinableCall(context, callee, exploreRound, exploreBudget - currentGraphSize);
 
-                    if (root.explorationIncomplete) {
-                        root.explorationIncomplete = false;
+                    if (callee.children == null) {
                         incomplete = true;
                         break;
                     }
 
                     if (shouldInline(context, callee)) {
                         inlineCall(context, canonicalizableNodes, mutableGraph, callee, inlineIndex++);
+                        assert callee.cost >= 0 : "Cost not yet set.";
                         currentGraphSize += callee.cost;
                         continue;
                     }
@@ -736,6 +736,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             root.explorationIncomplete = true;
             return null;
         }
+
         return mutableGraph;
     }
 
@@ -859,7 +860,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return true;
         }
 
-        if (call.forceShallowInline) {
+        if (call.forceShallowInline && !call.explorationIncomplete) {
             /*
              * Always force inline bytecode switches into bytecode switches.
              */

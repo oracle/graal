@@ -196,9 +196,10 @@ As a first step, it is necessary to identify compilation units essential for goo
 To do this, a Truffle interpreter can be executed in interpreter-only mode by setting the `engine.Compilation` flag to `false`. 
 After that, a Java profiler may be used to identify hot spots in the execution.
 For further details on profiling, see [Profiling.md](https://github.com/oracle/graal/blob/master/truffle/docs/Profiling.md)
+If you are looking for advice on how and when to optimize Truffle interpreters, see [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md)
 
 After identifying a hot method, for example, the bytecode dispatch loop in a Truffle bytecode interpreter, we can further investigate using host inlining logging as described in the previous section.
-Interesting in the output is the reason field of entries prefixed with `CUTOFF`.
+Interesting entries are prefixed with `CUTOFF` and have a `reason` that explains the reason for the individual cutoff.
 
 Common reasons for `CUTOFF` entries are:
 * `dominated by transferToInterpreter()` or `protected by inInterpreter()`: This means that the call performed in a slow-path. Host inlining will not decide on such calls and just mark them as CUTOFF. 
