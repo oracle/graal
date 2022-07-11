@@ -202,7 +202,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations);
 
         materializeEffects.addVirtualizationDelta(-(objects.size() + otherAllocations.size()));
-        materializeEffects.add("materializeBefore", new Effect() {
+        materializeEffects.add(new Effect("materializeBefore") {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 for (ValueNode alloc : otherAllocations) {
@@ -244,6 +244,12 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                         }
                     }
                 }
+            }
+
+            @Override
+            void format(StringBuilder str) {
+                format(str, new String[]{"otherAllocations", "fixed", "objects", "values", "locks", "ensureVirtual"},
+                                new Object[]{otherAllocations, fixed, objects, values, locks, ensureVirtual});
             }
         });
     }

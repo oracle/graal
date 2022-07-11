@@ -31,7 +31,6 @@ import java.util.List;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -40,6 +39,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -284,10 +284,19 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     @Override
     public void addNode(ValueNode node) {
         if (node instanceof FloatingNode) {
-            effects.addFloatingNode(node, "VirtualizerTool");
+            effects.addFloatingNode(node, "VirtualizerTool.addNode");
         } else {
             effects.addFixedNodeBefore((FixedWithNextNode) node, position);
         }
+    }
+
+    @Override
+    public void ensureAdded(ValueNode node) {
+        if (node.isAlive()) {
+            // nothing to do
+            return;
+        }
+        effects.ensureAdded(node, position);
     }
 
     @Override

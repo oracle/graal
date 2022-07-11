@@ -125,7 +125,7 @@ public final class Target_java_lang_Thread {
 
     /* Thread ID */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadIdRecomputation.class) //
-    long tid;
+    public long tid;
 
     /** We have our own atomic number in {@link JavaThreads#threadSeqNumber}. */
     @Delete @TargetElement(onlyWith = JDK17OrEarlier.class)//

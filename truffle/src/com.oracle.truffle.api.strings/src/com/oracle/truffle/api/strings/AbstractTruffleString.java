@@ -127,9 +127,9 @@ public abstract class AbstractTruffleString {
 
     private static void validateData(Object data, int offset, int length, int stride) {
         if (data instanceof byte[]) {
-            validateDataArray(offset, length, stride, ((byte[]) data).length);
+            TStringOps.validateRegion((byte[]) data, offset, length, stride);
         } else if (data instanceof String) {
-            validateDataArray(offset, length, stride, ((String) data).length() << TStringUnsafe.getJavaStringStride((String) data));
+            TStringOps.validateRegion(TStringUnsafe.getJavaStringArray((String) data), offset, length, stride);
         } else if (data instanceof LazyLong || data instanceof LazyConcat) {
             validateDataLazy(offset, length, stride);
         } else if (data instanceof NativePointer) {
@@ -140,22 +140,15 @@ public abstract class AbstractTruffleString {
         }
     }
 
-    private static void validateDataArray(int offset, int length, int stride, int arrayLength) {
-        if (!Stride.isStride(stride) || offset < 0 || length < 0 || offset + (((long) length) << stride) > arrayLength) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw CompilerDirectives.shouldNotReachHere();
-        }
-    }
-
     private static void validateDataLazy(int offset, int length, int stride) {
-        if (!Stride.isStride(stride) || offset != 0 || length < 0 || (((long) length) << stride) > Integer.MAX_VALUE) {
+        if (!Stride.isStride(stride) || offset != 0 || Integer.toUnsignedLong(length) << stride > Integer.MAX_VALUE) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateDataNative(int offset, int length, int stride) {
-        if (!Stride.isStride(stride) || offset < 0 || length < 0 || (((long) length) << stride) > Integer.MAX_VALUE) {
+        if (!Stride.isStride(stride) || offset < 0 || Integer.toUnsignedLong(length) << stride > Integer.MAX_VALUE) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
@@ -404,7 +397,7 @@ public abstract class AbstractTruffleString {
     }
 
     final void boundsCheckRawLength(int index) {
-        if (index < 0 || index > length()) {
+        if (Integer.compareUnsigned(index, length()) > 0) {
             throw InternalErrors.indexOutOfBounds();
         }
     }
@@ -418,19 +411,22 @@ public abstract class AbstractTruffleString {
     }
 
     static void boundsCheckI(int index, int arrayLength) {
-        if (index < 0 || index >= arrayLength) {
+        assert arrayLength >= 0;
+        if (Integer.compareUnsigned(index, arrayLength) >= 0) {
             throw InternalErrors.indexOutOfBounds();
         }
     }
 
     static void boundsCheckI(int fromIndex, int toIndex, int arrayLength) {
-        if (fromIndex < 0 || fromIndex >= arrayLength || toIndex < 0 || toIndex > arrayLength) {
+        assert arrayLength >= 0;
+        if (Integer.compareUnsigned(fromIndex, arrayLength) >= 0 || Integer.compareUnsigned(toIndex, arrayLength) > 0) {
             throw InternalErrors.indexOutOfBounds();
         }
     }
 
     static void boundsCheckRegionI(int fromIndex, int regionLength, int arrayLength) {
-        if (fromIndex < 0 || regionLength < 0 || Integer.toUnsignedLong(fromIndex + regionLength) > arrayLength) {
+        assert arrayLength >= 0;
+        if (Integer.toUnsignedLong(fromIndex) + Integer.toUnsignedLong(regionLength) > arrayLength) {
             throw InternalErrors.indexOutOfBounds();
         }
     }

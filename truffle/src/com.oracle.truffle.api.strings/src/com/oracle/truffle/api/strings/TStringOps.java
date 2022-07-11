@@ -1409,28 +1409,31 @@ final class TStringOps {
         return Byte.toUnsignedInt(value);
     }
 
-    private static void validateRegion(byte[] array, int offset, int length, int stride) {
-        validateRegion(array, offset, length, stride, false);
-    }
-
-    private static void validateRegion(Object stubArray, int offset, int length, int stride, boolean isNative) {
-        if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative)) {
+    static void validateRegion(byte[] array, int offset, int length, int stride) {
+        if ((Integer.toUnsignedLong(offset) + (Integer.toUnsignedLong(length) << stride)) > array.length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegion(char[] array, int offset, int length) {
-        long charOffset = offset >> 1;
-        if (length < 0 || charOffset < 0 || charOffset + length > array.length) {
+        int charOffset = offset >> 1;
+        if ((Integer.toUnsignedLong(charOffset) + (Integer.toUnsignedLong(length))) > array.length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegion(int[] array, int offset, int length) {
-        long intOffset = offset >> 2;
-        if (length < 0 || intOffset < 0 || intOffset + length > array.length) {
+        int intOffset = offset >> 2;
+        if ((Integer.toUnsignedLong(intOffset) + (Integer.toUnsignedLong(length))) > array.length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private static void validateRegion(Object stubArray, int offset, int length, int stride, boolean isNative) {
+        if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
@@ -1445,13 +1448,13 @@ final class TStringOps {
 
     private static boolean invalidOffsetOrLength(Object stubArray, int offset, int length, int stride, boolean isNative) {
         if (isNative) {
-            return stubArray != null || offset < 0 || length < 0;
+            return stubArray != null || (offset | length) < 0;
         } else {
-            return offset < 0 || length < 0 || offset + ((long) length << stride) > ((byte[]) stubArray).length;
+            return (Integer.toUnsignedLong(offset) + (Integer.toUnsignedLong(length) << stride)) > ((byte[]) stubArray).length;
         }
     }
 
     private static boolean invalidIndex(int length, int i) {
-        return i < 0 || i >= length;
+        return Integer.compareUnsigned(i, length) >= 0;
     }
 }

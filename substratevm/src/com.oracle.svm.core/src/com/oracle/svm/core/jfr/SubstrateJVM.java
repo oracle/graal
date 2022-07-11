@@ -254,6 +254,11 @@ public class SubstrateJVM {
         return stackTraceRepo.getStackTraceId(skipCount, false);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getStackTraceId(JfrEvent eventType, int skipCount) {
+        return getStackTraceId(eventType.getId(), skipCount);
+    }
+
     /** See {@link JVM#getThreadId}. */
     public static long getThreadId(Thread thread) {
         if (HasJfrSupport.get()) {

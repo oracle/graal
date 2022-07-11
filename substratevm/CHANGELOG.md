@@ -4,7 +4,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
-* (GR-39390) Red Hat added support for the JFR event `JavaMonitorEnter`.
+* (GR-39390) (GR-39649) Red Hat added support for the JFR events `JavaMonitorEnter` and `ThreadSleep`.
 * (GR-39497) Add `-H:BuildOutputJSONFile=<file.json>` option for [JSON build output](https://github.com/oracle/graal/edit/master/docs/reference-manual/native-image/BuildOutput.md#machine-readable-build-output). Please feel free to provide feedback so that we can stabilize the schema/API.
 
 ## Version 22.2.0

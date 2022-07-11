@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import jdk.internal.loader.BuiltinClassLoader;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -38,6 +39,9 @@ import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+
+import java.lang.module.ModuleDescriptor;
+import java.util.Optional;
 
 public class FrameInfoQueryResult {
 
@@ -336,13 +340,24 @@ public class FrameInfoQueryResult {
      * Returns the name and source code location of the method.
      */
     public StackTraceElement getSourceReference() {
-        /*
-         * According to StackTraceElement undefined className is denoted by "", undefined fileName
-         * is denoted by null
-         */
-        final String className = sourceClass != null ? sourceClass.getName() : "";
-        String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
-        return new StackTraceElement(className, sourceMethodName, sourceFileName, sourceLineNumber);
+        if (sourceClass == null) {
+            return new StackTraceElement("", sourceMethodName, null, sourceLineNumber);
+        }
+
+        ClassLoader classLoader = sourceClass.getClassLoader();
+        String classLoaderName = null;
+        if (classLoader != null && !(classLoader instanceof BuiltinClassLoader)) {
+            classLoaderName = classLoader.getName();
+        }
+        Module module = sourceClass.getModule();
+        String moduleName = module.getName();
+        String moduleVersion = Optional.ofNullable(module.getDescriptor())
+                        .flatMap(ModuleDescriptor::version)
+                        .map(ModuleDescriptor.Version::toString)
+                        .orElse(null);
+        String className = sourceClass.getName();
+        String sourceFileName = DynamicHub.fromClass(sourceClass).getSourceFileName();
+        return new StackTraceElement(classLoaderName, moduleName, moduleVersion, className, sourceMethodName, sourceFileName, sourceLineNumber);
     }
 
     public boolean isNativeMethod() {

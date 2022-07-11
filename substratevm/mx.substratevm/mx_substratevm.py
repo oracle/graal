@@ -52,6 +52,7 @@ import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_unittest import _run_tests, _VMLauncher
+from mx_substratevm_sync_stubs import _sync_graal_stubs, _check_graal_stubs_synced
 
 import sys
 
@@ -217,6 +218,7 @@ GraalTags = Tags([
     'muslcbuild',
     'hellomodule',
     'condconfig',
+    'checkstubs',
 ])
 
 def vm_native_image_path(config=None):
@@ -446,6 +448,11 @@ def svm_gate_body(args, tasks):
 
             mx.log('mx native-image --help output check detected no errors.')
 
+    with Task('Check if generated stub code is in sync', tasks, tags=[GraalTags.checkstubs]) as t:
+        if t:
+            if check_graal_stubs_synced([]) != 0:
+                mx.abort('mx svm-sync-graal-stubs-check found differences when re-generating stub code, you may need to run "mx svm-sync-graal-stubs"')
+
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:
             config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
@@ -467,6 +474,29 @@ def svm_gate_body(args, tasks):
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
             hellomodule([])
+
+    with Task('Validate JSON build output', tasks, tags=[mx_gate.Tags.style]) as t:
+        if t:
+            import json
+            try:
+                from jsonschema import validate as json_validate
+                from jsonschema.exceptions import ValidationError, SchemaError
+            except ImportError:
+                mx.abort('Unable to import jsonschema')
+            with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', 'build-output-schema-v0.9.0.json')) as f:
+                json_schema = json.load(f)
+            with tempfile.NamedTemporaryFile(prefix='build_json') as json_file:
+                helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={json_file.name}'])
+                try:
+                    with open(json_file.name) as f:
+                        json_output = json.load(f)
+                    json_validate(json_output, json_schema)
+                except IOError as e:
+                    mx.abort(f'Unable to load JSON build output: {e}')
+                except ValidationError as e:
+                    mx.abort(f'Unable to validate JSON build output against the schema: {e}')
+                except SchemaError as e:
+                    mx.abort(f'JSON schema not valid: {e}')
 
 
 def native_unittests_task(extra_build_args=None):
@@ -1773,3 +1803,13 @@ if is_musl_supported():
     def musl_helloworld(args, config=None):
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')
+
+
+@mx.command(suite.name, 'svm-sync-graal-stubs-check')
+def check_graal_stubs_synced(_args):
+    return _check_graal_stubs_synced(suite)
+
+
+@mx.command(suite.name, 'svm-sync-graal-stubs')
+def sync_graal_stubs(_args):
+    _sync_graal_stubs(suite)

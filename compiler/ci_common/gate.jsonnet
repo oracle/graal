@@ -112,7 +112,7 @@
   bootstrap_lite:: s.base("build,bootstraplite", no_warning_as_error=true),
   bootstrap_full:: s.base("build,bootstrapfullverify", no_warning_as_error=true),
   bootstrap_economy:: s.base("build,bootstrapeconomy", no_warning_as_error=true, extra_vm_args="-Dgraal.CompilerConfiguration=economy"),
-  
+
   style:: c.eclipse + c.jdt + s.base("style,fullbuild,javadoc"),
 
   avx3:: {
@@ -140,7 +140,7 @@
     {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk17"] + s.save_as_json + c.mach5_target,
 
     # Linux AMD64
-    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("50:00") + s.save_as_json + c.mach5_target,
+    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("55:00") + s.save_as_json + c.mach5_target,
     {name: "gate-compiler-test-labsjdk-17-linux-amd64"} +               s.test +           c.labsjdk17 +      c.linux_amd64 + t("55:00") + s.save_as_json + c.mach5_target,
     {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.linux_amd64 + c.mach5_target,
     {name: "gate-compiler-ctw-labsjdk-17-linux-amd64"} +                s.ctw +            c.labsjdk17 +      c.linux_amd64 + c.mach5_target,

@@ -149,6 +149,7 @@ jobs:
         cat common.json |
           jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' |
           xargs sudo pip install
+        ${MX_PYTHON} -m pip install jsonschema==4.6.1
     - name: Build GraalVM and run gate
       env: ${{ matrix.env }}
       run: |

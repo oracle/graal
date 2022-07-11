@@ -61,7 +61,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -87,13 +86,13 @@ import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.DirectAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
-import jdk.vm.ci.meta.JavaKind;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
@@ -103,7 +102,7 @@ import sun.reflect.generics.repository.ClassRepository;
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
 @SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
-public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
+public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
                 Target_java_lang_invoke_TypeDescriptor_OfField, Target_java_lang_constant_Constable {
 
     @Substitute //
@@ -306,6 +305,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setModule(Module module) {
+        assert module != null;
         this.module = module;
     }
 
@@ -1108,13 +1108,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
-    public static Class<?> forName(String className) throws ClassNotFoundException {
+    public static Class<?> forName(String className) throws Throwable {
         Class<?> caller = Reflection.getCallerClass();
         return forName(className, true, caller.getClassLoader());
     }
 
     @Substitute //
-    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) {
+    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
          * we use the class loader of the caller class instead of the module's loader.
@@ -1128,13 +1128,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
+    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
         Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
         if (result == null && loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
             result = loader.loadClass(name); // may throw
         }
         if (result == null) {
-            throw new ClassNotFoundException(name);
+            throw ClassLoadingExceptionSupport.getExceptionForClass(name, new ClassNotFoundException(name));
         }
         if (initialize) {
             DynamicHub.fromClass(result).ensureInitialized();

@@ -23,22 +23,25 @@ You can get Oracle GraalVM Enterprise Edition by:
 ## Install GraalVM Enterprise
 
 Getting GraalVM Enterprise installed and ready-to-go should take a few minutes.
-Choose your operating system and proceed to the installation steps for your specific platform:
+Choose your operating system and environment, and proceed to the installation steps:
 
+* Oracle Cloud 
+  * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-yum.md)
+  * [OCI DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
 * [Linux](installation-linux.md)
 * [Linux ARM64](installation-linux-aarch64.md)
-* [Oracle Linux](oci/compute-instances.md)
 * [macOS](installation-macos.md)
 * [Windows](installation-windows.md)
+* [Container Images](container-images/graalvm-ee-container-images.md)
 
-## Start Running Applications
+## Running Applications
 
 For demonstration purposes here, we will use GraalVM Enterprise based on Java 17.
 
-The core distribution of GraalVM Enterprise includes the JVM, the GraalVM compiler, the LLVM runtime, and JavaScript runtime.
-Having downloaded and installed GraalVM Enterprise, you can already run Java, JavaScript, and LLVM-based applications.
+The core distribution of GraalVM Enterprise includes the JVM, the GraalVM compiler, the LLVM runtime, and the JavaScript runtime.
+Having downloaded and installed GraalVM Enterprise, you are ready to run Java, JavaScript, and LLVM-based applications.
 
-GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but includes a set of additional launchers and utilities:
+GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but includes several additional launchers and utilities:
 - **js** -- a JavaScript launcher
 - **lli** -- a LLVM bitcode launcher
 - **gu** -- the GraalVM Updater tool to install additional language runtimes and utilities
@@ -277,15 +280,16 @@ $JAVA_HOME/bin/wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
 
 More details can be found in the [WebAssembly reference manual](../../reference-manual/wasm/README.md).
 
-## Native Images
+## Native Image
 
-With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained binary - a native image - to achieve faster startup and a smaller footprint for your application.
+With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
+
 The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image
 ```
 
-The `HelloWorld` example from above is used here to demonstrate how to generate a native image:
+The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
 
 ```java
 public class HelloWorld {
@@ -297,7 +301,7 @@ public class HelloWorld {
 
 > Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](../../reference-manual/native-image/README.md#prerequisites).
 
-Compile _HelloWorld.java_ to bytecode and then build a native image:
+Compile _HelloWorld.java_ to bytecode and then build a native executable:
 ```shell
 javac HelloWorld.java
 native-image HelloWorld
@@ -312,9 +316,9 @@ Hello, World!
 
 More detailed documentation on this innovative technology is available in the [Native Image reference manual](../../reference-manual/native-image/README.md).
 
-## Polyglot Capabilities of Native Images
+## Polyglot Capabilities of Native Image
 
-GraalVM Enterprise makes it possible to use polyglot capabilities when building native images.
+GraalVM Enterprise makes it possible to use polyglot capabilities when building native executables.
 Take this example of a JSON pretty-printer Java program that embeds some JavaScript code:
 
 ```java
@@ -336,7 +340,7 @@ public class PrettyPrintJSON {
   }
 }
 ```
-Compile it and build a native image for it. The `--language:js` argument ensures
+Compile it and build a native executable for it. The `--language:js` argument ensures
 that JavaScript is available in the generated image:
 
 ```shell
@@ -344,8 +348,8 @@ javac PrettyPrintJSON.java
 native-image --language:js --initialize-at-build-time PrettyPrintJSON
 ```
 
-The native image generatation will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
-Additionally, the image building requires large amounts of physical memory, especially if you build an image with
+The generatation of the native executable will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
+Additionally, the building requires large amounts of physical memory, especially if you build a native executable with
 the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
 
 The resulting executable can now perform JSON pretty-printing:
@@ -379,7 +383,7 @@ Here is the JSON output from the native executable:
 }
 ```
 
-The native image runs much faster than running the same code on the JVM directly:
+The native executable runs much faster than running the same code on the JVM directly:
 ```shell
 time java PrettyPrintJSON < test.json > /dev/null
 real	0m1.806s

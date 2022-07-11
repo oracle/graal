@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,10 @@ public final class ConnectionWatcher {
         return !isClosed() && doWaitForClose;
     }
 
+    private boolean shouldWaitForOpen() {
+        return opened == null;
+    }
+
     public synchronized void waitForClose() {
         while (!isClosed()) {
             try {
@@ -47,9 +51,9 @@ public final class ConnectionWatcher {
     }
 
     void waitForOpen() {
-        if (!isOpened()) {
+        if (shouldWaitForOpen()) {
             synchronized (this) {
-                while (!isOpened()) {
+                while (shouldWaitForOpen()) {
                     try {
                         wait();
                     } catch (InterruptedException ex) {
@@ -75,10 +79,6 @@ public final class ConnectionWatcher {
     public synchronized void notifyClosing() {
         opened = Boolean.FALSE;
         notifyAll();
-    }
-
-    private boolean isOpened() {
-        return opened == Boolean.TRUE;
     }
 
     private boolean isClosed() {

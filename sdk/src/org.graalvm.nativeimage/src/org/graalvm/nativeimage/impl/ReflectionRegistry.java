@@ -55,4 +55,8 @@ public interface ReflectionRegistry {
 
     void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields);
 
+    @SuppressWarnings("unused")
+    default void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t) {
+    }
+
 }

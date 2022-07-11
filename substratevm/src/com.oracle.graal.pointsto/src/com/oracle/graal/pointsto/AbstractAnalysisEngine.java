@@ -41,11 +41,13 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import java.io.PrintWriter;
 import java.util.Collections;
@@ -54,51 +56,54 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
 /**
- * This abstract class will be shared between Reachability and Points-to. It contains generic
- * methods needed by both types of analysis and getters.
+ * This abstract class is shared between Reachability and Points-to. It contains generic methods
+ * needed by both types of analysis and getters.
  */
 public abstract class AbstractAnalysisEngine implements BigBang {
 
-    private final Boolean extendedAsserts;
-    private final Timer processFeaturesTimer;
-    private final Timer analysisTimer;
-    protected final Timer verifyHeapTimer;
-    protected final Timer reachabilityTimer;
-    protected final AnalysisMetaAccess metaAccess;
-    private final HostedProviders providers;
-    protected final HostVM hostVM;
-    protected final ForkJoinPool executorService;
-    private final Runnable heartbeatCallback;
-    protected final UnsupportedFeatures unsupportedFeatures;
-    protected final DebugContext debug;
-    protected final OptionValues options;
     protected final AnalysisUniverse universe;
-    private final List<DebugHandlersFactory> debugHandlerFactories;
+    protected final AnalysisMetaAccess metaAccess;
+    protected final AnalysisPolicy analysisPolicy;
     private final HeapScanningPolicy heapScanningPolicy;
+
+    protected final Boolean extendedAsserts;
+
+    protected final OptionValues options;
+    protected final DebugContext debug;
+    private final List<DebugHandlersFactory> debugHandlerFactories;
+
+    protected final HostVM hostVM;
+    protected final HostedProviders providers;
+    protected final UnsupportedFeatures unsupportedFeatures;
     private final Replacements replacements;
+
+    /**
+     * Processing queue.
+     */
     protected final CompletionExecutor executor;
-    protected final AnalysisTiming timing;
+    private final Runnable heartbeatCallback;
+
+    protected final Timer processFeaturesTimer;
+    protected final Timer analysisTimer;
+    protected final Timer verifyHeapTimer;
 
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
         this.options = options;
         this.universe = universe;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
-        this.debug = new org.graalvm.compiler.debug.DebugContext.Builder(options, debugHandlerFactories).build();
+        this.debug = new Builder(options, debugHandlerFactories).build();
         this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
+        this.analysisPolicy = universe.analysisPolicy();
         this.providers = providers;
         this.hostVM = hostVM;
-        this.executorService = executorService;
         this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
-        this.timing = PointstoOptions.ProfileAnalysisOperations.getValue(options) ? new AbstractAnalysisEngine.AnalysisTiming() : null;
-        this.executor.init(timing);
         this.heartbeatCallback = heartbeatCallback;
         this.unsupportedFeatures = unsupportedFeatures;
         this.replacements = providers.getReplacements();
 
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
         this.verifyHeapTimer = timerCollection.get(TimerCollection.Registry.VERIFY_HEAP);
-        this.reachabilityTimer = timerCollection.createTimer("(reachability)");
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
@@ -108,6 +113,22 @@ public abstract class AbstractAnalysisEngine implements BigBang {
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
     }
 
+    /**
+     * Iterate until analysis reaches a fixpoint.
+     *
+     * @param debugContext debug context
+     * @param analysisEndCondition hook for actions to be taken during analysis. It also dictates
+     *            when the analysis should end, i.e., it returns true if no more iterations are
+     *            required.
+     *
+     *            When the analysis is used for Native Image generation the actions could for
+     *            example be specified via
+     *            {@link org.graalvm.nativeimage.hosted.Feature#duringAnalysis(Feature.DuringAnalysisAccess)}.
+     *            The ending condition could be provided by
+     *            {@link org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess#requireAnalysisIteration()}.
+     *
+     * @throws AnalysisError if the analysis fails
+     */
     @SuppressWarnings("try")
     @Override
     public void runAnalysis(DebugContext debugContext, Function<AnalysisUniverse, Boolean> analysisEndCondition) throws InterruptedException {
@@ -159,6 +180,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         }
     }
 
+    protected abstract CompletionExecutor.Timing getTiming();
+
     @SuppressWarnings("try")
     private boolean analysisModified() throws InterruptedException {
         boolean analysisModified;
@@ -166,7 +189,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
             analysisModified = universe.getHeapVerifier().requireAnalysisIteration(executor);
         }
         /* Initialize for the next iteration. */
-        executor.init(timing);
+        executor.init(getTiming());
         return analysisModified;
     }
 
@@ -175,8 +198,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         universe.getTypes().forEach(AnalysisType::cleanupAfterAnalysis);
         universe.getFields().forEach(AnalysisField::cleanupAfterAnalysis);
         universe.getMethods().forEach(AnalysisMethod::cleanupAfterAnalysis);
-
-        PointsToAnalysis.ConstantObjectsProfiler.constantTypes.clear();
 
         universe.getHeapScanner().cleanupAfterAnalysis();
         universe.getHeapVerifier().cleanupAfterAnalysis();
@@ -273,20 +294,5 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public Replacements getReplacements() {
         return replacements;
-    }
-
-    private class AnalysisTiming extends PointsToAnalysis.BucketTiming {
-
-        @Override
-        public void printHeader() {
-            super.printHeader();
-            System.out.println();
-        }
-
-        @Override
-        public void print() {
-            super.print();
-            System.out.println();
-        }
     }
 }
