@@ -30,10 +30,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
-import java.util.Collections;
-import java.util.List;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
