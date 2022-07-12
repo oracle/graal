@@ -30,7 +30,7 @@ import java.util.List;
 
 /**
  * A linked list with O(1) concatenation.
- * 
+ *
  * @param <T> the element type
  */
 public class ConcatList<T> implements Iterable<T> {
@@ -134,7 +134,7 @@ public class ConcatList<T> implements Iterable<T> {
 
     /**
      * Returns the items in a list.
-     * 
+     *
      * @return a list of items
      */
     public List<T> toList() {

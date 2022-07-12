@@ -189,7 +189,7 @@ public class ExperimentImpl implements Experiment {
     /**
      * Add an executed method to this experiment. The executed method's experiment must be set to
      * this instance.
-     * 
+     *
      * @param executedMethod the executed method to be added
      */
     public void addExecutedMethod(ExecutedMethod executedMethod) {

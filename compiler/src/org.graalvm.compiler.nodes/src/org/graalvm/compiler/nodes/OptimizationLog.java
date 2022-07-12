@@ -505,7 +505,7 @@ public class OptimizationLog implements CompilationListener {
      * If the optimization log is enabled, prints the optimization log of this compilation to
      * {@code optimization_log/compilation-id.json} in the {@link DebugOptions#getDumpDirectoryName
      * dump directory}. Directories are created if they do not exist.
-     * 
+     *
      * @throws IOException failed to create a directory or the file
      */
     public void printToFileIfEnabled() throws IOException {

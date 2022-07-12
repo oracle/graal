@@ -28,13 +28,13 @@ package org.graalvm.bisect.parser.args;
  * Represents a program argument with a value that may be a default value or parsed from the program
  * arguments. The purpose of this class is reduced code duplication while all argument types still
  * have the common ancestor {@link Argument}.
- * 
+ *
  * @param <T> the type of the value
  */
 abstract class ValuedArgument<T> extends Argument {
     /**
      * Gets the value of the argument.
-     * 
+     *
      * @return the value of the argument
      */
     public T getValue() {
@@ -48,7 +48,7 @@ abstract class ValuedArgument<T> extends Argument {
 
     /**
      * Constructs a required argument with a value.
-     * 
+     *
      * @param name the name of the argument
      * @param help the help message
      */
@@ -59,7 +59,7 @@ abstract class ValuedArgument<T> extends Argument {
 
     /**
      * Constructs an optional argument with a default value.
-     * 
+     *
      * @param name the name of the argument
      * @param defaultValue the default value
      * @param help the help message

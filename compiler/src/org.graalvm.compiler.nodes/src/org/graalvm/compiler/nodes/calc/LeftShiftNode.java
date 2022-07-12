@@ -32,12 +32,12 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.Constant;
@@ -84,7 +84,7 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
      * {@linkplain LeftShiftNode#getX()} and {@linkplain LeftShiftNode#getY()} inputs represent
      * numeric integers and {@linkplain LeftShiftNode#getY()} is a constant value. The resulting
      * {@linkplain MulNode} replaces the current node in the {@linkplain LeftShiftNode#graph()}.
-     * 
+     *
      * @return true iff node was replaced
      */
     public boolean tryReplaceWithMulNode() {

@@ -28,7 +28,7 @@ import org.graalvm.bisect.core.optimization.OptimizationPhase;
 
 /**
  * Builder for an executed method. Used during parsing to build a complete executed method.
- * 
+ *
  * @see ExecutedMethod
  */
 public class ExecutedMethodBuilder {
