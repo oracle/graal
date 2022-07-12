@@ -32,6 +32,7 @@ import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.matching.tree.EditScript;
 import org.graalvm.bisect.matching.tree.SelkowTreeMatcher;
+import org.graalvm.bisect.util.EconomicMapUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -69,7 +70,7 @@ public class SelkowTreeMatcherTest {
      *        /          |          \
      * ToBeDeleted  ToBeRelabeled  ToBeUnchanged
      *               |       |
-     *              foo     bar
+     *              foo     foo
      *
      *                method2
      *                   |
@@ -77,8 +78,9 @@ public class SelkowTreeMatcherTest {
      *                   |___________________________
      *                   |          |                \
      *               Relabeled  ToBeUnchanged   ToBeInserted
-     *                |     |
-     *               foo   bar
+     *            _______|_______
+     *          /        |       \
+     *         foo foo{prop: 1}  foo
      * </pre>
      * // @formatter:on
      */
@@ -86,10 +88,10 @@ public class SelkowTreeMatcherTest {
     public void testOperations() {
         OptimizationPhaseImpl toBeDeleted = new OptimizationPhaseImpl("ToBeDeleted");
         OptimizationPhaseImpl toBeRelabeled = new OptimizationPhaseImpl("ToBeRelabeled");
-        Optimization foo = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
-        Optimization bar = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
-        toBeRelabeled.addChild(foo);
-        toBeRelabeled.addChild(bar);
+        Optimization foo1 = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
+        Optimization foo3 = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
+        toBeRelabeled.addChild(foo1);
+        toBeRelabeled.addChild(foo3);
         OptimizationPhaseImpl toBeUnchaged = new OptimizationPhaseImpl("ToBeUnchanged");
         OptimizationPhaseImpl root1 = new OptimizationPhaseImpl("RootPhase");
         root1.addChild(toBeDeleted);
@@ -98,12 +100,17 @@ public class SelkowTreeMatcherTest {
         ExecutedMethodImpl method1 = new ExecutedMethodImpl("1", "method1", root1, 0, null);
 
         OptimizationPhaseImpl relabeled = new OptimizationPhaseImpl("Relabeled");
-        relabeled.addChild(foo);
-        relabeled.addChild(bar);
+        Optimization foo1Clone = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
+        Optimization foo2 = new OptimizationImpl("ToBeRelabeled", "foo", 0, EconomicMapUtil.of("prop", 1));
+        Optimization foo3Clone = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
+        relabeled.addChild(foo1Clone);
+        relabeled.addChild(foo2);
+        relabeled.addChild(foo3Clone);
         OptimizationPhaseImpl toBeInserted = new OptimizationPhaseImpl("ToBeInserted");
         OptimizationPhaseImpl root2 = new OptimizationPhaseImpl("RootPhase");
         root2.addChild(relabeled);
-        root2.addChild(toBeUnchaged);
+        OptimizationPhaseImpl toBeUnchagedClone = new OptimizationPhaseImpl("ToBeUnchanged");
+        root2.addChild(toBeUnchagedClone);
         root2.addChild(toBeInserted);
         ExecutedMethodImpl method2 = new ExecutedMethodImpl("2", "method2", root2, 0, null);
 
@@ -113,9 +120,10 @@ public class SelkowTreeMatcherTest {
                         new EditScript.Identity(root1, root2, 0),
                         new EditScript.Delete(toBeDeleted, 1),
                         new EditScript.Relabel(toBeRelabeled, relabeled, 1),
-                        new EditScript.Identity(foo, foo, 2),
-                        new EditScript.Identity(bar, bar, 2),
-                        new EditScript.Identity(toBeUnchaged, toBeUnchaged, 1),
+                        new EditScript.Identity(foo1, foo1Clone, 2),
+                        new EditScript.Insert(foo2, 2),
+                        new EditScript.Identity(foo3, foo3Clone, 2),
+                        new EditScript.Identity(toBeUnchaged, toBeUnchagedClone, 1),
                         new EditScript.Insert(toBeInserted, 1));
         Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
     }
