@@ -807,8 +807,8 @@ _daCapoIterations = {
     "pmd"         : 30,
     "sunflow"     : 35,
     "tomcat"      : -1,
-    "tradebeans"  : 20,
-    "tradesoap"   : 20,
+    "tradebeans"  : -1,
+    "tradesoap"   : -1,
     "xalan"       : 30,
 }
 
@@ -857,10 +857,10 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             return "dacapo-{}".format(self.workloadSize())
 
     def defaultSuiteVersion(self):
-        return "9.12-MR1-bach"
+        return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["9.12-bach", "9.12-MR1-bach"]
+        return ["9.12-bach", "9.12-MR1-bach", "9.12-MR1-git+2baec49"]
 
     def workloadSize(self):
         return "default"
@@ -871,6 +871,8 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             title = "DaCapo 9.12"
         elif self.version() == "9.12-MR1-bach":
             title = "DaCapo 9.12-MR1"
+        elif self.version() == "9.12-MR1-git+2baec49":
+            title = "DaCapo 9.12-MR1-git+2baec49"
         return title
 
     def daCapoClasspathEnvVarName(self):
@@ -879,8 +881,10 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
     def daCapoLibraryName(self):
         if self.version() == "9.12-bach":  # 2009 release
             return "DACAPO"
-        elif self.version() == "9.12-MR1-bach":  # 2018 maintenance release
+        elif self.version() == "9.12-MR1-bach":  # 2018 maintenance release (January 2018)
             return "DACAPO_MR1_BACH"
+        elif self.version() == "9.12-MR1-git+2baec49":  # commit from July 2018
+            return "DACAPO_MR1_2baec49"
         else:
             return None
 
@@ -894,16 +898,15 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             # Stopped working as of 8u92 on the initial release
             del iterations["tomcat"]
 
-        if self.version() in ["9.12-bach", "9.12-MR1-bach"]:
-            if mx.get_jdk().javaCompliance >= '9':
-                if "batik" in iterations:
-                    # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
-                    del iterations["batik"]
-                if "tradesoap" in iterations:
-                    # validation fails transiently but frequently in the first iteration in JDK9+
-                    del iterations["tradesoap"]
-            elif not _is_batik_supported(java_home_jdk()):
+        if mx.get_jdk().javaCompliance >= '9':
+            if "batik" in iterations:
+                # batik crashes on JDK9+. This is fixed on the dacapo chopin branch only
                 del iterations["batik"]
+            if "tradesoap" in iterations:
+                # validation fails transiently but frequently in the first iteration in JDK9+
+                del iterations["tradesoap"]
+        elif not _is_batik_supported(java_home_jdk()):
+            del iterations["batik"]
 
         if self.workloadSize() == "small":
             # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
@@ -929,7 +932,7 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
     def vmArgs(self, bmSuiteArgs):
         vmArgs = super(DaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
         if java_home_jdk().javaCompliance >= '16':
-            vmArgs += ["--add-opens", "java.base/java.lang=ALL-UNNAMED"]
+            vmArgs += ["--add-opens", "java.base/java.lang=ALL-UNNAMED", "--add-opens", "java.base/java.net=ALL-UNNAMED"]
         return vmArgs
 
 

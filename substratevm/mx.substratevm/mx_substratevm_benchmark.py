@@ -549,19 +549,19 @@ _daCapo_exclude_lib = {
 }
 
 class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
-    def name(self):
-        return 'dacapo-native-image'
-
     '''
     Some methods in DaCapo source are modified because they relied on the jar's nested structure,
     e.g. loading all configuration files for benchmarks from a nested directory.
     Therefore, this library is built from the source.
     '''
-    def dacapo_libname(self):
-        return 'DACAPO_SVM'
+    def name(self):
+        return 'dacapo-native-image'
+
+    def benchSuiteName(self, bmSuiteArgs=None):
+        return 'dacapo'
 
     def daCapoPath(self):
-        lib = mx.library(self.dacapo_libname(), False)
+        lib = mx.library(self.daCapoLibraryName(), False)
         if lib:
             return lib.get_path(True)
         return None
@@ -569,8 +569,9 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
     def daCapoSuiteTitle(self):
         return super(DaCapoNativeImageBenchmarkSuite, self).suite_title()
 
-    def benchSuiteName(self, bmSuiteArgs=None):
-        return 'dacapo'
+    def availableSuiteVersions(self):
+        # This version also ships a custom harness class to allow native image to find the entry point in the nested jar
+        return ["9.12-MR1-git+2baec49"]
 
     def daCapoIterations(self):
         return _daCapo_iterations
