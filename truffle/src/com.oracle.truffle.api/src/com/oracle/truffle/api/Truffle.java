@@ -120,8 +120,13 @@ public final class Truffle {
                     }
                 }
 
-                List<Iterable<TruffleRuntimeAccess>> loaders = Collections.singletonList(ServiceLoader.load(TruffleRuntimeAccess.class));
-                TruffleRuntimeAccess access = selectTruffleRuntimeAccess(loaders);
+                TruffleRuntimeAccess access;
+                ModuleLayer moduleLayer = Truffle.class.getModule().getLayer();
+                if (moduleLayer != null) {
+                    access = selectTruffleRuntimeAccess(Collections.singletonList(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
+                } else {
+                    access = selectTruffleRuntimeAccess(Collections.singletonList(ServiceLoader.load(TruffleRuntimeAccess.class)));
+                }
 
                 if (access != null) {
                     exportTo(access.getClass());
