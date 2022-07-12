@@ -152,7 +152,8 @@ public class ExperimentParser {
         optimization.removeKey("optimizationName");
         optimization.removeKey("eventName");
         optimization.removeKey("bci");
-        return new OptimizationImpl(optimizationName, eventName, bci, optimization);
+        EconomicMap<String, Object> properties = optimization.isEmpty() ? null : optimization;
+        return new OptimizationImpl(optimizationName, eventName, bci, properties);
     }
 
     private static class ProftoolMethod {

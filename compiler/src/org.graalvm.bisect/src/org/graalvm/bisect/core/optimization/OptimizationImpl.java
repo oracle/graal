@@ -51,8 +51,7 @@ public class OptimizationImpl implements Optimization {
      */
     private final String eventName;
     /**
-     * The map of additional properties of this optimization, mapped by property name. If there are
-     * no properties, the field can be {@code null} to save space.
+     * The map of additional properties of this optimization, mapped by property name.
      */
     private final EconomicMap<String, Object> properties;
 
@@ -60,7 +59,7 @@ public class OptimizationImpl implements Optimization {
         this.optimizationName = optimizationName;
         this.eventName = eventName;
         this.bci = bci;
-        this.properties = properties;
+        this.properties = (properties == null) ? EconomicMap.emptyMap() : properties;
     }
 
     @Override
@@ -81,9 +80,6 @@ public class OptimizationImpl implements Optimization {
 
     @Override
     public EconomicMap<String, Object> getProperties() {
-        if (properties == null) {
-            return EconomicMap.emptyMap();
-        }
         return properties;
     }
 
