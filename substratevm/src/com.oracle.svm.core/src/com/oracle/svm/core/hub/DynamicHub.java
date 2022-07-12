@@ -303,6 +303,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     private final Class<?> nestHost;
 
+    /**
+     * The simple binary name of this class, as returned by {@code Class.getSimpleBinaryName0}.
+     */
+    private final String simpleBinaryName;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setModule(Module module) {
         assert module != null;
@@ -345,7 +350,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
                     String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
-                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed) {
+                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed, String simpleBinaryName) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
@@ -357,6 +362,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
         this.nestHost = nestHost;
+        this.simpleBinaryName = simpleBinaryName;
 
         this.flags = NumUtil.safeToUByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
@@ -1232,21 +1238,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute //
     private String getSimpleBinaryName0() {
-        if (isAnonymousClass() || enclosingClass == null) {
-            return null;
-        }
-        try {
-            int prefix = enclosingClass.getName().length();
-            char firstLetter;
-            do {
-                prefix += 1;
-                firstLetter = name.charAt(prefix);
-            } while (!Character.isLetter(firstLetter));
-            return name.substring(prefix);
-        } catch (IndexOutOfBoundsException ex) {
-            throw new InternalError("Malformed class name", ex);
-        }
-        /* See open/src/hotspot/share/prims/jvm.cpp#1522. */
+        return simpleBinaryName;
     }
 
     /**

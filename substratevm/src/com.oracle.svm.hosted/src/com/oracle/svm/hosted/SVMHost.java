@@ -29,6 +29,8 @@ import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.Comparator;
@@ -115,6 +117,7 @@ import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -377,10 +380,11 @@ public class SVMHost extends HostVM {
         /* Class names must be interned strings according to the Java specification. */
         String className = type.toClassName().intern();
         /*
-         * There is no need to have file names as interned strings. So we perform our own
-         * de-duplication.
+         * There is no need to have file names and simple binary names as interned strings. So we
+         * perform our own de-duplication.
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
+        String simpleBinaryName = stringTable.deduplicate(getSimpleBinaryName(javaClass), true);
 
         Class<?> nestHost = javaClass.getNestHost();
         boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
@@ -391,7 +395,7 @@ public class SVMHost extends HostVM {
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
                         isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
                         modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
-                        type.declaresDefaultMethods(), isSealed);
+                        type.declaresDefaultMethods(), isSealed, simpleBinaryName);
         ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }
@@ -432,6 +436,16 @@ public class SVMHost extends HostVM {
         String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
                         linkAtBuildTimeSupport.errorMessageFor(javaClass);
         throw new UnsupportedFeatureException(message);
+    }
+
+    private final Method getSimpleBinaryName0 = ReflectionUtil.lookupMethod(Class.class, "getSimpleBinaryName0");
+
+    private String getSimpleBinaryName(Class<?> javaClass) {
+        try {
+            return (String) getSimpleBinaryName0.invoke(javaClass);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
