@@ -108,12 +108,16 @@ public final class TStringTestUtil {
     }
 
     static String hex(byte[] array) {
+        return hex(array, array.length);
+    }
+
+    static String hex(byte[] array, int length) {
         if (array.length == 0) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("0x%02x", array[0]));
-        for (int i = 1; i < array.length; i++) {
+        for (int i = 1; i < length; i++) {
             sb.append(String.format(" 0x%02x", array[i]));
         }
         return sb.toString();

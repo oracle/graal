@@ -556,8 +556,8 @@ public final class MutableTruffleString extends AbstractTruffleString {
             a.boundsCheckRegion(fromIndex, length, getCodePointLengthNode);
             Object arrayA = toIndexableNode.execute(a, a.data());
             final int codeRangeA = getCodeRangeANode.execute(a);
-            int fromIndexRaw = translateIndexNode.execute(a, arrayA, codeRangeA, 0, fromIndex, length == 0);
-            int lengthRaw = translateIndexNode.execute(a, arrayA, codeRangeA, fromIndexRaw, length, true);
+            int fromIndexRaw = translateIndexNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, 0, fromIndex, length == 0);
+            int lengthRaw = translateIndexNode.execute(a, arrayA, codeRangeA, expectedEncoding.id, fromIndexRaw, length, true);
             int stride = expectedEncoding.naturalStride;
             return SubstringByteIndexNode.createSubstring(a, fromIndexRaw << stride, lengthRaw << stride, expectedEncoding, copyToByteArrayNode);
         }
@@ -783,6 +783,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                         @Cached("createClassProfile()") ValueProfile dataClassProfile,
                         @Cached ConditionProfile asciiBytesLatinProfile,
                         @Cached ConditionProfile utf8Profile,
+                        @Cached ConditionProfile utf8BrokenProfile,
                         @Cached ConditionProfile utf16Profile,
                         @Cached ConditionProfile utf16S0Profile,
                         @Cached ConditionProfile utf32Profile,
@@ -819,7 +820,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 codePointLength = length;
             } else {
                 if (utf8Profile.profile(isUTF8(encoding))) {
-                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false, false);
+                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false, false, utf8BrokenProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 } else if (asciiBytesLatinProfile.profile(TStringGuards.isAsciiBytesOrLatin1(encoding))) {

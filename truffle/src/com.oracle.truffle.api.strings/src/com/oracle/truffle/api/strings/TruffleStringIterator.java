@@ -101,13 +101,17 @@ public final class TruffleStringIterator {
     final AbstractTruffleString a;
     final Object arrayA;
     final byte codeRangeA;
+    final byte encoding;
+    final byte naturalStride;
     private int rawIndex;
 
-    TruffleStringIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int rawIndex) {
+    TruffleStringIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int rawIndex) {
         assert TSCodeRange.isCodeRange(codeRangeA);
         this.a = a;
         this.arrayA = arrayA;
         this.codeRangeA = (byte) codeRangeA;
+        this.encoding = (byte) encoding;
+        this.naturalStride = (byte) TruffleString.Encoding.getNaturalStride(encoding);
         this.rawIndex = rawIndex;
     }
 
@@ -127,6 +131,17 @@ public final class TruffleStringIterator {
      */
     public boolean hasPrevious() {
         return rawIndex > 0;
+    }
+
+    /**
+     * Returns the next codepoint's byte index, where "byte index" refers the codepoint's first byte
+     * in forward mode, while in backward mode it refers to the first byte <i>after</i> the
+     * codepoint.
+     * 
+     * @since 22.3
+     */
+    public int getByteIndex() {
+        return rawIndex << naturalStride;
     }
 
     /**
@@ -163,7 +178,7 @@ public final class TruffleStringIterator {
         }
 
         @SuppressWarnings("fallthrough")
-        @Specialization(guards = {"isUTF8(it.a)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
         static int utf8Valid(TruffleStringIterator it) {
             int b = it.readAndIncS0();
             if (b < 0x80) {
@@ -190,7 +205,7 @@ public final class TruffleStringIterator {
         }
 
         @SuppressWarnings("fallthrough")
-        @Specialization(guards = {"isUTF8(it.a)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
         static int utf8Broken(TruffleStringIterator it) {
             int b = it.readAndIncS0();
             if (b < 0x80) {
@@ -230,7 +245,7 @@ public final class TruffleStringIterator {
             return codepoint;
         }
 
-        @Specialization(guards = {"isUTF16(it.a)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
         static int utf16Valid(TruffleStringIterator it) {
             char c = (char) it.readAndIncS1();
             if (Encodings.isUTF16HighSurrogate(c)) {
@@ -241,7 +256,7 @@ public final class TruffleStringIterator {
             return c;
         }
 
-        @Specialization(guards = {"isUTF16(it.a)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
         static int utf16Broken(TruffleStringIterator it) {
             char c = (char) it.readAndIncS1();
             if (Encodings.isUTF16HighSurrogate(c) && it.hasNext()) {
@@ -254,13 +269,13 @@ public final class TruffleStringIterator {
             return c;
         }
 
-        @Specialization(guards = {"isUnsupportedEncoding(it.a)"})
+        @Specialization(guards = {"isUnsupportedEncoding(it.encoding)"})
         static int unsupported(TruffleStringIterator it) {
             assert it.hasNext();
             byte[] bytes = JCodings.asByteArray(it.arrayA);
             int p = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();
-            JCodings.Encoding jCoding = JCodings.getInstance().get(it.a.encoding());
+            JCodings.Encoding jCoding = JCodings.getInstance().get(it.encoding);
             int length = JCodings.getInstance().getCodePointLength(jCoding, bytes, p, end);
             if (length < 1) {
                 if (length < -1) {
@@ -339,7 +354,7 @@ public final class TruffleStringIterator {
             return readAndDec(it, readNode);
         }
 
-        @Specialization(guards = {"isUTF8(it.a)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
         static int utf8Valid(TruffleStringIterator it) {
             int b = it.readAndDecS0();
             if (b < 0x80) {
@@ -360,7 +375,7 @@ public final class TruffleStringIterator {
             return codepoint | (b & (0xff >>> nBytes)) << (6 * (nBytes - 1));
         }
 
-        @Specialization(guards = {"isUTF8(it.a)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
         static int utf8Broken(TruffleStringIterator it) {
             int initialIndex = it.rawIndex;
             int b = it.readAndDecS0();
@@ -386,7 +401,7 @@ public final class TruffleStringIterator {
             return codepoint | (b & (0xff >>> nBytes)) << (6 * (nBytes - 1));
         }
 
-        @Specialization(guards = {"isUTF16(it.a)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
         static int utf16Valid(TruffleStringIterator it) {
             char c = (char) it.readAndDecS1();
             if (Encodings.isUTF16LowSurrogate(c)) {
@@ -396,7 +411,7 @@ public final class TruffleStringIterator {
             return c;
         }
 
-        @Specialization(guards = {"isUTF16(it.a)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
         static int utf16Broken(TruffleStringIterator it) {
             char c = (char) it.readAndDecS1();
             if (Encodings.isUTF16LowSurrogate(c) && it.hasPrevious()) {
@@ -409,14 +424,14 @@ public final class TruffleStringIterator {
             return c;
         }
 
-        @Specialization(guards = {"isUnsupportedEncoding(it.a)"})
+        @Specialization(guards = {"isUnsupportedEncoding(it.encoding)"})
         static int unsupported(TruffleStringIterator it) {
             assert it.hasPrevious();
             byte[] bytes = JCodings.asByteArray(it.arrayA);
             int start = it.a.byteArrayOffset();
             int index = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();
-            JCodings.Encoding jCoding = JCodings.getInstance().get(it.a.encoding());
+            JCodings.Encoding jCoding = JCodings.getInstance().get(it.encoding);
             int prevIndex = JCodings.getInstance().getPreviousCodePointIndex(jCoding, bytes, start, index, end);
             if (prevIndex < 0) {
                 it.rawIndex--;

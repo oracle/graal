@@ -72,8 +72,9 @@ public class TStringForwardIteratorTest extends TStringTestBase {
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             TruffleStringIterator iterator = createIteratorNode.execute(a, encoding);
-            for (int codepoint : codepoints) {
-                Assert.assertEquals(codepoint, nextNode.execute(iterator));
+            for (int i = 0; i < codepoints.length; i++) {
+                Assert.assertEquals(byteIndices[i], iterator.getByteIndex());
+                Assert.assertEquals(codepoints[i], nextNode.execute(iterator));
             }
         });
     }

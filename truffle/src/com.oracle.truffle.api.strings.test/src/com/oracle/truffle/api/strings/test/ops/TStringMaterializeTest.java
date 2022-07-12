@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,47 +42,36 @@
 package com.oracle.truffle.api.strings.test.ops;
 
 import static org.junit.runners.Parameterized.Parameter;
+import static org.junit.runners.Parameterized.Parameters;
 
 import java.util.Arrays;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
 
 @RunWith(Parameterized.class)
-public class TStringBackwardIteratorTest extends TStringTestBase {
+public class TStringMaterializeTest extends TStringTestBase {
 
-    @Parameter public TruffleString.CreateBackwardCodePointIteratorNode createIteratorNode;
-    @Parameter(1) public TruffleStringIterator.PreviousNode prevNode;
+    @Parameter public TruffleString.MaterializeNode node;
 
-    @Parameters(name = "{0}, {1}")
-    public static Iterable<Object[]> data() {
-        return Arrays.asList(
-                        new Object[]{TruffleString.CreateBackwardCodePointIteratorNode.create(), TruffleStringIterator.PreviousNode.create()},
-                        new Object[]{TruffleString.CreateBackwardCodePointIteratorNode.getUncached(), TruffleStringIterator.PreviousNode.getUncached()});
+    @Parameters(name = "{0}")
+    public static Iterable<TruffleString.MaterializeNode> data() {
+        return Arrays.asList(TruffleString.MaterializeNode.create(), TruffleString.MaterializeNode.getUncached());
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            TruffleStringIterator iterator = createIteratorNode.execute(a, encoding);
-            for (int i = codepoints.length - 1; i >= 0; i--) {
-                Assert.assertEquals(codepoints[i], prevNode.execute(iterator));
-                Assert.assertEquals(byteIndices[i], iterator.getByteIndex());
-            }
+            node.execute(a, encoding);
         });
-
     }
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s1, e) -> createIteratorNode.execute(s1, e));
-        expectNullPointerException(() -> prevNode.execute(null));
+        checkNullSE((s, e) -> node.execute(s, e));
     }
 }

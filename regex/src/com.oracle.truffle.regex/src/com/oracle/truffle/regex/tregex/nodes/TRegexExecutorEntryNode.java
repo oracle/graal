@@ -131,9 +131,11 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     @Specialization(guards = "codeRangeEqualsNode.execute(input, cachedCodeRange)", limit = "5")
     Object doTString(TruffleString input, int fromIndex, int index, int maxIndex,
+                    @Cached TruffleString.MaterializeNode materializeNode,
                     @Cached @SuppressWarnings("unused") TruffleString.GetCodeRangeNode codeRangeNode,
                     @Cached @SuppressWarnings("unused") TruffleString.CodeRangeEqualsNode codeRangeEqualsNode,
                     @Cached("codeRangeNode.execute(input, executor.getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange) {
+        materializeNode.execute(input, executor.getEncoding().getTStringEncoding());
         return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, true);
     }
 
