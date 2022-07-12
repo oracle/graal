@@ -124,7 +124,7 @@ public class OptimizationImpl implements Optimization {
         int result = bci;
         result = 31 * result + optimizationName.hashCode();
         result = 31 * result + eventName.hashCode();
-        result = 31 * result + (properties != null ? properties.hashCode() : 0);
+        result = 31 * result + EconomicMapUtil.hashCode(properties);
         return result;
     }
 

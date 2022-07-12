@@ -60,6 +60,25 @@ public final class EconomicMapUtil {
     }
 
     /**
+     * Computes a hash code for an {@link EconomicMap}.
+     *
+     * @param map the input map or {@code null}
+     * @return the hash code of the map
+     */
+    public static <K, V> int hashCode(EconomicMap<K, V> map) {
+        if (map == null) {
+            return -1;
+        }
+        int hash = 0;
+        MapCursor<K, V> cursor = map.getEntries();
+        while (cursor.advance()) {
+            hash = 31 * hash + cursor.getKey().hashCode();
+            hash = 31 * hash + cursor.getValue().hashCode();
+        }
+        return hash;
+    }
+
+    /**
      * Creates an {@link EconomicMap} with one mapping.
      *
      * @param key1 the key of the first mapping
