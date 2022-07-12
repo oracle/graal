@@ -226,7 +226,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     /**
-     * TODO BS Docs, why do we need this
+     * TODO BS Docs, why do we need this.
      */
     private static void patchNodeSourcePosition(InvokeWithExceptionNode invoke) {
         NodeSourcePosition position = invoke.getNodeSourcePosition();
