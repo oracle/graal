@@ -36,8 +36,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -61,14 +59,12 @@ public class DynamicHubInitializer {
     private final BigBang bb;
     private final SVMHost hostVM;
     private final AnalysisMetaAccess metaAccess;
-    private final UnsupportedFeatures unsupportedFeatures;
     private final ConstantReflectionProvider constantReflection;
 
     private final Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
     private final Field dynamicHubClassInitializationInfoField;
     private final Field dynamicHubArrayHubField;
-    private final Field dynamicHubEnclosingClassField;
     private final Field dynamicHubInterfacesEncodingField;
     private final Field dynamicHubAnnotationsEnumConstantsReferenceField;
 
@@ -76,14 +72,12 @@ public class DynamicHubInitializer {
         this.bb = bb;
         this.metaAccess = bb.getMetaAccess();
         this.hostVM = (SVMHost) bb.getHostVM();
-        this.unsupportedFeatures = bb.getUnsupportedFeatures();
         this.constantReflection = bb.getConstantReflectionProvider();
 
         this.interfacesEncodings = new ConcurrentHashMap<>();
 
         dynamicHubClassInitializationInfoField = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
-        dynamicHubEnclosingClassField = ReflectionUtil.lookupField(DynamicHub.class, "enclosingClass");
         dynamicHubInterfacesEncodingField = ReflectionUtil.lookupField(DynamicHub.class, "interfacesEncoding");
         dynamicHubAnnotationsEnumConstantsReferenceField = ReflectionUtil.lookupField(DynamicHub.class, "enumConstantsReference");
     }
@@ -109,16 +103,6 @@ public class DynamicHubInitializer {
             if (type.isArray()) {
                 hub.getComponentHub().setArrayHub(hub);
                 heapScanner.rescanField(hub.getComponentHub(), dynamicHubArrayHubField);
-            }
-
-            try {
-                AnalysisType enclosingType = type.getEnclosingType();
-                if (enclosingType != null) {
-                    hub.setEnclosingClass(hostVM.dynamicHub(enclosingType));
-                    heapScanner.rescanField(hub, dynamicHubEnclosingClassField);
-                }
-            } catch (UnsupportedFeatureException ex) {
-                unsupportedFeatures.addMessage(type.toJavaName(true), null, ex.getMessage(), null, ex);
             }
 
             if (hub.getInterfacesEncoding() == null) {

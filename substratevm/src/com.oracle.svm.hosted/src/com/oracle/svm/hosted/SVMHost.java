@@ -395,7 +395,7 @@ public class SVMHost extends HostVM {
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
                         isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
                         modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
-                        type.declaresDefaultMethods(), isSealed, simpleBinaryName);
+                        type.declaresDefaultMethods(), isSealed, simpleBinaryName, getDeclaringClass(javaClass));
         ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }
@@ -406,11 +406,7 @@ public class SVMHost extends HostVM {
         } catch (InternalError e) {
             return e;
         } catch (LinkageError e) {
-            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
-                return e;
-            } else {
-                return unsupportedMethod(javaClass, "isLocalClass");
-            }
+            return handleLinkageError(javaClass, "isLocalClass", e);
         }
     }
 
@@ -424,18 +420,32 @@ public class SVMHost extends HostVM {
         } catch (InternalError e) {
             return e;
         } catch (LinkageError e) {
-            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
-                return e;
-            } else {
-                return unsupportedMethod(javaClass, "isAnonymousClass");
-            }
+            return handleLinkageError(javaClass, "isAnonymousClass", e);
         }
     }
 
-    private Object unsupportedMethod(Class<?> javaClass, String methodName) {
+    private final Method getDeclaringClass0 = ReflectionUtil.lookupMethod(Class.class, "getDeclaringClass0");
+
+    private Object getDeclaringClass(Class<?> javaClass) {
+        try {
+            return getDeclaringClass0.invoke(javaClass);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof LinkageError) {
+                return handleLinkageError(javaClass, getDeclaringClass0.getName(), (LinkageError) e.getCause());
+            }
+            throw VMError.shouldNotReachHere(e);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private LinkageError handleLinkageError(Class<?> javaClass, String methodName, LinkageError linkageError) {
+        if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
+            return linkageError; /* It's rethrown at run time. */
+        }
         String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
                         linkAtBuildTimeSupport.errorMessageFor(javaClass);
-        throw new UnsupportedFeatureException(message);
+        throw new UnsupportedFeatureException(message, linkageError);
     }
 
     private final Method getSimpleBinaryName0 = ReflectionUtil.lookupMethod(Class.class, "getSimpleBinaryName0");

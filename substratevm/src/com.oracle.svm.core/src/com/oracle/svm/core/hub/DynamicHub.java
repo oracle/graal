@@ -240,14 +240,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private DynamicHub arrayHub;
 
     /**
-     * The hub for the enclosing class, or null if no enclosing class.
-     * <p>
-     * The value is lazily initialized to break cycles. But it is initialized during static
-     * analysis, so we do not have to annotate is as an {@link UnknownObjectField}.
-     *
-     * @see Class#getEnclosingClass()
+     * The class that declares this class, as returned by {@code Class.getDeclaringClass0} or an
+     * exception that happened at image-build time.
      */
-    private DynamicHub enclosingClass;
+    private final Object declaringClass;
 
     /**
      * The interfaces that this class implements. Either null (no interfaces), a {@link DynamicHub}
@@ -351,7 +347,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
                     String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
-                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed, String simpleBinaryName) {
+                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed, String simpleBinaryName, Object declaringClass) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
@@ -364,6 +360,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.modifiers = modifiers;
         this.nestHost = nestHost;
         this.simpleBinaryName = simpleBinaryName;
+        this.declaringClass = declaringClass;
 
         this.flags = NumUtil.safeToUByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
@@ -420,12 +417,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         assert (this.arrayHub == null || this.arrayHub == arrayHub) && arrayHub != null;
         assert arrayHub.getComponentHub() == this;
         this.arrayHub = arrayHub;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setEnclosingClass(DynamicHub enclosingClass) {
-        assert (this.enclosingClass == null || this.enclosingClass == enclosingClass) && enclosingClass != null;
-        this.enclosingClass = enclosingClass;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -823,25 +814,23 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return isLocalClass() || isAnonymousClass();
     }
 
-    @Substitute
-    private Object getEnclosingClass() {
-        PredefinedClassesSupport.throwIfUnresolvable(toClass(enclosingClass), getClassLoader0());
-        return enclosingClass;
-    }
+    @KeepOriginal
+    private native Class<?> getEnclosingClass();
 
     @KeepOriginal
-    private native Object getDeclaringClass();
+    private native Class<?> getDeclaringClass();
 
     @Substitute
-    private Object getDeclaringClass0() {
-        return getDeclaringClassInternal();
-    }
-
-    private Object getDeclaringClassInternal() {
-        if (isLocalOrAnonymousClass()) {
+    private Class<?> getDeclaringClass0() {
+        if (declaringClass == null) {
             return null;
+        } else if (declaringClass instanceof Class) {
+            PredefinedClassesSupport.throwIfUnresolvable((Class<?>) declaringClass, getClassLoader0());
+            return (Class<?>) declaringClass;
+        } else if (declaringClass instanceof LinkageError) {
+            throw (LinkageError) declaringClass;
         } else {
-            return getEnclosingClass();
+            throw VMError.shouldNotReachHere();
         }
     }
 
