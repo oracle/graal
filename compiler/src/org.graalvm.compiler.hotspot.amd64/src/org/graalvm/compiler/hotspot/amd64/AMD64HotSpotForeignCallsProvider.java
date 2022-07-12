@@ -112,11 +112,11 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     }
 
     @FunctionalInterface
-    private interface SnippetStubConstructor<A extends SnippetStub> {
+    protected interface SnippetStubConstructor<A extends SnippetStub> {
         A apply(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage);
     }
 
-    private <A extends SnippetStub> void linkSnippetStubs(HotSpotProviders providers, OptionValues options, SnippetStubConstructor<A> constructor, ForeignCallDescriptor... stubs) {
+    protected <A extends SnippetStub> void linkSnippetStubs(HotSpotProviders providers, OptionValues options, SnippetStubConstructor<A> constructor, ForeignCallDescriptor... stubs) {
         for (ForeignCallDescriptor stub : stubs) {
             HotSpotForeignCallDescriptor.Reexecutability reexecutability = stub.isReexecutable() ? REEXECUTABLE : NOT_REEXECUTABLE;
             link(constructor.apply(options, providers, registerStubCall(stub.getSignature(), LEAF, reexecutability, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));

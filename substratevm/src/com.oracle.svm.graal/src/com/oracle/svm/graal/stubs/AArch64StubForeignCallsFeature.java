@@ -42,7 +42,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 public class AArch64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
 
     public AArch64StubForeignCallsFeature() {
-        super(new StubDescriptor[]{
+        super(SVMIntrinsicStubsGen.class, new StubDescriptor[]{
                         new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, true, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(CryptoForeignCalls.AES_STUBS, false, AESNode.minFeaturesAARCH64(), AES_CPU_FEATURES_AARCH64),
                         new StubDescriptor(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS, false, GHASHProcessBlocksNode.minFeaturesAARCH64(), GHASH_CPU_FEATURES_AARCH64),

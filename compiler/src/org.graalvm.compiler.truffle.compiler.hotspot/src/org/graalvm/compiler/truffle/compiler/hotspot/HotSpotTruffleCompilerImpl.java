@@ -124,7 +124,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         final PartialEvaluatorConfiguration lastTierPe = createPartialEvaluatorConfiguration(hotspotGraalRuntime.getCompilerConfigurationName());
         final TruffleTierConfiguration lastTierSetup = new TruffleTierConfiguration(lastTierPe, backend, options, knownTruffleTypes);
 
-        CompilerConfigurationFactory lowTierCompilerConfigurationFactory = new EconomyCompilerConfigurationFactory();
+        CompilerConfigurationFactory lowTierCompilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(EconomyCompilerConfigurationFactory.NAME, options, HotSpotJVMCIRuntime.runtime());
         CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
         HotSpotBackendFactory backendFactory = lowTierCompilerConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
         HotSpotBackend firstTierBackend = backendFactory.createBackend(hotspotGraalRuntime, compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);

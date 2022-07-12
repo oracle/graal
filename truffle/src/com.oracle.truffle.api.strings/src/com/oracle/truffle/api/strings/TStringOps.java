@@ -41,6 +41,9 @@
 
 package com.oracle.truffle.api.strings;
 
+import static com.oracle.truffle.api.strings.Encodings.isUTF16LowSurrogate;
+import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -792,6 +795,22 @@ final class TStringOps {
         return runCalcStringAttributesUTF32(location, stubArray, stubOffset, length, isNative);
     }
 
+    static int codePointIndexToByteIndexUTF8Valid(Node location, Object array, int offset, int length, int index) {
+        final boolean isNative = isNativePointer(array);
+        final byte[] stubArray = stubArray(array, isNative);
+        validateRegion(stubArray, offset, length, 0, isNative);
+        final long stubOffset = stubOffset(array, offset, 0, 0, isNative);
+        return runCodePointIndexToByteIndexUTF8Valid(location, stubArray, stubOffset, length, index, isNative);
+    }
+
+    static int codePointIndexToByteIndexUTF16Valid(Node location, Object array, int offset, int length, int index) {
+        final boolean isNative = isNativePointer(array);
+        final byte[] stubArray = stubArray(array, isNative);
+        validateRegion(stubArray, offset, length, 1, isNative);
+        final long stubOffset = stubOffset(array, offset, 1, 0, isNative);
+        return runCodePointIndexToByteIndexUTF16Valid(location, stubArray, stubOffset, length, index, isNative);
+    }
+
     /**
      * Intrinsic candidate.
      */
@@ -1405,6 +1424,32 @@ final class TStringOps {
             }
             return StringAttributes.create(nCodePoints, codeRange);
         }
+    }
+
+    private static int runCodePointIndexToByteIndexUTF8Valid(Node location, byte[] array, long offset, int length, int index, boolean isNative) {
+        int cpi = index;
+        for (int i = 0; i < length; i++) {
+            if (!isUTF8ContinuationByte(readValueS0(array, offset, i, isNative))) {
+                if (--cpi < 0) {
+                    return i;
+                }
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return cpi == 0 ? length : -1;
+    }
+
+    private static int runCodePointIndexToByteIndexUTF16Valid(Node location, byte[] array, long offset, int length, int index, boolean isNative) {
+        int cpi = index;
+        for (int i = 0; i < length; i++) {
+            if (!isUTF16LowSurrogate(readValueS1(array, offset, i, isNative))) {
+                if (--cpi < 0) {
+                    return i;
+                }
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return cpi == 0 ? length : -1;
     }
 
     static long byteLength(Object array) {
