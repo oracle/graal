@@ -33,8 +33,7 @@ import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 
-public final class CachedLinkedKlassProvider extends KlassProviderImpl implements LinkedKlassProvider {
-
+public final class CachedLinkedKlassProvider extends AbstractCachedKlassProvider implements LinkedKlassProvider {
     private final LinkedKlassProvider fallbackProvider;
     private final Map<LinkedKlassCacheKey, LinkedKlass> linkedKlassCache = new ConcurrentHashMap<>();
 
@@ -45,7 +44,7 @@ public final class CachedLinkedKlassProvider extends KlassProviderImpl implement
 
     @Override
     public LinkedKlass getLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info) {
-        if (EspressoLanguageCache.shouldCacheClass(info)) {
+        if (shouldCacheClass(info)) {
             LinkedKlassCacheKey key = new LinkedKlassCacheKey(parserKlass, superKlass, interfaces);
             LinkedKlass linkedKlass = linkedKlassCache.get(key);
             if (linkedKlass == null) {
@@ -70,13 +69,13 @@ public final class CachedLinkedKlassProvider extends KlassProviderImpl implement
         private final ParserKlass parserKlass;
         private final LinkedKlass superKlass;
         private final LinkedKlass[] interfaces;
-        private int hash;
-        private boolean isHashCalculated;
+        private final int hash;
 
         LinkedKlassCacheKey(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
             this.parserKlass = parserKlass;
             this.superKlass = superKlass;
             this.interfaces = interfaces;
+            this.hash = 31 * Objects.hash(parserKlass, superKlass) + Arrays.hashCode(interfaces);
         }
 
         @Override
@@ -93,11 +92,6 @@ public final class CachedLinkedKlassProvider extends KlassProviderImpl implement
 
         @Override
         public int hashCode() {
-            if (!isHashCalculated) {
-                hash = Objects.hash(parserKlass, superKlass);
-                hash = 31 * hash + Arrays.hashCode(interfaces);
-                isHashCalculated = true;
-            }
             return hash;
         }
     }

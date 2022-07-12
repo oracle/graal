@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 
-public interface LinkedKlassProvider extends KlassProvider {
+public interface LinkedKlassProvider {
     LinkedKlass getLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info);
 
     default int getCachedLinkedKlassCount() {

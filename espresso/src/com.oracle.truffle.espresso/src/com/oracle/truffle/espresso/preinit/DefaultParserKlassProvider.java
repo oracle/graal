@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.preinit;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -32,12 +31,7 @@ import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class DefaultParserKlassProvider extends KlassProviderImpl implements ParserKlassProvider {
-
-    public DefaultParserKlassProvider(TruffleLogger logger) {
-        super(logger);
-    }
-
+public final class DefaultParserKlassProvider implements ParserKlassProvider {
     @Override
     public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
         return ClassfileParser.parse(env, new ClassfileStream(bytes, null), loader, typeOrNull, info);

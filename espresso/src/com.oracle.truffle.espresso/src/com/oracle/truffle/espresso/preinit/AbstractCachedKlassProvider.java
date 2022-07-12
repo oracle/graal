@@ -22,6 +22,26 @@
  */
 package com.oracle.truffle.espresso.preinit;
 
-public final class JavaVersionMismatchException extends Exception {
-    private static final long serialVersionUID = -762795124477419520L;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+
+public abstract class AbstractCachedKlassProvider {
+    private final TruffleLogger logger;
+
+    protected AbstractCachedKlassProvider(TruffleLogger logger) {
+        this.logger = logger;
+    }
+
+    public TruffleLogger getLogger() {
+        return logger;
+    }
+
+    protected static boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info) {
+        /*
+         * Cached class representations must not contain context-dependent objects that cannot be
+         * shared on a language level. Anonymous classes, by definition, contain a Klass
+         * self-reference in the constant pool.
+         */
+        return !info.isAnonymousClass() && !info.isHidden();
+    }
 }

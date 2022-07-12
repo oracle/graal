@@ -94,7 +94,6 @@ import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
-import com.oracle.truffle.espresso.preinit.JavaVersionMismatchException;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
@@ -293,7 +292,7 @@ public final class EspressoContext {
         return vmProperties;
     }
 
-    public void initializeContext() throws JavaVersionMismatchException {
+    public void initializeContext() {
         EspressoError.guarantee(getEnv().isNativeAccessAllowed(),
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
@@ -348,7 +347,7 @@ public final class EspressoContext {
     }
 
     @SuppressWarnings("try")
-    private void spawnVM() throws JavaVersionMismatchException {
+    private void spawnVM() {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
 
             long initStartTimeNanos = System.nanoTime();
@@ -369,7 +368,9 @@ public final class EspressoContext {
                 JavaVersion languageJavaVersion = getLanguage().getJavaVersion();
                 if (languageJavaVersion != null) {
                     if (!contextJavaVersion.equals(languageJavaVersion)) {
-                        throw new JavaVersionMismatchException();
+                        String errMsg = String.format("Configuration specified an Java version incompatible with the pre-initialized language - expected: %s, got: %s.", languageJavaVersion,
+                                        contextJavaVersion);
+                        throw EspressoError.shouldNotReachHere(errMsg);
                     }
                 } else {
                     getLanguage().tryInitializeJavaVersion(contextJavaVersion);

@@ -34,8 +34,7 @@ import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class CachedParserKlassProvider extends KlassProviderImpl implements ParserKlassProvider {
-
+public final class CachedParserKlassProvider extends AbstractCachedKlassProvider implements ParserKlassProvider {
     private final ParserKlassProvider fallbackProvider;
     private final Map<Symbol<Symbol.Type>, ParserKlass> bootParserKlassCache = new ConcurrentHashMap<>();
     private final Map<ParserKlassCacheKey, ParserKlass> appParserKlassCache = new ConcurrentHashMap<>();
@@ -48,24 +47,22 @@ public final class CachedParserKlassProvider extends KlassProviderImpl implement
     @Override
     public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
         assert (info.isAnonymousClass() && typeOrNull == null) || (!info.isAnonymousClass() && typeOrNull != null);
-        if (EspressoLanguageCache.shouldCacheClass(info)) {
+        if (shouldCacheClass(info)) {
             ParserKlassCacheKey key = null;
             ParserKlass parserKlass = null;
 
             boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
 
-            // For boot/platform CL, query the boot cache
-            if (loaderIsBootOrPlatform && !info.isAnonymousClass()) {
+            if (loaderIsBootOrPlatform) {
+                // For boot/platform CL, query the boot cache
                 parserKlass = bootParserKlassCache.get(typeOrNull);
-            }
-
-            // For other class loaders, query the application cache
-            if (parserKlass == null) {
+            } else {
+                // For other class loaders, query the application cache
                 key = new ParserKlassCacheKey(bytes);
                 parserKlass = appParserKlassCache.get(key);
             }
 
-            // If queries failed, add a new entry to the appropriate cache
+            // If cache query failed, add a new entry to the appropriate cache
             if (parserKlass == null) {
                 getLogger().finer(() -> "ParserKlass cache miss: " + typeOrNull);
                 parserKlass = fallbackProvider.getParserKlass(env, loader, typeOrNull, bytes, info);

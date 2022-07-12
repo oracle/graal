@@ -63,7 +63,6 @@ import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
-import com.oracle.truffle.espresso.preinit.JavaVersionMismatchException;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -235,11 +234,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             return false;
         }
         context.patchContext(newEnv);
-        try {
-            context.initializeContext();
-        } catch (JavaVersionMismatchException e) {
-            return false;
-        }
+        context.initializeContext();
         return true;
     }
 

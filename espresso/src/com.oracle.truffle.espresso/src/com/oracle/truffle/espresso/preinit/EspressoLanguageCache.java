@@ -50,8 +50,8 @@ public final class EspressoLanguageCache {
     private final LinkedKlassProvider linkedKlassProvider;
 
     public EspressoLanguageCache(boolean enableCaching) {
-        ParserKlassProvider defaultParserKlassProvider = new DefaultParserKlassProvider(logger);
-        LinkedKlassProvider defaultLinkedKlassProvider = new DefaultLinkedKlassProvider(logger);
+        ParserKlassProvider defaultParserKlassProvider = new DefaultParserKlassProvider();
+        LinkedKlassProvider defaultLinkedKlassProvider = new DefaultLinkedKlassProvider();
         if (enableCaching) {
             parserKlassProvider = new CachedParserKlassProvider(logger, defaultParserKlassProvider);
             linkedKlassProvider = new CachedLinkedKlassProvider(logger, defaultLinkedKlassProvider);
@@ -59,15 +59,6 @@ public final class EspressoLanguageCache {
             parserKlassProvider = defaultParserKlassProvider;
             linkedKlassProvider = defaultLinkedKlassProvider;
         }
-    }
-
-    static boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info) {
-        /*
-         * Cached class representations must not contain context-dependent objects that cannot be
-         * shared on a language level. Anonymous classes, by definition, contain a Klass
-         * self-reference in the constant pool.
-         */
-        return !info.isAnonymousClass() && !info.isHidden();
     }
 
     public void logCacheStatus() {
