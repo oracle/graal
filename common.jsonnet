@@ -1,12 +1,41 @@
-{
-  local composable = (import "common-utils.libsonnet").composable,
+local composable = (import "common-utils.libsonnet").composable;
 
-  local mx_version = (import "graal-common.json").mx_version,
-  local common_json = composable(import "common.json"),
-  local repo_config = import 'repo-configuration.libsonnet',
-  local jdks = common_json.jdks,
-  local deps = common_json.deps,
-  local downloads = common_json.downloads,
+local mx_version = (import "graal-common.json").mx_version;
+local common_json = composable(import "common.json");
+local repo_config = import 'repo-configuration.libsonnet';
+local jdks = common_json.jdks;
+local deps = common_json.deps;
+local downloads = common_json.downloads;
+
+# Finds the first integer in a string and returns it as an integer.
+local find_first_integer(versionString) =
+  local charToInt(c) =
+    std.codepoint(c) - std.codepoint("0");
+  local firstNum(s, i) =
+    assert std.length(s) > i : "No number found in string " + s;
+    local n = charToInt(s[i]);
+    if n >=0 && n < 10 then i else firstNum(s, i + 1);
+  local lastNum(s, i) =
+    if i >= std.length(s) then
+      i
+    else
+      local n = charToInt(s[i]);
+      if n < 0 || n > 9 then i else lastNum(s, i + 1);
+  local versionIndexStart = firstNum(versionString, 0);
+  local versionIndexEnd = lastNum(versionString, versionIndexStart);
+  std.parseInt(versionString[versionIndexStart:versionIndexEnd])
+;
+# jdk_version is an hidden field that can be used to generate job names
+local add_jdk_version(name) =
+  local jdk = jdks[name];
+  // this assumes that the version is the first number in the jdk.version string
+  local version = find_first_integer(jdk.version);
+  // santity check that the parsed version is also included in the name
+  assert std.length(std.findSubstr(std.toString(version), name)) == 1 : "Cannot find version %d in name %s" % [version, name];
+  { jdk_version:: version}
+;
+
+{
 
   mx:: {
     packages+: {
@@ -74,36 +103,17 @@
     }
   },
 
+} + {
   // JDK definitions
   // ***************
-  # jdk_version is an hidden field that can be used to generate job names
-  local jdk11 =          { jdk_version:: 11},
-  local jdk17 =          { jdk_version:: 17},
-  local jdk19 =          { jdk_version:: 19},
-
-  oraclejdk11::          jdk11 + { downloads+: { JAVA_HOME : jdks.oraclejdk11 }},
-  oraclejdk17::          jdk17 + { downloads+: { JAVA_HOME : jdks.oraclejdk17 }},
-  openjdk11::            jdk11 + { downloads+: { JAVA_HOME : jdks.openjdk11 }},
-
-  "labsjdk-ce-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-11"] }},
-  "labsjdk-ee-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-11"] }},
-  "labsjdk-ce-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17"] }},
-  "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
-  "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
-  "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
-  "labsjdk-ce-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-11-llvm"] }},
-  "labsjdk-ee-11-llvm":: jdk11 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-11-llvm"] }},
-  "labsjdk-ce-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ce-17-llvm"] }},
-  "labsjdk-ee-17-llvm":: jdk17 + { downloads+: { LLVM_JAVA_HOME : jdks["labsjdk-ee-17-llvm"] }},
-
-  "labsjdk-ce-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
-  "labsjdk-ee-19"::      jdk19 + { downloads+: { JAVA_HOME : jdks["jdk-19-ea"] + { open: false} }},
-
+  // this adds all jdks from common.json
+  [name]: add_jdk_version(name) + { downloads+: { [if std.endsWith(name, "llvm") then "LLVM_JAVA_HOME" else "JAVA_HOME"] : jdks[name] }},
+  for name in std.objectFieldsAll(jdks)
+} + {
   # Aliases to edition specific labsjdks
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
-  labsjdk11Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-11Debug"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
   labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],
   labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
