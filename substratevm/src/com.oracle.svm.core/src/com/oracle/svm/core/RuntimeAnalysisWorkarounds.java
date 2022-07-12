@@ -25,7 +25,7 @@
 package com.oracle.svm.core;
 
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.sampling.CallStackFrameMethodInfo;
+import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 

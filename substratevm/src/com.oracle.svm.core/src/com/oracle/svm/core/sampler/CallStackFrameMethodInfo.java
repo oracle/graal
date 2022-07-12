@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.sampling;
+package com.oracle.svm.core.sampler;
 
 import java.util.HashMap;
 import java.util.Map;

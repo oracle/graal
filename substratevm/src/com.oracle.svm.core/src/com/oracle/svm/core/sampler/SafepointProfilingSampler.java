@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.sampling;
+package com.oracle.svm.core.sampler;
 
 import java.util.concurrent.TimeUnit;
 
@@ -36,12 +36,12 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 
-public class AOTProfilingSampler implements ProfilingSampler {
+public class SafepointProfilingSampler implements ProfilingSampler {
 
     private final boolean collectingActive;
     private LockFreePrefixTree prefixTree;
 
-    public AOTProfilingSampler(boolean collectingActive) {
+    public SafepointProfilingSampler(boolean collectingActive) {
         this.collectingActive = collectingActive;
     }
 
