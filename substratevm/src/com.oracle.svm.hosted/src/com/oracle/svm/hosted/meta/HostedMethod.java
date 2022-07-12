@@ -81,7 +81,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     private final ExceptionHandler[] handlers;
     protected StaticAnalysisResults staticAnalysisResults;
     protected int vtableIndex = -1;
-    private SpecializationReason specializationReason;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -110,7 +109,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.handlers = handlers;
         this.compilationInfo = new CompilationInfo(this, deoptOrigin);
         this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
-        this.specializationReason = SpecializationReason.create();
 
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
@@ -480,10 +478,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
             result = ((HostedType) this.getSignature().getReturnType(null)).compareTo((HostedType) other.getSignature().getReturnType(null));
         }
 
-        if (result == 0) {
-            result = this.specializationReason.compareTo(other.specializationReason);
-        }
-
         /*
          * Note that the result can still be 0 at this point: with class substitutions or incomplete
          * classpath, two separate methods can have the same signature. Not ordering such methods is
@@ -497,50 +491,4 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
     }
 
-    static final class SpecializationReason implements Comparable<SpecializationReason> {
-        List<Pair<HostedMethod, Integer>> context;
-        Reason reason;
-
-        private SpecializationReason(List<Pair<HostedMethod, Integer>> context, Reason reason) {
-            this.context = context;
-            this.reason = reason;
-        }
-
-        public static SpecializationReason create() {
-            return new SpecializationReason(Collections.emptyList(), Reason.NONE);
-        }
-
-        public static SpecializationReason create(List<Pair<HostedMethod, Integer>> context) {
-            assert context != null;
-            return new SpecializationReason(context, Reason.HOT_METHOD);
-        }
-
-        @Override
-        public int compareTo(SpecializationReason o) {
-            int result = Math.max(Math.min(context.size() - o.context.size(), 1), -1);
-            if (result != 0) {
-                return result;
-            }
-            for (int i = 0; i < context.size(); i++) {
-                int bci1 = context.get(i).getRight();
-                int bci2 = o.context.get(i).getRight();
-                result = Math.max(Math.min(bci1 - bci2, 1), -1);
-                if (result == 0) {
-                    HostedMethod m1 = context.get(i).getLeft();
-                    HostedMethod m2 = o.context.get(i).getLeft();
-                    result = m1.compareTo(m2);
-                }
-                if (result != 0) {
-                    break;
-                }
-            }
-            assert result != 0;
-            return result;
-        }
-
-        enum Reason {
-            NONE,
-            HOT_METHOD
-        }
-    }
 }
