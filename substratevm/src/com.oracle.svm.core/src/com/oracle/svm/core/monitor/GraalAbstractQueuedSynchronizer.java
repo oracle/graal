@@ -46,6 +46,7 @@ GraalAbstractQueuedSynchronizer is derived from the AbstractQueuedSynchronizer c
 substrateVM monitor support have been kept. Additional functionality specific to substrateVM has been added.
  */
 public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer {
+    private static final long serialVersionUID = 7373984972572414691L;
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative
     static final int COND = 2; // in a condition wait
@@ -401,11 +402,13 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
          * versions.
          */
         // Checkstyle: allow Thread.isInterrupted"
+        @Override
         public boolean isReleasable() {
             return status <= 1 || Thread.currentThread().isInterrupted();
         }
         // Checkstyle: disallow Thread.isInterrupted"
 
+        @Override
         public boolean block() {
             while (!isReleasable()) {
                 LockSupport.park();
@@ -477,6 +480,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
          * @throws IllegalMonitorStateException if {@link #isHeldExclusively} returns
          *                                      {@code false}
          */
+        @Override
         public final void signalAll() {
             GraalAbstractQueuedSynchronizer.ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
@@ -517,14 +521,17 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             }
         }
 
+        @Override
         public final void awaitUninterruptibly() {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public final boolean awaitUntil(Date deadline) {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public final void await() throws InterruptedException {
             if (Thread.interrupted()) {
                 throw new InterruptedException();
@@ -605,6 +612,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             return !cancelled;
         }
 
+        @Override
         public final long awaitNanos(long nanosTimeout) throws InterruptedException {
             throw new UnsupportedOperationException();
         }

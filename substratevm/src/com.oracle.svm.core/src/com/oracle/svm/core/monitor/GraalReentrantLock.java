@@ -33,9 +33,11 @@ GraalReentrantLock is derived from the ReentrantLock class in the jdk 19 sources
 substrateVM monitor support have been kept. Additional functionality specific to substrateVM has been added.
  */
 public class GraalReentrantLock {
+    private static final long serialVersionUID = 7373984872572414699L;
     private final Sync sync;
 
     public abstract static class Sync extends GraalAbstractQueuedSynchronizer {
+        private static final long serialVersionUID = -5179523762034025860L;
         public GraalConditionObject graalConditionObject; // change to private?
 
         public GraalConditionObject getGraalConditionObject() {
@@ -81,6 +83,7 @@ public class GraalReentrantLock {
             }
         }
 
+        @Override
         protected final boolean tryRelease(int releases) {
             int c = getState() - releases; // state must be 0 here
             if (getExclusiveOwnerThread() != Thread.currentThread()) {
@@ -94,6 +97,7 @@ public class GraalReentrantLock {
             return free;
         }
 
+        @Override
         protected final boolean isHeldExclusively() {
             // While we must in general read state before owner,
             // we don't need to do so to check if current thread is owner
@@ -131,9 +135,11 @@ public class GraalReentrantLock {
     }
 
     public static final class GraalNonfairSync extends GraalReentrantLock.Sync {
+        private static final long serialVersionUID = 7316153563782823691L;
         GraalNonfairSync() {
         }
 
+        @Override
         boolean initialTryLock() {
             Thread current = Thread.currentThread();
             if (compareAndSetState(0, 1)) { // first attempt is unguarded
@@ -151,6 +157,7 @@ public class GraalReentrantLock {
             }
         }
 
+        @Override
         protected boolean tryAcquire(int acquires) {
             if (getState() == 0 && compareAndSetState(0, acquires)) {
                 setExclusiveOwnerThread(Thread.currentThread());
