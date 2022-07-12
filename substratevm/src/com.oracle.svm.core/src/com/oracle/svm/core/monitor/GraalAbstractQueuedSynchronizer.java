@@ -39,6 +39,7 @@ import java.util.concurrent.locks.LockSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.SubstrateUtil;
 
 /*
@@ -75,6 +76,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
     }
 
+    @Uninterruptible(reason = "called during deoptimization")
     public final int getState() {
         return state;
     }
@@ -463,6 +465,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
          * @throws IllegalMonitorStateException if {@link #isHeldExclusively} returns
          *                                      {@code false}
          */
+        @Override
         public final void signal() {
             GraalAbstractQueuedSynchronizer.ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
@@ -579,6 +582,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             }
         }
 
+        @Override
         public final boolean await(long time, TimeUnit unit) throws InterruptedException {
             long nanosTimeout = unit.toNanos(time);
             if (Thread.interrupted()) {

@@ -27,6 +27,7 @@
 package com.oracle.svm.core.monitor;
 
 import java.util.concurrent.locks.Condition;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 /*
 GraalReentrantLock is derived from the ReentrantLock class in the jdk 19 sources. Only the methods required for
@@ -122,6 +123,7 @@ public class GraalReentrantLock {
         sync.setExclusiveOwnerThread1(thread);
     }
 
+    @Uninterruptible(reason = "called during deoptimization")
     public Sync getSync() {
         return sync;
     }
