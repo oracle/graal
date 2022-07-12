@@ -36,8 +36,7 @@ public class SamplingStackVisitor extends ParameterizedStackFrameVisitor<Samplin
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, SamplingStackVisitor.StackTrace data) {
-        GraalError.guarantee(data.num < StackTrace.MAX_STACK_DEPTH,
-                        "The call stack depth of the thread " + Thread.currentThread() + " exceeds the maximal set value.");
+        GraalError.guarantee(data.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread  exceeds the maximal set value.");
         data.data[data.num++] = ip.rawValue();
         return true;
     }
