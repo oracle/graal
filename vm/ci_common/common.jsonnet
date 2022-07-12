@@ -483,11 +483,13 @@ local devkits = common_json.devkits;
     ['python3', '-c', "from os import environ; open('../' + environ['BUILD_NAME'], 'a').close()"],
   ],
 
-  build_base_graalvm_image(os, arch, java_version): [
-      $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-      $.mx_vm_common + vm.vm_profiles + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build(os, arch, java_version),
+  build_base_graalvm_image: [
+    $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
+    $.mx_vm_common + vm.vm_profiles + ['build'],
+    ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
+  ],
+
+  build_check_base_graalvm_image(os, arch, java_version): self.build_base_graalvm_image + vm.check_graalvm_base_build(os, arch, java_version),
 
   deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
     run: [
@@ -498,7 +500,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + $.build_base_graalvm_image("linux", "amd64", java_version) + [
+    ] + vm.collect_profiles() + $.build_check_base_graalvm_image("linux", "amd64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -519,7 +521,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + $.build_base_graalvm_image("linux", "aarch64", java_version) + [
+    ] + vm.collect_profiles() + $.build_check_base_graalvm_image("linux", "aarch64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -532,7 +534,7 @@ local devkits = common_json.devkits;
   deploy_graalvm_base_darwin_amd64(java_version): vm.check_structure + {
     run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
-    ] + vm.collect_profiles() + $.build_base_graalvm_image("darwin", "amd64", java_version) + [
+    ] + vm.collect_profiles() + $.build_check_base_graalvm_image("darwin", "amd64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -562,13 +564,13 @@ local devkits = common_json.devkits;
     run: [
       # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
       ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
-    ] + vm.collect_profiles() + $.build_base_graalvm_image("darwin", "aarch64", java_version) + [
+    ] + vm.collect_profiles() + $.build_check_base_graalvm_image("darwin", "aarch64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
-    notify_emails: ['gilles.m.duboscq@oracle.com', 'bernhard.urban-forster@oracle.com'],
+    notify_emails+: ['gilles.m.duboscq@oracle.com', 'bernhard.urban-forster@oracle.com'],
     timelimit: '1:45:00',
   },
 
@@ -591,7 +593,7 @@ local devkits = common_json.devkits;
   deploy_graalvm_base_windows_amd64(java_version): vm.check_structure + {
     run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
-    ] + vm.collect_profiles() + $.build_base_graalvm_image("windows", "amd64", java_version) + [
+    ] + vm.collect_profiles() + $.build_check_base_graalvm_image("windows", "amd64", java_version) + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -620,7 +622,7 @@ local devkits = common_json.devkits;
   deploy_graalvm_ruby(os, arch, java_version): vm.check_structure + {
     run: vm.collect_profiles() + [
       ['set-export', 'VM_ENV', "${VM_ENV}-ruby"],
-    ] + $.build_base_graalvm_image(os, arch, java_version) + [
+    ] + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
