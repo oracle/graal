@@ -374,11 +374,21 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             OptimizedOSRLoopNode loop = getLoopNode();
             RepeatingNode loopBody = loop.repeatingNode;
             Object status;
-            while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(parentFrame))) {
-                if (CompilerDirectives.inInterpreter()) {
-                    return loopBody.initialLoopStatus();
+            long iterationsCompleted = 0;
+            try {
+                while (loop.inject(loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(parentFrame)))) {
+                    if (CompilerDirectives.hasNextTier()) {
+                        iterationsCompleted++;
+                    }
+                    if (CompilerDirectives.inInterpreter()) {
+                        return loopBody.initialLoopStatus();
+                    }
+                    TruffleSafepoint.poll(loop);
                 }
-                TruffleSafepoint.poll(loop);
+            } finally {
+                if (loop.firstTierBackedgeCounts && iterationsCompleted > 1) {
+                    LoopNode.reportLoopCount(this, toIntOrMaxInt(iterationsCompleted));
+                }
             }
             return status;
         }
