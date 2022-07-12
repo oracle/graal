@@ -184,6 +184,14 @@ public final class TruffleString extends AbstractTruffleString {
         assert offset >= 0;
         assert bytes instanceof NativePointer || offset + ((long) length << stride) <= TStringOps.byteLength(bytes);
         assert attrsAreCorrect(bytes, encoding, offset, length, codePointLength, codeRange, stride);
+
+        if (DEBUG_NON_ZERO_OFFSET && bytes instanceof byte[]) {
+            int byteLength = Math.toIntExact((long) length << stride);
+            int add = byteLength;
+            byte[] copy = new byte[add + byteLength];
+            System.arraycopy(bytes, offset, copy, add, byteLength);
+            return new TruffleString(copy, add, length, stride, encoding, codePointLength, codeRange, isCacheHead);
+        }
         return new TruffleString(bytes, offset, length, stride, encoding, codePointLength, codeRange, isCacheHead);
     }
 

@@ -63,6 +63,7 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 public abstract class AbstractTruffleString {
 
     static final boolean DEBUG_STRICT_ENCODING_CHECKS = Boolean.getBoolean("truffle.strings.debug-strict-encoding-checks");
+    static final boolean DEBUG_NON_ZERO_OFFSET = Boolean.getBoolean("truffle.strings.debug-non-zero-offset-arrays");
 
     /**
      * String content. This can be one of the following:
