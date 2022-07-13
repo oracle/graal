@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -41,6 +42,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -76,6 +78,16 @@ final class Target_java_lang_ThreadGroup {
     private int ngroups;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class, disableCaching = true)//
     private ThreadGroup[] groups;
+
+    /*
+     * All ThreadGroups in the image heap are strong and will be stored in ThreadGroup.groups.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK19OrLater.class)//
+    private int nweaks;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK19OrLater.class)//
+    private WeakReference<ThreadGroup>[] weaks;
 
     @Inject @InjectAccessors(ThreadGroupIdAccessor.class) //
     public long id;
