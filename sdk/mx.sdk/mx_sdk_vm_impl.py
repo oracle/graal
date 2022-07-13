@@ -2857,7 +2857,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         with_debuginfo.append(installable_component)
 
     # Create standalones
-    for components in installables.values():
+    for installable_id, components in installables.items():
+        if installable_id not in ('js', 'ruby', 'python'):
+            continue
         main_component = _get_main_component(components)
         only_native_launchers = not main_component.launcher_configs or has_svm_launcher(main_component)
         only_native_libraries = not main_component.library_configs or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))
