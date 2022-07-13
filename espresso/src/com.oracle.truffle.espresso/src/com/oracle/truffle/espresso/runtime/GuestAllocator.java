@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Boolean;
@@ -45,6 +44,7 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.LanguageAccess;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -69,25 +69,25 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * initialization loops whenever possible. Note that performance will be impacted if {@code this} is
  * not PE constant.
  */
-public final class GuestAllocator extends ContextAccessImpl {
-    private final EspressoLanguage lang;
+public final class GuestAllocator implements LanguageAccess {
+    private final EspressoLanguage language;
     private final AllocationReporter allocationReporter;
 
-    public GuestAllocator(EspressoContext context, AllocationReporter allocationReporter) {
-        super(context);
-        this.lang = context.getLanguage();
+    public GuestAllocator(EspressoLanguage language, AllocationReporter allocationReporter) {
+        this.language = language;
         this.allocationReporter = allocationReporter;
         if (allocationReporter != null) {
-            if (allocationReporter.isActive()) {
-                lang.invalidateAllocationTrackingDisabled();
-            } else {
-                allocationReporter.addActiveListener((isActive) -> {
-                    if (isActive) {
-                        lang.invalidateAllocationTrackingDisabled();
-                    }
-                });
-            }
+            allocationReporter.addActiveListener((isActive) -> {
+                if (isActive) {
+                    getLanguage().invalidateAllocationTrackingDisabled();
+                }
+            });
         }
+    }
+
+    @Override
+    public EspressoLanguage getLanguage() {
+        return language;
     }
 
     /**
@@ -118,7 +118,7 @@ public final class GuestAllocator extends ContextAccessImpl {
         toCopy.checkNotForeign();
         StaticObject obj;
         if (toCopy.getKlass().isArray()) {
-            obj = wrapArrayAs((ArrayKlass) toCopy.getKlass(), toCopy.cloneWrappedArray(lang));
+            obj = wrapArrayAs((ArrayKlass) toCopy.getKlass(), toCopy.cloneWrappedArray(getLanguage()));
         } else {
             try {
                 // Call `this.clone()` rather than `super.clone()` to execute the `clone()` methods
@@ -144,18 +144,18 @@ public final class GuestAllocator extends ContextAccessImpl {
         StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
         initInstanceFields(newObj, guestClass);
 
-        getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
+        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
         if (klass.getContext().getJavaVersion().modulesEnabled()) {
             setModule(newObj, klass);
         }
         // The Class.componentType field is only available on 9+.
-        if (klass.isArray() && getMeta().java_lang_Class_componentType != null) {
-            getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
+        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
+            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
-        getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
+        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
-        getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
+        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
         return trackAllocation(klass, newObj);
     }
 
@@ -171,30 +171,30 @@ public final class GuestAllocator extends ContextAccessImpl {
     }
 
     /**
-     * @see #createNewPrimitiveArray(byte, int)
+     * @see #createNewPrimitiveArray(Meta, byte, int)
      */
     public StaticObject createNewPrimitiveArray(Klass klass, int length) {
         assert klass.isPrimitive();
-        return createNewPrimitiveArray(klass.getJavaKind(), length);
+        return createNewPrimitiveArray(klass.getMeta(), klass.getJavaKind(), length);
     }
 
     /**
-     * @see #createNewPrimitiveArray(byte, int)
+     * @see #createNewPrimitiveArray(Meta, byte, int)
      */
-    public StaticObject createNewPrimitiveArray(JavaKind kind, int length) {
+    public StaticObject createNewPrimitiveArray(Meta meta, JavaKind kind, int length) {
         assert kind.isPrimitive();
-        return createNewPrimitiveArray((byte) kind.getBasicType(), length);
+        return createNewPrimitiveArray(meta, (byte) kind.getBasicType(), length);
     }
 
     /**
      * Allocates a guest primitive array.
-     * 
+     *
+     * @param meta see {@link Meta}
      * @param jvmPrimitiveType see {@code JVMS Table 6.5.newarray-A. Array type codes}
      * @param length length of the array to allocate
      */
-    public StaticObject createNewPrimitiveArray(byte jvmPrimitiveType, int length) {
+    public StaticObject createNewPrimitiveArray(Meta meta, byte jvmPrimitiveType, int length) {
         assert AllocationChecks.canAllocateNewArray(length);
-        Meta meta = getMeta();
         // @formatter:off
         switch (jvmPrimitiveType) {
             case JVM_ArrayType_Boolean:    return wrapArrayAs(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
@@ -234,7 +234,7 @@ public final class GuestAllocator extends ContextAccessImpl {
      */
     public StaticObject createNewMultiArray(Klass component, int[] dimensions) {
         assert dimensions != null && dimensions.length > 0;
-        assert AllocationChecks.canAllocateMultiArray(getMeta(), component, dimensions);
+        assert AllocationChecks.canAllocateMultiArray(component.getMeta(), component, dimensions);
         return createNewMultiArray(component, dimensions, 0);
     }
 
@@ -252,8 +252,8 @@ public final class GuestAllocator extends ContextAccessImpl {
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
         assert klass.getComponentType().isPrimitive() || array instanceof StaticObject[];
-        StaticObject newObj = lang.getArrayShape().getFactory().create(klass);
-        lang.getArrayProperty().setObject(newObj, array);
+        StaticObject newObj = getLanguage().getArrayShape().getFactory().create(klass);
+        getLanguage().getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
 
@@ -262,14 +262,15 @@ public final class GuestAllocator extends ContextAccessImpl {
      * {@code ForeignException}.
      */
     public @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(
+                    EspressoContext context,
                     Object foreignObject,
                     InteropLibrary interopLibrary) {
-        assert getContext().getEspressoEnv().Polyglot;
-        Meta meta = getContext().getMeta();
+        assert context.getEspressoEnv().Polyglot;
+        Meta meta = context.getMeta();
         assert meta.polyglot != null;
         assert interopLibrary.isException(foreignObject);
         assert !(foreignObject instanceof StaticObject);
-        return createForeign(lang, meta.polyglot.ForeignException, foreignObject, interopLibrary);
+        return createForeign(getLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
     }
 
     /**
@@ -376,13 +377,13 @@ public final class GuestAllocator extends ContextAccessImpl {
     private void setModule(StaticObject obj, Klass klass) {
         StaticObject module = klass.module().module();
         if (StaticObject.isNull(module)) {
-            if (getContext().getRegistries().javaBaseDefined()) {
-                getContext().getMeta().java_lang_Class_module.setObject(obj, klass.getRegistries().getJavaBaseModule().module());
+            if (klass.getContext().getRegistries().javaBaseDefined()) {
+                klass.getContext().getMeta().java_lang_Class_module.setObject(obj, klass.getRegistries().getJavaBaseModule().module());
             } else {
-                getContext().getRegistries().addToFixupList(klass);
+                klass.getContext().getRegistries().addToFixupList(klass);
             }
         } else {
-            getContext().getMeta().java_lang_Class_module.setObject(obj, module);
+            klass.getContext().getMeta().java_lang_Class_module.setObject(obj, module);
         }
     }
 
@@ -421,7 +422,7 @@ public final class GuestAllocator extends ContextAccessImpl {
     }
 
     private StaticObject trackAllocation(Klass klass, StaticObject obj) {
-        return trackAllocation(klass, obj, lang, this);
+        return trackAllocation(klass, obj, getLanguage(), klass);
     }
 
     private static StaticObject trackAllocation(Klass klass, StaticObject obj, EspressoLanguage lang, ContextAccessImpl contextAccess) {

@@ -117,7 +117,7 @@ public final class EspressoEnv {
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
 
-        context.getLanguage().initializeGuestAllocator(context, env);
+        context.getLanguage().initializeGuestAllocator(env);
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
 
         // null if not specified

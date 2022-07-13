@@ -116,6 +116,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private JavaVersion javaVersion;
 
     // region Options
+    // Note: All options are initialized during the bootstrapping of the first context
     @CompilationFinal private EspressoOptions.VerifyMode verifyMode;
     @CompilationFinal private EspressoOptions.SpecComplianceMode specComplianceMode;
     @CompilationFinal private EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
@@ -124,12 +125,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private boolean optionsInitialized;
     // endregion Options
 
-    // region allocation tracking
+    // region Allocation
+    // Note: Initialized during the bootstrapping of the first context; See initializeOptions()
     @CompilationFinal private GuestAllocator allocator;
     @CompilationFinal private final Assumption noAllocationTracking = Assumption.create("Espresso no allocation tracking assumption");
-    // endregion allocation tracking
+    // endregion Allocation
 
+    // region Preinit
     @CompilationFinal private EspressoLanguageCache languageCache;
+    // endregion Preinit
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -445,8 +449,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return allocator;
     }
 
-    public void initializeGuestAllocator(EspressoContext context, TruffleLanguage.Env env) {
-        this.allocator = new GuestAllocator(context, env.lookup(AllocationReporter.class));
+    public void initializeGuestAllocator(TruffleLanguage.Env env) {
+        this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {

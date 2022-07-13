@@ -1488,7 +1488,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         assert getContext().getEspressoEnv().Polyglot;
                         getMeta().polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        getAllocator().createForeignException(e, InteropLibrary.getUncached(e)), getMeta());
+                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), getMeta());
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1575,7 +1575,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
         GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
-        return getAllocator().createNewPrimitiveArray(jvmPrimitiveType, length);
+        return getAllocator().createNewPrimitiveArray(getMeta(), jvmPrimitiveType, length);
     }
 
     private StaticObject newReferenceArray(Klass componentType, int length) {
