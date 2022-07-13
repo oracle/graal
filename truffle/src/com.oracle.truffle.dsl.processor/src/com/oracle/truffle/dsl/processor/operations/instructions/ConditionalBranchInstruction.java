@@ -86,14 +86,20 @@ public class ConditionalBranchInstruction extends Instruction {
 
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
 
-        // b.startIf().startCall("profile", "profile").string("cond").end(2);
-        b.startIf().string("cond").end();
-        b.startBlock();
+        b.startIf().startCall("do_profileCondition");
+
+        b.string("cond");
+        b.string("$conditionProfiles");
+        b.tree(createBranchProfileIndex(vars, 0));
+
+        b.end(2).startBlock();
+
         b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
         b.statement("continue loop");
         b.end().startElseBlock();
         b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0)).end();
         b.statement("continue loop");
+
         b.end();
 
         return b.build();

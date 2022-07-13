@@ -177,7 +177,7 @@ public class OperationsContext {
     }
 
     private void createReturn() {
-        ReturnInstruction retInit = add(new ReturnInstruction(instructionId++));
+        ReturnInstruction retInit = add(new ReturnInstruction(this, instructionId++));
         add(new Operation.Simple(this, "Return", operationId++, 1, retInit));
     }
 
@@ -238,6 +238,10 @@ public class OperationsContext {
             if (cinstr == null) {
                 // todo: better error reporting
                 data.addWarning("Invalid Quicken decision: undefined operation %s.", quicken.getOperation());
+                continue;
+            }
+            if (cinstr instanceof ShortCircuitInstruction) {
+                // todo: make these work
                 continue;
             }
 

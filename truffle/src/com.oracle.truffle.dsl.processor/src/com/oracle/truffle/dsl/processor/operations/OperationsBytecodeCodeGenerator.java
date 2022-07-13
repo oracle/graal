@@ -253,7 +253,7 @@ public class OperationsBytecodeCodeGenerator {
 
         b.declaration("int", vars.sp.getName(), CodeTreeBuilder.singleString("$startSp"));
         b.declaration("int", vars.bci.getName(), CodeTreeBuilder.singleString("$startBci"));
-        b.declaration("int", "loopCount", "0");
+        b.declaration("Counter", "loopCounter", "new Counter()");
 
         CodeVariableElement varTracer;
 
@@ -263,7 +263,7 @@ public class OperationsBytecodeCodeGenerator {
             b.typeLiteral(m.getTemplateType().asType());
             b.end(2);
 
-            b.startStatement().startCall(varTracer, "startFunction").string("this").end(2);
+            b.startStatement().startCall(varTracer, "startFunction").string("$this").end(2);
         } else {
             varTracer = null;
         }
@@ -271,19 +271,17 @@ public class OperationsBytecodeCodeGenerator {
         b.string("loop: ");
         b.startWhile().string("true").end();
         b.startBlock();
-        CodeVariableElement varNextBci = new CodeVariableElement(context.getType(int.class), "nextBci");
-        b.statement("int nextBci");
 
-        vars.nextBci = varNextBci;
         vars.tracer = varTracer;
-
-        b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci));
-
-        b.startTryBlock();
 
         b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.bci));
         b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.sp));
+
+        b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci));
+
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
+
+        b.startTryBlock();
 
         b.startIf().variable(vars.sp).string(" < maxLocals").end();
         b.startBlock();
@@ -315,8 +313,8 @@ public class OperationsBytecodeCodeGenerator {
             b.tree(op.createExecuteCode(vars));
 
             if (!op.isBranchInstruction()) {
-                b.startAssign(varNextBci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
-                b.statement("break");
+                b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
+                b.statement("continue loop");
             }
 
             b.end();
@@ -366,15 +364,7 @@ public class OperationsBytecodeCodeGenerator {
 
         b.end(); // catch block
 
-        b.tree(GeneratorUtils.createPartialEvaluationConstant(varNextBci));
-        b.statement("$bci = nextBci");
-        b.end(); // while block
-
-        if (m.isTracing()) {
-            b.startStatement().startCall(varTracer, "endFunction");
-            b.string("this");
-            b.end(2);
-        }
+        b.end(); // while loop
 
         return mContinueAt;
     }
@@ -508,7 +498,7 @@ public class OperationsBytecodeCodeGenerator {
                 metGetSpecBits.setEnclosingElement(typBuilderImpl);
                 typBuilderImpl.add(metGetSpecBits);
 
-                metGetSpecBits.addParameter(new CodeVariableElement(arrayOf(context.getType(short.class)), "bc"));
+                metGetSpecBits.addParameter(new CodeVariableElement(arrayOf(context.getType(short.class)), "$bc"));
                 metGetSpecBits.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
                 CodeTreeBuilder b = metGetSpecBits.createBuilder();
                 b.tree(plugs.createGetSpecializationBits());

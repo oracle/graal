@@ -43,11 +43,15 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class ReturnInstruction extends Instruction {
 
-    public ReturnInstruction(int id) {
+    private final OperationsContext ctx;
+
+    public ReturnInstruction(OperationsContext ctx, int id) {
         super("return", id, 0);
+        this.ctx = ctx;
         addPopSimple("value");
     }
 
@@ -59,6 +63,12 @@ public class ReturnInstruction extends Instruction {
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        if (ctx.getData().isTracing()) {
+            b.startStatement().startCall("tracer", "endFunction");
+            b.string("$this");
+            b.end(2);
+        }
 
         b.startReturn().string("((").variable(vars.sp).string(" - 1) << 16) | 0xffff").end();
 

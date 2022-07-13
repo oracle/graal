@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -174,6 +175,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         typBuilder.add(createCreateMethod(typBuilder, typBuilderImpl));
+
+        CodeTypeElement typCounter = typBuilder.add(new CodeTypeElement(MOD_PRIVATE_STATIC_FINAL, ElementKind.CLASS, null, "Counter"));
+        typCounter.add(new CodeVariableElement(MOD_PUBLIC, context.getType(int.class), "count"));
 
         return typBuilder;
     }
@@ -493,7 +497,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, new DeclaredCodeTypeMirror(context.getTypeElement(ArrayList.class), List.of(typLabelData.asType())), "labels = new ArrayList<>()"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, new DeclaredCodeTypeMirror(context.getTypeElement(ArrayList.class), List.of(typLabelFill.asType())), "labelFills = new ArrayList<>()"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numChildNodes"));
-        typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numBranchProfiles"));
+        typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numConditionProfiles"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, new DeclaredCodeTypeMirror(context.getTypeElement(ArrayList.class), List.of(typExceptionHandler.asType())),
                         "exceptionHandlers = new ArrayList<>()"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, typFinallyTryContext.asType(), "currentFinallyTry"));
@@ -614,8 +618,64 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilderImpl.add(createSetMetadata(metadata, false));
         }
 
+        typBuilderImpl.add(createConditionProfile());
+
         return typBuilderImpl;
 
+    }
+
+    private CodeExecutableElement createConditionProfile() {
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(boolean.class), "do_profileCondition");
+        met.addParameter(new CodeVariableElement(context.getType(boolean.class), "value"));
+        met.addParameter(new CodeVariableElement(context.getType(int[].class), "profiles"));
+        met.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+
+        CodeTreeBuilder b = met.createBuilder();
+
+        final int maxInt = 0x3FFFFFFF;
+
+        b.declaration("int", "t", "profiles[index]");
+        b.declaration("int", "f", "profiles[index + 1]");
+
+        b.declaration("boolean", "val", "value");
+        b.startIf().string("val").end().startBlock();
+
+        b.startIf().string("t == 0").end().startBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.end();
+        b.startIf().string("f == 0").end().startBlock();
+        b.statement("val = true");
+        b.end();
+        b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock();
+        b.startIf().string("t < " + maxInt).end().startBlock();
+        b.statement("profiles[index] = t + 1");
+        b.end();
+        b.end();
+
+        b.end().startElseBlock();
+
+        b.startIf().string("f == 0").end().startBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.end();
+        b.startIf().string("t == 0").end().startBlock();
+        b.statement("val = false");
+        b.end();
+        b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock();
+        b.startIf().string("f < " + maxInt).end().startBlock();
+        b.statement("profiles[index + 1] = f + 1");
+        b.end();
+        b.end();
+
+        b.end();
+
+        b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock();
+        b.statement("return val");
+        b.end().startElseBlock();
+        b.statement("int sum = t + f");
+        b.statement("return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val)");
+        b.end();
+
+        return met;
     }
 
     private List<CodeExecutableElement> createBuilderImplGetLocalIndex(CodeTypeElement typLocalData) {
@@ -1378,7 +1438,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("result._consts = constPool.toArray()");
         b.statement("result._children = new Node[numChildNodes]");
         b.statement("result._handlers = exceptionHandlers.toArray(new ExceptionHandler[0])");
-        b.statement("result._conditionProfiles = new int[numBranchProfiles * 2]");
+        b.statement("result._conditionProfiles = new int[numConditionProfiles]");
         b.statement("result._maxLocals = numLocals");
         b.statement("result._maxStack = maxStack");
 
@@ -1817,7 +1877,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("operationData = new BuilderOperationData(null, OP_BLOCK, 0, 0, false, 0)");
         b.statement("labelFills.clear()");
         b.statement("numChildNodes = 0");
-        b.statement("numBranchProfiles = 0");
+        b.statement("numConditionProfiles = 0");
         b.statement("exceptionHandlers.clear()");
 
         for (OperationMetadataData metadata : m.getMetadatas()) {

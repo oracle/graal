@@ -61,7 +61,6 @@ public abstract class Instruction {
     public static class ExecutionVariables {
         public CodeVariableElement bc;
         public CodeVariableElement bci;
-        public CodeVariableElement nextBci;
         public CodeVariableElement frame;
         public CodeVariableElement sp;
         public CodeVariableElement consts;
@@ -314,7 +313,7 @@ public abstract class Instruction {
     }
 
     public CodeTree createBranchProfileIndex(ExecutionVariables vars, int index) {
-        return createDirectIndex(vars, BRANCH_PROFILE_OFFSET_SUFFIX, index);
+        return createDirectIndex(vars, BRANCH_PROFILE_OFFSET_SUFFIX, index * 2);
     }
 
     public CodeTree createStateBitsIndex(ExecutionVariables vars, int index) {
@@ -487,7 +486,13 @@ public abstract class Instruction {
             b.end(3);
         }
 
-        // todo: condition profiles
+        if (!branchProfiles.isEmpty()) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getBranchProfileOffset() + "] = (short) ");
+            b.string("numConditionProfiles");
+            b.end();
+
+            b.statement("numConditionProfiles += " + branchProfiles.size() * 2);
+        }
 
         for (int i = 0; i < stateBits.size(); i++) {
             b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getStateBitsOffset() + " + " + i + "] = 0").end();

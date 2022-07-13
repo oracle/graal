@@ -81,13 +81,11 @@ public class BranchInstruction extends Instruction {
                 b.end(2);
             }
 
-            // todo: reporting loop count
-
             if (LOOP_COUNTING) {
                 b.startIf();
                 b.tree(GeneratorUtils.createHasNextTier());
                 b.string(" && ");
-                b.string("++loopCount >= " + REPORT_LOOP_STRIDE);
+                b.string("++loopCounter.count >= " + REPORT_LOOP_STRIDE);
                 b.end().startBlock(); // {
 
                 b.startStatement().startStaticCall(typeLoopNode, "reportLoopCount");
@@ -95,7 +93,7 @@ public class BranchInstruction extends Instruction {
                 b.string("" + REPORT_LOOP_STRIDE);
                 b.end(2);
 
-                b.statement("loopCount = 0");
+                b.statement("loopCounter.count = 0");
 
                 b.end(); // }
             }

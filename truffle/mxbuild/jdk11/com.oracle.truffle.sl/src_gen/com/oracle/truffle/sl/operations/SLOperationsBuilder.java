@@ -296,33 +296,33 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         static final int INSTR_LOAD_CONSTANT_OBJECT = 5;
         static final int LOAD_CONSTANT_OBJECT_CONSTANT_OFFSET = 1;
         static final int LOAD_CONSTANT_OBJECT_LENGTH = 2;
-        static final int INSTR_LOAD_CONSTANT_LONG = 6;
-        static final int LOAD_CONSTANT_LONG_CONSTANT_OFFSET = 1;
-        static final int LOAD_CONSTANT_LONG_LENGTH = 2;
-        static final int INSTR_LOAD_CONSTANT_BOOLEAN = 7;
+        static final int INSTR_LOAD_CONSTANT_BOOLEAN = 6;
         static final int LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET = 1;
         static final int LOAD_CONSTANT_BOOLEAN_LENGTH = 2;
+        static final int INSTR_LOAD_CONSTANT_LONG = 7;
+        static final int LOAD_CONSTANT_LONG_CONSTANT_OFFSET = 1;
+        static final int LOAD_CONSTANT_LONG_LENGTH = 2;
         static final int INSTR_LOAD_ARGUMENT_OBJECT = 8;
         static final int LOAD_ARGUMENT_OBJECT_ARGUMENT_OFFSET = 1;
         static final int LOAD_ARGUMENT_OBJECT_LENGTH = 2;
-        static final int INSTR_LOAD_ARGUMENT_LONG = 9;
-        static final int LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET = 1;
-        static final int LOAD_ARGUMENT_LONG_LENGTH = 2;
-        static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 10;
+        static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 9;
         static final int LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET = 1;
         static final int LOAD_ARGUMENT_BOOLEAN_LENGTH = 2;
+        static final int INSTR_LOAD_ARGUMENT_LONG = 10;
+        static final int LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET = 1;
+        static final int LOAD_ARGUMENT_LONG_LENGTH = 2;
         static final int INSTR_STORE_LOCAL_OBJECT = 11;
         static final int STORE_LOCAL_OBJECT_LOCALS_OFFSET = 1;
         static final int STORE_LOCAL_OBJECT_POP_INDEXED_OFFSET = 2;
         static final int STORE_LOCAL_OBJECT_LENGTH = 3;
-        static final int INSTR_STORE_LOCAL_LONG = 12;
-        static final int STORE_LOCAL_LONG_LOCALS_OFFSET = 1;
-        static final int STORE_LOCAL_LONG_POP_INDEXED_OFFSET = 2;
-        static final int STORE_LOCAL_LONG_LENGTH = 3;
-        static final int INSTR_STORE_LOCAL_BOOLEAN = 13;
+        static final int INSTR_STORE_LOCAL_BOOLEAN = 12;
         static final int STORE_LOCAL_BOOLEAN_LOCALS_OFFSET = 1;
         static final int STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET = 2;
         static final int STORE_LOCAL_BOOLEAN_LENGTH = 3;
+        static final int INSTR_STORE_LOCAL_LONG = 13;
+        static final int STORE_LOCAL_LONG_LOCALS_OFFSET = 1;
+        static final int STORE_LOCAL_LONG_POP_INDEXED_OFFSET = 2;
+        static final int STORE_LOCAL_LONG_LENGTH = 3;
         static final int INSTR_STORE_LOCAL_UNINIT = 14;
         static final int STORE_LOCAL_UNINIT_LOCALS_OFFSET = 1;
         static final int STORE_LOCAL_UNINIT_POP_INDEXED_OFFSET = 2;
@@ -330,12 +330,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         static final int INSTR_LOAD_LOCAL_OBJECT = 15;
         static final int LOAD_LOCAL_OBJECT_LOCALS_OFFSET = 1;
         static final int LOAD_LOCAL_OBJECT_LENGTH = 2;
-        static final int INSTR_LOAD_LOCAL_LONG = 16;
-        static final int LOAD_LOCAL_LONG_LOCALS_OFFSET = 1;
-        static final int LOAD_LOCAL_LONG_LENGTH = 2;
-        static final int INSTR_LOAD_LOCAL_BOOLEAN = 17;
+        static final int INSTR_LOAD_LOCAL_BOOLEAN = 16;
         static final int LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET = 1;
         static final int LOAD_LOCAL_BOOLEAN_LENGTH = 2;
+        static final int INSTR_LOAD_LOCAL_LONG = 17;
+        static final int LOAD_LOCAL_LONG_LOCALS_OFFSET = 1;
+        static final int LOAD_LOCAL_LONG_LENGTH = 2;
         static final int INSTR_LOAD_LOCAL_UNINIT = 18;
         static final int LOAD_LOCAL_UNINIT_LOCALS_OFFSET = 1;
         static final int LOAD_LOCAL_UNINIT_LENGTH = 2;
@@ -508,7 +508,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         // OBJECT
         {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_LONG, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_LONG, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // INT
         null,
         // DOUBLE
@@ -516,7 +516,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         // FLOAT
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_BOOLEAN, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_BOOLEAN, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // BYTE
         null};
 
@@ -535,7 +535,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         private ArrayList<OperationLabelImpl> labels = new ArrayList<>();
         private ArrayList<LabelFill> labelFills = new ArrayList<>();
         private int numChildNodes;
-        private int numBranchProfiles;
+        private int numConditionProfiles;
         private ArrayList<ExceptionHandler> exceptionHandlers = new ArrayList<>();
         private BuilderFinallyTryContext currentFinallyTry;
         private int buildIndex;
@@ -575,7 +575,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             operationData = new BuilderOperationData(null, OP_BLOCK, 0, 0, false, 0);
             labelFills.clear();
             numChildNodes = 0;
-            numBranchProfiles = 0;
+            numConditionProfiles = 0;
             exceptionHandlers.clear();
             metadata_MethodName = null;
         }
@@ -710,7 +710,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 result._consts = constPool.toArray();
                 result._children = new Node[numChildNodes];
                 result._handlers = exceptionHandlers.toArray(new ExceptionHandler[0]);
-                result._conditionProfiles = new int[numBranchProfiles * 2];
+                result._conditionProfiles = new int[numConditionProfiles];
                 result._maxLocals = numLocals;
                 result._maxStack = maxStack;
                 if (sourceBuilder != null) {
@@ -869,6 +869,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_BRANCH_FALSE);
                         labelFills.add(new LabelFill(bci + 1 + 0, endLabel));
+                        bc[bci + 2] = (short) numConditionProfiles;
+                        numConditionProfiles += 2;
                         bci = bci + 3;
                     } else {
                         for (int i = 0; i < lastChildPush; i++) {
@@ -889,6 +891,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_BRANCH_FALSE);
                         labelFills.add(new LabelFill(bci + 1 + 0, elseLabel));
+                        bc[bci + 2] = (short) numConditionProfiles;
+                        numConditionProfiles += 2;
                         bci = bci + 3;
                     } else if (childIndex == 1) {
                         for (int i = 0; i < lastChildPush; i++) {
@@ -923,6 +927,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_BRANCH_FALSE);
                         labelFills.add(new LabelFill(bci + 1 + 0, elseLabel));
+                        bc[bci + 2] = (short) numConditionProfiles;
+                        numConditionProfiles += 2;
                         bci = bci + 3;
                     } else if (childIndex == 1) {
                         assert lastChildPush == 1;
@@ -949,6 +955,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_BRANCH_FALSE);
                         labelFills.add(new LabelFill(bci + 1 + 0, endLabel));
+                        bc[bci + 2] = (short) numConditionProfiles;
+                        numConditionProfiles += 2;
                         bci = bci + 3;
                     } else {
                         for (int i = 0; i < lastChildPush; i++) {
@@ -1997,6 +2005,43 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             metadata_MethodName = value;
         }
 
+        private static boolean do_profileCondition(boolean value, int[] profiles, int index) {
+            int t = profiles[index];
+            int f = profiles[index + 1];
+            boolean val = value;
+            if (val) {
+                if (t == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (f == 0) {
+                    val = true;
+                }
+                if (CompilerDirectives.inInterpreter()) {
+                    if (t < 1073741823) {
+                        profiles[index] = t + 1;
+                    }
+                }
+            } else {
+                if (f == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (t == 0) {
+                    val = false;
+                }
+                if (CompilerDirectives.inInterpreter()) {
+                    if (f < 1073741823) {
+                        profiles[index + 1] = f + 1;
+                    }
+                }
+            }
+            if (CompilerDirectives.inInterpreter()) {
+                return val;
+            } else {
+                int sum = t + f;
+                return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
+            }
+        }
+
         @GeneratedBy(SLOperations.class)
         private static final class BuilderOperationData {
 
@@ -2393,36 +2438,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            protected static long expectLong(VirtualFrame frame, int slot) throws UnexpectedResultException {
-                switch (frame.getTag(slot)) {
-                    case 1 /* LONG */ :
-                        return frame.getLong(slot);
-                    case 0 /* OBJECT */ :
-                        Object value = frame.getObject(slot);
-                        if (value instanceof Long) {
-                            return (long) value;
-                        }
-                        break;
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new UnexpectedResultException(frame.getValue(slot));
-            }
-
-            protected static boolean storeLocalLongCheck(VirtualFrame frame, int localSlot, int stackSlot) {
-                FrameDescriptor descriptor = frame.getFrameDescriptor();
-                if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Long) {
-                    try {
-                        frame.setLong(localSlot, expectLong(frame, stackSlot));
-                        return true;
-                    } catch (UnexpectedResultException ex) {
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
-                frame.setObject(localSlot, frame.getValue(stackSlot));
-                return false;
-            }
-
             protected static boolean expectBoolean(VirtualFrame frame, int slot) throws UnexpectedResultException {
                 switch (frame.getTag(slot)) {
                     case 5 /* BOOLEAN */ :
@@ -2453,6 +2468,36 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return false;
             }
 
+            protected static long expectLong(VirtualFrame frame, int slot) throws UnexpectedResultException {
+                switch (frame.getTag(slot)) {
+                    case 1 /* LONG */ :
+                        return frame.getLong(slot);
+                    case 0 /* OBJECT */ :
+                        Object value = frame.getObject(slot);
+                        if (value instanceof Long) {
+                            return (long) value;
+                        }
+                        break;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new UnexpectedResultException(frame.getValue(slot));
+            }
+
+            protected static boolean storeLocalLongCheck(VirtualFrame frame, int localSlot, int stackSlot) {
+                FrameDescriptor descriptor = frame.getFrameDescriptor();
+                if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Long) {
+                    try {
+                        frame.setLong(localSlot, expectLong(frame, stackSlot));
+                        return true;
+                    } catch (UnexpectedResultException ex) {
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
+                frame.setObject(localSlot, frame.getValue(stackSlot));
+                return false;
+            }
+
         }
         @GeneratedBy(SLOperations.class)
         private static final class BytecodeNode extends BytecodeLoopBase {
@@ -2466,14 +2511,13 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             int continueAt(OperationNodeImpl $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, ExceptionHandler[] $handlers, int[] $conditionProfiles, int maxLocals) {
                 int $sp = $startSp;
                 int $bci = $startBci;
-                int loopCount = 0;
+                Counter loopCounter = new Counter();
                 loop: while (true) {
-                    int nextBci;
+                    CompilerAsserts.partialEvaluationConstant($bci);
+                    CompilerAsserts.partialEvaluationConstant($sp);
                     short curOpcode = $bc[$bci];
+                    CompilerAsserts.partialEvaluationConstant(curOpcode);
                     try {
-                        CompilerAsserts.partialEvaluationConstant($bci);
-                        CompilerAsserts.partialEvaluationConstant($sp);
-                        CompilerAsserts.partialEvaluationConstant(curOpcode);
                         if ($sp < maxLocals) {
                             throw CompilerDirectives.shouldNotReachHere("stack underflow");
                         }
@@ -2487,8 +2531,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             {
                                 $sp = $sp - 1;
                                 $frame.clear($sp);
-                                nextBci = $bci + POP_LENGTH;
-                                break;
+                                $bci = $bci + POP_LENGTH;
+                                continue loop;
                             }
                             // branch
                             //   Pushed Values: 0
@@ -2500,9 +2544,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 int targetBci = $bc[$bci + BRANCH_BRANCH_TARGET_OFFSET + 0];
                                 if (targetBci <= $bci) {
                                     TruffleSafepoint.poll($this);
-                                    if (CompilerDirectives.hasNextTier() && ++loopCount >= 256) {
+                                    if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
                                         LoopNode.reportLoopCount($this, 256);
-                                        loopCount = 0;
+                                        loopCounter.count = 0;
                                     }
                                 }
                                 $bci = targetBci;
@@ -2521,7 +2565,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             {
                                 boolean cond = (boolean) $frame.getObject($sp - 1);
                                 $sp = $sp - 1;
-                                if (cond) {
+                                if (do_profileCondition(cond, $conditionProfiles, $bc[$bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0])) {
                                     $bci = $bci + BRANCH_FALSE_LENGTH;
                                     continue loop;
                                 } else {
@@ -2551,27 +2595,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             {
                                 $frame.setObject($sp, $consts[$bc[$bci + LOAD_CONSTANT_OBJECT_CONSTANT_OFFSET] + 0]);
                                 $sp = $sp + 1;
-                                nextBci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
-                                break;
-                            }
-                            // load.constant.long
-                            //   Constants:
-                            //     [ 0] constant
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
-                            //     LONG -> INSTR_LOAD_CONSTANT_LONG
-                            //     INT -> INSTR_LOAD_CONSTANT_LONG
-                            //     DOUBLE -> INSTR_LOAD_CONSTANT_LONG
-                            //     FLOAT -> INSTR_LOAD_CONSTANT_LONG
-                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_LONG
-                            //     BYTE -> INSTR_LOAD_CONSTANT_LONG
-                            case INSTR_LOAD_CONSTANT_LONG :
-                            {
-                                $frame.setLong($sp, (long) $consts[$bc[$bci + LOAD_CONSTANT_LONG_CONSTANT_OFFSET] + 0]);
-                                $sp = $sp + 1;
-                                nextBci = $bci + LOAD_CONSTANT_LONG_LENGTH;
-                                break;
+                                $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
+                                continue loop;
                             }
                             // load.constant.boolean
                             //   Constants:
@@ -2589,8 +2614,27 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             {
                                 $frame.setBoolean($sp, (boolean) $consts[$bc[$bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET] + 0]);
                                 $sp = $sp + 1;
-                                nextBci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
-                                break;
+                                $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
+                                continue loop;
+                            }
+                            // load.constant.long
+                            //   Constants:
+                            //     [ 0] constant
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
+                            //     LONG -> INSTR_LOAD_CONSTANT_LONG
+                            //     INT -> INSTR_LOAD_CONSTANT_LONG
+                            //     DOUBLE -> INSTR_LOAD_CONSTANT_LONG
+                            //     FLOAT -> INSTR_LOAD_CONSTANT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_LONG
+                            //     BYTE -> INSTR_LOAD_CONSTANT_LONG
+                            case INSTR_LOAD_CONSTANT_LONG :
+                            {
+                                $frame.setLong($sp, (long) $consts[$bc[$bci + LOAD_CONSTANT_LONG_CONSTANT_OFFSET] + 0]);
+                                $sp = $sp + 1;
+                                $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
+                                continue loop;
                             }
                             // load.argument.object
                             //   Pushed Values: 1
@@ -2603,30 +2647,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_OBJECT_ARGUMENT_OFFSET + 0]];
                                 $frame.setObject($sp, value);
                                 $sp = $sp + 1;
-                                nextBci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
-                                break;
-                            }
-                            // load.argument.long
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            //     LONG -> INSTR_LOAD_ARGUMENT_LONG
-                            //     INT -> INSTR_LOAD_ARGUMENT_LONG
-                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_LONG
-                            //     FLOAT -> INSTR_LOAD_ARGUMENT_LONG
-                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_LONG
-                            //     BYTE -> INSTR_LOAD_ARGUMENT_LONG
-                            case INSTR_LOAD_ARGUMENT_LONG :
-                            {
-                                Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]];
-                                if (value instanceof Long) {
-                                    $frame.setLong($sp, (long) value);
-                                } else {
-                                    $frame.setObject($sp, value);
-                                }
-                                $sp = $sp + 1;
-                                nextBci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
-                                break;
+                                $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
+                                continue loop;
                             }
                             // load.argument.boolean
                             //   Pushed Values: 1
@@ -2647,8 +2669,30 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     $frame.setObject($sp, value);
                                 }
                                 $sp = $sp + 1;
-                                nextBci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
-                                break;
+                                $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
+                                continue loop;
+                            }
+                            // load.argument.long
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_LONG
+                            //     INT -> INSTR_LOAD_ARGUMENT_LONG
+                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_LONG
+                            //     FLOAT -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BYTE -> INSTR_LOAD_ARGUMENT_LONG
+                            case INSTR_LOAD_ARGUMENT_LONG :
+                            {
+                                Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]];
+                                if (value instanceof Long) {
+                                    $frame.setLong($sp, (long) value);
+                                } else {
+                                    $frame.setObject($sp, value);
+                                }
+                                $sp = $sp + 1;
+                                $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
+                                continue loop;
                             }
                             // store.local.object
                             //   Locals:
@@ -2663,34 +2707,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 int sourceSlot = $sp - 1;
                                 $frame.setObject(localIdx, expectObject($frame, sourceSlot));
                                 $sp--;
-                                nextBci = $bci + STORE_LOCAL_OBJECT_LENGTH;
-                                break;
-                            }
-                            // store.local.long
-                            //   Locals:
-                            //     [ 0] target
-                            //   Indexed Pops:
-                            //     [ 0] value
-                            //   Pushed Values: 0
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
-                            //     LONG -> 0
-                            //     INT -> INSTR_STORE_LOCAL_OBJECT
-                            //     DOUBLE -> INSTR_STORE_LOCAL_OBJECT
-                            //     FLOAT -> INSTR_STORE_LOCAL_OBJECT
-                            //     BOOLEAN -> INSTR_STORE_LOCAL_OBJECT
-                            //     BYTE -> INSTR_STORE_LOCAL_OBJECT
-                            case INSTR_STORE_LOCAL_LONG :
-                            {
-                                int localIdx = $bc[$bci + STORE_LOCAL_LONG_LOCALS_OFFSET + 0];
-                                int sourceSlot = $sp - 1;
-                                if (!storeLocalLongCheck($frame, localIdx, sourceSlot)) {
-                                    $bc[$bci] = (short) (INSTR_STORE_LOCAL_OBJECT);
-                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff), 0 /* OBJECT */);
-                                }
-                                $sp--;
-                                nextBci = $bci + STORE_LOCAL_LONG_LENGTH;
-                                break;
+                                $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
+                                continue loop;
                             }
                             // store.local.boolean
                             //   Locals:
@@ -2715,8 +2733,34 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff), 0 /* OBJECT */);
                                 }
                                 $sp--;
-                                nextBci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
-                                break;
+                                $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
+                                continue loop;
+                            }
+                            // store.local.long
+                            //   Locals:
+                            //     [ 0] target
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
+                            //     LONG -> 0
+                            //     INT -> INSTR_STORE_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_STORE_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_STORE_LOCAL_OBJECT
+                            //     BOOLEAN -> INSTR_STORE_LOCAL_OBJECT
+                            //     BYTE -> INSTR_STORE_LOCAL_OBJECT
+                            case INSTR_STORE_LOCAL_LONG :
+                            {
+                                int localIdx = $bc[$bci + STORE_LOCAL_LONG_LOCALS_OFFSET + 0];
+                                int sourceSlot = $sp - 1;
+                                if (!storeLocalLongCheck($frame, localIdx, sourceSlot)) {
+                                    $bc[$bci] = (short) (INSTR_STORE_LOCAL_OBJECT);
+                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff), 0 /* OBJECT */);
+                                }
+                                $sp--;
+                                $bci = $bci + STORE_LOCAL_LONG_LENGTH;
+                                continue loop;
                             }
                             // store.local.uninit
                             //   Locals:
@@ -2743,8 +2787,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_UNINIT_POP_INDEXED_OFFSET + 0] & 0xff), resultTag);
                                 }
                                 $sp--;
-                                nextBci = $bci + STORE_LOCAL_UNINIT_LENGTH;
-                                break;
+                                $bci = $bci + STORE_LOCAL_UNINIT_LENGTH;
+                                continue loop;
                             }
                             // load.local.object
                             //   Locals:
@@ -2761,43 +2805,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                                 $frame.copyObject(localIdx, $sp);
                                 $sp++;
-                                nextBci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
-                                break;
-                            }
-                            // load.local.long
-                            //   Locals:
-                            //     [ 0] local
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
-                            //     LONG -> 0
-                            //     INT -> INSTR_LOAD_LOCAL_OBJECT
-                            //     DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
-                            //     FLOAT -> INSTR_LOAD_LOCAL_OBJECT
-                            //     BOOLEAN -> INSTR_LOAD_LOCAL_OBJECT
-                            //     BYTE -> INSTR_LOAD_LOCAL_OBJECT
-                            case INSTR_LOAD_LOCAL_LONG :
-                            {
-                                int localIdx = $bc[$bci + LOAD_LOCAL_LONG_LOCALS_OFFSET + 0];
-                                FrameSlotKind localType = $frame.getFrameDescriptor().getSlotKind(localIdx);
-                                if (localType != FrameSlotKind.Long) {
-                                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                                    Object localValue;
-                                    if (localType == FrameSlotKind.Illegal && (localValue = $frame.getObject(localIdx)) instanceof Long) {
-                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Long);
-                                        $frame.setLong(localIdx, (long) localValue);
-                                        $frame.copyPrimitive(localIdx, $sp);
-                                    } else {
-                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
-                                        $bc[$bci] = (short) (INSTR_LOAD_LOCAL_OBJECT);
-                                        $frame.copyObject(localIdx, $sp);
-                                    }
-                                } else {
-                                    $frame.copyPrimitive(localIdx, $sp);
-                                }
-                                $sp++;
-                                nextBci = $bci + LOAD_LOCAL_LONG_LENGTH;
-                                break;
+                                $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
+                                continue loop;
                             }
                             // load.local.boolean
                             //   Locals:
@@ -2831,8 +2840,43 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     $frame.copyPrimitive(localIdx, $sp);
                                 }
                                 $sp++;
-                                nextBci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
-                                break;
+                                $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
+                                continue loop;
+                            }
+                            // load.local.long
+                            //   Locals:
+                            //     [ 0] local
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     LONG -> 0
+                            //     INT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     BOOLEAN -> INSTR_LOAD_LOCAL_OBJECT
+                            //     BYTE -> INSTR_LOAD_LOCAL_OBJECT
+                            case INSTR_LOAD_LOCAL_LONG :
+                            {
+                                int localIdx = $bc[$bci + LOAD_LOCAL_LONG_LOCALS_OFFSET + 0];
+                                FrameSlotKind localType = $frame.getFrameDescriptor().getSlotKind(localIdx);
+                                if (localType != FrameSlotKind.Long) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    Object localValue;
+                                    if (localType == FrameSlotKind.Illegal && (localValue = $frame.getObject(localIdx)) instanceof Long) {
+                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Long);
+                                        $frame.setLong(localIdx, (long) localValue);
+                                        $frame.copyPrimitive(localIdx, $sp);
+                                    } else {
+                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
+                                        $bc[$bci] = (short) (INSTR_LOAD_LOCAL_OBJECT);
+                                        $frame.copyObject(localIdx, $sp);
+                                    }
+                                } else {
+                                    $frame.copyPrimitive(localIdx, $sp);
+                                }
+                                $sp++;
+                                $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
+                                continue loop;
                             }
                             // load.local.uninit
                             //   Locals:
@@ -2847,8 +2891,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 int localIdx = $bc[$bci + LOAD_LOCAL_UNINIT_LOCALS_OFFSET + 0];
                                 $frame.setObject($sp, expectObject($frame, localIdx));
                                 $sp++;
-                                nextBci = $bci + LOAD_LOCAL_UNINIT_LENGTH;
-                                break;
+                                $bci = $bci + LOAD_LOCAL_UNINIT_LENGTH;
+                                continue loop;
                             }
                             // return
                             //   Simple Pops:
@@ -2870,15 +2914,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3e79d949
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@172a1de
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@65a11b0c
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@f79df7c
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD :
                             {
                                 BytecodeNode.SLAdd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_ADD_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_ADD_LENGTH;
+                                continue loop;
                             }
                             // c.SLDiv
                             //   Constants:
@@ -2890,15 +2934,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@65b021d3
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@64ce13c7
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6c341dfe
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@286b0311
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_DIV :
                             {
                                 BytecodeNode.SLDiv_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_DIV_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_DIV_LENGTH;
+                                continue loop;
                             }
                             // c.SLEqual
                             //   Children:
@@ -2911,15 +2955,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@148d3d86
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@650298
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@45ff046b
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@4bca197
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_EQUAL :
                             {
                                 BytecodeNode.SLEqual_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_EQUAL_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_EQUAL_LENGTH;
+                                continue loop;
                             }
                             // c.SLLessOrEqual
                             //   Constants:
@@ -2931,14 +2975,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@643f05fe
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@48ab9713
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL :
                             {
                                 BytecodeNode.SLLessOrEqual_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                                continue loop;
                             }
                             // c.SLLessThan
                             //   Constants:
@@ -2950,14 +2994,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@707b6295
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@38a8769c
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN :
                             {
                                 BytecodeNode.SLLessThan_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_LESS_THAN_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_LESS_THAN_LENGTH;
+                                continue loop;
                             }
                             // c.SLLogicalNot
                             //   Constants:
@@ -2968,14 +3012,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@de71011
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@549e1be
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LOGICAL_NOT :
                             {
                                 BytecodeNode.SLLogicalNot_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_LOGICAL_NOT_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
+                                continue loop;
                             }
                             // c.SLMul
                             //   Constants:
@@ -2987,15 +3031,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@25bea2f7
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@39b2434b
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@64185899
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@709f4806
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_MUL :
                             {
                                 BytecodeNode.SLMul_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_MUL_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_MUL_LENGTH;
+                                continue loop;
                             }
                             // c.SLReadProperty
                             //   Constants:
@@ -3020,15 +3064,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@12f6e122
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@27a41cf5
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@b78dc1f
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@41f688df
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY :
                             {
                                 BytecodeNode.SLReadProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_READ_PROPERTY_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                                continue loop;
                             }
                             // c.SLSub
                             //   Constants:
@@ -3040,15 +3084,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@77ddabec
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5cde0647
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@678cdce8
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6d597767
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_SUB :
                             {
                                 BytecodeNode.SLSub_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_SUB_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_SUB_LENGTH;
+                                continue loop;
                             }
                             // c.SLWriteProperty
                             //   Constants:
@@ -3072,15 +3116,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7984030f
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@7ec0eb7e
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@200cc6f7
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@55c91259
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY :
                             {
                                 BytecodeNode.SLWriteProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 3 + 1;
-                                nextBci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
+                                continue loop;
                             }
                             // c.SLUnbox
                             //   Children:
@@ -3091,15 +3135,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6458bd81
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@48187373
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@54a3ff94
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@72e74828
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX :
                             {
                                 BytecodeNode.SLUnbox_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_UNBOX_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_UNBOX_LENGTH;
+                                continue loop;
                             }
                             // c.SLFunctionLiteral
                             //   Constants:
@@ -3110,14 +3154,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@115d9d04
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@341a03fd
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL :
                             {
                                 BytecodeNode.SLFunctionLiteral_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                                continue loop;
                             }
                             // c.SLToBoolean
                             //   Constants:
@@ -3128,14 +3172,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@683f0f4a
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@29dc94fd
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN :
                             {
                                 BytecodeNode.SLToBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_TO_BOOLEAN_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
+                                continue loop;
                             }
                             // c.SLInvoke
                             //   Constants:
@@ -3150,8 +3194,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@49aa0379
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@42a262d4
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6248910d
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@2aa62364
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE :
                             {
@@ -3164,8 +3208,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 Object result = BytecodeNode.SLInvoke_execute_($frame, $this, $bc, $bci, $sp, $consts, $children, input_0, input_1);
                                 $sp = $sp - 1 - numVariadics + 1;
                                 $frame.setObject($sp - 1, result);
-                                nextBci = $bci + C_SL_INVOKE_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_INVOKE_LENGTH;
+                                continue loop;
                             }
                             // sc.SLAnd
                             //   Constants:
@@ -3178,7 +3222,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3f6a7239
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4ec7d826
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_AND :
                             {
@@ -3202,7 +3246,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2fbf7fc1
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@371c67f
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_OR :
                             {
@@ -3224,15 +3268,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@36170084
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@67727050
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2517ffe5
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@3e315520
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX_Q_FROM_LONG :
                             {
                                 BytecodeNode.SLUnbox_q_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
+                                continue loop;
                             }
                             // c.SLAdd.q.AddLong
                             //   Constants:
@@ -3245,15 +3289,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@b652d3d
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5ff01ae7
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4ec7bc28
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@4308d9b1
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD_Q_ADD_LONG :
                             {
                                 BytecodeNode.SLAdd_q_AddLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
+                                continue loop;
                             }
                             // c.SLReadProperty.q.ReadSLObject0
                             //   Constants:
@@ -3278,15 +3322,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@516d32bd
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@25e93830
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@59faeee2
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6dd628a8
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
                             {
                                 BytecodeNode.SLReadProperty_q_ReadSLObject0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
+                                continue loop;
                             }
                             // c.SLUnbox.q.FromBoolean
                             //   Children:
@@ -3297,15 +3341,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7c7f575
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@58bff048
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1e03efc6
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1bc378e6
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
                             {
                                 BytecodeNode.SLUnbox_q_FromBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
+                                continue loop;
                             }
                             // c.SLToBoolean.q.Boolean
                             //   Constants:
@@ -3316,14 +3360,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@607fd938
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@15c00882
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
                             {
                                 BytecodeNode.SLToBoolean_q_Boolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH;
+                                continue loop;
                             }
                             // c.SLLessOrEqual.q.LessOrEqual0
                             //   Constants:
@@ -3335,14 +3379,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@c3b45bf
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@490fe1fa
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
                             {
                                 BytecodeNode.SLLessOrEqual_q_LessOrEqual0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH;
+                                continue loop;
                             }
                             // c.SLInvoke.q.Direct
                             //   Constants:
@@ -3357,8 +3401,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@346f7510
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@13f5fe65
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@48735ac2
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@48770f62
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE_Q_DIRECT :
                             {
@@ -3371,8 +3415,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 Object result = BytecodeNode.SLInvoke_q_Direct_execute_($frame, $this, $bc, $bci, $sp, $consts, $children, input_0, input_1);
                                 $sp = $sp - 1 - numVariadics + 1;
                                 $frame.setObject($sp - 1, result);
-                                nextBci = $bci + C_SL_INVOKE_Q_DIRECT_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_INVOKE_Q_DIRECT_LENGTH;
+                                continue loop;
                             }
                             // c.SLFunctionLiteral.q.Perform
                             //   Constants:
@@ -3383,14 +3427,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@ddd433a
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5d668af6
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
                             {
                                 BytecodeNode.SLFunctionLiteral_q_Perform_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
-                                nextBci = $bci + C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH;
+                                continue loop;
                             }
                             // c.SLWriteProperty.q.WriteSLObject0
                             //   Constants:
@@ -3414,15 +3458,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5b1de983
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1495c005
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6bd0b091
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@39274263
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
                             {
                                 BytecodeNode.SLWriteProperty_q_WriteSLObject0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 3 + 1;
-                                nextBci = $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH;
+                                continue loop;
                             }
                             // c.SLLessThan.q.LessThan0
                             //   Constants:
@@ -3434,14 +3478,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@28af0224
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@495b463a
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
                             {
                                 BytecodeNode.SLLessThan_q_LessThan0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
-                                nextBci = $bci + C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH;
-                                break;
+                                $bci = $bci + C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH;
+                                continue loop;
                             }
                             default :
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -3460,8 +3504,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                         throw ex;
                     }
-                    CompilerAsserts.partialEvaluationConstant(nextBci);
-                    $bci = nextBci;
                 }
             }
 
@@ -3495,16 +3537,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG :
-                        {
-                            $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
-                            $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_BOOLEAN :
                         {
                             $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
                             $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
+                            $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
+                            $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_ARGUMENT_OBJECT :
@@ -3512,14 +3554,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG :
-                        {
-                            $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
                         {
                             $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
+                            $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_OBJECT :
@@ -3527,14 +3569,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_LONG :
-                        {
-                            $bci = $bci + STORE_LOCAL_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_STORE_LOCAL_BOOLEAN :
                         {
                             $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_LONG :
+                        {
+                            $bci = $bci + STORE_LOCAL_LONG_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_UNINIT :
@@ -3547,14 +3589,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG :
-                        {
-                            $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_BOOLEAN :
                         {
                             $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
+                            $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_LOCAL_UNINIT :
@@ -3787,21 +3829,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.constant.long            ");
-                            sb.append(String.format(" const(%s)", formatConstant($consts[$bc[$bci + LOAD_CONSTANT_LONG_CONSTANT_OFFSET] + 0])));
-                            $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_BOOLEAN :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -3815,6 +3842,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.constant.boolean         ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[$bc[$bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET] + 0])));
                             $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.constant.long            ");
+                            sb.append(String.format(" const(%s)", formatConstant($consts[$bc[$bci + LOAD_CONSTANT_LONG_CONSTANT_OFFSET] + 0])));
+                            $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_ARGUMENT_OBJECT :
@@ -3832,21 +3874,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.argument.long            ");
-                            sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]));
-                            $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -3860,6 +3887,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.argument.boolean         ");
                             sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]));
                             $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.argument.long            ");
+                            sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]));
+                            $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_OBJECT :
@@ -3878,22 +3920,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_LONG :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append(String.format(" %04x", $bc[$bci + 2]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("store.local.long              ");
-                            sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_LONG_LOCALS_OFFSET + 0]));
-                            sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff)));
-                            $bci = $bci + STORE_LOCAL_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_STORE_LOCAL_BOOLEAN :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -3908,6 +3934,22 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff)));
                             $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_LONG :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append(String.format(" %04x", $bc[$bci + 2]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("store.local.long              ");
+                            sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_LONG_LOCALS_OFFSET + 0]));
+                            sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff)));
+                            $bci = $bci + STORE_LOCAL_LONG_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_UNINIT :
@@ -3941,21 +3983,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.local.long               ");
-                            sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_LONG_LOCALS_OFFSET + 0]));
-                            $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_BOOLEAN :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -3969,6 +3996,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.local.boolean            ");
                             sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
                             $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.local.long               ");
+                            sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_LONG_LOCALS_OFFSET + 0]));
+                            $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_LOCAL_UNINIT :
@@ -8308,13 +8350,13 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static int storeLocalInitialization(VirtualFrame frame, int localIdx, int localTag, int sourceSlot) {
                 Object value = frame.getValue(sourceSlot);
-                if (localTag == 1 /* LONG */ && value instanceof Long) {
-                    frame.setLong(localIdx, (long) value);
-                    return 1 /* LONG */;
-                }
                 if (localTag == 5 /* BOOLEAN */ && value instanceof Boolean) {
                     frame.setBoolean(localIdx, (boolean) value);
                     return 5 /* BOOLEAN */;
+                }
+                if (localTag == 1 /* LONG */ && value instanceof Long) {
+                    frame.setLong(localIdx, (long) value);
+                    return 1 /* LONG */;
                 }
                 frame.setObject(localIdx, value);
                 return 0 /* OBJECT */;
@@ -8531,5 +8573,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             }
         }
+    }
+    private static final class Counter {
+
+        public int count;
+
     }
 }
