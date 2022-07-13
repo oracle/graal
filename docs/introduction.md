@@ -7,7 +7,8 @@ permalink: /docs/introduction/
 
 # Introduction to GraalVM
 
-GraalVM is a high-performance JDK distribution designed to accelerate the execution of applications written in Java and other JVM languages while also providing runtimes for JavaScript, Python, and a number of other popular languages. 
+GraalVM is a high-performance JDK designed to accelerate the execution of applications written in Java and other JVM languages while also providing runtimes for JavaScript, Python, and a number of other popular languages.
+GraalVM offers two ways to run Java applications: on the HotSpot JVM with Graal just-in-time (JIT) compiler or as an ahead-of-time (AOT) compiled native exectuable.
 GraalVM’s polyglot capabilities make it possible to mix multiple programming languages in a single application while eliminating foreign language call costs.
 
 This page provides an architectural overview of GraalVM and its runtime modes, supported platforms, available distributions, core and additional functionalities, and support levels for various features.
@@ -40,8 +41,8 @@ The JVM passes bytecodes for Java or any other JVM-native language to the compil
 Interpreters for supported languages, written on top of the [Truffle framework](../truffle/docs/README.md), are themselves Java programs that run on the JVM.
 
 #### Native Image
-[Native Image](reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
-The Java bytecode that is processed during the native image build includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
+[Native Image](reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone native executable or a native shared library.
+The Java bytecode that is processed during the build of a native executable includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
 A generated self-contained native executable is specific to each individual operating systems and machine architecture that does not require a JVM.
 
 #### Java on Truffle
@@ -63,36 +64,30 @@ GraalVM consists of core and additional components.
 The core components enable using GraalVM as a runtime platform for programs written in JVM-based languages or embeddable polyglot applications.
 
 ### Core Components
-**Runtimes**
+
 * Java HotSpot VM
-* JavaScript runtime
-* LLVM runtime
-
-**Libraries (JAR files)**
-* GraalVM compiler - the top-tier JIT compiler
+* Graal compiler - the top-tier JIT compiler
 * Polyglot API – the APIs for combining programming languages in a shared runtime
-
-**Utilities**
-* JavaScript REPL with the JavaScript interpreter
-* `lli` tool to directly execute programs from LLVM bitcode
-* [GraalVM Updater](reference-manual/graalvm-updater.md) to install additional functionalities
+* [GraalVM Updater](../reference-manual/graalvm-updater.md) - a utility to install additional functionalities
 
 ### Additional Components
 GraalVM core installation can be extended with more languages runtimes and utilities.
 
 Tools/Utilities:
 
-* [Native Image](reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable.
-* [LLVM toolchain](reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime.
+* [Native Image](../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native platform executable.
+* [LLVM toolchain](../reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM.
 
 Runtimes:
 
-* [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Node.js](reference-manual/js/README.md) -- the Node.js 16.14.2 runtime for JavaScript
-* [Python](reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
-* [R](reference-manual/r/README.md) -- GNU R 4.0.3 compatible
-* [GraalWasm](reference-manual/wasm/README.md) -- WebAssembly (Wasm)
+* [JavaScript runtime](../reference-manual/js/README.md) with JavaScript REPL with the JavaScript interpreter
+* [Node.js](../../reference-manual/js/NodeJS.md) -- the Node.js 16.14.2 runtime for JavaScript
+* [LLVM runtime](../reference-manual/llvm/README.md) with `lli` tool to directly execute programs from LLVM bitcode
+* [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
+* [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible
+* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible
+* [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
+* [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
 
 ## Licensing and Support
 
@@ -112,15 +107,15 @@ The following table lists production-ready and experimental features in GraalVM 
 | Feature         | Linux AMD64  | Linux ARM64   | macOS        | macOS ARM64   | Windows       |
 |-----------------|--------------|---------------|--------------|---------------|---------------|
 | Native Image    | stable       | stable        | stable       | experimental  | stable        |
-| LLVM runtime    | stable       | stable        | stable       | not available | not available |
-| LLVM toolchain  | stable       | stable        | stable       | not available | not available |
+| LLVM runtime    | stable       | stable        | stable       | experimental  | not available |
+| LLVM toolchain  | stable       | stable        | stable       | experimental  | not available |
 | JavaScript      | stable       | stable        | stable       | experimental  | stable        |
 | Node.js         | stable       | stable        | stable       | not available | stable        |
 | Java on Truffle | experimental | experimental  | experimental | experimental  | experimental  |
 | Python          | experimental | not available | experimental | not available | not available |
-| Ruby            | experimental | experimental  | experimental | not available | not available |
+| Ruby            | experimental | experimental  | experimental | experimental  | not available |
 | R               | experimental | not available | experimental | not available | not available |
-| WebAssembly     | experimental | experimental  | experimental | not available | experimental  |
+| WebAssembly     | experimental | experimental  | experimental | experimental  | experimental  |
 
 ## What to Read Next
 

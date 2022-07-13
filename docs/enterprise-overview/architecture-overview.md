@@ -18,7 +18,7 @@ The conceptual overview and advantages of GraalVM Enterprise are described on th
 * [Certified Platforms](#certified-platforms)
 * [Distribution Components List](#distribution-components-list)
 * [Licensing and Support](#licensing-and-support)
-* [Experimental and Early Adopter Features](#experimental-and-early-adopter-features)
+* [Experimental Features](#experimental-features)
 * [What to Read Next](#what-to-read-next)
 
 ## GraalVM Enterprise Architecture
@@ -45,8 +45,8 @@ The JVM passes bytecodes for Java or any other JVM-native language to the compil
 Interpreters for supported languages, written on top of the [Truffle framework](../../truffle/docs/README.md), are themselves Java programs that run on the JVM.
 
 #### Native Image
-[Native Image](../reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone executable or a native shared library.
-The Java bytecode that is processed during the native executable build includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
+[Native Image](../reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
+The Java bytecode that is processed when building a native executable includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
 A generated self-contained native executable is specific to each individual operating systems and machine architecture that does not require a JVM.
 
 #### Java on Truffle
@@ -58,38 +58,32 @@ It is a complete Java VM that includes all core components, implements the same 
 GraalVM Enterprise distributions are based on Oracle JDK 11 and 17.
 GraalVM Enterprise releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
 
-GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
+GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, for Linux and macOS (Apple Silicon) on ARM 64-bit systems.
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 
 ## Certified Platforms
 
-The following are the certified platforms for GraalVM Enterprise 22.1:
+The following are the certified platforms for GraalVM Enterprise 22.2:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
 | Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/compute-instances.md) 	|
 | Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/installation-linux.md) 	|
-| macOS 	| 10.14 (Mojave), 10.15 (Catalina)	| x86 64-bit 	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
+| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.2 (Monterey)	| x86 64-bit	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
 | Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/installation-windows.md) 	|
+
+Note: GraalVM Enterprise macOS distribution for ARM 64-bit architecture (Apple Silicon) is experimental.
 
 ## Distribution Components List
 
 GraalVM Enterprise consists of core and additional functionalities.
 
 ### Core Components
-**Runtimes**
+
 * Java HotSpot VM
-* JavaScript runtime
-* LLVM runtime
-
-**Libraries (JAR files)**
-* GraalVM compiler - the top-tier JIT compiler
+* Graal compiler - the top-tier JIT compiler
 * Polyglot API – the APIs for combining programming languages in a shared runtime
-
-**Utilities**
-* JavaScript REPL with the JavaScript interpreter
-* `lli` tool to directly execute programs from LLVM bitcode
-* [GraalVM Updater](../reference-manual/graalvm-updater.md) to install additional functionalities
+* [GraalVM Updater](../reference-manual/graalvm-updater.md) - a utility to install additional functionalities
 
 ### Additional Functionalities
 GraalVM Enterprise core installation can be extended with more languages runtimes and utilities.
@@ -101,12 +95,14 @@ Tools/Utilities:
 
 Runtimes:
 
+* [JavaScript](../reference-manual/js/README.md) -- REPL with the JavaScript interpreter
+* [Node.js](../../reference-manual/js/NodeJS.md) -- the Node.js 16.14.2 runtime for JavaScript
+* [LLVM](../reference-manual/llvm/README.md) -- LLVM runtime with `lli` tool to directly execute programs from LLVM bitcode
 * [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Node.js](../reference-manual/js/README.md) -- the Node.js 16.14.2 runtime for JavaScript
-* [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
-* [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
-* [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
+* [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible runtime
+* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible runtime
+* [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible runtime
+* [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm) runtime
 
 ## Licensing and Support
 
@@ -119,9 +115,9 @@ See [Versions Roadmap of Oracle GraalVM Enterprise Edition](../../release-notes/
 
 Please note, that while Oracle JDK 17 is available under the new [Oracle No-Fee Terms and Conditions (NFTC) license](https://www.oracle.com/downloads/licenses/no-fee-license.html) which allows commercial and production use for 2 years, GraalVM Enterprise Edition license remains unchanged.
 
-## Experimental and Early Adopter Features
+## Experimental Features
 
-Oracle GraalVM Enterprise Edition features are distributed as fully supported, early adopter, and experimental.
+Oracle GraalVM Enterprise Edition features are distributed as fully supported and experimental.
 
 Experimental features are being considered for future versions of GraalVM Enterprise.
 They are not meant to be used in production and are not supported by Oracle.
@@ -129,11 +125,11 @@ The development team welcomes feedback on experimental features, but users shoul
 
 For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
-The following table lists supported and experimental features in GraalVM Enterprise Edition 22.1 by platform.
+The following table lists supported and experimental features in GraalVM Enterprise Edition 22.2 by platform.
 
-| Feature         | Linux AMD64   | Linux ARM64   | macOS         | Windows       |
+| Feature         | Linux AMD64   | Linux ARM64   | macOS AMD64   | Windows AMD64 |
 |-----------------|---------------|---------------|---------------|---------------|
-| Native Image    | early adopter | early adopter | early adopter | early adopter |
+| Native Image    | supported     | supported     | supported     | supported     |
 | LLVM runtime    | supported     | supported     | supported     | not available |
 | LLVM toolchain  | supported     | supported     | supported     | not available |
 | JavaScript      | supported     | supported     | supported     | supported     |

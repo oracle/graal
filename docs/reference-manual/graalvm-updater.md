@@ -42,6 +42,8 @@ ComponentId              Version            Component name
 -----------------------------------------------------------------------------
 espresso                 <version>          Java on Truffle               
 espresso-llvm            <version>          Java on Truffle LLVM Java library
+js                       <version>          JavaScript
+llvm                     <version>          LLVM
 llvm-toolchain           <version>          LLVM.org toolchain            
 native-image             <version>          Native Image                  
 nodejs                   <version>          Graal.nodejs                  
@@ -70,9 +72,9 @@ GraalVM Updater downloads a component from GitHub.
     ```shell
     gu available
     ```
-2. Install a component package using the `ComponentId` value. For example, `ruby`:
+2. Install a component package using the `ComponentId` value. For example, `js`:
     ```shell
-    gu install ruby
+    gu install js
     ```
 GraalVM Updater first downloads the list of components, then uses the information in the list to download the actual component package, and then installs it.
 To see more verbose output during the installation, as the download progress bar, print versions, and dependency information, use the `-v` (`--verbose`) switch.
@@ -198,7 +200,7 @@ To uninstall a specific component, use its `ComponentId`. Run `gu list` to find 
 
 The command to uninstall the component is:
 ```shell
-gu remove ruby
+gu remove ComponentId
 ```
 
 If more components end with, for example, `ruby`, the installer will print an error message that a component’s full name is required (`org.graalvm.ruby`).

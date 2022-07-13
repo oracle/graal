@@ -11,37 +11,37 @@ This example demonstrates how to compile a Java and Kotlin application ahead-of-
 
 ## Preparation
 
-1&#46; Download or clone the repository and navigate into the `java-kotlin-aot` directory:
+1. Download or clone the repository and navigate into the `java-kotlin-aot` directory:
 
-  Note: You can use any JDK for building the application. However, `javac` from GraalVM in the build script is used to simplify the prerequisites so another JDK does not need to be installed.
+    > Note: You can use any JDK for building the application. However, `javac` from GraalVM in the build script is used to simplify the prerequisites so another JDK does not need to be installed.
 
-2&#46; [Download GraalVM](https://www.graalvm.org/downloads/), unzip the archive, export the GraalVM home directory as the `$JAVA_HOME` and add `$JAVA_HOME/bin` to the `PATH` environment variable:
-  On Linux:
-  ```bash
-  export JAVA_HOME=/home/${current_user}/path/to/graalvm
-  export PATH=$JAVA_HOME/bin:$PATH
-  ```
-  On macOS:
-  ```bash
-  export JAVA_HOME=/Users/${current_user}/path/to/graalvm/Contents/Home
-  export PATH=$JAVA_HOME/bin:$PATH
-  ```
-  On Windows:
-  ```bash
-  setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
-  setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
-  ```
-  Note that your paths are likely to be different depending on the download location.
+2. [Download GraalVM](https://www.graalvm.org/downloads/), unzip the archive, export the GraalVM home directory as the `$JAVA_HOME` and add `$JAVA_HOME/bin` to the `PATH` environment variable:
+    On Linux:
+    ```bash
+    export JAVA_HOME=/home/${current_user}/path/to/graalvm
+    export PATH=$JAVA_HOME/bin:$PATH
+    ```
+    On macOS:
+    ```bash
+    export JAVA_HOME=/Users/${current_user}/path/to/graalvm/Contents/Home
+    export PATH=$JAVA_HOME/bin:$PATH
+    ```
+    On Windows:
+    ```bash
+    setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
+    setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
+    ```
+    Note that your paths are likely to be different depending on the download location.
 
-3&#46; [Install Native Image](../reference-manual/native-image/README.md/#install-native-image) by running.
-  ```bash
-  gu install native-image
-  ```
+3. [Install Native Image](../reference-manual/native-image/README.md/#install-native-image) by running.
+    ```bash
+    gu install native-image
+    ```
 
-4&#46; Then execute:
-  ```shell
-  ./build.sh
-  ```
+4. Then execute:
+    ```shell
+    ./build.sh
+    ```
 
 Have a look at the `build.sh` script which creates a native executable from a Java class.
 The `native-image` utility compiles the application ahead-of-time for faster startup and lower general overhead at runtime.

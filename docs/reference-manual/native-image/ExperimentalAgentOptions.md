@@ -1,8 +1,9 @@
 ---
-layout: docs
-toc_group: native-image
+layout: ni-docs
+toc_group: metadata
 link_title: Experimental Agent Options
-permalink: /reference-manual/native-image/ExperimentalAgentOptions/
+permalink: /reference-manual/native-image/metadata/ExperimentalAgentOptions/
+redirect_from: /$version/reference-manual/native-image/ExperimentalAgentOptions/
 ---
 
 # Experimental Agent Options
@@ -42,18 +43,18 @@ There are two ways to specify these existing configuration files:
  - By using configuration files from the class path or module path. When `experimental-omit-config-from-classpath` is added to the agent option string, the class path and module path of the running application are scanned for `META-INF/native-image/**/*.json` configuration files.
  - By explicitly pointing the agent to an existing configuration file directory using `config-to-omit=<path>`.
 
-## Generating Conditional Configuration Using The Agent
+## Generating Conditional Configuration Using the Agent
 
 The agent can, using a heuristic, generate configuration with reachability conditions on user specified classes.
 The agent will track configuration origins and try to deduce the conditions automatically.
-User classes are specified via an agent filter file (for more information on the format, see [Agent.md](Agent.md)).
+User classes are specified via an agent filter file (for more information on the format, see [more about the agent](AutomaticMetadataCollection.md#caller-based-filters)).
 Additionally, the resulting configuration can further be filtered using another filter file.
 
 Currently, this feature supports two modes:
  1. Generating conditional configuration in a single run with the agent.
  2. Generating conditional configuration from multiple runs with the agent and finally merging the collected data.
 
-### Generating Conditional Configuration During An Agent Run
+### Generating Conditional Configuration During an Agent Run
 
 To enable this mode, add `experimental-conditional-config-filter-file=<path>` to the agent's command line, where `<path>` points to an agent filter file.
 Classes that are considered included by this filter will be designated as user code classes.
@@ -84,3 +85,8 @@ Conditions are generated using the call tree of the application. The heuristics 
 
 The primary goal of this heuristic is to attempt to find where a method creates different configuration entries depending on the caller (for example, a method that wraps `Class.forName` calls.)
 This implies that the heuristic will not work well for code that generates configuration through a different dependency (for example, same method returns calls `Class.forName` with different class parameters depending on a system property).
+
+### Further Reading
+
+* [Reachability Metadata](ReachabilityMetadata.md)
+* [Metadata Collection with the Tracing Agent](AutomaticMetadataCollection.md)
