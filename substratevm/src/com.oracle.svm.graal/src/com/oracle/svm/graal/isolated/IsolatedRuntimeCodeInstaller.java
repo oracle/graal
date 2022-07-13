@@ -126,13 +126,8 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     private static void installPrepared(SharedMethod method, CodeInstallInfo installInfo, SubstrateInstalledCode installedCode) {
         IsolatedRuntimeMethodInfoAccess.startTrackingInCurrentIsolate(installInfo.getCodeInfo());
 
-        RuntimeCodeInfoAccess.acquireThreadWriteAccess();
-        try {
-            IsolatedReferenceAdjuster.adjustAndDispose(installInfo.getAdjusterData(), IsolatedCompileClient.get().getHandleSet());
-            installInfo.setAdjusterData(WordFactory.nullPointer());
-        } finally {
-            RuntimeCodeInfoAccess.releaseThreadWriteAccess();
-        }
+        IsolatedReferenceAdjuster.adjustAndDispose(installInfo.getAdjusterData(), IsolatedCompileClient.get().getHandleSet());
+        installInfo.setAdjusterData(WordFactory.nullPointer());
 
         doInstallPrepared(method, installInfo.getCodeInfo(), installedCode);
         UnmanagedMemory.free(installInfo);
@@ -162,22 +157,22 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     }
 
     @Override
-    protected void makeCodeMemoryReadOnly(Pointer start, long size) {
-        makeCodeMemoryReadOnly0(targetIsolate, start, size);
+    protected void makeCodeMemoryExecutableReadOnly(Pointer start, UnsignedWord size) {
+        makeCodeMemoryExecutableReadOnly0(targetIsolate, start, size);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static void makeCodeMemoryReadOnly0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, WordFactory.unsigned(size));
+    private static int makeCodeMemoryExecutableReadOnly0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
+        return RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
     }
 
     @Override
-    protected void makeCodeMemoryWriteableNonExecutable(Pointer start, long size) {
-        makeCodeMemoryWriteableNonExecutable0(targetIsolate, start, size);
+    protected void makeCodeMemoryExecutableWritable(Pointer start, UnsignedWord size) {
+        makeCodeMemoryExecutableWritable0(targetIsolate, start, size);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static void makeCodeMemoryWriteableNonExecutable0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryWriteableNonExecutable((CodePointer) start, WordFactory.unsigned(size));
+    private static int makeCodeMemoryExecutableWritable0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
+        return RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
     }
 }
