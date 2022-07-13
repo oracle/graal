@@ -194,7 +194,7 @@ final class PolyglotExceptionImpl {
                 this.exitStatus = 0;
                 this.guestObject = null;
             }
-            this.internal = !interrupted && !cancelled && !resourceExhausted && !exit;
+            this.internal = !interrupted && !cancelled && !resourceExhausted && !exit && !truffleException;
             if (exception instanceof CancelExecution) {
                 location = ((CancelExecution) exception).getSourceLocation();
             }

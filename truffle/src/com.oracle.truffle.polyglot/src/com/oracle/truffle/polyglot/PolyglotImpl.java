@@ -670,6 +670,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotContextImpl context = languageContext.context;
         PolyglotExceptionImpl exceptionImpl;
+        PolyglotExceptionImpl suppressedImpl = null;
         PolyglotContextImpl.State localContextState = context.state;
         if (localContextState.isInvalidOrClosed()) {
             exceptionImpl = new PolyglotExceptionImpl(context.engine.impl, context.engine, localContextState, context.invalidResourceLimit, context.exitCode, languageContext, e, false, false);
@@ -680,14 +681,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             } catch (Throwable t) {
                 /*
                  * It is possible that we fail to produce a guest value or interop message failed.
-                 * Report the exception as an internal error.
+                 * We report the original exception without using interop messages. We also convert
+                 * the exception thrown from the PolyglotExceptionImpl constructor to a new
+                 * PolyglotException and add it to resulting exception suppressed exceptions.
                  */
-                e.addSuppressed(t);
                 exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, 0, e);
+                suppressedImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, 0, t);
             }
         }
         APIAccess access = getInstance().getAPIAccess();
-        return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
+        PolyglotException polyglotException = access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
+        if (suppressedImpl != null) {
+            polyglotException.addSuppressed(access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, suppressedImpl));
+        }
+        return polyglotException;
     }
 
     static <T extends Throwable> PolyglotException guestToHostException(PolyglotEngineImpl engine, T e) {
