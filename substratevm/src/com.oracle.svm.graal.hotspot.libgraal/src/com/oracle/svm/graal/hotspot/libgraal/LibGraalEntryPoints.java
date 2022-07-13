@@ -43,6 +43,8 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Isolate;
@@ -211,7 +213,7 @@ public final class LibGraalEntryPoints {
      */
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
-    private static long compileMethod(PointerBase jniEnv,
+    private static long compileMethod(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
                     long methodHandle,
@@ -223,7 +225,7 @@ public final class LibGraalEntryPoints {
                     int optionsHash,
                     long stackTraceAddress,
                     int stackTraceCapacity) {
-        try {
+        try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
             HotSpotJVMCIRuntime runtime = runtime();
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
             if (methodHandle == 0L) {
