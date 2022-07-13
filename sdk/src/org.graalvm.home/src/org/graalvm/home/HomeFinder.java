@@ -103,6 +103,9 @@ public abstract class HomeFinder {
             serviceLoader = ServiceLoader.load(moduleLayer, HomeFinder.class);
         } else {
             serviceLoader = ServiceLoader.load(HomeFinder.class, HomeFinder.class.getClassLoader());
+            if (!serviceLoader.iterator().hasNext()) {
+                serviceLoader = ServiceLoader.load(HomeFinder.class);
+            }
         }
         try {
             return serviceLoader.iterator().next();

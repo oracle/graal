@@ -43,6 +43,9 @@ public final class TruffleRuntimeServices {
             services = ServiceLoader.load(moduleLayer, service);
         } else {
             services = ServiceLoader.load(service, TruffleRuntimeServices.class.getClassLoader());
+            if (!services.iterator().hasNext()) {
+                services = ServiceLoader.load(service);
+            }
         }
         return services;
     }

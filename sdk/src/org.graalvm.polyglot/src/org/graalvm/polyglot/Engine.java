@@ -912,6 +912,9 @@ public final class Engine implements AutoCloseable {
                     services = ServiceLoader.load(moduleLayer, AbstractPolyglotImpl.class);
                 } else {
                     services = ServiceLoader.load(AbstractPolyglotImpl.class, AbstractPolyglotImpl.class.getClassLoader());
+                    if (!services.iterator().hasNext()) {
+                        services = ServiceLoader.load(AbstractPolyglotImpl.class);
+                    }
                 }
                 return services.iterator();
             }
