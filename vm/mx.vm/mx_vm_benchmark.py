@@ -976,6 +976,11 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
+            graal_test = mx.distribution('GRAAL_TEST', fatalIfMissing=False)
+            if graal_test:
+                # If the GRAAL_TEST distribution is available, the
+                # CompileTheWorld benchmark is available.
+                self._benchmarks = ['CompileTheWorld']
             for group in ["interpreter", "compiler", "warmup", "nfi"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
@@ -991,8 +996,29 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if benchmarks is None or len(benchmarks) != 1:
             mx.abort("Must specify one benchmark at a time.")
         vmArgs = self.vmArgs(bmSuiteArgs)
-        benchmark_path = os.path.join(self._get_benchmark_root(), benchmarks[0])
-        return ["--path=" + benchmark_path] + vmArgs
+        benchmark = benchmarks[0]
+        if benchmark == 'CompileTheWorld':
+            # Run CompileTheWorld as a polybench benchmark, using instruction counting to get a stable metric.
+            # The CompileTheWorld class has been reorganized to have separate "prepare" and
+            # "compile" steps such that only the latter is measured by polybench.
+            # PAPI instruction counters are thread-local so CTW is run on the same thread as
+            # the polybench harness (i.e., CompileTheWorld.MultiThreaded=false).
+            import mx_compiler
+            res = mx_compiler._ctw_jvmci_export_args(arg_prefix='--vm.-') + [
+                   '--ctw',
+                   '--vm.cp=' + mx.distribution('GRAAL_ONLY_TEST').path + os.pathsep + mx.distribution('GRAAL_TEST').path,
+                   '--vm.DCompileTheWorld.MaxCompiles=10000',
+                   '--vm.DCompileTheWorld.Classpath=' + mx.library('DACAPO_MR1_BACH').get_path(resolve=True),
+                   '--vm.DCompileTheWorld.Verbose=false',
+                   '--vm.DCompileTheWorld.MultiThreaded=false',
+                   '--vm.Dlibgraal.ShowConfiguration=info',
+                   '--metric=instructions',
+                   '-w', '1',
+                   '-i', '5'] + vmArgs
+        else:
+            benchmark_path = os.path.join(self._get_benchmark_root(), benchmark)
+            res = ["--path=" + benchmark_path] + vmArgs
+        return res
 
     def get_vm_registry(self):
         return _polybench_vm_registry

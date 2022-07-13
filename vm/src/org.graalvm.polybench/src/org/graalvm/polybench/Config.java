@@ -45,6 +45,7 @@ public class Config {
     Mode mode;
     Metric metric;
     boolean evalSourceOnlyDefault;
+    boolean compileTheWorld;
 
     final List<String> unrecognizedArguments = new ArrayList<>();
 
