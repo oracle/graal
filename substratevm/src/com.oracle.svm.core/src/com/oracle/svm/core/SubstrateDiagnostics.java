@@ -104,7 +104,7 @@ public class SubstrateDiagnostics {
         threadOnlyAttachedForCrashHandler.getAddress(thread).write((byte) 1);
     }
 
-    private static boolean isThreadOnlyAttachedForCrashHandler(IsolateThread thread) {
+    public static boolean isThreadOnlyAttachedForCrashHandler(IsolateThread thread) {
         return threadOnlyAttachedForCrashHandler.getAddress(thread).read() != 0;
     }
 
