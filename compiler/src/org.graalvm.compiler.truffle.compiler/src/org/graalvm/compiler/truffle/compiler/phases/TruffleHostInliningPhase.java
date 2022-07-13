@@ -253,7 +253,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         });
 
                         for (CallTree call : targets) {
-                            assert call.forceShallowInline;
+                            assert call.forceShallowInline : "not force inlined";
                             if (!shouldInline(context, call)) {
                                 continue;
                             }

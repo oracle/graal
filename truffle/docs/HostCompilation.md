@@ -202,7 +202,7 @@ After identifying a hot method, for example, the bytecode dispatch loop in a Tru
 Interesting entries are prefixed with `CUTOFF` and have a `reason` that explains the reason for the individual cutoff.
 
 Common reasons for `CUTOFF` entries are:
-* `dominated by transferToInterpreter()` or `protected by inInterpreter()`: This means that the call performed in a slow-path. Host inlining will not decide on such calls and just mark them as CUTOFF. 
+* `dominated by transferToInterpreter()` or `protected by inInterpreter()`: This means that the is call performed in a slow-path. Host inlining will not decide on such calls and just mark them as CUTOFF. 
 * `target method not inlinable` this happens for host VM methods that cannot be inlined. There is typically not much we can do about that.
 * `Out of budget` we ran out of budget for inlining this method. This happens if the cost of the method becomes too high.
 
