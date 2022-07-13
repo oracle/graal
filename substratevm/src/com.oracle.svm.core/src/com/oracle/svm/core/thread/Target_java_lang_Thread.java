@@ -618,6 +618,7 @@ final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     boolean daemon;
     @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadHolderRecomputation.class) //
     volatile int threadStatus;
 
     Target_java_lang_Thread_FieldHolder(
