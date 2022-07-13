@@ -534,8 +534,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         extraOffset += firstValueSigned(extraData, extraOffset, compact);
                         stackPointer = targetStackPointer + targetReturnLength;
                     } else {
-                        // Skip condition.
-                        offset++;
+                        // Skip label index.
+                        offset += offsetDelta(data, offset);
                         // Jump to next extra data entry after the branch.
                         extraOffset += compact ? COMPACT_BR_IF_LENGTH : EXTENDED_BR_IF_LENGTH;
                     }
