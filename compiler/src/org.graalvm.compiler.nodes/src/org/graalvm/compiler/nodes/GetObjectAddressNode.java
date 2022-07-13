@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -60,7 +61,11 @@ public final class GetObjectAddressNode extends FixedWithNextNode implements LIR
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         AllocatableValue obj = gen.getLIRGeneratorTool().newVariable(LIRKind.unknownReference(gen.getLIRGeneratorTool().target().arch.getWordKind()));
-        gen.getLIRGeneratorTool().emitMove(obj, gen.operand(object));
+        if (object.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp && !((AbstractPointerStamp) object.stamp(NodeView.DEFAULT)).nonNull()) {
+            gen.getLIRGeneratorTool().emitConvertNullToZero(obj, gen.operand(object));
+        } else {
+            gen.getLIRGeneratorTool().emitMove(obj, gen.operand(object));
+        }
         gen.setResult(this, obj);
     }
 

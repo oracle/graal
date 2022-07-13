@@ -52,21 +52,7 @@ import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -193,38 +179,16 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         append(new AMD64BreakpointOp(parameters));
     }
 
-    private ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-        return getGen().getForeignCalls().lookupForeignCall(descriptor);
-    }
-
     @Override
-    public ForeignCallLinkage lookupGraalStub(ValueNode valueNode) {
+    public ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
         if (getGen().getResult().getStub() != null) {
             // Emit assembly for snippet stubs
             return null;
         }
-        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen());
-        return descriptor == null ? null : lookupForeignCall(descriptor);
-    }
-
-    private static ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, AMD64HotSpotLIRGenerator gen) {
-        if (valueNode instanceof ArrayIndexOfNode) {
-            return ArrayIndexOfForeignCalls.getStub((ArrayIndexOfNode) valueNode);
-        } else if (valueNode instanceof ArrayEqualsNode) {
-            return AMD64ArrayEqualsForeignCalls.getArrayEqualsStub((ArrayEqualsNode) valueNode, gen);
-        } else if (valueNode instanceof ArrayRegionEqualsNode) {
-            return AMD64ArrayEqualsForeignCalls.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, gen);
-        } else if (valueNode instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-            return AMD64ArrayEqualsWithMaskForeignCalls.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, gen);
-        } else if (valueNode instanceof ArrayCompareToNode) {
-            return ArrayCompareToForeignCalls.getStub((ArrayCompareToNode) valueNode);
-        } else if (valueNode instanceof ArrayRegionCompareToNode) {
-            return ArrayRegionCompareToForeignCalls.getStub((ArrayRegionCompareToNode) valueNode);
-        } else if (valueNode instanceof AMD64CalcStringAttributesNode) {
-            return AMD64CalcStringAttributesForeignCalls.getStub((AMD64CalcStringAttributesNode) valueNode);
-        } else if (valueNode instanceof ArrayCopyWithConversionsNode) {
-            return ArrayCopyWithConversionsForeignCalls.getStub((ArrayCopyWithConversionsNode) valueNode);
+        if (AMD64IntrinsicStubs.shouldInlineIntrinsic(valueNode, gen)) {
+            // intrinsic can emit specialized code that is small enough to warrant being inlined
+            return null;
         }
-        return null;
+        return getGen().getForeignCalls().lookupForeignCall(foreignCallDescriptor);
     }
 }

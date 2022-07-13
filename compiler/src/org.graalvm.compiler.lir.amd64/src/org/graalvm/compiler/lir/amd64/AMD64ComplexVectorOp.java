@@ -178,6 +178,14 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         }
     }
 
+    protected Value[] allocateTempRegisters(LIRGeneratorTool tool, AMD64Kind kind, int n) {
+        Value[] temp = new Value[n];
+        for (int i = 0; i < temp.length; i++) {
+            temp[i] = tool.newVariable(LIRKind.value(kind));
+        }
+        return temp;
+    }
+
     protected Value[] allocateVectorRegisters(LIRGeneratorTool tool, JavaKind valueKind, int n) {
         return allocateVectorRegisters(tool, LIRKind.value(getVectorKind(valueKind)), n);
     }

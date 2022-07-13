@@ -505,7 +505,7 @@ public final class RegexOptions {
                     encoding = Encodings.ASCII;
                     return expectValue(iVal, Encodings.ASCII.getName(), Encodings.ALL_NAMES);
                 case 'B':
-                    encoding = Encodings.LATIN_1;
+                    encoding = Encodings.BYTES;
                     return expectValue(iVal, "BYTES", Encodings.ALL_NAMES);
                 case 'L':
                     encoding = Encodings.LATIN_1;

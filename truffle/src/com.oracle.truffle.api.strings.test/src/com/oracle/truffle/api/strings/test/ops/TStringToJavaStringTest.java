@@ -87,7 +87,7 @@ public class TStringToJavaStringTest extends TStringTestBase {
                 StringBuilder sb = new StringBuilder(array.length * 4);
                 for (byte b : array) {
                     if (b < 0) {
-                        sb.append(String.format("\\x%02x", b));
+                        sb.append(String.format("\\x%02X", b));
                     } else {
                         sb.append((char) b);
                     }

@@ -322,7 +322,9 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
     helloworld(image_args + javac_command)
     helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
-    if not mx.is_windows() and flightrecorder:
+    # JFR is currently not supported on JDK 19 [GR-39564] [GR-39642]
+    is_jdk_version_supported = mx.get_jdk().version < mx.VersionSpec("19")
+    if is_jdk_version_supported and not mx.is_windows() and flightrecorder:
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
     cinterfacetutorial(extra_image_args)
     clinittest([])
@@ -1077,6 +1079,7 @@ if llvm_supported:
             'substratevm:LLVM_WRAPPER_SHADOWED',
             'substratevm:JAVACPP_SHADOWED',
             'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+            'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
         ],
         stability="experimental-earlyadopter",
         jlink=False,

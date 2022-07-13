@@ -23,17 +23,7 @@
     "labsjdk-ce-19-llvm": {"name": "labsjdk",   "version": "ce-19+27-jvmci-22.3-b01-sulong", "platformspecific": true },
     "labsjdk-ee-19":      {"name": "labsjdk",   "version": "ee-19.0.1+0-jvmci-22.3-b01", "platformspecific": true },
     "labsjdk-ee-19Debug": {"name": "labsjdk",   "version": "ee-19.0.1+0-jvmci-22.3-b01-debug", "platformspecific": true },
-    "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.1+0-jvmci-22.3-b01-sulong", "platformspecific": true },
-
-    "jdk-19-ea": {
-      "build_id": "jdk-19+28",
-      "name": "jpg-jdk",
-      "version": "19",
-      "extrabundles": [
-        "static_libs"
-      ],
-      "platformspecific": true
-    }
+    "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.1+0-jvmci-22.3-b01-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",

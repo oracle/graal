@@ -755,6 +755,12 @@ public abstract class PlatformThreads {
         return vmOp.result;
     }
 
+    static Thread[] getAllThreads() {
+        GetAllThreadsOperation vmOp = new GetAllThreadsOperation();
+        vmOp.enqueue();
+        return vmOp.result.toArray(new Thread[0]);
+    }
+
     @NeverInline("Starting a stack walk in the caller frame")
     private static StackTraceElement[] getStackTrace(IsolateThread thread) {
         if (thread == CurrentIsolate.getCurrentThread()) {
@@ -944,6 +950,22 @@ public abstract class PlatformThreads {
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 result.put(PlatformThreads.fromVMThread(cur), getStackTrace(cur));
+            }
+        }
+    }
+
+    private static class GetAllThreadsOperation extends JavaVMOperation {
+        private final ArrayList<Thread> result;
+
+        GetAllThreadsOperation() {
+            super(VMOperationInfos.get(GetAllThreadsOperation.class, "Get all threads", SystemEffect.SAFEPOINT));
+            result = new ArrayList<>();
+        }
+
+        @Override
+        protected void operate() {
+            for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
+                result.add(PlatformThreads.fromVMThread(cur));
             }
         }
     }

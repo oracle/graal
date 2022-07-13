@@ -24,19 +24,39 @@
  */
 package com.oracle.svm.jni.hosted;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.jni.JNIGeneratedMethodSupport;
+import com.oracle.svm.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * {@link HostedGraphKit} implementation with extensions that are specific to generated JNI code.
@@ -45,6 +65,49 @@ public class JNIGraphKit extends HostedGraphKit {
 
     JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);
+    }
+
+    public ValueNode checkObjectType(ValueNode uncheckedValue, ResolvedJavaType type, boolean checkNonNull) {
+        ValueNode value = uncheckedValue;
+        if (checkNonNull) {
+            value = maybeCreateExplicitNullCheck(value);
+        }
+        if (type.isJavaLangObject()) {
+            return value;
+        }
+        TypeReference typeRef = TypeReference.createTrusted(getAssumptions(), type);
+        LogicNode isInstance = InstanceOfNode.createAllowNull(typeRef, value, null, null);
+        if (!isInstance.isTautology()) {
+            append(isInstance);
+            ConstantNode expectedType = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
+            GuardingNode guard = createCheckThrowingBytecodeException(isInstance, false, BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST, value, expectedType);
+            Stamp checkedStamp = value.stamp(NodeView.DEFAULT).improveWith(StampFactory.object(typeRef));
+            value = unique(new PiNode(value, checkedStamp, guard.asNode()));
+        }
+        return value;
+    }
+
+    /** Masks bits to ensure that unused bytes in the stack representation are cleared. */
+    public ValueNode maskNumericIntBytes(ValueNode value, JavaKind kind) {
+        assert kind.isNumericInteger();
+        int bits = kind.getByteCount() * Byte.SIZE;
+        ValueNode narrowed = append(NarrowNode.create(value, bits, NodeView.DEFAULT));
+        ValueNode widened = widenNumericInt(narrowed, kind);
+        if (kind == JavaKind.Boolean) {
+            LogicNode isZero = IntegerEqualsNode.create(widened, ConstantNode.forIntegerKind(kind.getStackKind(), 0), NodeView.DEFAULT);
+            widened = append(ConditionalNode.create(isZero, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
+        }
+        return widened;
+    }
+
+    public ValueNode widenNumericInt(ValueNode value, JavaKind kind) {
+        assert kind.isNumericInteger();
+        int stackBits = kind.getStackKind().getBitCount();
+        if (kind.isUnsigned()) {
+            return append(ZeroExtendNode.create(value, stackBits, NodeView.DEFAULT));
+        } else {
+            return append(SignExtendNode.create(value, stackBits, NodeView.DEFAULT));
+        }
     }
 
     private InvokeWithExceptionNode createStaticInvoke(String name, ValueNode... args) {
@@ -63,9 +126,7 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     public InvokeWithExceptionNode nativeCallAddress(ValueNode linkage) {
-        ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "nativeCallAddress", true);
-        int invokeBci = bci();
-        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci, linkage);
+        return createStaticInvoke("nativeCallAddress", linkage);
     }
 
     public InvokeWithExceptionNode nativeCallPrologue() {
@@ -92,6 +153,44 @@ public class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("getFieldOffsetFromId", fieldId);
     }
 
+    public InvokeWithExceptionNode getNewObjectAddress(ValueNode methodId) {
+        return invokeJNIMethodObjectMethod("getNewObjectAddress", methodId);
+    }
+
+    /** We trust our stored class object to be non-null. */
+    public ValueNode getDeclaringClassForMethod(ValueNode methodId) {
+        InvokeWithExceptionNode declaringClass = invokeJNIMethodObjectMethod("getDeclaringClassObject", methodId);
+        return createPiNode(declaringClass, ObjectStamp.pointerNonNull(declaringClass.stamp(NodeView.DEFAULT)));
+    }
+
+    public InvokeWithExceptionNode getJavaCallAddress(ValueNode methodId, ValueNode instance, ValueNode nonVirtual) {
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, "getJavaCallAddress", Object.class, boolean.class),
+                        InvokeKind.Special, getFrameState(), bci(), getUncheckedMethodObject(methodId), instance, nonVirtual);
+    }
+
+    public InvokeWithExceptionNode getJavaCallWrapperAddressFromMethodId(ValueNode methodId) {
+        return invokeJNIMethodObjectMethod("getCallWrapperAddress", methodId);
+    }
+
+    public InvokeWithExceptionNode isStaticMethod(ValueNode methodId) {
+        return invokeJNIMethodObjectMethod("isStatic", methodId);
+    }
+
+    /**
+     * Used in native-to-Java call wrappers where the method ID has already been used to dispatch,
+     * and we would have crashed if something is wrong, so we can avoid null and type checks.
+     */
+    private PiNode getUncheckedMethodObject(ValueNode methodId) {
+        InvokeWithExceptionNode methodObj = createInvokeWithExceptionAndUnwind(
+                        findMethod(JNIReflectionDictionary.class, "getObjectFromMethodID", JNIMethodId.class), InvokeKind.Static, getFrameState(), bci(), methodId);
+        ObjectStamp stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(getMetaAccess().lookupJavaType(JNIAccessibleMethod.class)));
+        return createPiNode(methodObj, stamp);
+    }
+
+    private InvokeWithExceptionNode invokeJNIMethodObjectMethod(String name, ValueNode methodId) {
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, name), InvokeKind.Special, getFrameState(), bci(), getUncheckedMethodObject(methodId));
+    }
+
     public InvokeWithExceptionNode getStaticPrimitiveFieldsArray() {
         return createStaticInvoke("getStaticPrimitiveFieldsArray");
     }
@@ -109,9 +208,7 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     public InvokeWithExceptionNode rethrowPendingException() {
-        ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "rethrowPendingException", true);
-        int invokeBci = bci();
-        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci);
+        return createStaticInvoke("rethrowPendingException");
     }
 
     public InvokeWithExceptionNode pinArrayAndGetAddress(ValueNode array, ValueNode isCopy) {
@@ -130,5 +227,9 @@ public class JNIGraphKit extends HostedGraphKit {
     public FixedWithNextNode setPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
         assert elementKind.isPrimitive();
         return createStaticInvokeRetainException("setPrimitiveArrayRegion", createObject(elementKind), array, start, count, buffer);
+    }
+
+    public ConstantNode createWord(long value) {
+        return ConstantNode.forIntegerKind(wordTypes.getWordKind(), value, graph);
     }
 }

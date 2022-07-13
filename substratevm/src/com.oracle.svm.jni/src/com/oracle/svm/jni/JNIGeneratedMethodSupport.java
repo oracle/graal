@@ -32,6 +32,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
@@ -64,22 +65,27 @@ public final class JNIGeneratedMethodSupport {
         return JNIThreadLocalEnvironment.getAddress();
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static JNIObjectHandle boxObjectInLocalHandle(Object obj) {
         return JNIObjectHandles.createLocal(obj);
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     static Object unboxHandle(JNIObjectHandle handle) {
         return JNIObjectHandles.getObject(handle);
     }
 
+    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
         return JNIAccessibleField.getOffsetFromId(fieldId);
     }
 
+    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     static Object getStaticPrimitiveFieldsArray() {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
 
+    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
     static Object getStaticObjectFieldsArray() {
         return StaticFieldsSupport.getStaticObjectFields();
     }

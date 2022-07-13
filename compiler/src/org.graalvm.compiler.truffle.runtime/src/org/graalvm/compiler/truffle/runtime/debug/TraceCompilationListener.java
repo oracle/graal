@@ -77,7 +77,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             int scale = runtime.compilationThresholdScale();
             log(target, String.format(QUEUED_FORMAT,
                             target.id,
-                            target.getName(),
+                            safeTargetName(target),
                             tier,
                             target.getCallAndLoopCount(),
                             FixedPointMath.multiply(scale, callAndLoopThreshold),
@@ -87,7 +87,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             FixedPointMath.toDouble(scale),
                             0,
                             System.nanoTime(),
-                            formatSourceSection(target.getRootNode().getSourceSection())));
+                            formatSourceSection(safeSourceSection(target))));
         }
     }
 
@@ -98,7 +98,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             int scale = runtime.compilationThresholdScale();
             log(target, String.format(UNQUEUED_FORMAT,
                             target.id,
-                            target.getName(),
+                            safeTargetName(target),
                             tier,
                             target.getCallAndLoopCount(),
                             FixedPointMath.multiply(scale, callAndLoopThreshold),
@@ -108,7 +108,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             FixedPointMath.toDouble(scale),
                             0,
                             System.nanoTime(),
-                            formatSourceSection(target.getRootNode().getSourceSection()),
+                            formatSourceSection(safeSourceSection(target)),
                             reason));
         }
     }
@@ -121,12 +121,12 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             } else {
                 log(target, String.format(FAILED_FORMAT,
                                 target.id,
-                                target.getName(),
+                                safeTargetName(target),
                                 tier,
                                 compilationTime(),
                                 reason,
                                 System.nanoTime(),
-                                formatSourceSection(target.getRootNode().getSourceSection())));
+                                formatSourceSection(safeSourceSection(target))));
             }
             currentCompilation.remove();
         }
@@ -137,7 +137,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (target.engine.traceCompilationDetails) {
             log(target, String.format(START_FORMAT,
                             target.id,
-                            target.getName(),
+                            safeTargetName(target),
                             task.tier(),
                             (int) task.weight(),
                             task.rate(),
@@ -147,7 +147,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             FixedPointMath.toDouble(runtime.compilationThresholdScale()),
                             task.time() / 1000,
                             System.nanoTime(),
-                            formatSourceSection(target.getRootNode().getSourceSection())));
+                            formatSourceSection(safeSourceSection(target))));
         }
 
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
@@ -164,9 +164,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             log(target, String.format(DEOPT_FORMAT,
                             target.id,
-                            target.getName(),
+                            safeTargetName(target),
                             System.nanoTime(),
-                            formatSourceSection(target.getRootNode().getSourceSection())));
+                            formatSourceSection(safeSourceSection(target))));
         }
     }
 
@@ -184,11 +184,11 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
             return;
         }
-        int[] inlinedAndDispatched = inlinedAndDispatched(target, inliningDecision);
         Times compilation = currentCompilation.get();
+        int[] inlinedAndDispatched = inlinedAndDispatched(target, inliningDecision);
         log(target, String.format(DONE_FORMAT,
                         target.id,
-                        target.getName(),
+                        safeTargetName(target),
                         tier,
                         compilationTime(),
                         target.getNonTrivialNodeCount(),
@@ -199,27 +199,50 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         result == null ? 0 : result.getTargetCodeSize(),
                         "0x" + Long.toHexString(target.getCodeAddress()),
                         System.nanoTime(),
-                        formatSourceSection(target.getRootNode().getSourceSection())));
+                        formatSourceSection(safeSourceSection(target))));
         currentCompilation.remove();
     }
 
-    private static int[] inlinedAndDispatched(OptimizedCallTarget target, TruffleInlining inliningDecision) {
-        int calls = 0;
-        int inlinedCalls;
-        if (inliningDecision == null) {
-            CallCountVisitor visitor = new CallCountVisitor();
-            target.accept(visitor);
-            calls = visitor.calls;
-            inlinedCalls = 0;
-        } else {
-            calls = inliningDecision.countCalls();
-            inlinedCalls = inliningDecision.countInlinedCalls();
+    private SourceSection safeSourceSection(OptimizedCallTarget target) {
+        try {
+            return target.getRootNode().getSourceSection();
+        } catch (Throwable throwable) {
+            log(target, "Failed to call RootNode.getSourceSection(): " + throwable);
+            return null;
         }
-        int dispatchedCalls = calls - inlinedCalls;
-        int[] inlinedAndDispatched = new int[2];
-        inlinedAndDispatched[0] = inlinedCalls;
-        inlinedAndDispatched[1] = dispatchedCalls;
-        return inlinedAndDispatched;
+    }
+
+    private String safeTargetName(OptimizedCallTarget target) {
+        try {
+            return target.getName();
+        } catch (Throwable throwable) {
+            log(target, "Failed to call RootNode.getName(): " + throwable);
+            return null;
+        }
+    }
+
+    private int[] inlinedAndDispatched(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+        try {
+            int calls = 0;
+            int inlinedCalls;
+            if (inliningDecision == null) {
+                CallCountVisitor visitor = new CallCountVisitor();
+                target.accept(visitor);
+                calls = visitor.calls;
+                inlinedCalls = 0;
+            } else {
+                calls = inliningDecision.countCalls();
+                inlinedCalls = inliningDecision.countInlinedCalls();
+            }
+            int dispatchedCalls = calls - inlinedCalls;
+            int[] inlinedAndDispatched = new int[2];
+            inlinedAndDispatched[0] = inlinedCalls;
+            inlinedAndDispatched[1] = dispatchedCalls;
+            return inlinedAndDispatched;
+        } catch (Throwable throwable) {
+            log(target, "Failed to inlined and dispatched counts: " + throwable);
+            return null;
+        }
     }
 
     private String compilationTime() {
@@ -243,9 +266,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             log(target, String.format(INV_FORMAT,
                             target.id,
-                            target.getName(),
+                            safeTargetName(target),
                             System.nanoTime(),
-                            formatSourceSection(target.getRootNode().getSourceSection()),
+                            formatSourceSection(safeSourceSection(target)),
                             reason));
         }
     }

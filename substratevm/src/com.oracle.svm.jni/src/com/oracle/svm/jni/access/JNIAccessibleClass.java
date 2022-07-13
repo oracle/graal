@@ -45,6 +45,7 @@ public final class JNIAccessibleClass {
     private EconomicMap<CharSequence, JNIAccessibleField> fields;
 
     JNIAccessibleClass(Class<?> clazz) {
+        assert clazz != null;
         this.classObject = clazz;
     }
 

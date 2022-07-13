@@ -63,7 +63,8 @@ public final class Encodings {
     public static final Encoding UTF_16 = new Encoding.UTF16();
     public static final Encoding UTF_32 = new Encoding.UTF32();
     public static final Encoding UTF_16_RAW = new Encoding.UTF16Raw();
-    public static final Encoding LATIN_1 = new Encoding.Latin1();
+    public static final Encoding LATIN_1 = new Encoding.Latin1(TruffleString.Encoding.ISO_8859_1);
+    public static final Encoding BYTES = new Encoding.Latin1(TruffleString.Encoding.BYTES);
     public static final Encoding ASCII = new Encoding.Ascii();
 
     public static final String[] ALL_NAMES = {UTF_8.getName(), UTF_16.getName(), UTF_16_RAW.getName(), UTF_32.getName(), ASCII.getName(), LATIN_1.getName(), "BYTES"};
@@ -79,6 +80,7 @@ public final class Encodings {
             case "UTF-16-RAW":
                 return UTF_16_RAW;
             case "BYTES":
+                return BYTES;
             case "LATIN-1":
                 return LATIN_1;
             default:
@@ -496,7 +498,10 @@ public final class Encodings {
 
         public static final class Latin1 extends Encoding {
 
-            private Latin1() {
+            private TruffleString.Encoding tsEncoding;
+
+            private Latin1(TruffleString.Encoding tsEncoding) {
+                this.tsEncoding = tsEncoding;
             }
 
             @Override
@@ -506,7 +511,7 @@ public final class Encodings {
 
             @Override
             public TruffleString.Encoding getTStringEncoding() {
-                return TruffleString.Encoding.ISO_8859_1;
+                return tsEncoding;
             }
 
             @Override

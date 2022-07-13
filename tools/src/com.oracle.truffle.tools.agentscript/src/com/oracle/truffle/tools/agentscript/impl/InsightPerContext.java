@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,15 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.agentscript.impl.InsightFilter.Data;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 final class InsightPerContext {
     final InsightInstrument insight;
@@ -46,6 +49,7 @@ final class InsightPerContext {
     private Object[][] functionsArray;
     @CompilerDirectives.CompilationFinal //
     private Assumption functionsArrayValid;
+    private final Map<InsightSourceFilter, Map<Source, Boolean>> sourceCache = new HashMap<>(2);
 
     InsightPerContext(InsightInstrument insight, TruffleContext context) {
         this.insight = insight;
@@ -139,7 +143,20 @@ final class InsightPerContext {
         }
         synchronized (this) {
             functionsForBinding.clear();
+            sourceCache.clear();
             invalidateFunctionsArray();
         }
+    }
+
+    Map<Source, Boolean> getSourceCache(InsightSourceFilter sourceFilter) {
+        Map<Source, Boolean> cache;
+        synchronized (sourceCache) {
+            cache = sourceCache.get(sourceFilter);
+            if (cache == null) {
+                cache = Collections.synchronizedMap(new WeakHashMap<>());
+                sourceCache.put(sourceFilter, cache);
+            }
+        }
+        return cache;
     }
 }

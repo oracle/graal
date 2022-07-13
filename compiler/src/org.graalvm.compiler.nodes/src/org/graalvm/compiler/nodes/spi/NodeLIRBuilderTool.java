@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.spi;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
@@ -93,7 +94,7 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
     void emitReadExceptionObject(ValueNode node);
 
     @SuppressWarnings("unused")
-    default ForeignCallLinkage lookupGraalStub(ValueNode valueNode) {
+    default ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
         return null;
     }
 }

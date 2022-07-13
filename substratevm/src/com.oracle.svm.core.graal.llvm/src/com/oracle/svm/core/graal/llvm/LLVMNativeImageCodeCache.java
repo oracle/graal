@@ -63,7 +63,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
@@ -224,7 +223,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         executor.forEach(getOrderedCompilations(), pair -> (debugContext) -> {
             HostedMethod method = pair.getLeft();
-            int offset = textSectionInfo.getOffset(SubstrateUtil.uniqueShortName(method));
+            int offset = textSectionInfo.getOffset(method.getUniqueShortName());
             int nextFunctionStartOffset = textSectionInfo.getNextOffset(offset);
             int functionSize = nextFunctionStartOffset - offset;
 

@@ -646,7 +646,6 @@ public class CompileQueue {
         universe.getMethods().stream()
                         .filter(method -> method.getWrapped().isImplementationInvoked() && canDeoptForTesting(method))
                         .forEach(this::ensureParsedForDeoptTesting);
-
     }
 
     private void ensureParsedForDeoptTesting(HostedMethod method) {
@@ -1675,7 +1674,7 @@ public class CompileQueue {
     }
 
     public Map<HostedMethod, CompilationResult> getCompilationResults() {
-        Map<HostedMethod, CompilationResult> result = new TreeMap<>();
+        Map<HostedMethod, CompilationResult> result = new TreeMap<>(HostedUniverse.METHOD_COMPARATOR);
         for (Entry<HostedMethod, CompileTask> entry : compilations.entrySet()) {
             result.put(entry.getKey(), entry.getValue().result);
         }

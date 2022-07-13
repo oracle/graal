@@ -53,13 +53,14 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -116,6 +117,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         for (ForeignCallDescriptor stub : ArrayCopyWithConversionsForeignCalls.STUBS) {
             link(new AMD64ArrayCopyWithConversionsStub(options, providers, registerStubCall(stub.getSignature(), LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
         }
+        link(new AMD64VectorizedMismatchStub(options, providers, registerPureFunctionStubCall(VectorizedMismatchForeignCalls.STUB)));
         super.initialize(providers, options);
     }
 

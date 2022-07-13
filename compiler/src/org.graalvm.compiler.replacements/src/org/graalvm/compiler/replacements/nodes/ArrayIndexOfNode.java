@@ -24,14 +24,13 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -46,7 +45,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.word.LocationIdentity;
@@ -91,7 +89,7 @@ import jdk.vm.ci.meta.Value;
  * </ul>
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_16)
-public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable {
+public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements Canonicalizable {
 
     public static final NodeClass<ArrayIndexOfNode> TYPE = NodeClass.create(ArrayIndexOfNode.class);
 
@@ -206,30 +204,35 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                Value[] operands = new Value[4 + searchValues.size()];
-                operands[0] = gen.operand(arrayPointer);
-                operands[1] = gen.operand(arrayOffset);
-                operands[2] = gen.operand(arrayLength);
-                operands[3] = gen.operand(fromIndex);
-                for (int i = 0; i < searchValues.size(); i++) {
-                    operands[4 + i] = gen.operand(searchValues.get(i));
-                }
-                Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, operands);
-                gen.setResult(this, result);
-                return;
-            }
-        }
-        generateArrayIndexOf(gen);
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return ArrayIndexOfForeignCalls.getStub(this);
     }
 
-    private void generateArrayIndexOf(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(stride, findTwoConsecutive, withMask,
-                        getRuntimeCheckedCPUFeatures(), gen.operand(arrayPointer), gen.operand(arrayOffset), gen.operand(arrayLength), gen.operand(fromIndex), searchValuesAsOperands(gen));
-        gen.setResult(this, result);
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        ValueNode[] args = new ValueNode[4 + searchValues.size()];
+        args[0] = arrayPointer;
+        args[1] = arrayOffset;
+        args[2] = arrayLength;
+        args[3] = fromIndex;
+        for (int i = 0; i < searchValues.size(); i++) {
+            args[4 + i] = searchValues.get(i);
+        }
+        return args;
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitArrayIndexOf(
+                        stride,
+                        findTwoConsecutive,
+                        withMask,
+                        getRuntimeCheckedCPUFeatures(),
+                        gen.operand(arrayPointer),
+                        gen.operand(arrayOffset),
+                        gen.operand(arrayLength),
+                        gen.operand(fromIndex),
+                        searchValuesAsOperands(gen)));
     }
 
     protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array, JavaKind kind) {

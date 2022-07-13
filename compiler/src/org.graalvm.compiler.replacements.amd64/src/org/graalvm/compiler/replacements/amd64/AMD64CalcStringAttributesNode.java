@@ -24,11 +24,9 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
@@ -36,13 +34,11 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.replacements.nodes.PureFunctionStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
 
@@ -53,7 +49,7 @@ import jdk.vm.ci.meta.Value;
  * @see AMD64CalcStringAttributesOp
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrinsicNode implements LIRLowerable {
+public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrinsicNode {
 
     public static final NodeClass<AMD64CalcStringAttributesNode> TYPE = NodeClass.create(AMD64CalcStringAttributesNode.class);
 
@@ -129,17 +125,18 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(array), gen.operand(offset), gen.operand(length));
-                gen.setResult(this, result);
-                return;
-            }
-        }
-        Value result = gen.getLIRGeneratorTool().emitCalcStringAttributes(op, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(offset), gen.operand(length), assumeValid);
-        gen.setResult(this, result);
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return AMD64CalcStringAttributesForeignCalls.getStub(this);
+    }
+
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{array, offset, length};
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitCalcStringAttributes(op, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(offset), gen.operand(length), assumeValid));
     }
 
     /* NodeIntrinsic plugins for snippet stubs. */
