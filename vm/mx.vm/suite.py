@@ -82,6 +82,14 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
+            {
+                "name": "polybenchmarks",
+                "version": "8f87998f2b421f9b269daa00c4bba84adbe8a7a4",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},
+                ]
+            },
         ]
     },
 
