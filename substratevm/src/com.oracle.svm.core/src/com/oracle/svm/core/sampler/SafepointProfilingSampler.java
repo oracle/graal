@@ -61,7 +61,7 @@ public class SafepointProfilingSampler implements ProfilingSampler {
         node.incValue();
     }
 
-    @NeverInline("")
+    @NeverInline("Starts a stack walk in the caller frame")
     static void walkCurrentThread(SamplingStackVisitor.StackTrace data, SamplingStackVisitor visitor) {
         Pointer sp = KnownIntrinsics.readStackPointer();
         JavaStackWalker.walkCurrentThread(sp, visitor, data);
