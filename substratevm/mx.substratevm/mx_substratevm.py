@@ -1079,6 +1079,7 @@ if llvm_supported:
             'substratevm:LLVM_WRAPPER_SHADOWED',
             'substratevm:JAVACPP_SHADOWED',
             'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+            'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
         ],
         stability="experimental-earlyadopter",
         jlink=False,
