@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.core.sampler;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
+import com.oracle.svm.core.util.VMError;
 
 public class SamplingStackVisitor extends ParameterizedStackFrameVisitor<SamplingStackVisitor.StackTrace> {
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, SamplingStackVisitor.StackTrace data) {
-        GraalError.guarantee(data.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread  exceeds the maximal set value.");
+        VMError.guarantee(data.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread  exceeds the maximal set value.");
         data.data[data.num++] = ip.rawValue();
         return true;
     }
