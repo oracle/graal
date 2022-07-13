@@ -42,7 +42,6 @@ package com.oracle.truffle.api;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
@@ -123,9 +122,9 @@ public final class Truffle {
                 TruffleRuntimeAccess access;
                 ModuleLayer moduleLayer = Truffle.class.getModule().getLayer();
                 if (moduleLayer != null) {
-                    access = selectTruffleRuntimeAccess(Collections.singletonList(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
                 } else {
-                    access = selectTruffleRuntimeAccess(Collections.singletonList(ServiceLoader.load(TruffleRuntimeAccess.class)));
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class, Truffle.class.getClassLoader()), ServiceLoader.load(TruffleRuntimeAccess.class)));
                 }
 
                 if (access != null) {
