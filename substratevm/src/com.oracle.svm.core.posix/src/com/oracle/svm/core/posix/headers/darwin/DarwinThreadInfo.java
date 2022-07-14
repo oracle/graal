@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,65 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.linux;
+package com.oracle.svm.core.posix.headers.darwin;
 
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
-
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Time;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
 
-/**
- * Definitions manually translated from the C header file sys/time.h.
- */
 @CContext(PosixDirectives.class)
-public class LinuxTime extends Time {
+public class DarwinThreadInfo {
 
     @CConstant
-    public static native int CLOCK_MONOTONIC();
+    public static native int THREAD_INFO_MAX();
 
     @CConstant
-    public static native int CLOCK_THREAD_CPUTIME_ID();
+    public static native int THREAD_BASIC_INFO();
+
+    @CStruct
+    public interface time_value_t extends PointerBase {
+        @CField
+        int seconds();
+
+        @CField
+        int microseconds();
+    }
+
+    @CStruct
+    public interface thread_basic_info_data_t extends PointerBase {
+        @CFieldAddress
+        time_value_t user_time();
+
+        @CFieldAddress
+        time_value_t system_time();
+
+        @CField
+        int cpu_usage();
+
+        @CField
+        int policy();
+
+        @CField
+        int run_state();
+
+        @CField
+        int flags();
+
+        @CField
+        int suspend_count();
+
+        @CField
+        int sleep_time();
+    }
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    @CLibrary("rt")
-    public static native int clock_gettime(int clock_id, timespec tp);
+    public static native int thread_info(int machPort, int flavor, PointerBase threadInfoOut, CIntPointer threadInfoOutCnt);
 }

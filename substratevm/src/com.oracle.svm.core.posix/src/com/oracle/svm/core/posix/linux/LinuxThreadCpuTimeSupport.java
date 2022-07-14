@@ -22,14 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core.posix.linux;
 
-import java.lang.management.ThreadMXBean;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import com.oracle.svm.core.posix.headers.linux.LinuxTime;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -37,39 +38,26 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
-import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
-import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posix.headers.Time.timespec;
 
-public class PosixSubstrateThreadMXBean extends SubstrateThreadMXBean {
+final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
-    public boolean isCurrentThreadCpuTimeSupported() {
-        return true;
-    }
-
-    @Override
-    public boolean isThreadCpuTimeEnabled() {
-        return true;
-    }
-
-    @Override
-    public void setThreadCpuTimeEnabled(boolean enable) {
-    }
-
-    @Override
-    public long getCurrentThreadCpuTime() {
-        Time.timespec time = StackValue.get(Time.timespec.class);
-        if (Time.NoTransitions.clock_gettime(Time.CLOCK_THREAD_CPUTIME_ID(), time) != 0) {
+    public long getCurrentThreadCpuTime(boolean includeSystemTime) {
+        if (!includeSystemTime) {
+            throw new UnsupportedOperationException("ThreadCpuTime is supported only for combined user-mode and kernel-mode time.");
+        }
+        timespec time = StackValue.get(timespec.class);
+        if (LinuxTime.clock_gettime(LinuxTime.CLOCK_THREAD_CPUTIME_ID(), time) != 0) {
             return -1;
         }
         return TimeUnit.SECONDS.toNanos(time.tv_sec()) + time.tv_nsec();
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX.class})
 @AutomaticFeature
-class PosixSubstrateThreadMXBeanFeature implements Feature {
+final class LinuxThreadCpuTimeFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(ManagementFeature.class);
@@ -77,6 +65,6 @@ class PosixSubstrateThreadMXBeanFeature implements Feature {
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ManagementSupport.getSingleton().addPlatformManagedObjectSingleton(ThreadMXBean.class, new PosixSubstrateThreadMXBean());
+        ImageSingletons.add(ThreadCpuTimeSupport.class, new LinuxThreadCpuTimeSupport());
     }
 }

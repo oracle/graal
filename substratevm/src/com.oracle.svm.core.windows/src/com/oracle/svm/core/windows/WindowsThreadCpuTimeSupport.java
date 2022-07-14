@@ -24,26 +24,29 @@
  */
 package com.oracle.svm.core.windows;
 
-import java.lang.management.ThreadMXBean;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
+import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 
-public class WindowsSubstrateThreadMXBean extends SubstrateThreadMXBean {
+final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
+    @Override
+    public long getCurrentThreadCpuTime(boolean includeSystemTime) {
+        throw new UnsupportedOperationException("Not yet supported.");
+    }
 }
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
-class WindowsSubstrateThreadMXBeanFeature implements Feature {
+class WindowsThreadCpuTimeFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(ManagementFeature.class);
@@ -51,6 +54,6 @@ class WindowsSubstrateThreadMXBeanFeature implements Feature {
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ManagementSupport.getSingleton().addPlatformManagedObjectSingleton(ThreadMXBean.class, new WindowsSubstrateThreadMXBean());
+        ImageSingletons.add(ThreadCpuTimeSupport.class, new WindowsThreadCpuTimeSupport());
     }
 }

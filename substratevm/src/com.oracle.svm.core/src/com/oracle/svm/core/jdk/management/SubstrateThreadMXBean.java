@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,17 +31,19 @@ import java.util.Objects;
 
 import javax.management.ObjectName;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import sun.management.Util;
 
-public class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
+public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     private static final String MSG = "ThreadMXBean methods";
 
@@ -53,7 +55,7 @@ public class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     private boolean allocatedMemoryEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateThreadMXBean() {
+    SubstrateThreadMXBean() {
         /*
          * We always track the amount of memory that is allocated by each thread, so this MX bean
          * feature can be on by default.
@@ -110,7 +112,7 @@ public class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public boolean isCurrentThreadCpuTimeSupported() {
-        return false;
+        return ImageSingletons.contains(ThreadCpuTimeSupport.class);
     }
 
     @Override
@@ -182,7 +184,11 @@ public class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public long getCurrentThreadCpuTime() {
-        throw VMError.unsupportedFeature(MSG);
+        if (ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
+            return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getCurrentThreadCpuTime(true);
+        } else {
+            throw new UnsupportedOperationException("CurrentThreadCpuTime is not supported.");
+        }
     }
 
     @Override
@@ -202,12 +208,11 @@ public class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public boolean isThreadCpuTimeEnabled() {
-        throw VMError.unsupportedFeature(MSG);
+        return isCurrentThreadCpuTimeSupported();
     }
 
     @Override
     public void setThreadCpuTimeEnabled(boolean enable) {
-        throw VMError.unsupportedFeature(MSG);
     }
 
     @Override

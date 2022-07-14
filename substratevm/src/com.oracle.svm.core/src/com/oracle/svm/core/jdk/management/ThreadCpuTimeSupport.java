@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.linux;
-
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
-
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Time;
-
-// Checkstyle: stop
+package com.oracle.svm.core.jdk.management;
 
 /**
- * Definitions manually translated from the C header file sys/time.h.
+ * Support for implementation of {@link SubstrateThreadMXBean} methods returning the thread
+ * execution time.
  */
-@CContext(PosixDirectives.class)
-public class LinuxTime extends Time {
+public interface ThreadCpuTimeSupport {
 
-    @CConstant
-    public static native int CLOCK_MONOTONIC();
-
-    @CConstant
-    public static native int CLOCK_THREAD_CPUTIME_ID();
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    @CLibrary("rt")
-    public static native int clock_gettime(int clock_id, timespec tp);
+    /**
+     * Returns the current thread execution time.
+     *
+     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
+     *            returns user time.
+     * @throws UnsupportedOperationException if OS specific implementation does not support given
+     *             parameters.
+     */
+    long getCurrentThreadCpuTime(boolean includeSystemTime);
 }

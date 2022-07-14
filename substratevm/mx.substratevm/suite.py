@@ -394,10 +394,6 @@ suite = {
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
             ],
-            "requires": [
-                    "java.management",
-                    "jdk.management",
-                ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
@@ -418,10 +414,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core.graal.amd64",
             ],
-            "requires": [
-                    "java.management",
-                    "jdk.management",
-                ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
