@@ -92,7 +92,7 @@ public class LLVMToolchain {
         return output;
     }
 
-    private static Path getLLVMBinDir() {
+    public static Path getLLVMBinDir() {
         final String property = System.getProperty("llvm.bin.dir");
         if (property != null) {
             return Paths.get(property);
