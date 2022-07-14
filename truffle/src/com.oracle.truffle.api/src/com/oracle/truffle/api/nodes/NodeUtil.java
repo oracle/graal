@@ -81,7 +81,8 @@ public final class NodeUtil {
         CompilerAsserts.neverPartOfCompilation("do not call Node.deepCopyImpl from compiled code");
         final Node clone = orig.copy();
         if (!sameType(clone, orig)) {
-            throw CompilerDirectives.shouldNotReachHere("Invalid return type after copy().");
+            throw CompilerDirectives.shouldNotReachHere(String.format("Invalid return type after copy(): orig.getClass() = %s, clone.getClass() = %s",
+                            orig.getClass(), clone == null ? "null" : clone.getClass()));
         }
         NodeClass nodeClass = clone.getNodeClass();
         clone.setParent(null);
@@ -93,7 +94,9 @@ public final class NodeUtil {
                     Node clonedChild = child.deepCopy();
                     clonedChild.setParent(clone);
                     if (!sameType(child, clonedChild)) {
-                        throw CompilerDirectives.shouldNotReachHere("Invalid return type after deepCopy().");
+                        throw CompilerDirectives.shouldNotReachHere(
+                                        String.format("Invalid return type after deepCopy(): orig.getClass() = %s, orig.fieldName = '%s', child.getClass() = %s, clonedChild.getClass() = %s",
+                                                        orig.getClass(), nodeClass.getFieldName(field), child.getClass(), clonedChild.getClass()));
                     }
                     nodeClass.putFieldObject(field, clone, clonedChild);
                 }
@@ -107,7 +110,9 @@ public final class NodeUtil {
                             if (children[i] != null) {
                                 Node clonedChild = ((Node) children[i]).deepCopy();
                                 if (!sameType(children[i], clonedChild)) {
-                                    throw CompilerDirectives.shouldNotReachHere("Invalid return type after deepCopy().");
+                                    throw CompilerDirectives.shouldNotReachHere(String.format(
+                                                    "Invalid return type after deepCopy(): orig.getClass() = %s, orig.fieldName = '%s', children[i].getClass() = %s, clonedChild.getClass() = %s",
+                                                    orig.getClass(), nodeClass.getFieldName(field), children[i].getClass(), clonedChild == null ? "null" : clonedChild.getClass()));
                                 }
                                 clonedChild.setParent(clone);
                                 clonedChildren[i] = clonedChild;
@@ -123,7 +128,9 @@ public final class NodeUtil {
                 if (cloneable != null && cloneable == nodeClass.getFieldObject(field, orig)) {
                     Object clonedClonable = ((NodeCloneable) cloneable).clone();
                     if (!sameType(cloneable, clonedClonable)) {
-                        throw CompilerDirectives.shouldNotReachHere("Invalid return type after clone().");
+                        throw CompilerDirectives.shouldNotReachHere(
+                                        String.format("Invalid return type after clone(): orig.getClass() = %s, orig.fieldName = '%s', cloneable.getClass() = %s, clonedCloneable.getClass() =%s",
+                                                        orig.getClass(), nodeClass.getFieldName(field), cloneable.getClass(), clonedClonable == null ? "null" : clonedClonable.getClass()));
                     }
                     nodeClass.putFieldObject(field, clone, clonedClonable);
                 }
