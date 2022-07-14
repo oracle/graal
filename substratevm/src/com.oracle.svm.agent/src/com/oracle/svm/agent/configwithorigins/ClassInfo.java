@@ -31,12 +31,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.config.conditional.MethodInfo;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.configure.config.conditional.MethodInfo;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.jvmtiagentbase.Support;
 
 import jdk.vm.ci.meta.MetaUtil;

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.agent;
 
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -82,14 +82,14 @@ import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.jni.JNIObjectHandles;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNINativeMethod;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jni.JNIObjectHandles;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNINativeMethod;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jni.nativeapi.JNIValue;
 import com.oracle.svm.jvmtiagentbase.AgentIsolate;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool.MethodReference;

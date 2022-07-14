@@ -649,26 +649,6 @@ suite = {
             "class" : "SubstrateJvmFuncsFallbacksBuilder",
         },
 
-        "com.oracle.svm.jni": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.misc",
-                ],
-            },
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "javaCompliance": "11+",
-            "spotbugs": "false",
-        },
-
         "com.oracle.svm.driver": {
             "subDir": "src",
             "sourceDirs": [
@@ -1034,7 +1014,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.jni",
+                "com.oracle.svm.core",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.graal",
                 "compiler:GRAAL"
@@ -1075,7 +1055,7 @@ suite = {
                 "src",
             ],
             "dependencies": [
-                "com.oracle.svm.jni",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
@@ -1162,7 +1142,6 @@ suite = {
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
-                "com.oracle.svm.jni",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.methodhandles"
             ],

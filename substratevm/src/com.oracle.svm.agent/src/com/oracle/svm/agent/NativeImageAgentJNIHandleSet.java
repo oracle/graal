@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.agent;
 
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 
 public class NativeImageAgentJNIHandleSet extends JNIHandleSet {

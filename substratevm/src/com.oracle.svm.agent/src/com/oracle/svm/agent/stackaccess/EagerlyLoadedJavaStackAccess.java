@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.agent.stackaccess;
 
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 
 import java.util.function.Supplier;
 
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -38,9 +37,10 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 
 /**
