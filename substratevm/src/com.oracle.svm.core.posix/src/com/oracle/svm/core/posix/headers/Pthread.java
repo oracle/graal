@@ -171,9 +171,6 @@ public class Pthread {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_condattr_setclock(pthread_condattr_t attr, int clock_id);
 
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int pthread_getcpuclockid(pthread_t pthread, Time.clockid_tPointer clock_id);
-
     @CFunction
     public static native int pthread_kill(pthread_t thread, Signal.SignalEnum sig);
 

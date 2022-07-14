@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.svm.core.posix.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -39,50 +39,31 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
-import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
 
 public class PosixSubstrateThreadMXBean extends SubstrateThreadMXBean {
 
     @Override
-    public boolean isThreadCpuTimeSupported() {
+    public boolean isCurrentThreadCpuTimeSupported() {
         return true;
     }
 
     @Override
-    public long getCurrentThreadCpuTime() {
-        return getThreadCpuTime(Thread.currentThread().getId());
+    public boolean isThreadCpuTimeEnabled() {
+        return true;
     }
 
     @Override
-    public long getThreadCpuTime(long id) {
-        if (id <= 0) {
-            throw new IllegalArgumentException();
-        }
+    public void setThreadCpuTimeEnabled(boolean enable) {
+    }
+
+    @Override
+    public long getCurrentThreadCpuTime() {
         Time.timespec time = StackValue.get(Time.timespec.class);
-        Target_java_lang_Thread target = getThreadFromId(id);
-        if (target == null) {
-            return -1;
-        }
-        Pthread.pthread_t pthreadIdentifier = target.pthreadIdentifier;
-        Time.clockid_tPointer clockId = StackValue.get(Time.clockid_tPointer.class);
-        Pthread.pthread_getcpuclockid(pthreadIdentifier, clockId);
-        if (Time.NoTransitions.clock_gettime(clockId.read(), time) != 0) {
+        if (Time.NoTransitions.clock_gettime(Time.CLOCK_THREAD_CPUTIME_ID(), time) != 0) {
             return -1;
         }
         return TimeUnit.SECONDS.toNanos(time.tv_sec()) + time.tv_nsec();
-    }
-
-    // TODO: There has got to be a better way
-    private static Target_java_lang_Thread getThreadFromId(long id) {
-        Thread[] threads = new Thread[Thread.activeCount()];
-        Thread.enumerate(threads);
-        for (Thread thread : threads) {
-            if (thread.getId() == id) {
-                return Target_java_lang_Thread.class.cast(thread);
-            }
-        }
-        return null;
     }
 }
 

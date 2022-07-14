@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -33,8 +34,8 @@ import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
-import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
@@ -102,14 +103,17 @@ public class Time {
         public native int getCValue();
     }
 
-    public interface clockid_t extends PointerBase {
-    }
+    @CConstant
+    public static native int CLOCK_REALTIME();
 
-    @CPointerTo(nameOfCType = "clockid_t")
-    public interface clockid_tPointer extends PointerBase {
-        @AllowWideningCast
-        clockid_t read();
-    }
+    @CConstant
+    public static native int CLOCK_MONOTONIC();
+
+    @CConstant
+    public static native int CLOCK_PROCESS_CPUTIME_ID();
+
+    @CConstant
+    public static native int CLOCK_THREAD_CPUTIME_ID();
 
     public static class NoTransitions {
         /**
@@ -128,6 +132,6 @@ public class Time {
 
         // extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp) __THROW;
         @CFunction(transition = Transition.NO_TRANSITION)
-        public static native int clock_gettime(clockid_t clockid, timespec time);
+        public static native int clock_gettime(int clockid, timespec time);
     }
 }
