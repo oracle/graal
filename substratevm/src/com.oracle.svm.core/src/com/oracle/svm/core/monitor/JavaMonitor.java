@@ -37,7 +37,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 import com.oracle.svm.core.monitor.JavaMonitorAbstractQueuedSynchronizer.JavaMonitorConditionObject;
-
+import com.oracle.svm.core.util.VMError;
 /**
  * JavaMonitor is derived from the ReentrantLock class in the jdk 19 sources.
  * Git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec. JDK tag: jdk-19+30
@@ -204,7 +204,7 @@ public class JavaMonitor {
      * (for a good reason, because it is a highly unusual operation).
      */
     public static JavaMonitor newLockedMonitorForThread(Thread thread, int recursionDepth) {
-        JavaMonitor result = new com.oracle.svm.core.monitor.JavaMonitor();
+        JavaMonitor result = new JavaMonitor();
         for (int i = 0; i < recursionDepth; i++) {
             result.lock();
         }
@@ -238,17 +238,17 @@ public class JavaMonitor {
          */
         Thread currentThread = Thread.currentThread();
         Thread ownerThread = sync.getExclusiveOwnerThread();
-        com.oracle.svm.core.util.VMError.guarantee(ownerThread == null || ownerThread == currentThread, "Object that needs re-locking during deoptimization is already locked by another thread");
+        VMError.guarantee(ownerThread == null || ownerThread == currentThread, "Object that needs re-locking during deoptimization is already locked by another thread");
         /*
          * Since this code must be uninterruptible, we cannot just call lock.tryLock() but instead
          * replicate that logic here by using only direct field accesses.
          */
         int oldState = sync.getState();
         int newState = oldState + 1;
-        com.oracle.svm.core.util.VMError.guarantee(newState > 0, "Maximum lock count exceeded");
+        VMError.guarantee(newState > 0, "Maximum lock count exceeded");
 
         boolean success = Unsafe.getUnsafe().compareAndSetInt(sync, offset, oldState, newState);
-        com.oracle.svm.core.util.VMError.guarantee(success, "Could not re-lock object during deoptimization");
+        VMError.guarantee(success, "Could not re-lock object during deoptimization");
         setExclusiveOwnerThread(currentThread);
     }
 

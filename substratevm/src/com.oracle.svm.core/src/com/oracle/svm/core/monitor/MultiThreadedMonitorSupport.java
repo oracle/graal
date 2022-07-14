@@ -56,6 +56,7 @@ import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.monitor.JavaMonitorAbstractQueuedSynchronizer.JavaMonitorConditionObject;
+import com.oracle.svm.core.monitor.JavaMonitor.Sync;
 
 import jdk.internal.misc.Unsafe;
 
@@ -458,8 +459,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected static boolean isMonitorLockSynchronizer(Object obj) {
-        if (obj != null && obj.getClass() == JavaMonitor.Sync.class) {
-            JavaMonitor.Sync sync = (JavaMonitor.Sync) obj;
+        if (obj != null && obj.getClass() == Sync.class) {
+            Sync sync = (Sync) obj;
             return sync.getJavaMonitorConditionObject() != null; // contains marker or actual condition
         }
         return false;
@@ -490,8 +491,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     protected static boolean isMonitorCondition(Object obj) {
         if (obj != null && obj.getClass() == JavaMonitorConditionObject.class) {
             JavaMonitorAbstractQueuedSynchronizer enclosing = ((JavaMonitorConditionObject) obj).getOuter();
-            if (enclosing.getClass() == JavaMonitor.Sync.class) {
-                JavaMonitor.Sync sync = (JavaMonitor.Sync) enclosing;
+            if (enclosing.getClass() == Sync.class) {
+                Sync sync = (Sync) enclosing;
                 return obj == sync.getJavaMonitorConditionObject();
             }
         }
@@ -502,7 +503,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 // Checkstyle: stop
 @TargetClass(MultiThreadedMonitorSupport.class)
 final class Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "javaMonitorConditionObject", declClass = JavaMonitor.Sync.class)//Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "javaMonitorConditionObject", declClass = Sync.class)//Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) //
     static long SYNC_MONITOR_CONDITION_FIELD_OFFSET;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "state", declClass = JavaMonitorAbstractQueuedSynchronizer.class) //
