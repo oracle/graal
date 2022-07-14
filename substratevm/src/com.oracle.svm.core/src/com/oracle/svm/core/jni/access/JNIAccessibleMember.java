@@ -24,16 +24,17 @@
  */
 package com.oracle.svm.core.jni.access;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.UnknownObjectField;
 
 abstract class JNIAccessibleMember {
     private final JNIAccessibleClass declaringClass;
 
-    @UnknownObjectField(types = IdentityHashMap.class, canBeNull = true) //
-    private Map<Class<?>, Void> hidingSubclasses;
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", canBeNull = true) //
+    private EconomicSet<Class<?>> hidingSubclasses;
 
     JNIAccessibleMember(JNIAccessibleClass declaringClass) {
         this.declaringClass = declaringClass;
@@ -47,7 +48,7 @@ abstract class JNIAccessibleMember {
         Class<?> declaring = declaringClass.getClassObject();
         assert clazz != null && declaring.isAssignableFrom(clazz);
         if (hidingSubclasses != null && !clazz.equals(declaring)) {
-            if (hidingSubclasses.containsKey(clazz)) {
+            if (hidingSubclasses.contains(clazz)) {
                 return false;
             }
             if (declaring.isInterface()) {
@@ -65,7 +66,8 @@ abstract class JNIAccessibleMember {
         return true;
     }
 
-    protected void setHidingSubclasses(Map<Class<?>, Void> hidingSubclasses) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void setHidingSubclasses(EconomicSet<Class<?>> hidingSubclasses) {
         assert this.hidingSubclasses == null;
         this.hidingSubclasses = hidingSubclasses;
     }

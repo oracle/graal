@@ -25,8 +25,8 @@
 package com.oracle.svm.core.jni.access;
 
 import java.lang.reflect.Modifier;
-import java.util.Map;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -122,13 +122,13 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void finishBeforeCompilation(Map<Class<?>, Void> hidingSubclasses, int vtableEntryOffset, CodePointer nonvirtualTargetEntry, PointerBase newObjectTargetEntry, CodePointer callWrapperEntry,
+    public void finishBeforeCompilation(EconomicSet<Class<?>> hidingSubclasses, int vtableEntryOffset, CodePointer nonvirtualEntry, PointerBase newObjectEntry, CodePointer callWrapperEntry,
                     CodePointer varargs, CodePointer array, CodePointer valist, CodePointer varargsNonvirtual, CodePointer arrayNonvirtual, CodePointer valistNonvirtual) {
         assert this.vtableOffset == VTABLE_OFFSET_NOT_YET_COMPUTED && (vtableEntryOffset == STATICALLY_BOUND_METHOD || vtableEntryOffset >= 0);
 
         this.vtableOffset = vtableEntryOffset;
-        this.nonvirtualTarget = nonvirtualTargetEntry;
-        this.newObjectTarget = newObjectTargetEntry;
+        this.nonvirtualTarget = nonvirtualEntry;
+        this.newObjectTarget = newObjectEntry;
         this.callWrapper = callWrapperEntry;
         this.varargsWrapper = varargs;
         this.arrayWrapper = array;

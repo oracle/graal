@@ -31,7 +31,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
@@ -508,7 +509,7 @@ public class JNIAccessFeature implements Feature {
             arrayNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.array)));
             valistNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.valist)));
         }
-        Map<Class<?>, Void> hidingSubclasses = findHidingSubclasses(hTarget.getDeclaringClass(), sub -> anyMethodMatchesIgnoreReturnType(sub, method.descriptor), null);
+        EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hTarget.getDeclaringClass(), sub -> anyMethodMatchesIgnoreReturnType(sub, method.descriptor), null);
         method.jniMethod.finishBeforeCompilation(hidingSubclasses, vtableOffset, nonvirtualTarget, newObjectTarget, callWrapper,
                         varargs, array, valist, varargsNonvirtual, arrayNonvirtual, valistNonvirtual);
     }
@@ -538,8 +539,8 @@ public class JNIAccessFeature implements Feature {
      * Determines which subclasses of a member's declaring class contain a declaration that cause
      * this member to be hidden in that subclass and all of its subclasses.
      */
-    private static Map<Class<?>, Void> findHidingSubclasses(HostedType type, Predicate<ResolvedJavaType> predicate, Map<Class<?>, Void> existing) {
-        Map<Class<?>, Void> map = existing;
+    private static EconomicSet<Class<?>> findHidingSubclasses(HostedType type, Predicate<ResolvedJavaType> predicate, EconomicSet<Class<?>> existing) {
+        EconomicSet<Class<?>> map = existing;
         /*
          * HostedType.getSubTypes() only gives us subtypes that are part of our analyzed closed
          * world, but this is fine because JNI lookups can only be done on those.
@@ -557,9 +558,9 @@ public class JNIAccessFeature implements Feature {
                 assert !(originalType instanceof WrappedJavaType) : "need fully unwrapped type for member lookups";
                 if (predicate.test(originalType)) {
                     if (map == null) {
-                        map = new IdentityHashMap<>();
+                        map = EconomicSet.create(Equivalence.IDENTITY);
                     }
-                    map.put(subType.getJavaClass(), null);
+                    map.add(subType.getJavaClass());
                     // no need to explore further subclasses
                 } else {
                     map = findHidingSubclasses(subType, predicate, map);
@@ -587,7 +588,7 @@ public class JNIAccessFeature implements Feature {
                 assert hField.hasLocation();
                 offset = hField.getLocation();
             }
-            Map<Class<?>, Void> hidingSubclasses = findHidingSubclasses(hField.getDeclaringClass(), sub -> anyFieldMatches(sub, name), null);
+            EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hField.getDeclaringClass(), sub -> anyFieldMatches(sub, name), null);
 
             field.finishBeforeCompilation(offset, hidingSubclasses);
 

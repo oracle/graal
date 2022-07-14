@@ -25,8 +25,8 @@
 package com.oracle.svm.core.jni.access;
 
 import java.lang.reflect.Modifier;
-import java.util.Map;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -99,7 +99,7 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void finishBeforeCompilation(int offset, Map<Class<?>, Void> hidingSubclasses) {
+    public void finishBeforeCompilation(int offset, EconomicSet<Class<?>> hidingSubclasses) {
         assert id.equal(0);
         assert ID_OFFSET_MASK.and(offset).equal(offset) : "Offset is too large to be encoded in the JNIAccessibleField ID";
 
