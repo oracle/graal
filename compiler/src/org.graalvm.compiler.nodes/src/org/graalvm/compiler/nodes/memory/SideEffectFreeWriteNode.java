@@ -38,16 +38,16 @@ import org.graalvm.word.LocationIdentity;
  * scenarios.
  */
 @NodeInfo(nameTemplate = "SideEffectFreeWrite#{p#location/s}")
-public class SideEffectFreeWrite extends WriteNode {
+public class SideEffectFreeWriteNode extends WriteNode {
 
-    public static final NodeClass<SideEffectFreeWrite> TYPE = NodeClass.create(SideEffectFreeWrite.class);
+    public static final NodeClass<SideEffectFreeWriteNode> TYPE = NodeClass.create(SideEffectFreeWriteNode.class);
 
-    public SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+    public SideEffectFreeWriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         super(TYPE, address, location, location, value, barrierType);
     }
 
     public static WriteNode createWithoutSideEffect(AddressNode address, LocationIdentity location, ValueNode value) {
-        return new SideEffectFreeWrite(address, location, value, BarrierType.NONE);
+        return new SideEffectFreeWriteNode(address, location, value, BarrierType.NONE);
     }
 
     @Override
