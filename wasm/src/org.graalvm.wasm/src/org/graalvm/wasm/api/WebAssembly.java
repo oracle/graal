@@ -136,7 +136,6 @@ public class WebAssembly extends Dictionary {
         final Object prev = innerTruffleContext.enter(null);
         try {
             final WasmContext instanceContext = WasmContext.get(null);
-            instanceContext.updateMultiValueStackSize(currentContext.getMultiValueStackSize());
             WasmInstance instance = instantiateModule(module, importObject, instanceContext, innerTruffleContext);
             instanceContext.linker().tryLink(instance);
             return instance;

@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -63,7 +64,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
-     *
+     * <p>
      * If the function is imported, then context UID and the function are set to {@code null}.
      */
     public WasmFunctionInstance(WasmContext context, WasmFunction function, CallTarget target) {
@@ -120,10 +121,11 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
             // For external calls we have to materialize the multi value stack.
             if (result == WasmMultiValueResult.INSTANCE) {
                 final long[] multiValueStack = context.getMultiValueStack();
-                final int size = function.resultCount();
-                assert multiValueStack.length >= size;
-                final Object[] values = new Object[size];
-                for (int i = 0; i < size; i++) {
+                final int resultCount = function.resultCount();
+                CompilerAsserts.partialEvaluationConstant(resultCount);
+                assert multiValueStack.length >= resultCount;
+                final Object[] values = new Object[resultCount];
+                for (int i = 0; i < resultCount; i++) {
                     byte resultType = function.resultTypeAt(i);
                     switch (resultType) {
                         case WasmType.I32_TYPE:

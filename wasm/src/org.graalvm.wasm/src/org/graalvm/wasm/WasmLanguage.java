@@ -138,13 +138,19 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     static final class MultiValueStack {
-        @CompilationFinal(dimensions = 0) private long[] stack;
+        private long[] stack;
 
-        public long[] stack(int size) {
-            if (stack == null && size > 1) {
-                stack = new long[size];
-            }
+        private int size = 1;
+
+        public long[] stack() {
             return stack;
+        }
+
+        public void resize(int expectedSize) {
+            if (expectedSize > size) {
+                stack = new long[expectedSize];
+                size = expectedSize;
+            }
         }
     }
 }

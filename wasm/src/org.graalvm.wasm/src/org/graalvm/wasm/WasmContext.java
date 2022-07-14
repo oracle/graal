@@ -67,7 +67,6 @@ public final class WasmContext {
     private int moduleNameCount;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
-    @CompilationFinal private int multiValueStackSize;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
@@ -82,7 +81,6 @@ public final class WasmContext {
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
-        this.multiValueStackSize = 0;
         instantiateBuiltinInstances();
     }
 
@@ -219,15 +217,11 @@ public final class WasmContext {
         return REFERENCE.get(node);
     }
 
-    public void updateMultiValueStackSize(int newSize) {
-        multiValueStackSize = Math.max(multiValueStackSize, newSize);
-    }
-
-    public int getMultiValueStackSize() {
-        return multiValueStackSize;
-    }
-
     public long[] getMultiValueStack() {
-        return language.multiValueStack().stack(multiValueStackSize);
+        return language.multiValueStack().stack();
+    }
+
+    public void resizeMultiValueStack(int expectedSize) {
+        language.multiValueStack().resize(expectedSize);
     }
 }

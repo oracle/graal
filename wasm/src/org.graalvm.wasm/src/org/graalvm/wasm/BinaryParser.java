@@ -1319,7 +1319,6 @@ public class BinaryParser extends BinaryStreamParser {
         readParameterList(idx, paramCount);
         offset += length(resultCountAndValue);
         readResultList(idx, resultCount);
-        wasmContext.updateMultiValueStackSize(resultCount);
     }
 
     private void readParameterList(int funcTypeIdx, int paramCount) {

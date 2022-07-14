@@ -64,6 +64,7 @@ import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.ImportExportKind;
+import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.Sequence;
@@ -1153,6 +1154,71 @@ public class WasmJsApiSuite {
                 Assert.fail("embedderDataSet failed to throw");
             } catch (WasmJsApiException ex) {
                 Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, ex.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    final Object[] arr = {1, 2, 3};
+                    return InteropArray.create(arr);
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f2);
+                Assert.assertEquals("Return value of function is equal", 6, value);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32)))" +
+                        "(func $f (type 0)" +
+                        "   i32.const 1" +
+                        "   i32.const 2" +
+                        "   i32.const 3" +
+                        ")" +
+                        "(export \"f\" (func $f))" +
+                        ")");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, source, null);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f);
+                Assert.assertTrue("Must return array", lib.hasArrayElements(value));
+                Assert.assertEquals("First return value of function is equal", 1, lib.readArrayElement(value, 0));
+                Assert.assertEquals("Second return value of function is equal", 2, lib.readArrayElement(value, 1));
+                Assert.assertEquals("Third return value of function is equal", 3, lib.readArrayElement(value, 2));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
             }
         });
     }

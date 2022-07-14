@@ -120,14 +120,18 @@ public class WasmRootNode extends RootNode {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
+        final int resultCount = function.getResultCount();
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        if (resultCount > 1) {
+            context.resizeMultiValueStack(resultCount);
+        }
+
         try {
             function.execute(context, frame);
         } catch (StackOverflowError e) {
             function.enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
-        final int resultCount = function.getResultCount();
-        CompilerAsserts.partialEvaluationConstant(resultCount);
         if (resultCount == 0) {
             return WasmVoidResult.getInstance();
         } else if (resultCount == 1) {
