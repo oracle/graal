@@ -677,7 +677,7 @@ suite = {
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.reflect",
+                "com.oracle.svm.core",
                 "mx:JUNIT_TOOL",
             ],
             "checkstyle": "com.oracle.svm.core",
@@ -753,38 +753,11 @@ suite = {
             "testProject": True,
         },
 
-        "com.oracle.svm.reflect": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "sun.invoke.util",
-                    "sun.reflect.annotation",
-                    "sun.reflect.generics.repository",
-                    "jdk.internal.reflect",
-                    "sun.reflect.generics.scope"
-                ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.code",
-                ],
-            },
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "javaCompliance": "11+",
-            "spotbugs": "false",
-        },
-
         "com.oracle.svm.methodhandles": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.reflect",
+                "com.oracle.svm.hosted",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1014,8 +987,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
-                "com.oracle.svm.reflect",
                 "com.oracle.svm.graal",
                 "compiler:GRAAL"
             ],
@@ -1142,7 +1113,6 @@ suite = {
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
-                "com.oracle.svm.reflect",
                 "com.oracle.svm.methodhandles"
             ],
             "manifestEntries" : {
@@ -1170,7 +1140,7 @@ suite = {
                     "com.oracle.svm.core.graal.nodes              to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.graal.snippets           to jdk.internal.vm.compiler",
                     "com.oracle.svm.hosted.fieldfolding           to jdk.internal.vm.compiler",
-                    "com.oracle.svm.reflect.hosted                to jdk.internal.vm.compiler",
+                    "com.oracle.svm.hosted.reflect                to jdk.internal.vm.compiler",
                 ],
                 "requires": [
                     "java.management",

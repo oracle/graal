@@ -41,10 +41,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
-import com.oracle.svm.reflect.target.Target_java_lang_reflect_Method;
-import com.oracle.svm.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;

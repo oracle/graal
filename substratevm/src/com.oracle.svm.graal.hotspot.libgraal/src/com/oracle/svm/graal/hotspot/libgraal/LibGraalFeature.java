@@ -139,7 +139,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.jni.JNIFeature;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 

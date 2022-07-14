@@ -53,8 +53,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.invoke.util.VerifyAccess;
