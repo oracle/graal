@@ -101,4 +101,4 @@ The shaded code is not a part of the native executable.
 
 ### Learn More
 
-Get hands-on lab experience debugging a native executable using the Oracle Linux environment in Oracle Cloud by running this dedicated lab: [GraalVM Native Image Debugging](https://luna.oracle.com/lab/cbe9d331-5dbc-4300-a5ca-20b88346cbcf/steps).
+Get hands-on lab experience debugging a native executable using the Oracle Linux environment in Oracle Cloud by running this interactive workshop: [GraalVM Native Image Debugging](https://luna.oracle.com/lab/cbe9d331-5dbc-4300-a5ca-20b88346cbcf/steps).

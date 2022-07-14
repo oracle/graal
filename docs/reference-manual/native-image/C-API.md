@@ -6,7 +6,7 @@ permalink: /reference-manual/native-image/native-interoperability/C-API/
 redirect_from: /$version/reference-manual/native-image/C-API/
 ---
 
-#  Native Image C API
+# Native Image C API
 
 Native Image provides a GraalVM-specific API to manage Java objects from the C/C++ languages, initialize isolates and attach threads.
 The C API is available when Native Image is built as a shared library and its declarations are included in the header file that is generated during the native image build.

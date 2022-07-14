@@ -32,7 +32,8 @@ Image tag structure is:
 {OS_VERSION}-java{JAVA_VERSION}-{MAJOR_RELEASE}.{MINOR_RELEASE}.{PATCH_RELEASE}-b{BUILD_NUMBER}
 ```
 
-The structure is designed to allow references with different levels of specificity.  The minimum valid tag is `java{JAVA_VERSION}-{MAJOR_RELEASE}`. For example, the following are all valid tags:
+The structure is designed to allow references with different levels of specificity. 
+The minimum valid tag is `java{JAVA_VERSION}-{MAJOR_RELEASE}`. For example, the following are all valid tags:
 
 ```
 java17-21

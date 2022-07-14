@@ -45,8 +45,8 @@ Repeat the same for the `PATH` environment variable.
 
 ## Supported Functionalities
 
-The GraalVM Enterprise distribution for Windows platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
-Currently, the GraalVM Enterprise environment on Windows can be extended with [Native Image](../../reference-manual/native-image/README.md), [Java on Trufle](../../reference-manual/java-on-truffle/README.md), WebAssembly, and Node.js support.
+The GraalVM Enterprise distribution for Windows platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool to install additional functionalities and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
+Currently, the GraalVM environment on Windows can be extended with [Native Image](../../reference-manual/native-image/README.md), [Java on Truffle](../../reference-manual/java-on-truffle/README.md), [LLVM runtime](../../reference-manual/llvm/README.md), WebAssembly, JavaScript and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
 On Windows, Native Image requires Visual Studio Code and Microsoft Visual C++(MSVC).
