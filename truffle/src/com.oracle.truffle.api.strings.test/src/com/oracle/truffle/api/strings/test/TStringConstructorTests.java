@@ -222,10 +222,10 @@ public class TStringConstructorTests extends TStringTestBase {
                     }
                     checkInternalByteArrayEquals(array, s.getInternalByteArrayUncached(encoding));
                     byte[] copy = new byte[array.length];
-                    s.copyToByteArrayNodeUncached(0, copy, 0, copy.length, encoding);
+                    s.copyToByteArrayUncached(0, copy, 0, copy.length, encoding);
                     Assert.assertArrayEquals(array, copy);
                     PointerObject pointerObject = PointerObject.create(array.length);
-                    s.copyToNativeMemoryNodeUncached(0, pointerObject, 0, array.length, encoding);
+                    s.copyToNativeMemoryUncached(0, pointerObject, 0, array.length, encoding);
                     Assert.assertTrue(pointerObject.contentEquals(array));
                     for (int i = 0; i < codepoints.length; i++) {
                         Assert.assertEquals(codepoints[i], s.codePointAtIndexUncached(i, encoding, TruffleString.ErrorHandling.BEST_EFFORT));

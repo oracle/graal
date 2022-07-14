@@ -999,11 +999,39 @@ public abstract class AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.CopyToByteArrayNode}.
      *
+     * @deprecated since 22.3, use {@link #copyToByteArrayUncached(int, byte[], int, int, Encoding)}
+     *             instead.
+     *
+     * @since 22.1
+     */
+    @Deprecated(since = "22.3")
+    @TruffleBoundary
+    public final void copyToByteArrayNodeUncached(int byteFromIndexA, byte[] dst, int byteFromIndexDst, int byteLength, TruffleString.Encoding expectedEncoding) {
+        copyToByteArrayUncached(byteFromIndexA, dst, byteFromIndexDst, byteLength, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CopyToByteArrayNode}.
+     *
      * @since 22.1
      */
     @TruffleBoundary
-    public final void copyToByteArrayNodeUncached(int byteFromIndexA, byte[] dst, int byteFromIndexDst, int byteLength, TruffleString.Encoding expectedEncoding) {
+    public final void copyToByteArrayUncached(int byteFromIndexA, byte[] dst, int byteFromIndexDst, int byteLength, TruffleString.Encoding expectedEncoding) {
         TruffleString.CopyToByteArrayNode.getUncached().execute(this, byteFromIndexA, dst, byteFromIndexDst, byteLength, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CopyToNativeMemoryNode}.
+     *
+     * @deprecated since 22.3, use
+     *             {@link #copyToNativeMemoryUncached(int, Object, int, int, Encoding)} instead.
+     *
+     * @since 22.1
+     */
+    @Deprecated(since = "22.3")
+    @TruffleBoundary
+    public final void copyToNativeMemoryNodeUncached(int byteFromIndexA, Object pointerObject, int byteFromIndexDst, int byteLength, TruffleString.Encoding expectedEncoding) {
+        copyToNativeMemoryUncached(byteFromIndexA, pointerObject, byteFromIndexDst, byteLength, expectedEncoding);
     }
 
     /**
@@ -1012,7 +1040,7 @@ public abstract class AbstractTruffleString {
      * @since 22.1
      */
     @TruffleBoundary
-    public final void copyToNativeMemoryNodeUncached(int byteFromIndexA, Object pointerObject, int byteFromIndexDst, int byteLength, TruffleString.Encoding expectedEncoding) {
+    public final void copyToNativeMemoryUncached(int byteFromIndexA, Object pointerObject, int byteFromIndexDst, int byteLength, TruffleString.Encoding expectedEncoding) {
         TruffleString.CopyToNativeMemoryNode.getUncached().execute(this, byteFromIndexA, pointerObject, byteFromIndexDst, byteLength, expectedEncoding);
     }
 

@@ -642,7 +642,7 @@ public class TStringTestBase {
 
     protected static void assertBytesEqual(AbstractTruffleString a, TruffleString.Encoding encoding, byte[] array, int fromIndex, int length) {
         byte[] cmp = new byte[length];
-        a.copyToByteArrayNodeUncached(0, cmp, 0, length, encoding);
+        a.copyToByteArrayUncached(0, cmp, 0, length, encoding);
         if (array.length == length) {
             Assert.assertArrayEquals(array, cmp);
         } else {
