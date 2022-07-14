@@ -71,12 +71,12 @@ import com.oracle.svm.core.graal.llvm.util.LLVMObjectFileReader.LLVMTextSectionI
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMStackMapInfo;
 import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.image.LLVMToolchain;
+import com.oracle.svm.hosted.image.LLVMToolchain.RunFailureException;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;

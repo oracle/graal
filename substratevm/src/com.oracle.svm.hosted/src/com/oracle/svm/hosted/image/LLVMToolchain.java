@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.llvm.util;
+package com.oracle.svm.hosted.image;
 
 import java.io.IOException;
 import java.io.InputStream;
