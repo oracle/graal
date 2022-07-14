@@ -43,8 +43,8 @@ public interface SimplifierTool extends CanonicalizerTool {
     void removeIfUnused(Node node);
 
     /*
-     * Returns whether fences associated with OrderedWrites can be removed if the fence can be sunk
-     * to a subsequent operation.
+     * Returns whether volatile fences associated with writes can be removed if the ordering
+     * requirement can be sunk to a subsequent operation.
      */
     boolean trySinkWriteFences();
 }

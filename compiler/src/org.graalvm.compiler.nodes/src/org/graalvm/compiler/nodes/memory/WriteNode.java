@@ -135,18 +135,19 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
             }
         } else if (tool.trySinkWriteFences() && getMemoryOrder() == VOLATILE) {
             /*
-             * If this node is followed by a volatile write, then this can be converted to a write
-             * release.
+             * If this node is followed by a volatile write, then this write can be converted to a
+             * write release since doing so will not allow any illegal reorderings. A write release
+             * has the same semantics as a volatile write, except that it allows a following
+             * volatile read to be hoisted above it. However, since this write is followed by a
+             * volatile write without an intervening read, no volatile reads can be raised above it.
              */
-            FixedNode volatileWrite = getFollowingVolatileWrite(this);
-            if (volatileWrite != null) {
+            if (followedByVolatileWrite(this)) {
                 memoryOrder = MemoryOrderMode.RELEASE;
-                tool.addToWorkList(volatileWrite);
             }
         }
     }
 
-    private static FixedNode getFollowingVolatileWrite(FixedWithNextNode start) {
+    private static boolean followedByVolatileWrite(FixedWithNextNode start) {
         FixedWithNextNode cur = start;
         while (true) {
             // Check the memory usages of the current access
@@ -154,7 +155,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
                 if (!(usage instanceof MemoryAccess) || !(usage instanceof FixedWithNextNode)) {
                     // Other kinds of usages won't be visited in the traversal and likely
                     // invalidates elimination of the barrier instruction.
-                    return null;
+                    return false;
                 }
             }
             FixedNode nextNode = cur.next();
@@ -166,7 +167,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
             if (nextNode instanceof OrderedMemoryAccess) {
                 if (nextNode instanceof AbstractWriteNode || nextNode instanceof AbstractCompareAndSwapNode) {
                     if (((OrderedMemoryAccess) nextNode).getMemoryOrder() == VOLATILE) {
-                        return nextNode;
+                        return true;
                     } else {
                         // Since writes are ordered, can check next instruction
                         cur = (FixedWithNextNode) nextNode;
@@ -175,7 +176,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
                 }
             }
 
-            return null;
+            return false;
         }
     }
 }
