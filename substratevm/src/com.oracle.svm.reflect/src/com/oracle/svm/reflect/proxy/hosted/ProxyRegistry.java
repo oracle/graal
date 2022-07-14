@@ -40,13 +40,10 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
     private final DynamicProxyRegistry dynamicProxySupport;
     private final ImageClassLoader imageClassLoader;
 
-    private boolean serializing;
-
     public ProxyRegistry(ConfigurationTypeResolver typeResolver, DynamicProxyRegistry dynamicProxySupport, ImageClassLoader imageClassLoader) {
         this.typeResolver = typeResolver;
         this.dynamicProxySupport = dynamicProxySupport;
         this.imageClassLoader = imageClassLoader;
-        this.serializing = false;
     }
 
     @Override
@@ -88,9 +85,5 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
     private static void warning(List<String> interfaceNames, String reason) {
         System.out.println("WARNING: Cannot register dynamic proxy for interface list: " +
                         String.join(", ", interfaceNames) + ". Reason: " + reason);
-    }
-
-    public void setSerializing(boolean serializing) {
-        this.serializing = serializing;
     }
 }

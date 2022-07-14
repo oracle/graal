@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
@@ -53,8 +52,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                     "<comma-separated-config-resources>");
 
     public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile(".*\\$Proxy[0-9]+");
-
-    private ProxyConfigurationParser proxyConfigurationParser;
 
     static final class ProxyCacheKey {
 

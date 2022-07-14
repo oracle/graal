@@ -89,6 +89,7 @@ class ProxyHandler implements InvocationHandler, Serializable {
     ProxyHandler() {
     }
 
+    @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws InvocationTargetException, IllegalAccessException {
         return method.invoke(proxy, args);
     }
