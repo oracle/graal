@@ -17,7 +17,7 @@ You will use a **Fortune demo** application that simulates the traditional [fort
 
 We recommend that you follow the instructions and create the application step-by-step. Alternatively, you can use an existing project: clone the [GraalVM demos repository](https://github.com/graalvm/graalvm-demos) and navigate into the `fortune-demo/fortune` directory:
 ```shell
-git clone https://github.com/graalvm/graalvm-demos && cd fortune-demo/fortune
+git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-demo/fortune
 ```
 
 > You must have [GraalVM installed with Native Image support](../README.md#install-native-image).
@@ -392,49 +392,9 @@ This plugin requires JUnit Platform 1.8 or higher and Maven Surefire 2.22.0 or h
     ```
     Run `-Pnative` profile will then build and run native tests.
 
-## Add GraalVM Reachability Metadata Support
-
-Since release 0.9.12, the Native Image Maven plugin adds experimental support for the [GraalVM Reachability Metadata repository](https://github.com/graalvm/graalvm-reachability-metadata/). 
-This repository provides GraalVM configuration for libraries which do not officially support GraalVM native.
-The support needs to be enabled explicitly in the _pom.xml_ file. 
-
--  Specify the path to a *local* repository, which can be an exploded directory, or a compressed ZIP file.
-
-    ```xml
-    <plugin>
-        <groupId>org.graalvm.buildtools</groupId>
-        <artifactId>native-maven-plugin</artifactId>
-        <version>${native.maven.plugin.version}</version>
-        <configuration>
-            <metadataRepository>
-                <enabled>true</enabled>
-                <localPath>${project.basedir}/config-directory</localPath> (1)
-            </metadataRepository>
-        </configuration>
-    </plugin>
-    ```
-- Provide the URL to a *remote* repository (the URL of the ZIP file):
-
-    ```xml
-    <plugin>
-        <groupId>org.graalvm.buildtools</groupId>
-        <artifactId>native-maven-plugin</artifactId>
-        <version>${native.maven.plugin.version}</version>
-        <configuration>
-            <useArgFile>false</useArgFile>
-            <metadataRepository>
-                <enabled>true</enabled>
-                <url>${metadata.url}</url>
-            </metadataRepository>
-        </configuration>
-    </plugin>
-    ```
-
-The Native Image Maven plugin will automatically download the metadata from the repository.
-
 ### Summary
 
-The configuration of Native Image Maven plugin could go much further than this guide. Check the [plugin documentation](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support).
+The Native Image Maven plugin has many more configuration options. For more information, see the [plugin documentation](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
 
 Note that if your application does not call dynamically any classes at run time, the execution with the agent is needless. 
 Your workflow in that case you just be:
