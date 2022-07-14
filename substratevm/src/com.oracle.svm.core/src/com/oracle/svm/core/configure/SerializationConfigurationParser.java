@@ -42,8 +42,9 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
     private static final String SERIALIZATION_TYPES_KEY = "types";
     private static final String LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY = "lambdaCapturingTypes";
-
+    private static final String PROXY_SERIALIZATION_TYPES_KEY = "proxies";
     private final RuntimeSerializationSupport serializationSupport;
+    private ProxyConfigurationParser proxyConfigurationParser;
 
     public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
         super(strictConfiguration);
@@ -66,7 +67,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     }
 
     private void parseNewConfiguration(Map<String, Object> listOfSerializationConfigurationObjects) {
-        if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY)) {
+        if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY) ||
+                        !listOfSerializationConfigurationObjects.containsKey(PROXY_SERIALIZATION_TYPES_KEY)) {
             throw new JSONParserException("second level of document must be arrays of serialization descriptor objects");
         }
 
@@ -74,6 +76,7 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         parseSerializationTypes(
                         asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY), "lambdaCapturingTypes must be an array of serialization descriptor objects"),
                         true);
+        proxyConfigurationParser.parseProxiesForSerialization(listOfSerializationConfigurationObjects.get(PROXY_SERIALIZATION_TYPES_KEY));
     }
 
     private void parseSerializationTypes(List<Object> listOfSerializationTypes, boolean lambdaCapturingTypes) {
@@ -99,5 +102,9 @@ public class SerializationConfigurationParser extends ConfigurationParser {
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
             serializationSupport.registerWithTargetConstructorClass(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
         }
+    }
+
+    public void setProxyConfigurationParser(ProxyConfigurationParser proxyConfigurationParser) {
+        this.proxyConfigurationParser = proxyConfigurationParser;
     }
 }

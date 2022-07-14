@@ -28,20 +28,25 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.reflect.proxy.DynamicProxySupport;
 
 public class ProxyRegistry extends ConditionalConfigurationRegistry implements Consumer<ConditionalElement<List<String>>> {
     private final ConfigurationTypeResolver typeResolver;
     private final DynamicProxyRegistry dynamicProxySupport;
     private final ImageClassLoader imageClassLoader;
 
+    private boolean serializing;
+
     public ProxyRegistry(ConfigurationTypeResolver typeResolver, DynamicProxyRegistry dynamicProxySupport, ImageClassLoader imageClassLoader) {
         this.typeResolver = typeResolver;
         this.dynamicProxySupport = dynamicProxySupport;
         this.imageClassLoader = imageClassLoader;
+        this.serializing = false;
     }
 
     @Override
@@ -59,10 +64,14 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
             }
             interfaces[i] = clazz;
         }
-        registerConditionalConfiguration(proxies.getCondition(), () -> {
-            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-            dynamicProxySupport.addProxyClass(interfaces);
-        });
+        if (ProxyConfigurationParser.serializing) {
+            ((DynamicProxySupport) dynamicProxySupport).registerProxyForSerialization(interfaces);
+        } else {
+            registerConditionalConfiguration(proxies.getCondition(), () -> {
+                /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
+                dynamicProxySupport.addProxyClass(interfaces);
+            });
+        }
     }
 
     private static boolean checkClass(List<String> interfaceNames, String className, Class<?> clazz) {
@@ -79,5 +88,9 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
     private static void warning(List<String> interfaceNames, String reason) {
         System.out.println("WARNING: Cannot register dynamic proxy for interface list: " +
                         String.join(", ", interfaceNames) + ". Reason: " + reason);
+    }
+
+    public void setSerializing(boolean serializing) {
+        this.serializing = serializing;
     }
 }

@@ -101,6 +101,7 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
+import com.oracle.svm.reflect.proxy.DynamicProxySupport;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.
@@ -1195,7 +1196,13 @@ final class BreakpointInterceptor {
                 }
             }
             for (String className : transitiveSerializeTargets) {
-                traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className, null);
+                if (DynamicProxySupport.PROXY_CLASS_NAME_PATTERN.matcher(className).matches()) {
+                    JNIObjectHandle interfaces = Support.callObjectMethod(jni, serializeTargetClass, agent.handles().javaLangClassGetInterfaces);
+                    Object interfaceNames = getClassArrayNames(jni, interfaces);
+                    traceSerializeBreakpoint(jni, "ProxyClassSerialization", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), interfaceNames);
+                } else {
+                    traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className, null);
+                }
             }
         }
         return true;

@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.reflect.proxy;
 
-import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
@@ -50,6 +51,10 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     private static final String proxyConfigFilesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationFiles, "<comma-separated-config-files>");
     private static final String proxyConfigResourcesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                     "<comma-separated-config-resources>");
+
+    public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile(".*\\$Proxy[0-9]+");
+
+    private ProxyConfigurationParser proxyConfigurationParser;
 
     static final class ProxyCacheKey {
 
@@ -96,17 +101,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
          */
         final Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
+
         proxyCache.computeIfAbsent(key, k -> {
-            Class<?> clazz;
-            try {
-                clazz = getJdkProxyClass(classLoader, intfs);
-            } catch (Throwable e) {
-                try {
-                    clazz = getJdkProxyClass(getCommonClassLoader(intfs), intfs);
-                } catch (Throwable e2) {
-                    return e;
-                }
-            }
+            Class<?> clazz = createProxyClassFromImplementedInterfaces(intfs);
 
             /*
              * Treat the proxy as a predefined class so that we can set its class loader to the
@@ -115,10 +112,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
              * class loader hierarchy.
              */
             PredefinedClassesSupport.registerClass(clazz);
-
-            if (Serializable.class.isAssignableFrom(clazz)) {
-                SerializationFeature.registerProxyClassForSerialization(clazz);
-            }
 
             /*
              * The constructor of the generated dynamic proxy class that takes a
@@ -139,6 +132,29 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
             return clazz;
         });
+    }
+
+    public void registerProxyForSerialization(Class<?>... interfaces) {
+        final Class<?>[] intfs = interfaces.clone();
+
+        Class<?> proxyClass = createProxyClassFromImplementedInterfaces(intfs);
+
+        SerializationFeature.registerProxyClassForSerialization(proxyClass);
+    }
+
+    private Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
+        Class<?> clazz;
+        try {
+            clazz = getJdkProxyClass(classLoader, interfaces);
+        } catch (Throwable e) {
+            try {
+                clazz = getJdkProxyClass(getCommonClassLoader(interfaces), interfaces);
+            } catch (Throwable e2) {
+                throw e;
+            }
+        }
+
+        return clazz;
     }
 
     private static ClassLoader getCommonClassLoader(Class<?>... intfs) {

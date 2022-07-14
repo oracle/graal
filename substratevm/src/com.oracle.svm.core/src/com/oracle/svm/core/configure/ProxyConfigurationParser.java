@@ -41,27 +41,32 @@ import com.oracle.svm.core.util.json.JSONParserException;
  */
 public final class ProxyConfigurationParser extends ConfigurationParser {
     private final Consumer<ConditionalElement<List<String>>> interfaceListConsumer;
+    public static boolean serializing = false;
 
     public ProxyConfigurationParser(Consumer<ConditionalElement<List<String>>> interfaceListConsumer, boolean strictConfiguration) {
         super(strictConfiguration);
         this.interfaceListConsumer = interfaceListConsumer;
     }
 
-    @Override
-    public void parseAndRegister(Object json, URI origin) {
-        parseTopLevelArray(asList(json, "first level of document must be an array of interface lists"));
+    public void parseProxiesForSerialization(Object json) {
+        parseTopLevelArray(asList(json, "proxies must be an array of interface lists"), true);
     }
 
-    private void parseTopLevelArray(List<Object> proxyConfiguration) {
+    @Override
+    public void parseAndRegister(Object json, URI origin) {
+        parseTopLevelArray(asList(json, "first level of document must be an array of interface lists"), false);
+    }
+
+    private void parseTopLevelArray(List<Object> proxyConfiguration, boolean serialization) {
         boolean foundInterfaceLists = false;
         boolean foundProxyConfigurationObjects = false;
         for (Object proxyConfigurationObject : proxyConfiguration) {
             if (proxyConfigurationObject instanceof List) {
                 foundInterfaceLists = true;
-                parseInterfaceList(ConfigurationCondition.alwaysTrue(), asList(proxyConfigurationObject, "<shouldn't reach here>"));
+                parseInterfaceList(ConfigurationCondition.alwaysTrue(), asList(proxyConfigurationObject, "<shouldn't reach here>"), serialization);
             } else if (proxyConfigurationObject instanceof Map) {
                 foundProxyConfigurationObjects = true;
-                parseWithConditionalConfig(asMap(proxyConfigurationObject, "<shouldn't reach here>"));
+                parseWithConditionalConfig(asMap(proxyConfigurationObject, "<shouldn't reach here>"), serialization);
             } else {
                 throw new JSONParserException("second level must be composed of either interface lists or proxy configuration objects");
             }
@@ -69,11 +74,18 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
                 throw new JSONParserException("second level can only be populated of either interface lists or proxy configuration objects, but these cannot be mixed");
             }
         }
+
+        serializing = false;
     }
 
-    private void parseInterfaceList(ConfigurationCondition condition, List<?> data) {
+    private void parseInterfaceList(ConfigurationCondition condition, List<?> data, boolean serialization) {
         List<String> interfaces = data.stream().map(ConfigurationParser::asString).collect(Collectors.toList());
 
+        assert interfaceListConsumer != null;
+
+        if (serialization) {
+            serializing = true;
+        }
         try {
             interfaceListConsumer.accept(new ConditionalElement<>(condition, interfaces));
         } catch (Exception e) {
@@ -81,10 +93,10 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
         }
     }
 
-    private void parseWithConditionalConfig(Map<String, Object> proxyConfigObject) {
+    private void parseWithConditionalConfig(Map<String, Object> proxyConfigObject, boolean serialization) {
         checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaces"), Collections.singletonList(CONDITIONAL_KEY));
         ConfigurationCondition condition = parseCondition(proxyConfigObject);
-        parseInterfaceList(condition, asList(proxyConfigObject.get("interfaces"), "\"interfaces\" must be an array of fully qualified interface names"));
+        parseInterfaceList(condition, asList(proxyConfigObject.get("interfaces"), "\"interfaces\" must be an array of fully qualified interface names"), serialization);
     }
 
 }
