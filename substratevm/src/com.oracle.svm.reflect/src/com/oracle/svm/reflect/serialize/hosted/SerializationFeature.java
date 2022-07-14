@@ -125,7 +125,8 @@ public class SerializationFeature implements Feature {
                         ConfigurationFile.SERIALIZATION_DENY.getFileName());
 
         SerializationConfigurationParser parser = new SerializationConfigurationParser(serializationBuilder, ConfigurationFiles.Options.StrictConfiguration.getValue());
-        ProxyRegistry proxyRegistry = ImageSingletons.lookup(ProxyRegistry.class);
+
+        ProxyRegistry proxyRegistry = ImageSingletons.contains(ProxyRegistry.class) ? ImageSingletons.lookup(ProxyRegistry.class) : null;
         ProxyConfigurationParser proxyConfigurationParser = new ProxyConfigurationParser(proxyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         parser.setProxyConfigurationParser(proxyConfigurationParser);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "serialization",

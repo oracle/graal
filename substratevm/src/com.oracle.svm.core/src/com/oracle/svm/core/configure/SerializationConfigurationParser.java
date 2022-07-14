@@ -76,7 +76,9 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         parseSerializationTypes(
                         asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY), "lambdaCapturingTypes must be an array of serialization descriptor objects"),
                         true);
-        proxyConfigurationParser.parseProxiesForSerialization(listOfSerializationConfigurationObjects.get(PROXY_SERIALIZATION_TYPES_KEY));
+        if (proxyConfigurationParser != null) {
+            proxyConfigurationParser.parseProxiesForSerialization(listOfSerializationConfigurationObjects.get(PROXY_SERIALIZATION_TYPES_KEY));
+        }
     }
 
     private void parseSerializationTypes(List<Object> listOfSerializationTypes, boolean lambdaCapturingTypes) {
