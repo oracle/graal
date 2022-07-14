@@ -50,7 +50,6 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.util.json.JSONFormatter;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -535,7 +534,6 @@ public class OptimizationLog implements CompilationListener {
 
     private EconomicMap<String, Object> asJsonMap() {
         EconomicMap<String, Object> map = EconomicMap.create();
-        map.put("executionId", GraalServices.getExecutionID());
         String compilationMethodName = graph.compilationId().toString(CompilationIdentifier.Verbosity.NAME);
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
