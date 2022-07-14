@@ -35,7 +35,7 @@ public class CallStackFrameMethodInfo {
 
     private static final String ENTER_SAFEPOINT_FROM_NATIVE_METHOD_NAME = "Safepoint.enterSlowPathTransitionFromNativeToNewStatus";
 
-    private static final String ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME = "TailCallForeignCalls.enterSlowPathSafepointCheckObject";
+    private static final String ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME = "com.oracle.svm.enterprise.core.ae.enterSlowPathSafepointCheckObject";
 
     private final Map<Integer, String> sampledMethods = new HashMap<>();
 
