@@ -978,7 +978,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             self._benchmarks = []
             graal_test = mx.distribution('GRAAL_TEST', fatalIfMissing=False)
             polybench_ee = mx.distribution('POLYBENCH_EE', fatalIfMissing=False)
-            if graal_test and polybench_ee:
+            if graal_test and polybench_ee and mx.get_env('ENABLE_POLYBENCH_HPC') == 'yes':
                 # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
                 # are present, the CompileTheWorld benchmark is available.
                 self._benchmarks = ['CompileTheWorld']
