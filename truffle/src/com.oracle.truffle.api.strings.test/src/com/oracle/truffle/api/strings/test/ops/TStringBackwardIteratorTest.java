@@ -60,20 +60,21 @@ public class TStringBackwardIteratorTest extends TStringTestBase {
 
     @Parameter public TruffleString.CreateBackwardCodePointIteratorNode createIteratorNode;
     @Parameter(1) public TruffleStringIterator.PreviousNode prevNode;
+    @Parameter(2) public TruffleString.ErrorHandling errorHandling;
 
-    @Parameters(name = "{0}, {1}")
+    @Parameters(name = "{0}, {1}, {2}")
     public static Iterable<Object[]> data() {
-        return Arrays.asList(
+        return withErrorHandling(Arrays.asList(
                         new Object[]{TruffleString.CreateBackwardCodePointIteratorNode.create(), TruffleStringIterator.PreviousNode.create()},
-                        new Object[]{TruffleString.CreateBackwardCodePointIteratorNode.getUncached(), TruffleStringIterator.PreviousNode.getUncached()});
+                        new Object[]{TruffleString.CreateBackwardCodePointIteratorNode.getUncached(), TruffleStringIterator.PreviousNode.getUncached()}));
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            TruffleStringIterator iterator = createIteratorNode.execute(a, encoding);
+            TruffleStringIterator iterator = createIteratorNode.execute(a, encoding, errorHandling);
             for (int i = codepoints.length - 1; i >= 0; i--) {
-                Assert.assertEquals(codepoints[i], prevNode.execute(iterator));
+                checkCodepoint(isValid, encoding, codepoints, i, prevNode.execute(iterator), errorHandling);
                 Assert.assertEquals(byteIndices[i], iterator.getByteIndex());
             }
         });
@@ -82,7 +83,7 @@ public class TStringBackwardIteratorTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s1, e) -> createIteratorNode.execute(s1, e));
+        checkNullSE((s1, e) -> createIteratorNode.execute(s1, e, errorHandling));
         expectNullPointerException(() -> prevNode.execute(null));
     }
 }

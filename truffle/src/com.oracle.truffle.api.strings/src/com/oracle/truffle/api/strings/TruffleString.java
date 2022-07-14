@@ -5818,18 +5818,29 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Returns a {@link TruffleStringIterator}, which allows iterating this string's code
-         * points.
+         * points, with {@link ErrorHandling#BEST_EFFORT best-effort error handling}.
          *
          * @since 22.1
          */
-        public abstract TruffleStringIterator execute(AbstractTruffleString a, Encoding expectedEncoding);
+        public final TruffleStringIterator execute(AbstractTruffleString a, Encoding expectedEncoding) {
+            return execute(a, expectedEncoding, ErrorHandling.BEST_EFFORT);
+        }
+
+        /**
+         * Returns a {@link TruffleStringIterator}, which allows iterating this string's code
+         * points.
+         *
+         * @since 22.3
+         */
+        public abstract TruffleStringIterator execute(AbstractTruffleString a, Encoding expectedEncoding, ErrorHandling errorHandling);
 
         @Specialization
-        static TruffleStringIterator createIterator(AbstractTruffleString a, Encoding expectedEncoding,
+        static TruffleStringIterator createIterator(AbstractTruffleString a, Encoding expectedEncoding, ErrorHandling errorHandling,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode) {
+            CompilerAsserts.partialEvaluationConstant(errorHandling);
             a.checkEncoding(expectedEncoding);
-            return forwardIterator(a, toIndexableNode.execute(a, a.data()), getCodeRangeANode.execute(a), expectedEncoding.id);
+            return forwardIterator(a, toIndexableNode.execute(a, a.data()), getCodeRangeANode.execute(a), expectedEncoding.id, errorHandling);
         }
 
         /**
@@ -5867,19 +5878,30 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Returns a {@link TruffleStringIterator}, which allows iterating this string's code
-         * points. The iterator is initialized to begin iteration at the end of the string, use
-         * {@link TruffleStringIterator.PreviousNode} to iterate in reverse order.
+         * points, with {@link ErrorHandling#BEST_EFFORT best-effort error handling}.
          *
          * @since 22.1
          */
-        public abstract TruffleStringIterator execute(AbstractTruffleString a, Encoding expectedEncoding);
+        public final TruffleStringIterator execute(AbstractTruffleString a, Encoding expectedEncoding) {
+            return execute(a, expectedEncoding, ErrorHandling.BEST_EFFORT);
+        }
+
+        /**
+         * Returns a {@link TruffleStringIterator}, which allows iterating this string's code
+         * points. The iterator is initialized to begin iteration at the end of the string, use
+         * {@link TruffleStringIterator.PreviousNode} to iterate in reverse order.
+         *
+         * @since 22.3
+         */
+        public abstract TruffleStringIterator execute(AbstractTruffleString a, Encoding expectedEncoding, ErrorHandling errorHandling);
 
         @Specialization
-        static TruffleStringIterator createIterator(AbstractTruffleString a, Encoding expectedEncoding,
+        static TruffleStringIterator createIterator(AbstractTruffleString a, Encoding expectedEncoding, ErrorHandling errorHandling,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode) {
+            CompilerAsserts.partialEvaluationConstant(errorHandling);
             a.checkEncoding(expectedEncoding);
-            return backwardIterator(a, toIndexableNode.execute(a, a.data()), getCodeRangeANode.execute(a), expectedEncoding.id);
+            return backwardIterator(a, toIndexableNode.execute(a, a.data()), getCodeRangeANode.execute(a), expectedEncoding.id, errorHandling);
         }
 
         /**

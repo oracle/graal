@@ -207,7 +207,7 @@ final class JCodingsImpl implements JCodings {
         int end = a.byteArrayOffset() + a.length();
         int length = getCodePointLength(jCoding, arrayA, p, end);
         if (length < 1) {
-            return Encodings.invalidCodepointReturnValue(Encodings.invalidCodepoint(), errorHandling);
+            return Encodings.invalidCodepointReturnValue(errorHandling);
         }
         int codePoint = readCodePoint(jCoding, arrayA, p, end);
         assert codePoint >= 0;

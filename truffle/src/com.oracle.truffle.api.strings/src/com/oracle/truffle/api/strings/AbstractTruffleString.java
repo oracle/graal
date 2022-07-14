@@ -327,11 +327,19 @@ public abstract class AbstractTruffleString {
     }
 
     static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding) {
-        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, 0);
+        return forwardIterator(a, arrayA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
+    }
+
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, errorHandling, 0);
     }
 
     static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding) {
-        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, a.length());
+        return backwardIterator(a, arrayA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
+    }
+
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, errorHandling, a.length());
     }
 
     final void checkEncoding(TruffleString.Encoding expectedEncoding) {
