@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
@@ -41,7 +40,6 @@ import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -57,7 +55,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
-
+import com.oracle.svm.core.monitor.JavaMonitorAbstractQueuedSynchronizer.JavaMonitorConditionObject;
 
 import jdk.internal.misc.Unsafe;
 
@@ -95,7 +93,7 @@ import jdk.internal.misc.Unsafe;
  *
  * {@link Condition} objects are used to implement {@link #wait()} and {@link #notify()}. When an
  * object monitor needs a condition object, it is atomically swapped into its
- * {@link GraalReentrantLock.Sync#graalConditionObject} field.
+ * {@link JavaMonitor.Sync#JavaMonitorConditionObject} field.
  */
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
@@ -184,7 +182,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Condition yet. This marker value is needed to identify monitor conditions for
      * {@link #maybeAdjustNewParkStatus}.
      */
-    static final GraalAbstractQueuedSynchronizer.GraalConditionObject MONITOR_WITHOUT_CONDITION = (GraalAbstractQueuedSynchronizer.GraalConditionObject) new GraalReentrantLock().newCondition();
+    static final JavaMonitorConditionObject MONITOR_WITHOUT_CONDITION = (JavaMonitorConditionObject) new JavaMonitor().newCondition();
 
     // Checkstyle: stop
     /** Substituted in {@link Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport} */
@@ -322,38 +320,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Uninterruptible(reason = "called during deoptimization")
     @Override
     public void doRelockObject(Object obj, Object lockData) {
-        GraalReentrantLock lock  = (GraalReentrantLock) lockData;
-
-        /*
-         * We need 3 variables for the same value because target classes do not model the
-         * inheritance hierarchy.
-         */
-
-        GraalAbstractQueuedSynchronizer qSync = lock.getSync();
-        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer aSync = SubstrateUtil.cast(qSync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
-
-        /*
-         * This code runs just before we are returning to the actual deoptimized frame. This means
-         * that the thread either must already hold the lock (if recursive locking is eliminated),
-         * or the object must be unlocked (if the object was rematerialized during deoptimization).
-         * If the object is locked by another thread, lock elimination in the compiler has a serious
-         * bug.
-         */
-        Thread currentThread = Thread.currentThread();
-        Thread ownerThread = aSync.exclusiveOwnerThread;
-        VMError.guarantee(ownerThread == null || ownerThread == currentThread, "Object that needs re-locking during deoptimization is already locked by another thread");
-
-        /*
-         * Since this code must be uninterruptible, we cannot just call lock.tryLock() but instead
-         * replicate that logic here by using only direct field accesses.
-         */
-        int oldState = qSync.getState();
-        int newState = oldState + 1;
-        VMError.guarantee(newState > 0, "Maximum lock count exceeded");
-
-        boolean success = UNSAFE.compareAndSetInt(qSync, SYNC_STATE_FIELD_OFFSET, oldState, newState);
-        VMError.guarantee(success, "Could not re-lock object during deoptimization");
-        aSync.exclusiveOwnerThread = currentThread;
+        JavaMonitor lock  = (JavaMonitor) lockData;
+        lock.doRelockObject(SYNC_STATE_FIELD_OFFSET);
     }
 
     @Override
@@ -490,9 +458,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected static boolean isMonitorLockSynchronizer(Object obj) {
-        if (obj != null && obj.getClass() == GraalReentrantLock.GraalNonfairSync.class) {
-            GraalReentrantLock.GraalNonfairSync sync = (GraalReentrantLock.GraalNonfairSync) obj;
-            return sync.getGraalConditionObject() != null; // contains marker or actual condition
+        if (obj != null && obj.getClass() == JavaMonitor.Sync.class) {
+            JavaMonitor.Sync sync = (JavaMonitor.Sync) obj;
+            return sync.getJavaMonitorConditionObject() != null; // contains marker or actual condition
         }
         return false;
     }
@@ -501,9 +469,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return getOrCreateMonitor(obj, true);
     }
 
-    protected GraalAbstractQueuedSynchronizer.GraalConditionObject getOrCreateCondition(JavaMonitor monitorLock, boolean createIfNotExisting) {
+    protected JavaMonitorConditionObject getOrCreateCondition(JavaMonitor monitorLock, boolean createIfNotExisting) {
         assert isMonitorLock(monitorLock);
-        GraalAbstractQueuedSynchronizer.GraalConditionObject existingCondition = monitorLock.getCondition();
+        JavaMonitorConditionObject existingCondition = monitorLock.getCondition();
         if (existingCondition == MONITOR_WITHOUT_CONDITION) {
             existingCondition = null;
         }
@@ -511,40 +479,33 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             assert existingCondition == null || isMonitorCondition(existingCondition);
             return existingCondition;
         }
-        GraalAbstractQueuedSynchronizer.GraalConditionObject newCondition = (GraalAbstractQueuedSynchronizer.GraalConditionObject) monitorLock.newCondition();
+        JavaMonitorConditionObject newCondition = (JavaMonitorConditionObject) monitorLock.newCondition();
         if (!UNSAFE.compareAndSetObject(monitorLock.getSync(), SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
-            newCondition = monitorLock.getCondition(); //SubstrateUtil.cast(sync.objectMonitorCondition, GraalAbstractQueuedSynchronizer.GraalConditionObject.class);
+            newCondition = monitorLock.getCondition();
             assert isMonitorCondition(newCondition) : "race winner must have installed valid condition";
         }
         return newCondition;
     }
 
     protected static boolean isMonitorCondition(Object obj) {
-        if (obj != null && obj.getClass() == GraalAbstractQueuedSynchronizer.GraalConditionObject.class) {
-            GraalAbstractQueuedSynchronizer enclosing = ((GraalAbstractQueuedSynchronizer.GraalConditionObject) obj).getOuter();
-            if (enclosing.getClass() == GraalReentrantLock.GraalNonfairSync.class) {
-                GraalReentrantLock.GraalNonfairSync sync = (GraalReentrantLock.GraalNonfairSync) enclosing;
-                return obj == sync.getGraalConditionObject();
+        if (obj != null && obj.getClass() == JavaMonitorConditionObject.class) {
+            JavaMonitorAbstractQueuedSynchronizer enclosing = ((JavaMonitorConditionObject) obj).getOuter();
+            if (enclosing.getClass() == JavaMonitor.Sync.class) {
+                JavaMonitor.Sync sync = (JavaMonitor.Sync) enclosing;
+                return obj == sync.getJavaMonitorConditionObject();
             }
         }
         return false;
     }
 }
 
-@TargetClass(value = AbstractOwnableSynchronizer.class)
-final class Target_java_util_concurrent_locks_AbstractOwnableSynchronizer {
-
-    @Alias //
-    Thread exclusiveOwnerThread;
-}
-
 // Checkstyle: stop
 @TargetClass(MultiThreadedMonitorSupport.class)
 final class Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "graalConditionObject", declClass = GraalReentrantLock.Sync.class)//Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "javaMonitorConditionObject", declClass = JavaMonitor.Sync.class)//Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) //
     static long SYNC_MONITOR_CONDITION_FIELD_OFFSET;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "state", declClass = GraalAbstractQueuedSynchronizer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "state", declClass = JavaMonitorAbstractQueuedSynchronizer.class) //
     static long SYNC_STATE_FIELD_OFFSET;
 }
 

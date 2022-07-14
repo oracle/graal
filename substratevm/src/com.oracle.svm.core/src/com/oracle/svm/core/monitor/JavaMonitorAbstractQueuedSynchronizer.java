@@ -32,7 +32,6 @@ import java.util.Date;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 
@@ -42,34 +41,46 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.SubstrateUtil;
 
-/*
-GraalAbstractQueuedSynchronizer is derived from the AbstractQueuedSynchronizer class in the jdk 19 sources. Only the methods required for
-substrateVM monitor support have been kept. Additional functionality specific to substrateVM has been added.
+/**
+ * JavaMonitorAbstractQueuedSynchronizer is derived from the AbstractQueuedSynchronizer class in the jdk 19 sources.
+ * Git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec. JDK tag: jdk-19+30
+ *
+ * Only the methods required for substrateVM monitor support have been kept.
+ * Additional functionality specific to substrateVM has been added.
  */
-public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer {
-    private static final long serialVersionUID = 7373984972572414691L;
+public class JavaMonitorAbstractQueuedSynchronizer {
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative
     static final int COND = 2; // in a condition wait
     private static final Unsafe U = Unsafe.getUnsafe();
-    private static final long STATE = U.objectFieldOffset(GraalAbstractQueuedSynchronizer.class, "state");
-    private static final long HEAD = U.objectFieldOffset(GraalAbstractQueuedSynchronizer.class, "head");
-    private static final long TAIL = U.objectFieldOffset(GraalAbstractQueuedSynchronizer.class, "tail");
+    private static final long STATE = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "state");
+    private static final long HEAD = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "head");
+    private static final long TAIL = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "tail");
     private volatile int state;
-    private transient volatile GraalAbstractQueuedSynchronizer.Node head;
-    private transient volatile GraalAbstractQueuedSynchronizer.Node tail;
+    private transient volatile JavaMonitorAbstractQueuedSynchronizer.Node head;
+    private transient volatile JavaMonitorAbstractQueuedSynchronizer.Node tail;
 
-    private static void signalNext(GraalAbstractQueuedSynchronizer.Node h) {
-        GraalAbstractQueuedSynchronizer.Node s;
+    private transient Thread exclusiveOwnerThread;
+
+    protected final void setExclusiveOwnerThread(Thread thread) {
+        this.exclusiveOwnerThread = thread;
+    }
+
+    protected final Thread getExclusiveOwnerThread() {
+        return this.exclusiveOwnerThread;
+    }
+
+    private static void signalNext(JavaMonitorAbstractQueuedSynchronizer.Node h) {
+        JavaMonitorAbstractQueuedSynchronizer.Node s;
         if (h != null && (s = h.next) != null && s.status != 0) {
             s.getAndUnsetStatus(WAITING);
             LockSupport.unpark(s.waiter);
         }
     }
 
-    private static void signalNextIfShared(GraalAbstractQueuedSynchronizer.Node h) {
-        GraalAbstractQueuedSynchronizer.Node s;
-        if (h != null && (s = h.next) != null && (s instanceof GraalAbstractQueuedSynchronizer.SharedNode)
+    private static void signalNextIfShared(JavaMonitorAbstractQueuedSynchronizer.Node h) {
+        JavaMonitorAbstractQueuedSynchronizer.Node s;
+        if (h != null && (s = h.next) != null && (s instanceof JavaMonitorAbstractQueuedSynchronizer.SharedNode)
                 && s.status != 0) {
             s.getAndUnsetStatus(WAITING);
             LockSupport.unpark(s.waiter);
@@ -85,29 +96,20 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         this.state = newState;
     }
 
-    protected final Thread getExclusiveOwnerThread1() {
-        return getExclusiveOwnerThread();
-    }
-
-    protected final void setExclusiveOwnerThread1(Thread thread) {
-        setExclusiveOwnerThread(thread);
-    }
-
     public final void acquire(int arg) {
         if (!tryAcquire(arg)) {
-            acquire(null, arg, false, false, false, 0L);
+            acquire(null, arg);
         }
 
     }
 
-    final int acquire(GraalAbstractQueuedSynchronizer.Node node, int arg, boolean shared, boolean interruptible,
-                      boolean timed, long time) {
+    final int acquire(JavaMonitorAbstractQueuedSynchronizer.Node node, int arg) {
         Thread current = Thread.currentThread();
         byte spins = 0;
         byte postSpins = 0; // retries upon unpark of first thread
         boolean interrupted = false;
         boolean first = false;
-        GraalAbstractQueuedSynchronizer.Node pred = null; // predecessor of node when enqueued
+        JavaMonitorAbstractQueuedSynchronizer.Node pred = null; // predecessor of node when enqueued
 
         /*
          * Repeatedly: Check if node now first if so, ensure head stable, else ensure
@@ -131,11 +133,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             if (first || pred == null) {
                 boolean acquired;
                 try {
-                    if (shared) {
-                        acquired = (tryAcquireShared(arg) >= 0);
-                    } else {
-                        acquired = tryAcquire(arg);
-                    }
+                    acquired = tryAcquire(arg);
                 } catch (Throwable ex) {
                     cancelAcquire(node, interrupted, false);
                     throw ex;
@@ -146,9 +144,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
                         head = node;
                         pred.next = null;
                         node.waiter = null;
-                        if (shared) {
-                            signalNextIfShared(node);
-                        }
+
                         if (interrupted) {
                             current.interrupt();
                         }
@@ -157,14 +153,10 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
                 }
             }
             if (node == null) { // allocate; retry before enqueue
-                if (shared) {
-                    node = new GraalAbstractQueuedSynchronizer.SharedNode();
-                } else {
-                    node = new GraalAbstractQueuedSynchronizer.ExclusiveNode();
-                }
+                node = new JavaMonitorAbstractQueuedSynchronizer.ExclusiveNode();
             } else if (pred == null) { // try to enqueue
                 node.waiter = current;
-                GraalAbstractQueuedSynchronizer.Node t = tail;
+                JavaMonitorAbstractQueuedSynchronizer.Node t = tail;
                 node.setPrevRelaxed(t); // avoid unnecessary fence
                 if (t == null) {
                     tryInitializeHead();
@@ -181,25 +173,16 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             } else {
                 long nanos;
                 spins = postSpins = (byte) ((postSpins << 1) | 1);
-                if (!timed) {
-                    LockSupport.park(this);
-                } else if ((nanos = time - System.nanoTime()) > 0L) {
-                    LockSupport.parkNanos(this, nanos);
-                } else {
-                    break;
-                }
+                LockSupport.park(this);
                 node.clearStatus();
-                if ((interrupted |= Thread.interrupted()) && interruptible) {
-                    break;
-                }
+
             }
         }
-        return cancelAcquire(node, interrupted, interruptible);
     }
 
     private void cleanQueue() {
         for (;;) { // restart point
-            for (GraalAbstractQueuedSynchronizer.Node q = tail, s = null, p, n;;) { // (p, q, s) triples
+            for (JavaMonitorAbstractQueuedSynchronizer.Node q = tail, s = null, p, n;;) { // (p, q, s) triples
                 if (q == null || (p = q.prev) == null) {
                     return; // end of list
                 }
@@ -230,7 +213,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
     }
 
-    private int cancelAcquire(GraalAbstractQueuedSynchronizer.Node node, boolean interrupted, boolean interruptible) {
+    private int cancelAcquire(JavaMonitorAbstractQueuedSynchronizer.Node node, boolean interrupted, boolean interruptible) {
         if (node != null) {
             node.waiter = null;
             node.status = CANCELLED;
@@ -248,7 +231,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         return 0;
     }
 
-    private boolean casTail(GraalAbstractQueuedSynchronizer.Node c, GraalAbstractQueuedSynchronizer.Node v) {
+    private boolean casTail(JavaMonitorAbstractQueuedSynchronizer.Node c, JavaMonitorAbstractQueuedSynchronizer.Node v) {
         Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
         if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
             return u.compareAndSetReference(this, TAIL, c, v);
@@ -257,7 +240,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
     }
 
     private void tryInitializeHead() {
-        GraalAbstractQueuedSynchronizer.Node h = new GraalAbstractQueuedSynchronizer.ExclusiveNode();
+        JavaMonitorAbstractQueuedSynchronizer.Node h = new JavaMonitorAbstractQueuedSynchronizer.ExclusiveNode();
         Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
         if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
             if (u.compareAndSetReference(this, HEAD, null, h)) {
@@ -299,8 +282,8 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
     }
 
-    final boolean isEnqueued(GraalAbstractQueuedSynchronizer.Node node) {
-        for (GraalAbstractQueuedSynchronizer.Node t = tail; t != null; t = t.prev) {
+    final boolean isEnqueued(JavaMonitorAbstractQueuedSynchronizer.Node node) {
+        for (JavaMonitorAbstractQueuedSynchronizer.Node t = tail; t != null; t = t.prev) {
             if (t == node) {
                 return true;
             }
@@ -308,10 +291,10 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         return false;
     }
 
-    final void enqueue(GraalAbstractQueuedSynchronizer.Node node) {
+    final void enqueue(JavaMonitorAbstractQueuedSynchronizer.Node node) {
         if (node != null) {
             for (;;) {
-                GraalAbstractQueuedSynchronizer.Node t = tail;
+                JavaMonitorAbstractQueuedSynchronizer.Node t = tail;
                 node.setPrevRelaxed(t); // avoid unnecessary fence
                 if (t == null) { // initialize
                     tryInitializeHead();
@@ -326,10 +309,10 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
     }
 
-    static final class ExclusiveNode extends GraalAbstractQueuedSynchronizer.Node {
+    static final class ExclusiveNode extends JavaMonitorAbstractQueuedSynchronizer.Node {
     }
 
-    static final class SharedNode extends GraalAbstractQueuedSynchronizer.Node {
+    static final class SharedNode extends JavaMonitorAbstractQueuedSynchronizer.Node {
     }
 
     abstract static class Node {
@@ -338,23 +321,23 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         private static final long PREV;
 
         static {
-            STATUS = GraalAbstractQueuedSynchronizer.U.objectFieldOffset(GraalAbstractQueuedSynchronizer.Node.class,
+            STATUS = JavaMonitorAbstractQueuedSynchronizer.U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.Node.class,
                     "status");
-            NEXT = GraalAbstractQueuedSynchronizer.U.objectFieldOffset(GraalAbstractQueuedSynchronizer.Node.class,
+            NEXT = JavaMonitorAbstractQueuedSynchronizer.U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.Node.class,
                     "next");
-            PREV = GraalAbstractQueuedSynchronizer.U.objectFieldOffset(GraalAbstractQueuedSynchronizer.Node.class,
+            PREV = JavaMonitorAbstractQueuedSynchronizer.U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.Node.class,
                     "prev");
         }
 
-        volatile GraalAbstractQueuedSynchronizer.Node prev;
-        volatile GraalAbstractQueuedSynchronizer.Node next;
+        volatile JavaMonitorAbstractQueuedSynchronizer.Node prev;
+        volatile JavaMonitorAbstractQueuedSynchronizer.Node next;
         Thread waiter;
         volatile int status;
 
         Node() {
         }
 
-        final boolean casPrev(GraalAbstractQueuedSynchronizer.Node c, GraalAbstractQueuedSynchronizer.Node v) {
+        final boolean casPrev(JavaMonitorAbstractQueuedSynchronizer.Node c, JavaMonitorAbstractQueuedSynchronizer.Node v) {
             Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
             if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
                 return u.weakCompareAndSetReference(this, PREV, c, v);
@@ -363,7 +346,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             }
         }
 
-        final boolean casNext(GraalAbstractQueuedSynchronizer.Node c, GraalAbstractQueuedSynchronizer.Node v) {
+        final boolean casNext(JavaMonitorAbstractQueuedSynchronizer.Node c, JavaMonitorAbstractQueuedSynchronizer.Node v) {
             Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
             if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
                 return u.weakCompareAndSetReference(this, NEXT, c, v);
@@ -373,10 +356,10 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
 
         final int getAndUnsetStatus(int v) {
-            return GraalAbstractQueuedSynchronizer.U.getAndBitwiseAndInt(this, STATUS, ~v);
+            return JavaMonitorAbstractQueuedSynchronizer.U.getAndBitwiseAndInt(this, STATUS, ~v);
         }
 
-        final void setPrevRelaxed(GraalAbstractQueuedSynchronizer.Node p) {
+        final void setPrevRelaxed(JavaMonitorAbstractQueuedSynchronizer.Node p) {
             Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
             if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
                 u.putReference(this, PREV, p);
@@ -386,17 +369,17 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
 
         final void setStatusRelaxed(int s) {
-            GraalAbstractQueuedSynchronizer.U.putInt(this, STATUS, s);
+            JavaMonitorAbstractQueuedSynchronizer.U.putInt(this, STATUS, s);
         }
 
         final void clearStatus() {
-            GraalAbstractQueuedSynchronizer.U.putIntOpaque(this, STATUS, 0);
+            JavaMonitorAbstractQueuedSynchronizer.U.putIntOpaque(this, STATUS, 0);
         }
     }
 
-    static final class ConditionNode extends GraalAbstractQueuedSynchronizer.Node
+    static final class ConditionNode extends JavaMonitorAbstractQueuedSynchronizer.Node
             implements ForkJoinPool.ManagedBlocker {
-        GraalAbstractQueuedSynchronizer.ConditionNode nextWaiter; // link to next waiting node
+        JavaMonitorAbstractQueuedSynchronizer.ConditionNode nextWaiter; // link to next waiting node
 
         /**
          * Allows Conditions to be used in ForkJoinPools without risking fixed pool
@@ -419,22 +402,21 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         }
     }
 
-    public class GraalConditionObject implements Condition, java.io.Serializable {
-        private static final long serialVersionUID = 1173984872572414699L;
+    public class JavaMonitorConditionObject implements Condition{
         /**
          * First node of condition queue.
          */
-        private transient GraalAbstractQueuedSynchronizer.ConditionNode firstWaiter;
+        private transient JavaMonitorAbstractQueuedSynchronizer.ConditionNode firstWaiter;
         /**
          * Last node of condition queue.
          */
-        private transient GraalAbstractQueuedSynchronizer.ConditionNode lastWaiter;
+        private transient JavaMonitorAbstractQueuedSynchronizer.ConditionNode lastWaiter;
 
-        public GraalConditionObject() {
+        public JavaMonitorConditionObject() {
         }
 
-        public GraalAbstractQueuedSynchronizer getOuter() {
-            return GraalAbstractQueuedSynchronizer.this;
+        public JavaMonitorAbstractQueuedSynchronizer getOuter() {
+            return JavaMonitorAbstractQueuedSynchronizer.this;
         }
 
         // Signalling methods
@@ -442,9 +424,9 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
         /**
          * Removes and transfers one or all waiters to sync queue.
          */
-        private void doSignal(GraalAbstractQueuedSynchronizer.ConditionNode first, boolean all) {
+        private void doSignal(JavaMonitorAbstractQueuedSynchronizer.ConditionNode first, boolean all) {
             while (first != null) {
-                GraalAbstractQueuedSynchronizer.ConditionNode next = first.nextWaiter;
+                JavaMonitorAbstractQueuedSynchronizer.ConditionNode next = first.nextWaiter;
                 if ((firstWaiter = next) == null) {
                     lastWaiter = null;
                 }
@@ -467,7 +449,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
          */
         @Override
         public final void signal() {
-            GraalAbstractQueuedSynchronizer.ConditionNode first = firstWaiter;
+            JavaMonitorAbstractQueuedSynchronizer.ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
                 throw new IllegalMonitorStateException();
             }
@@ -485,7 +467,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
          */
         @Override
         public final void signalAll() {
-            GraalAbstractQueuedSynchronizer.ConditionNode first = firstWaiter;
+            JavaMonitorAbstractQueuedSynchronizer.ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
                 throw new IllegalMonitorStateException();
             }
@@ -494,18 +476,18 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             }
         }
 
-        private boolean canReacquire(GraalAbstractQueuedSynchronizer.ConditionNode node) {
+        private boolean canReacquire(JavaMonitorAbstractQueuedSynchronizer.ConditionNode node) {
             // check links, not status to avoid enqueue race
-            GraalAbstractQueuedSynchronizer.Node p; // traverse unless known to be bidirectionally linked
+            JavaMonitorAbstractQueuedSynchronizer.Node p; // traverse unless known to be bidirectionally linked
             return node != null && (p = node.prev) != null && (p.next == node || isEnqueued(node));
         }
 
-        private void unlinkCancelledWaiters(GraalAbstractQueuedSynchronizer.ConditionNode node) {
+        private void unlinkCancelledWaiters(JavaMonitorAbstractQueuedSynchronizer.ConditionNode node) {
             if (node == null || node.nextWaiter != null || node == lastWaiter) {
-                GraalAbstractQueuedSynchronizer.ConditionNode w = firstWaiter;
-                GraalAbstractQueuedSynchronizer.ConditionNode trail = null;
+                JavaMonitorAbstractQueuedSynchronizer.ConditionNode w = firstWaiter;
+                JavaMonitorAbstractQueuedSynchronizer.ConditionNode trail = null;
                 while (w != null) {
-                    GraalAbstractQueuedSynchronizer.ConditionNode next = w.nextWaiter;
+                    JavaMonitorAbstractQueuedSynchronizer.ConditionNode next = w.nextWaiter;
                     if ((w.status & COND) == 0) {
                         w.nextWaiter = null;
                         if (trail == null) {
@@ -539,7 +521,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             if (Thread.interrupted()) {
                 throw new InterruptedException();
             }
-            GraalAbstractQueuedSynchronizer.ConditionNode node = new GraalAbstractQueuedSynchronizer.ConditionNode();
+            JavaMonitorAbstractQueuedSynchronizer.ConditionNode node = new JavaMonitorAbstractQueuedSynchronizer.ConditionNode();
             int savedState = enableWait(node);
             if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
                 Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(this); // for back-compatibility
@@ -572,7 +554,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
                 Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(null);
             }
             node.clearStatus();
-            acquire(node, savedState, false, false, false, 0L);
+            acquire(node, savedState);
             if (interrupted) {
                 if (cancelled) {
                     unlinkCancelledWaiters(node);
@@ -588,7 +570,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             if (Thread.interrupted()) {
                 throw new InterruptedException();
             }
-            GraalAbstractQueuedSynchronizer.ConditionNode node = new GraalAbstractQueuedSynchronizer.ConditionNode();
+            JavaMonitorAbstractQueuedSynchronizer.ConditionNode node = new JavaMonitorAbstractQueuedSynchronizer.ConditionNode();
             int savedState = enableWait(node);
             long nanos = (nanosTimeout < 0L) ? 0L : nanosTimeout;
             long deadline = System.nanoTime() + nanos;
@@ -604,7 +586,7 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
                 }
             }
             node.clearStatus();
-            acquire(node, savedState, false, false, false, 0L);
+            acquire(node, savedState);
             if (cancelled) {
                 unlinkCancelledWaiters(node);
                 if (interrupted) {
@@ -621,11 +603,11 @@ public class GraalAbstractQueuedSynchronizer extends AbstractOwnableSynchronizer
             throw new UnsupportedOperationException();
         }
 
-        private int enableWait(GraalAbstractQueuedSynchronizer.ConditionNode node) {
+        private int enableWait(JavaMonitorAbstractQueuedSynchronizer.ConditionNode node) {
             if (isHeldExclusively()) {
                 node.waiter = Thread.currentThread();
                 node.setStatusRelaxed(COND | WAITING);
-                GraalAbstractQueuedSynchronizer.ConditionNode last = lastWaiter;
+                JavaMonitorAbstractQueuedSynchronizer.ConditionNode last = lastWaiter;
                 if (last == null) {
                     firstWaiter = node;
                 } else {
