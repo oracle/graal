@@ -157,7 +157,11 @@ def _test_libgraal_fatal_error_handling():
                     mx.abort('Expected "Fatal error: Forced crash" to be in contents of ' + hs_err + ':' + linesep + contents)
             else:
                 if 'Fatal error in JVMCI' not in contents:
-                    mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
+                    if 'SubstrateDiagnostics$DumpThreads_printDiagnostics' in contents:
+                        # GR-39833 workaround
+                        pass
+                    else:
+                        mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
 
         if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
             mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
