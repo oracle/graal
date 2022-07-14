@@ -977,9 +977,10 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
             graal_test = mx.distribution('GRAAL_TEST', fatalIfMissing=False)
-            if graal_test:
-                # If the GRAAL_TEST distribution is available, the
-                # CompileTheWorld benchmark is available.
+            polybench_ee = mx.distribution('POLYBENCH_EE', fatalIfMissing=False)
+            if graal_test and polybench_ee:
+                # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
+                # are present, the CompileTheWorld benchmark is available.
                 self._benchmarks = ['CompileTheWorld']
             for group in ["interpreter", "compiler", "warmup", "nfi"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
