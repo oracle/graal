@@ -204,16 +204,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final int CAN_INSTANTIATE_AS_INSTANCE_BIT = 1;
 
     /**
-     * Boolean value or exception that happened at image-build time.
-     */
-    private final Object isLocalClass;
-
-    /**
-     * Boolean value or exception that happened at image-build time.
-     */
-    private final Object isAnonymousClass;
-
-    /**
      * The {@link Modifier modifiers} of this class.
      */
     private final int modifiers;
@@ -345,15 +335,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @UnknownObjectField(types = ReflectionMetadata.class, canBeNull = true) private ReflectionMetadata reflectionMetadata;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
+    public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub,
                     String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
                     boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed, String simpleBinaryName, Object declaringClass) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
-        this.isLocalClass = isLocalClass;
-        this.isAnonymousClass = isAnonymousClass;
         this.superHub = superType;
         this.componentType = componentHub;
         this.sourceFileName = sourceFileName;
@@ -766,10 +754,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native <U> Class<? extends U> asSubclass(Class<U> clazz);
 
-    @Substitute
-    private boolean isAnonymousClass() {
-        return booleanOrError(isAnonymousClass);
-    }
+    @KeepOriginal
+    private native boolean isAnonymousClass();
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
@@ -789,30 +775,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return isFlagSet(flags, IS_SEALED_FLAG_BIT);
     }
 
-    @Substitute
-    private boolean isLocalClass() {
-        return booleanOrError(isLocalClass);
-    }
-
-    private static boolean booleanOrError(Object value) {
-        if (value instanceof Boolean) {
-            return (Boolean) value;
-        } else if (value instanceof LinkageError) {
-            throw (LinkageError) value;
-        } else if (value instanceof InternalError) {
-            throw (InternalError) value;
-        } else {
-            throw VMError.shouldNotReachHere();
-        }
-    }
+    @KeepOriginal
+    private native boolean isLocalClass();
 
     @KeepOriginal
     private native boolean isMemberClass();
 
-    @Substitute
-    public boolean isLocalOrAnonymousClass() {
-        return isLocalClass() || isAnonymousClass();
-    }
+    @KeepOriginal
+    private native boolean isLocalOrAnonymousClass();
 
     @KeepOriginal
     private native Class<?> getEnclosingClass();
@@ -1451,6 +1421,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     private native Target_java_lang_Class_EnclosingMethodInfo getEnclosingMethodInfo();
+
+    @KeepOriginal
+    private native boolean hasEnclosingMethodInfo();
 
     @KeepOriginal
     private native <T> Target_java_lang_Class_ReflectionData<T> newReflectionData(SoftReference<Target_java_lang_Class_ReflectionData<T>> oldReflectionData,

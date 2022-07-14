@@ -393,35 +393,10 @@ public class SVMHost extends HostVM {
         boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
 
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
-                        isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
-                        type.declaresDefaultMethods(), isSealed, simpleBinaryName, getDeclaringClass(javaClass));
+                        superHub, componentHub, sourceFileName, modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus,
+                        type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, simpleBinaryName, getDeclaringClass(javaClass));
         ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
-    }
-
-    private Object isLocalClass(Class<?> javaClass) {
-        try {
-            return javaClass.isLocalClass();
-        } catch (InternalError e) {
-            return e;
-        } catch (LinkageError e) {
-            return handleLinkageError(javaClass, "isLocalClass", e);
-        }
-    }
-
-    /**
-     * @return boolean if class is available or LinkageError if class' parents are not on the
-     *         classpath or InternalError if the class is invalid.
-     */
-    private Object isAnonymousClass(Class<?> javaClass) {
-        try {
-            return javaClass.isAnonymousClass();
-        } catch (InternalError e) {
-            return e;
-        } catch (LinkageError e) {
-            return handleLinkageError(javaClass, "isAnonymousClass", e);
-        }
     }
 
     private final Method getDeclaringClass0 = ReflectionUtil.lookupMethod(Class.class, "getDeclaringClass0");
