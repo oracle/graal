@@ -9,40 +9,12 @@ local common_json = composable(import '../../common.json');
 local jdks = common_json.jdks;
 
 {
-  vm_java_11:: graal_common.labsjdk11 + {
-    environment+: {
-      BASE_JDK_NAME: jdks['labsjdk-ce-11'].name,
-      BASE_JDK_VERSION: jdks['labsjdk-ce-11'].version,
-      BASE_JDK_SHORT_VERSION: '11',
-    },
-  },
-  vm_java_17:: graal_common.labsjdk17 + {
-    environment+: {
-      BASE_JDK_NAME: jdks['labsjdk-ce-17'].name,
-      BASE_JDK_VERSION: jdks['labsjdk-ce-17'].version,
-      BASE_JDK_SHORT_VERSION: '17',
-    },
-  },
+  vm_java_11:: graal_common.labsjdk11 + vm_common.vm_env_mixin('11'),
+  vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
+  vm_java_19:: graal_common.labsjdk19 + vm_common.vm_env_mixin('19'),
 
-  vm_java_19:: graal_common.labsjdk19 + {
-    environment+: {
-      BASE_JDK_NAME: jdks['labsjdk-ce-19'].name,
-      BASE_JDK_VERSION: jdks['labsjdk-ce-19'].version,
-      BASE_JDK_SHORT_VERSION: '19',
-    },
-  },
-
-  vm_java_11_llvm:: self.vm_java_11 + {
-    downloads+: {
-      LLVM_JAVA_HOME: jdks['labsjdk-ce-11-llvm'],
-    },
-  },
-
-  vm_java_17_llvm:: self.vm_java_17 + {
-    downloads+: {
-      LLVM_JAVA_HOME: jdks['labsjdk-ce-17-llvm'],
-    },
-  },
+  vm_java_11_llvm:: self.vm_java_11 + graal_common['labsjdk-ce-11-llvm'],
+  vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
 
   vm_java_19_llvm:: self.vm_java_19 + {
     downloads+: {

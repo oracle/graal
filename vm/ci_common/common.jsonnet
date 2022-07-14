@@ -13,6 +13,15 @@ local devkits = common_json.devkits;
     assert std.endsWith(build.name, self.expected_suffix) : "'%s' is defined in '%s' with os/arch '%s/%s' but does not end with '%s'" % [build.name, build.defined_in, build.os, build.arch, self.expected_suffix],
   },
 
+  vm_env_mixin(shortverison): {
+    local jdk = self.downloads.JAVA_HOME,
+    environment+: {
+      BASE_JDK_NAME: jdk.name,
+      BASE_JDK_VERSION: jdk.version,
+      BASE_JDK_SHORT_VERSION: shortverison,
+    },
+  },
+
   common_vm: graal_common.build_base + vm.vm_setup + {
     python_version: "3",
     logs+: [
@@ -688,8 +697,7 @@ local devkits = common_json.devkits;
     self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-quickbuild-17-linux-amd64' },
     self.gate_vm_linux_amd64 + self.libgraal_truffle_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-truffle-quickbuild-17-linux-amd64' },
 
-    # requires compiler changes GR-39169
-    # self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_19 + { name: 'gate-vm-libgraal-compiler-quickbuild-19-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_19 + { name: 'gate-vm-libgraal-compiler-quickbuild-19-linux-amd64' },
 
     vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + vm.vm_unittest + {
      run: [
