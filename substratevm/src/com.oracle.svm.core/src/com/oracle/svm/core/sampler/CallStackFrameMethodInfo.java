@@ -68,8 +68,8 @@ public class CallStackFrameMethodInfo {
         return enterSafepointCheckId == methodId || enterSafepointFromNativeId == methodId;
     }
 
-    public void setEnterSamplingCodeMethodId(int i, int i1, int i2) {
+    public void setEnterSamplingCodeMethodId(int i) {
         enterSafepointCheckId = i;
-        enterSafepointFromNativeId = i1;
+        enterSafepointFromNativeId = i;
     }
 }

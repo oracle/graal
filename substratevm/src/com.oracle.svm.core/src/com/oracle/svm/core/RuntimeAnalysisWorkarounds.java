@@ -30,6 +30,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public class RuntimeAnalysisWorkarounds {
+
     public static class Options {
         @Option(help = "Use the option to avoid the initial value of the enterSamplingCodeMethodId constant folding. " +
                         "The value of this option must never be set to true in order to keep the correct information in the variable.")//
@@ -45,7 +46,7 @@ public class RuntimeAnalysisWorkarounds {
          * folding. The condition must always be false, and it can't be proved as false.
          */
         if (Options.ConstantFoldSamplingCodeStartId.getValue()) {
-            ImageSingletons.lookup(CallStackFrameMethodInfo.class).setEnterSamplingCodeMethodId(0, 0, 0);
+            ImageSingletons.lookup(CallStackFrameMethodInfo.class).setEnterSamplingCodeMethodId(0);
         }
     }
 }
