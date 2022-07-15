@@ -321,10 +321,8 @@ public final class TruffleStringIterator {
                 }
                 return Encodings.invalidCodepointReturnValue(it.errorHandling);
             }
-            int codePoint = JCodings.getInstance().readCodePoint(jCoding, bytes, p, end);
-            assert codePoint >= 0;
             it.rawIndex += length;
-            return codePoint;
+            return JCodings.getInstance().readCodePoint(jCoding, bytes, p, end);
         }
 
         /**
@@ -509,10 +507,8 @@ public final class TruffleStringIterator {
             }
             assert prevIndex >= it.a.byteArrayOffset();
             assert prevIndex < index;
-            int codePoint = JCodings.getInstance().readCodePoint(jCoding, bytes, prevIndex, end);
-            assert codePoint >= 0;
             it.rawIndex = prevIndex - it.a.byteArrayOffset();
-            return codePoint;
+            return JCodings.getInstance().readCodePoint(jCoding, bytes, prevIndex, end);
         }
 
         /**

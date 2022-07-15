@@ -98,4 +98,10 @@ public class TStringCornerCaseTests extends TStringTestBase {
         TruffleString a = TruffleString.fromCodePointUncached((int) 0x81308130L, TruffleString.Encoding.GB18030, false);
         Assert.assertEquals(1, a.codePointLengthUncached(TruffleString.Encoding.GB18030));
     }
+
+    @Test
+    public void testNegativeCodepoint() {
+        TruffleString a = TruffleString.fromByteArrayUncached(byteArray(0x8e, 0xa2, 0xa1, 0xa1), TruffleString.Encoding.EUC_TW);
+        Assert.assertEquals(0x8ea2a1a1, a.codePointAtByteIndexUncached(0, TruffleString.Encoding.EUC_TW, TruffleString.ErrorHandling.RETURN_NEGATIVE));
+    }
 }

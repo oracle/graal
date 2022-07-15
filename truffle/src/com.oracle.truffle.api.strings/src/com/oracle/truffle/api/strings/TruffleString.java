@@ -1589,11 +1589,11 @@ public final class TruffleString extends AbstractTruffleString {
             final int stride;
             final int codeRange;
             if (utf8Profile.profile(isUTF8(enc))) {
-                assert c > 0x7f;
                 if (!Encodings.isValidUnicodeCodepoint(c)) {
                     invalidCodePoint.enter();
                     return null;
                 }
+                assert c > 0x7f;
                 bytes = Encodings.utf8Encode(c);
                 length = bytes.length;
                 stride = 0;
@@ -1671,7 +1671,7 @@ public final class TruffleString extends AbstractTruffleString {
                     return null;
                 }
             } else {
-                assert isAscii(enc) && c > 0x7f || (isLatin1(enc) && c > 0xff);
+                assert isAscii(enc) && Integer.compareUnsigned(c, 0x7f) > 0 || (isLatin1(enc) && Integer.compareUnsigned(c, 0xff) > 0);
                 invalidCodePoint.enter();
                 return null;
             }

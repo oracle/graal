@@ -209,9 +209,7 @@ final class JCodingsImpl implements JCodings {
         if (length < 1) {
             return Encodings.invalidCodepointReturnValue(errorHandling);
         }
-        int codePoint = readCodePoint(jCoding, arrayA, p, end);
-        assert codePoint >= 0;
-        return codePoint;
+        return readCodePoint(jCoding, arrayA, p, end);
     }
 
     @Override
