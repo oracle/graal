@@ -1570,19 +1570,15 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached BranchProfile invalidCodePoint) {
             assert !allowUTF16Surrogates || isUTF16Or32(enc) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
             CompilerAsserts.partialEvaluationConstant(allowUTF16Surrogates);
-            if (Integer.toUnsignedLong(c) > 0x10ffff) {
-                invalidCodePoint.enter();
-                return null;
-            }
-            if (is7BitCompatible(enc) && c <= 0x7f) {
+            if (is7BitCompatible(enc) && Integer.compareUnsigned(c, 0x7f) <= 0) {
                 return TStringConstants.getSingleByteAscii(enc.id, c);
             }
-            if (is8BitCompatible(enc) && c <= 0xff) {
+            if (is8BitCompatible(enc) && Integer.compareUnsigned(c, 0xff) <= 0) {
                 assert isSupportedEncoding(enc);
                 return TStringConstants.getSingleByte(enc.id, c);
             }
             if (bytesProfile.profile(isBytes(enc))) {
-                if (c > 0xff) {
+                if (Integer.compareUnsigned(c, 0xff) > 0) {
                     invalidCodePoint.enter();
                     return null;
                 }
@@ -1594,7 +1590,7 @@ public final class TruffleString extends AbstractTruffleString {
             final int codeRange;
             if (utf8Profile.profile(isUTF8(enc))) {
                 assert c > 0x7f;
-                if (Encodings.isUTF16Surrogate(c)) {
+                if (!Encodings.isValidUnicodeCodepoint(c)) {
                     invalidCodePoint.enter();
                     return null;
                 }
@@ -1603,6 +1599,10 @@ public final class TruffleString extends AbstractTruffleString {
                 stride = 0;
                 codeRange = TSCodeRange.getValidMultiByte();
             } else if (utf16Profile.profile(isUTF16(enc))) {
+                if (Integer.toUnsignedLong(c) > 0x10ffff) {
+                    invalidCodePoint.enter();
+                    return null;
+                }
                 assert c > 0xff;
                 bytes = new byte[c <= 0xffff ? 2 : 4];
                 stride = 1;
@@ -1625,6 +1625,10 @@ public final class TruffleString extends AbstractTruffleString {
                     Encodings.utf16EncodeSurrogatePair(c, bytes, 0);
                 }
             } else if (utf32Profile.profile(isUTF32(enc))) {
+                if (Integer.toUnsignedLong(c) > 0x10ffff) {
+                    invalidCodePoint.enter();
+                    return null;
+                }
                 assert c > 0xff;
                 if (c <= 0xffff) {
                     if (Encodings.isUTF16Surrogate(c)) {
