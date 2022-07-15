@@ -3180,8 +3180,8 @@ public final class TruffleString extends AbstractTruffleString {
          *            {@code i}</li>
          *            <li>All other Encodings: Unicode Replacement character {@code 0xFFFD}</li>
          *            </ul>
-         *            If set to {@link ErrorHandling#RETURN_NEGATIVE}, a negative value will be
-         *            returned instead. This parameter is expected to be
+         *            If set to {@link ErrorHandling#RETURN_NEGATIVE}, {@code -1} will be returned
+         *            instead. This parameter is expected to be
          *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
          *            constant}.
          *
@@ -3248,23 +3248,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Decode and return the codepoint at byte index {@code i}.
          *
-         * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, the return value on
-         *            invalid codepoints depends on {@code expectedEncoding}:
-         *            <ul>
-         *            <li>{@link Encoding#UTF_8}: Unicode Replacement character {@code 0xFFFD}</li>
-         *            <li>{@link Encoding#UTF_16}: the (16-bit) {@code char} value read at index
-         *            {@code i}</li>
-         *            <li>{@link Encoding#UTF_32}: the (32-bit) {@code int} value read at index
-         *            {@code i}</li>
-         *            <li>{@link Encoding#US_ASCII}, {@link Encoding#ISO_8859_1},
-         *            {@link Encoding#BYTES}: the (8-bit) unsigned {@code byte} value read at index
-         *            {@code i}</li>
-         *            <li>All other Encodings: Unicode Replacement character {@code 0xFFFD}</li>
-         *            </ul>
-         *            If set to {@link ErrorHandling#RETURN_NEGATIVE}, a negative value will be
-         *            returned instead. This parameter is expected to be
-         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-         *            constant}.
+         * @param errorHandling analogous to {@link CodePointAtIndexNode}.
          * 
          * @since 22.3
          */
@@ -5833,7 +5817,10 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Returns a {@link TruffleStringIterator}, which allows iterating this string's code
-         * points.
+         * points. The iterator is initialized to begin iteration at the start of the string, use
+         * {@link TruffleStringIterator.NextNode} to iterate.
+         *
+         * @param errorHandling analogous to {@link CodePointAtIndexNode}.
          *
          * @since 22.3
          */
@@ -5895,6 +5882,8 @@ public final class TruffleString extends AbstractTruffleString {
          * Returns a {@link TruffleStringIterator}, which allows iterating this string's code
          * points. The iterator is initialized to begin iteration at the end of the string, use
          * {@link TruffleStringIterator.PreviousNode} to iterate in reverse order.
+         *
+         * @param errorHandling analogous to {@link CodePointAtIndexNode}.
          *
          * @since 22.3
          */
