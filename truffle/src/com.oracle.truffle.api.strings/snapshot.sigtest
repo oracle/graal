@@ -131,6 +131,7 @@ meth public final long parseLongUncached() throws com.oracle.truffle.api.strings
 meth public final long parseLongUncached(int) throws com.oracle.truffle.api.strings.TruffleString$NumberFormatException
 meth public final void copyToByteArrayNodeUncached(int,byte[],int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
+meth public final void copyToByteArrayUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final void copyToByteArrayUncached(int,byte[],int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final void copyToNativeMemoryNodeUncached(int,java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")

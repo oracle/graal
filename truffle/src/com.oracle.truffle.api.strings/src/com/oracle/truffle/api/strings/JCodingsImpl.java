@@ -173,7 +173,7 @@ final class JCodingsImpl implements JCodings {
             return index * minLength(jCoding);
         }
         int offset = a.byteArrayOffset() + extraOffsetRaw;
-        int end = a.byteArrayOffset() + a.length() - extraOffsetRaw;
+        int end = a.byteArrayOffset() + a.length();
         int cpi = 0;
         int i = 0;
         while (i < a.length() - extraOffsetRaw) {

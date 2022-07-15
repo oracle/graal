@@ -68,6 +68,12 @@ public class TStringCornerCaseTests extends TStringTestBase {
     }
 
     @Test
+    public void testForceEncodingStringCompaction2() {
+        TruffleString a = TruffleString.fromCodePointUncached('\'', TruffleString.Encoding.US_ASCII);
+        Assert.assertEquals('\'', a.forceEncodingUncached(TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_16).codePointAtByteIndexUncached(0, TruffleString.Encoding.UTF_16));
+    }
+
+    @Test
     public void testConcatMutable() {
         TruffleString a = TruffleString.Encoding.UTF_8.getEmpty();
         MutableTruffleString b = MutableTruffleString.fromByteArrayUncached(new byte[0], 0, 0, TruffleString.Encoding.BYTES, false);
@@ -79,5 +85,11 @@ public class TStringCornerCaseTests extends TStringTestBase {
         TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", TruffleString.Encoding.BYTES);
         MutableTruffleString b = MutableTruffleString.fromByteArrayUncached("abc".getBytes(StandardCharsets.UTF_8), 0, "abc".length(), TruffleString.Encoding.UTF_8, false);
         Assert.assertEquals(43, a.concatUncached(b, TruffleString.Encoding.BYTES, true).byteLength(TruffleString.Encoding.BYTES));
+    }
+
+    @Test
+    public void testSubstring() {
+        TruffleString a = TruffleString.fromByteArrayUncached(byteArray(0xE0, 0xA0, 0xA1), TruffleString.Encoding.EUC_JP);
+        Assert.assertEquals(1, a.substringUncached(2, 1, TruffleString.Encoding.EUC_JP, true).byteLength(TruffleString.Encoding.EUC_JP));
     }
 }

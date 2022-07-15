@@ -195,7 +195,6 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile utf32Compact1Profile,
                         @Cached ConditionProfile exoticValidProfile,
                         @Cached ConditionProfile exoticFixedWidthProfile) {
-            CompilerAsserts.partialEvaluationConstant(copy);
             if (byteLength == 0) {
                 return TruffleString.Encoding.get(encoding).getEmpty();
             }

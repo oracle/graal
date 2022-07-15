@@ -5765,7 +5765,7 @@ public final class TruffleString extends AbstractTruffleString {
             int byteLength = a.length() << expectedEncoding.naturalStride;
             if (managedProfile.profile(arrayA instanceof byte[] || a.isMutable())) {
                 final Object arrayNoCompaction;
-                if (inflateProfile.profile(isUTF16Or32(a.encoding()) && a.stride() != expectedEncoding.naturalStride)) {
+                if (inflateProfile.profile(isUTF16Or32(expectedEncoding) && a.stride() != expectedEncoding.naturalStride)) {
                     byte[] inflated = new byte[byteLength];
                     copyToByteArrayNode.execute(a, 0, inflated, 0, byteLength, expectedEncoding);
                     arrayNoCompaction = inflated;

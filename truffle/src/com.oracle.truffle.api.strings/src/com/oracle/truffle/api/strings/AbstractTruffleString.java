@@ -1007,6 +1007,16 @@ public abstract class AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.CopyToByteArrayNode}.
      *
+     * @since 22.3
+     */
+    @TruffleBoundary
+    public final void copyToByteArrayUncached(TruffleString.Encoding expectedEncoding) {
+        TruffleString.CopyToByteArrayNode.getUncached().execute(this, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CopyToByteArrayNode}.
+     *
      * @deprecated since 22.3, use {@link #copyToByteArrayUncached(int, byte[], int, int, Encoding)}
      *             instead.
      *
