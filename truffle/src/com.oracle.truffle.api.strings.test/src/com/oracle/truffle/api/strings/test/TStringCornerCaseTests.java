@@ -74,6 +74,12 @@ public class TStringCornerCaseTests extends TStringTestBase {
     }
 
     @Test
+    public void testForceEncoding3() {
+        TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", 9, 9, TruffleString.Encoding.UTF_16, false);
+        Assert.assertEquals(18, a.forceEncodingUncached(TruffleString.Encoding.UTF_16, TruffleString.Encoding.BYTES).byteLength(TruffleString.Encoding.BYTES));
+    }
+
+    @Test
     public void testConcatMutable() {
         TruffleString a = TruffleString.Encoding.UTF_8.getEmpty();
         MutableTruffleString b = MutableTruffleString.fromByteArrayUncached(new byte[0], 0, 0, TruffleString.Encoding.BYTES, false);
