@@ -26,8 +26,6 @@ package org.graalvm.compiler.nodes;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -41,6 +39,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.CompilationListener;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -511,16 +510,12 @@ public class OptimizationLog implements CompilationListener {
         if (!optimizationLogEnabled) {
             return;
         }
-        String filename = compilationId + ".json";
-        Path path = Path.of(
-                        DebugOptions.getDumpDirectoryName(graph.getOptions()),
-                        "optimization_log",
-                        filename);
-        Files.createDirectories(path.getParent());
+        String optimizationLogPath = PathUtilities.getPath(DebugOptions.getDumpDirectoryName(graph.getOptions()), "optimization_log");
+        PathUtilities.createDirectories(optimizationLogPath);
+        String filePath = PathUtilities.getPath(optimizationLogPath, compilationId + ".json");
         String json = JSONFormatter.formatJSON(asJsonMap());
-        PrintStream stream = new PrintStream(Files.newOutputStream(path));
+        PrintStream stream = new PrintStream(PathUtilities.openOutputStream(filePath));
         stream.print(json);
-        stream.close();
     }
 
     /**

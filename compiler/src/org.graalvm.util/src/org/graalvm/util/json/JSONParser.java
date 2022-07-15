@@ -24,8 +24,6 @@
  */
 package org.graalvm.util.json;
 
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -35,7 +33,6 @@ import org.graalvm.collections.EconomicMap;
 
 public class JSONParser {
 
-    private final File file;
     private final String source;
     private final int length;
     private int pos = 0;
@@ -50,22 +47,13 @@ public class JSONParser {
     private static final int STATE_ELEMENT_PARSED = 1;
     private static final int STATE_COMMA_PARSED = 2;
 
-    protected JSONParser(String source, File file) {
-        this.file = file;
+    protected JSONParser(String source) {
         this.source = source;
         this.length = source.length();
     }
 
-    public JSONParser(String source) {
-        this(source, null);
-    }
-
     public JSONParser(Reader source) throws IOException {
         this(readFully(source));
-    }
-
-    public JSONParser(File file) throws IOException {
-        this(readFully(new FileReader(file)), file);
     }
 
     /**
@@ -385,7 +373,7 @@ public class JSONParser {
     private JSONParserException error(final String message, final int start) {
         final int lineNum = getLine(start);
         final int columnNum = getColumn(start);
-        final String formatted = format(message, file, lineNum, columnNum);
+        final String formatted = format(message, lineNum, columnNum);
         return new JSONParserException(formatted);
     }
 
@@ -449,13 +437,12 @@ public class JSONParser {
      * Format an error message to include source and line information.
      *
      * @param message Error message string.
-     * @param file Source file name is known.
      * @param line Source line number.
      * @param column Source column number.
      * @return formatted string
      */
-    private static String format(final String message, File file, final int line, final int column) {
-        return "file " + file + " line " + line + " column " + column + " " + message;
+    private static String format(final String message, final int line, final int column) {
+        return "line " + line + " column " + column + " " + message;
     }
 
     private JSONParserException numberError(final int start) {
