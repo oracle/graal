@@ -41,7 +41,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 import java.util.Collection;
 import java.util.EnumSet;
 
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -58,6 +57,7 @@ import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -121,21 +121,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -147,6 +133,7 @@ import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
@@ -356,7 +343,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                          * an optional shift that is known to be a valid addressing mode.
                          */
                         memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                        computeRegister, AMD64Address.Scale.fromShift(compressEncoding.getShift()),
+                                        computeRegister, Stride.fromLog2(compressEncoding.getShift()),
                                         field.getOffset());
                     } else {
                         memoryAddress = new AMD64Address(computeRegister, field.getOffset());
@@ -375,7 +362,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                      * the heap base is a constant.
                      */
                     memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                    Register.None, AMD64Address.Scale.Times1,
+                                    Register.None, Stride.S1,
                                     field.getOffset() + addressDisplacement(object, constantReflection),
                                     addressDisplacementAnnotation(object));
 
@@ -1007,44 +994,20 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
-        public ForeignCallLinkage lookupGraalStub(ValueNode valueNode) {
+        public ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
             ResolvedJavaMethod method = valueNode.graph().method();
             if (method != null && GuardedAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class) != null) {
                 // Emit assembly for snippet stubs
                 return null;
             }
-
-            // Assume the SVM ForeignCallSignature are identical to the Graal ones.
-            return lookupForeignCall(getForeignCallDescriptor(valueNode));
-        }
-
-        private ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode) {
-            if (valueNode instanceof ArrayIndexOfNode) {
-                return ArrayIndexOfForeignCalls.getStub((ArrayIndexOfNode) valueNode);
-            } else if (valueNode instanceof ArrayEqualsNode) {
-                return AMD64ArrayEqualsForeignCalls.getArrayEqualsStub((ArrayEqualsNode) valueNode, gen);
-            } else if (valueNode instanceof ArrayRegionEqualsNode) {
-                return AMD64ArrayEqualsForeignCalls.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, gen);
-            } else if (valueNode instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-                return AMD64ArrayEqualsWithMaskForeignCalls.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, gen);
-            } else if (valueNode instanceof ArrayCompareToNode) {
-                return ArrayCompareToForeignCalls.getStub((ArrayCompareToNode) valueNode);
-            } else if (valueNode instanceof ArrayRegionCompareToNode) {
-                return ArrayRegionCompareToForeignCalls.getStub((ArrayRegionCompareToNode) valueNode);
-            } else if (valueNode instanceof AMD64CalcStringAttributesNode) {
-                return AMD64CalcStringAttributesForeignCalls.getStub((AMD64CalcStringAttributesNode) valueNode);
-            } else if (valueNode instanceof ArrayCopyWithConversionsNode) {
-                return ArrayCopyWithConversionsForeignCalls.getStub((ArrayCopyWithConversionsNode) valueNode);
-            }
-            return null;
-        }
-
-        private ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-            if (descriptor == null) {
+            if (AMD64IntrinsicStubs.shouldInlineIntrinsic(valueNode, gen)) {
+                // intrinsic can emit specialized code that is small enough to warrant being inlined
                 return null;
             }
-            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(descriptor, gen.target()));
+            // Assume the SVM ForeignCallSignature are identical to the Graal ones.
+            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target()));
         }
+
     }
 
     private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target) {

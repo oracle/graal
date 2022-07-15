@@ -56,7 +56,9 @@ import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -81,7 +83,6 @@ import jdk.vm.ci.meta.DeoptimizationAction;
  * This is currently only done for branches that start from a {@link IfNode}. If it encounters a
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
- *
  */
 public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
@@ -203,6 +204,12 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                     if (isOsrLoopExit(begin) || isCountedLoopExit(ifNode, lazyLoops)) {
                         moveAsDeoptAfter(begin, deopt);
                     } else {
+                        if (begin instanceof LoopExitNode && ifNode.condition() instanceof IntegerEqualsNode && ((IntegerEqualsNode) ifNode.condition()).getX() instanceof BranchProbabilityNode) {
+                            // This loop exit is associated with an injected profile, which will get
+                            // lost if this loop exit and the subsequent DeoptimizeNode are
+                            // converted into a guard within the loop.
+                            return;
+                        }
                         // Prioritize the source position of the IfNode
                         try (DebugCloseable closable = ifNode.withNodeSourcePosition()) {
                             StructuredGraph graph = ifNode.graph();

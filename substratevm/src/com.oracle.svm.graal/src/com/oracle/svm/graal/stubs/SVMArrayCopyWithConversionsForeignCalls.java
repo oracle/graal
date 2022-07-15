@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.graal.stubs;
 
-import static org.graalvm.compiler.core.common.StrideUtil.S1;
-import static org.graalvm.compiler.core.common.StrideUtil.S2;
-import static org.graalvm.compiler.core.common.StrideUtil.S4;
-
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
@@ -49,55 +46,55 @@ class SVMArrayCopyWithConversionsForeignCalls {
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS1S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S1);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S1, Stride.S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS1S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S2);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S1, Stride.S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS1S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S4);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S1, Stride.S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS2S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S1);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S2, Stride.S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS2S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S2);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S2, Stride.S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS2S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S4);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S2, Stride.S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS4S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S1);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S4, Stride.S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS4S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S2);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S4, Stride.S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void arrayCopyWithConversionsS4S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
-        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S4);
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S4, Stride.S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
@@ -111,7 +108,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS1S1RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S1, Stride.S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -122,7 +119,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS1S2RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S1, Stride.S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -133,7 +130,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS1S4RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S1, Stride.S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -144,7 +141,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS2S1RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S2, Stride.S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -155,7 +152,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS2S2RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S2, Stride.S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -166,7 +163,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS2S4RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S2, Stride.S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -177,7 +174,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS4S1RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S4, Stride.S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -188,7 +185,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS4S2RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S4, Stride.S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -199,7 +196,7 @@ class SVMArrayCopyWithConversionsForeignCalls {
     private static void arrayCopyWithConversionsS4S4RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, Stride.S4, Stride.S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }

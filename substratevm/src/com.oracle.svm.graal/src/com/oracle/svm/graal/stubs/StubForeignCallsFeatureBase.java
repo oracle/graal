@@ -58,6 +58,10 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private final Enum<?> minimumRequiredFeature;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
+        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, Class<?> declaringClass, boolean isReexecutable, Enum<?> minimumRequiredFeature) {
+            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, declaringClass, isReexecutable, minimumRequiredFeature);
+        }
+
         StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, Class<?> declaringClass, boolean isReexecutable, Enum<?> minimumRequiredFeature) {
             this.foreignCallDescriptors = foreignCallDescriptors;
             this.declaringClass = declaringClass;

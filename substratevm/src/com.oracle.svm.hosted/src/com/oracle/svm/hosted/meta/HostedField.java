@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 /**
  * Store the compile-time information for a field in the Substrate VM, such as the field offset.
  */
-public class HostedField implements OriginalFieldProvider, SharedField, Comparable<HostedField>, WrappedJavaField, AnnotationWrapper {
+public class HostedField implements OriginalFieldProvider, SharedField, WrappedJavaField, AnnotationWrapper {
 
     private final HostedUniverse universe;
     private final HostedMetaAccess metaAccess;
@@ -196,20 +196,6 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
     @Override
     public JavaKind getStorageKind() {
         return getType().getStorageKind();
-    }
-
-    @Override
-    public int compareTo(HostedField other) {
-        /*
-         * Order by JavaKind. This is required, since we want instance fields of the same size and
-         * kind consecutive.
-         */
-        int result = other.getJavaKind().ordinal() - this.getJavaKind().ordinal();
-        /*
-         * If the kind is the same, i.e., result == 0, we return 0 so that the sorting keeps the
-         * order unchanged and therefore keeps the field order we get from the hosting VM.
-         */
-        return result;
     }
 
     @Override

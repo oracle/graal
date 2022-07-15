@@ -24,13 +24,11 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.StrideUtil;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -42,7 +40,6 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
@@ -51,7 +48,6 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
 
@@ -64,13 +60,12 @@ import jdk.vm.ci.meta.Value;
  * checked). Other combinations of kinds are currently not allowed.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<ArrayRegionEqualsNode> TYPE = NodeClass.create(ArrayRegionEqualsNode.class);
 
-    /** {@link JavaKind} of the arrays to compare. */
-    protected final JavaKind strideA;
-    protected final JavaKind strideB;
+    private final Stride strideA;
+    private final Stride strideB;
 
     /**
      * Pointer to the first array object.
@@ -103,27 +98,29 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
      */
     @OptionalInput protected ValueNode dynamicStrides;
 
-    public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides, LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, locationIdentity);
+    public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, NamedLocationIdentity.getArrayLocation(arrayKind));
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
-                    @ConstantNodeParameter JavaKind strideA,
-                    @ConstantNodeParameter JavaKind strideB) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
-                    @ConstantNodeParameter JavaKind strideA,
-                    @ConstantNodeParameter JavaKind strideB,
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, runtimeCheckedCPUFeatures,
-                        strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
-                    @ConstantNodeParameter JavaKind strideA,
-                    @ConstantNodeParameter JavaKind strideB,
+                    Stride strideA,
+                    Stride strideB,
                     LocationIdentity locationIdentity) {
         this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, locationIdentity);
     }
@@ -132,14 +129,18 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
         this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, LocationIdentity.ANY_LOCATION);
     }
 
+    public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides, LocationIdentity locationIdentity) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, locationIdentity);
+    }
+
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
         this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
     protected ArrayRegionEqualsNode(NodeClass<? extends ArrayRegionEqualsNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides,
-                    JavaKind strideA,
-                    JavaKind strideB,
+                    Stride strideA,
+                    Stride strideB,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity) {
         super(c, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, locationIdentity);
@@ -151,25 +152,30 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
         this.offsetB = offsetB;
         this.length = length;
         this.dynamicStrides = dynamicStrides;
-        assert strideA == null || strideA.isPrimitive() && strideB.isPrimitive() : "expected primitive kinds, got: " + strideA + ", " + strideB;
-    }
-
-    public static boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, @ConstantNodeParameter JavaKind kind) {
-        return regionEquals(arrayA, offsetA, arrayB, offsetB, length, kind, kind);
     }
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2);
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length,
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB);
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2,
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length,
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB);
+
+    @NodeIntrinsic
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length,
+                    @ConstantNodeParameter Stride strideA,
+                    @ConstantNodeParameter Stride strideB,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int stride);
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides);
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int stride,
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     public ValueNode getArrayA() {
@@ -188,11 +194,11 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
         return offsetB;
     }
 
-    public JavaKind getStrideA() {
+    public Stride getStrideA() {
         return strideA;
     }
 
-    public JavaKind getStrideB() {
+    public Stride getStrideB() {
         return strideB;
     }
 
@@ -209,53 +215,46 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                final Value result;
-                if (getDirectStubCallIndex() < 0) {
-                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length),
-                                    gen.operand(dynamicStrides));
-                } else {
-                    result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
-                }
-                gen.setResult(this, result);
-                return;
-            }
-        }
-        generateArrayRegionEquals(gen);
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return ArrayEqualsForeignCalls.getRegionEqualsStub(this);
     }
 
     @Override
-    public int getArrayBaseOffset(MetaAccessProvider metaAccess, @SuppressWarnings("unused") ValueNode array, JavaKind elementKind) {
-        return metaAccess.getArrayBaseOffset(elementKind);
+    public ValueNode[] getForeignCallArguments() {
+        if (getDirectStubCallIndex() < 0) {
+            return new ValueNode[]{arrayA, offsetA, arrayB, offsetB, length, dynamicStrides};
+        } else {
+            return new ValueNode[]{arrayA, offsetA, arrayB, offsetB, length};
+        }
     }
 
-    protected void generateArrayRegionEquals(NodeLIRBuilderTool gen) {
-        final Value result;
-        if (strideA != null) {
-            if (strideA == strideB) {
-                result = gen.getLIRGeneratorTool().emitArrayEquals(strideA,
-                                0, 0, getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
-            } else {
-                result = gen.getLIRGeneratorTool().emitArrayEquals(strideA, strideB,
-                                0, 0, getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
-            }
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        if (getDirectStubCallIndex() < 0) {
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayEqualsDynamicStrides(
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arrayA),
+                            gen.operand(offsetA),
+                            gen.operand(arrayB),
+                            gen.operand(offsetB),
+                            gen.operand(length),
+                            gen.operand(dynamicStrides)));
         } else {
-            int directStubCallIndex = getDirectStubCallIndex();
-            if (directStubCallIndex < 0) {
-                result = gen.getLIRGeneratorTool().emitArrayEquals(
-                                0, 0, getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length),
-                                gen.operand(dynamicStrides));
-            } else {
-                result = gen.getLIRGeneratorTool().emitArrayEquals(
-                                StrideUtil.getConstantStrideA(directStubCallIndex),
-                                StrideUtil.getConstantStrideB(directStubCallIndex),
-                                0, 0, getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
-            }
+            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayEquals(
+                            NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA),
+                            NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
+                            getRuntimeCheckedCPUFeatures(),
+                            gen.operand(arrayA),
+                            gen.operand(offsetA),
+                            gen.operand(arrayB),
+                            gen.operand(offsetB),
+                            gen.operand(length)));
         }
-        gen.setResult(this, result);
+    }
+
+    @Override
+    public int getArrayBaseOffset(MetaAccessProvider metaAccess, @SuppressWarnings("unused") ValueNode array, JavaKind arrayKind) {
+        return metaAccess.getArrayBaseOffset(arrayKind);
     }
 
     @Override
@@ -265,9 +264,9 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
         }
         if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant()) {
             int len = length.asJavaConstant().asInt();
-            JavaKind constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
-            JavaKind constStrideB = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB);
-            if (len * Math.max(constStrideA.getByteCount(), constStrideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
+            Stride constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
+            Stride constStrideB = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB);
+            if (len * Math.max(constStrideA.value, constStrideB.value) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, constStrideA, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, constStrideB, len, this)) {
                 Integer startIndex1 = ConstantReflectionUtil.startIndex(tool, arrayA, offsetA.asJavaConstant(), constStrideA, this);
@@ -278,7 +277,7 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
         return this;
     }
 
-    private static boolean arrayRegionEquals(CanonicalizerTool tool, ValueNode a, JavaKind constStrideA, int startIndexA, ValueNode b, JavaKind constStrideB, int startIndexB, int len) {
+    private static boolean arrayRegionEquals(CanonicalizerTool tool, ValueNode a, Stride constStrideA, int startIndexA, ValueNode b, Stride constStrideB, int startIndexB, int len) {
         JavaKind arrayKindA = a.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
         JavaKind arrayKindB = b.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess()).getComponentType().getJavaKind();
         ConstantReflectionProvider constantReflection = tool.getConstantReflection();

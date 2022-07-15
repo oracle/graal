@@ -48,7 +48,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -111,6 +110,7 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
+import com.oracle.svm.jni.nativeapi.JNIValue;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
 
 import jdk.internal.misc.Unsafe;
@@ -864,7 +864,7 @@ public final class JNIFunctions {
 
     interface NewObjectWithObjectArrayArgFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, CLongPointer array);
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIValue array);
     }
 
     /*
@@ -883,8 +883,8 @@ public final class JNIFunctions {
          * instead.
          */
         NewObjectWithObjectArrayArgFunctionPointer newObjectA = (NewObjectWithObjectArrayArgFunctionPointer) env.getFunctions().getNewObjectA();
-        CLongPointer array = StackValue.get(Long.BYTES);
-        array.write(messageHandle.rawValue());
+        JNIValue array = StackValue.get(JNIValue.class);
+        array.setObject(messageHandle);
         JNIObjectHandle exception = newObjectA.invoke(env, clazzHandle, ctor, array);
         throw (Throwable) JNIObjectHandles.getObject(exception);
     }

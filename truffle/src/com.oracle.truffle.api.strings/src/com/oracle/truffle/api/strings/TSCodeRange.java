@@ -198,6 +198,10 @@ final class TSCodeRange {
         return a > b;
     }
 
+    static boolean isUpToValidFixedWidth(int codeRange) {
+        return codeRange <= CR_VALID_FIXED_WIDTH;
+    }
+
     static boolean isFixedWidth(int codeRange) {
         return codeRange <= CR_BROKEN_FIXED_WIDTH;
     }

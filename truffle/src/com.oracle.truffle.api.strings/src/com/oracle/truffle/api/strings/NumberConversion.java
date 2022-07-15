@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString.NumberFormatException.Reason;
 
 final class NumberConversion {
 
@@ -126,17 +127,17 @@ final class NumberConversion {
                     limit = min;
                 } else if (firstChar != '+') {
                     errorProfile.enter();
-                    throw numberFormatException();
+                    throw numberFormatException(it, Reason.INVALID_CODEPOINT);
                 }
                 if (!it.hasNext()) { // Cannot have lone "+" or "-"
                     errorProfile.enter();
-                    throw numberFormatException();
+                    throw numberFormatException(it, Reason.LONE_SIGN);
                 }
             } else {
                 int digit = Character.digit(firstChar, radix);
                 if (digit < 0) {
                     errorProfile.enter();
-                    throw numberFormatException();
+                    throw numberFormatException(it, Reason.INVALID_CODEPOINT);
                 }
                 assert result >= limit + digit;
                 result -= digit;
@@ -147,22 +148,22 @@ final class NumberConversion {
                 int digit = Character.digit(nextNode.execute(it), radix);
                 if (digit < 0) {
                     errorProfile.enter();
-                    throw numberFormatException();
+                    throw numberFormatException(it, Reason.INVALID_CODEPOINT);
                 }
                 if (result < multmin) {
                     errorProfile.enter();
-                    throw numberFormatException();
+                    throw numberFormatException(it, Reason.OVERFLOW);
                 }
                 result *= radix;
                 if (result < limit + digit) {
                     errorProfile.enter();
-                    throw numberFormatException();
+                    throw numberFormatException(it, Reason.OVERFLOW);
                 }
                 result -= digit;
             }
         } else {
             errorProfile.enter();
-            throw numberFormatException();
+            throw numberFormatException(it, Reason.EMPTY);
         }
         return negative ? result : -result;
     }
@@ -170,7 +171,7 @@ final class NumberConversion {
     private static long parseNum7Bit(AbstractTruffleString a, Object arrayA, int stride, int radix, BranchProfile errorProfile, long min, long max) throws TruffleString.NumberFormatException {
         CompilerAsserts.partialEvaluationConstant(stride);
         assert TStringGuards.is7Bit(TStringInternalNodes.GetCodeRangeNode.getUncached().execute(a));
-        checkRadix(radix, errorProfile);
+        checkRadix(a, radix, errorProfile);
         checkEmptyStr(a, errorProfile);
         long result = 0;
         boolean negative = false;
@@ -183,11 +184,11 @@ final class NumberConversion {
                 limit = min;
             } else if (firstChar != '+') {
                 errorProfile.enter();
-                throw numberFormatException();
+                throw numberFormatException(a, i, Reason.INVALID_CODEPOINT);
             }
             if (a.length() == 1) { // Cannot have lone "+" or "-"
                 errorProfile.enter();
-                throw numberFormatException();
+                throw numberFormatException(a, i, Reason.LONE_SIGN);
             }
             i++;
         }
@@ -195,22 +196,22 @@ final class NumberConversion {
         while (i < a.length()) {
             // Accumulating negatively avoids surprises near MAX_VALUE
             int c = TStringOps.readValue(a, arrayA, stride, i++);
-            final int digit = parseDigit7Bit(radix, errorProfile, c);
+            final int digit = parseDigit7Bit(a, i, radix, errorProfile, c);
             if (result < multmin) {
                 errorProfile.enter();
-                throw numberFormatException();
+                throw numberFormatException(a, i, Reason.OVERFLOW);
             }
             result *= radix;
             if (result < limit + digit) {
                 errorProfile.enter();
-                throw numberFormatException();
+                throw numberFormatException(a, i, Reason.OVERFLOW);
             }
             result -= digit;
         }
         return negative ? result : -result;
     }
 
-    private static int parseDigit7Bit(int radix, BranchProfile errorProfile, int c) throws TruffleString.NumberFormatException {
+    private static int parseDigit7Bit(AbstractTruffleString a, int i, int radix, BranchProfile errorProfile, int c) throws TruffleString.NumberFormatException {
         if ('0' <= c && c <= Math.min((radix - 1) + '0', '9')) {
             return c & 0xf;
         } else if (radix > 10) {
@@ -220,46 +221,46 @@ final class NumberConversion {
             }
         }
         errorProfile.enter();
-        throw numberFormatException();
+        throw numberFormatException(a, i, Reason.INVALID_CODEPOINT);
     }
 
     private static void checkArgs(TruffleStringIterator it, int radix, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        if (it == null) {
-            errorProfile.enter();
-            throw numberFormatException("null");
-        }
-        checkRadix(radix, errorProfile);
+        assert it != null;
+        checkRadix(it.a, radix, errorProfile);
     }
 
-    private static void checkRadix(int radix, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+    private static void checkRadix(AbstractTruffleString a, int radix, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
         if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
             errorProfile.enter();
-            throw numberFormatException("unsupported radix");
+            throw numberFormatException(a, Reason.UNSUPPORTED_RADIX);
         }
     }
 
-    private static void checkEmptyStr(AbstractTruffleString string, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        if (string.isEmpty()) {
+    private static void checkEmptyStr(AbstractTruffleString a, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+        if (a.isEmpty()) {
             errorProfile.enter();
-            throw numberFormatException();
+            throw numberFormatException(a, Reason.EMPTY);
         }
     }
 
-    @SuppressWarnings("unused")
     @TruffleBoundary
-    static TruffleString.NumberFormatException numberFormatException(AbstractTruffleString a, Object arrayA, int off, int len) {
-        // TODO: do we need to expose the substring that caused the error? (GR-34897)
-        return new TruffleString.NumberFormatException();
+    static TruffleString.NumberFormatException numberFormatException(AbstractTruffleString a, Reason msg) {
+        return new TruffleString.NumberFormatException(a, msg);
     }
 
     @TruffleBoundary
-    static TruffleString.NumberFormatException numberFormatException(String msg) {
-        return new TruffleString.NumberFormatException(msg);
+    static TruffleString.NumberFormatException numberFormatException(TruffleStringIterator it, Reason msg) {
+        return new TruffleString.NumberFormatException(it.a, it.getRawIndex(), 1, msg);
     }
 
     @TruffleBoundary
-    static TruffleString.NumberFormatException numberFormatException() {
-        return new TruffleString.NumberFormatException();
+    static TruffleString.NumberFormatException numberFormatException(AbstractTruffleString a, int regionOffset, Reason msg) {
+        return new TruffleString.NumberFormatException(a, regionOffset, 1, msg);
+    }
+
+    @TruffleBoundary
+    static TruffleString.NumberFormatException numberFormatException(AbstractTruffleString a, int regionOffset, int regionLength, Reason msg) {
+        return new TruffleString.NumberFormatException(a, regionOffset, regionLength, msg);
     }
 
     static byte[] longToString(long i, int length) {

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.NumberConversion.numberFormatException;
 import static com.oracle.truffle.api.strings.TStringOps.readValue;
+import static com.oracle.truffle.api.strings.TruffleString.NumberFormatException.Reason;
 
 import java.nio.charset.StandardCharsets;
 
@@ -245,7 +246,6 @@ final class FastDoubleParser {
      * </blockquote>
      *
      *
-     * @param location
      * @param arrayA the string to be parsed, a byte array with characters in ISO-8859-1, ASCII or
      *            UTF-8 encoding
      * @param off The index of the first byte to parse
@@ -261,7 +261,7 @@ final class FastDoubleParser {
         int index = skipWhitespace(a, arrayA, strideA, off, endIndex);
         if (index == endIndex) {
             errorProfile.enter();
-            throw numberFormatException("empty String");
+            throw numberFormatException(a, Reason.EMPTY);
         }
         int ch = readValue(a, arrayA, strideA, index);
 
@@ -272,7 +272,7 @@ final class FastDoubleParser {
             ch = ++index < endIndex ? readValue(a, arrayA, strideA, index) : 0;
             if (ch == 0) {
                 errorProfile.enter();
-                throw numberFormatException(a, arrayA, off, len);
+                throw numberFormatException(a, off, len, Reason.LONE_SIGN);
             }
         }
 
@@ -323,12 +323,12 @@ final class FastDoubleParser {
             index = skipWhitespace(a, arrayA, strideA, index + 8, endIndex);
             if (index < endIndex) {
                 errorProfile.enter();
-                throw numberFormatException(a, arrayA, off, endIndex - off);
+                throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
             }
             return negative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
         } else {
             errorProfile.enter();
-            throw numberFormatException(a, arrayA, off, endIndex - off);
+            throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
         }
     }
 
@@ -339,12 +339,12 @@ final class FastDoubleParser {
             index = skipWhitespace(a, arrayA, strideA, index + 3, endIndex);
             if (index < endIndex) {
                 errorProfile.enter();
-                throw numberFormatException(a, arrayA, off, endIndex - off);
+                throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
             }
             return Double.NaN;
         } else {
             errorProfile.enter();
-            throw numberFormatException(a, arrayA, off, endIndex - off);
+            throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
         }
     }
 
@@ -393,7 +393,7 @@ final class FastDoubleParser {
             } else if (ch == '.') {
                 if (virtualIndexOfPoint != -1) {
                     errorProfile.enter();
-                    throw numberFormatException(a, arrayA, startIndex, len);
+                    throw numberFormatException(a, startIndex, len, Reason.MULTIPLE_DECIMAL_POINTS);
                 }
                 virtualIndexOfPoint = index;
                 if (strideA == 0) {
@@ -434,7 +434,7 @@ final class FastDoubleParser {
             }
             if (!isDigit(ch)) {
                 errorProfile.enter();
-                throw numberFormatException(a, arrayA, startIndex, len);
+                throw numberFormatException(a, startIndex, len, Reason.INVALID_CODEPOINT);
             }
             do {
                 // Guard against overflow of exp_number
@@ -454,7 +454,7 @@ final class FastDoubleParser {
         index = skipWhitespace(a, arrayA, strideA, index, endIndex);
         if (index < endIndex || !hasLeadingZero && digitCount == 0) {
             errorProfile.enter();
-            throw numberFormatException(a, arrayA, startIndex, len);
+            throw numberFormatException(a, startIndex, len, Reason.EMPTY);
         }
 
         // Re-parse digits in case of a potential overflow
@@ -528,7 +528,6 @@ final class FastDoubleParser {
      *
      *
      *
-     * @param location
      * @param a the input string
      * @param curIndex index to the first character of RestOfHexFloatingPointLiteral
      * @param startIndex the start index of the string
@@ -542,7 +541,7 @@ final class FastDoubleParser {
         int len = endIndex - startIndex;
         if (index >= endIndex) {
             errorProfile.enter();
-            throw numberFormatException(a, arrayA, startIndex, len);
+            throw numberFormatException(a, startIndex, len, Reason.MALFORMED_HEX_ESCAPE);
         }
 
         // Parse digits
@@ -563,7 +562,7 @@ final class FastDoubleParser {
             } else if (hexValue == DECIMAL_POINT_CLASS) {
                 if (virtualIndexOfPoint != -1) {
                     errorProfile.enter();
-                    throw numberFormatException(a, arrayA, startIndex, len);
+                    throw numberFormatException(a, startIndex, len, Reason.MULTIPLE_DECIMAL_POINTS);
                 }
                 virtualIndexOfPoint = index;
             } else {
@@ -591,7 +590,7 @@ final class FastDoubleParser {
             }
             if (!isDigit(ch)) {
                 errorProfile.enter();
-                throw numberFormatException(a, arrayA, startIndex, len);
+                throw numberFormatException(a, startIndex, len, Reason.INVALID_CODEPOINT);
             }
             do {
                 // Guard against overflow of exp_number
@@ -611,7 +610,7 @@ final class FastDoubleParser {
         index = skipWhitespace(a, arrayA, strideA, index, endIndex);
         if (index < endIndex || digitCount == 0 && readValue(a, arrayA, strideA, virtualIndexOfPoint) != '.' || !hasExponent) {
             errorProfile.enter();
-            throw numberFormatException(a, arrayA, startIndex, len);
+            throw numberFormatException(a, startIndex, len, Reason.EMPTY);
         }
 
         // Re-parse digits in case of a potential overflow

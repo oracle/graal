@@ -43,6 +43,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -52,7 +53,6 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @Opcode("AArch64_ARRAY_INDEX_OF")
@@ -60,7 +60,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64ArrayIndexOfOp> TYPE = LIRInstructionClass.create(AArch64ArrayIndexOfOp.class);
 
     private final boolean findTwoConsecutive;
-    private final int arrayBaseOffset;
     private final int elementByteSize;
 
     @Def({REG}) protected AllocatableValue resultValue;
@@ -82,7 +81,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected AllocatableValue vectorTemp5;
     @Temp({REG, ILLEGAL}) protected AllocatableValue vectorTemp6;
 
-    public AArch64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, LIRGeneratorTool tool,
+    public AArch64ArrayIndexOfOp(Stride stride, boolean findTwoConsecutive, LIRGeneratorTool tool,
                     AllocatableValue result, AllocatableValue arrayPtr, AllocatableValue arrayOffset, AllocatableValue arrayLength, AllocatableValue fromIndex,
                     AllocatableValue[] searchValues) {
         super(TYPE);
@@ -94,8 +93,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         assert fromIndex.getPlatformKind() == AArch64Kind.DWORD;
         assert Arrays.stream(searchValues).allMatch(sv -> sv.getPlatformKind() == AArch64Kind.DWORD);
 
-        this.arrayBaseOffset = arrayBaseOffset;
-        this.elementByteSize = tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind);
+        this.elementByteSize = stride.value;
         this.findTwoConsecutive = findTwoConsecutive;
         resultValue = result;
         arrayPtrValue = arrayPtr;
@@ -432,8 +430,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.cbz(32, arrayLength, done);
 
         /* Load address of first array element */
-        masm.add(64, baseAddress, asRegister(arrayPtrValue), arrayBaseOffset);
-        masm.add(64, baseAddress, baseAddress, asRegister(arrayOffsetValue));
+        masm.add(64, baseAddress, asRegister(arrayPtrValue), asRegister(arrayOffsetValue));
 
         /*
          * Search element-by-element for small arrays (with search space size of less than 32 bytes,

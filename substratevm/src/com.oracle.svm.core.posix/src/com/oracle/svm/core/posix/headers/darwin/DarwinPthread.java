@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
@@ -51,8 +49,4 @@ public class DarwinPthread {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native Pointer pthread_get_stackaddr_np(Pthread.pthread_t thread);
-
-    @Platforms(Platform.MACOS_AARCH64.class)
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native void pthread_jit_write_protect_np(int enabled);
 }

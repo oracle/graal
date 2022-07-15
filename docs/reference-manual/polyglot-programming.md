@@ -200,13 +200,13 @@ polyglot --jvm --shell
 
 If you have installed all optional languages packs to the core GraalVM installation, then the Polyglot Shell will look like:
 ```shell
-GraalVM MultiLanguage Shell 22.1.0
+GraalVM MultiLanguage Shell 22.2.0
 Copyright (c) 2013-2021, Oracle and/or its affiliates
-  Java version 22.1.0
-  JavaScript version 22.1.0
+  Java version 22.2.0
+  JavaScript version 22.2.0
   Python version 3.8.5
   R version 4.0.3
-  Ruby version 3.0.2
+  Ruby version 3.0.3
 Usage:
   Use Ctrl+n to switch language and Ctrl+d to exit.
   Enter -usage to get a list of available commands.

@@ -67,20 +67,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * NativeType Call<type>Method(JNIEnv *env, jobject obj, jmethodID methodID, ...);
  * </code>
  * <p>
- * The {@code jmethodID} values that we pass out are the addresses of {@link JNIAccessibleMethod}
- * objects, which are made immutable so that they are never moved by the garbage collector. The
- * trampoline simply jumps to the address of a specific call wrapper that is stored in a
- * {@link #callWrapperField field} of the object. The wrappers then take care of spilling
+ * The {@code jmethodID} values that we pass out are the image heap offsets (or addresses) of
+ * {@link JNIAccessibleMethod} objects, which are immutable so they are never moved by the garbage
+ * collector. The trampoline simply jumps to the address of a specific call wrapper that is stored
+ * in a {@link #jumpAddressField field} of the object. The wrappers then take care of spilling
  * callee-saved registers, transitioning from native to Java and back, obtaining the arguments in a
  * particular form (varargs, array, va_list) and boxing/unboxing object handles as necessary.
  */
 public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
-    private final ResolvedJavaField callWrapperField;
+    private final ResolvedJavaField jumpAddressField;
     private final boolean nonVirtual;
 
-    public JNICallTrampolineMethod(ResolvedJavaMethod original, ResolvedJavaField callWrapperField, boolean nonVirtual) {
+    public JNICallTrampolineMethod(ResolvedJavaMethod original, ResolvedJavaField jumpAddressField, boolean nonVirtual) {
         super(original);
-        this.callWrapperField = callWrapperField;
+        this.jumpAddressField = jumpAddressField;
         this.nonVirtual = nonVirtual;
     }
 
@@ -139,7 +139,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
         HostedMetaAccess metaAccess = (HostedMetaAccess) providers.getMetaAccess();
         HostedUniverse universe = metaAccess.getUniverse();
         AnalysisUniverse analysisUniverse = universe.getBigBang().getUniverse();
-        HostedField hostedField = universe.lookup(analysisUniverse.lookup(callWrapperField));
+        HostedField hostedField = universe.lookup(analysisUniverse.lookup(jumpAddressField));
         assert hostedField.hasLocation();
         return hostedField.getLocation();
     }

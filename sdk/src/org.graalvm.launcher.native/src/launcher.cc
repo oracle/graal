@@ -134,7 +134,7 @@ extern char **environ;
 bool debug = false;
 bool relaunch = false;
 
-/* platform-independent environment setter */
+/* platform-independent environment setter, use empty value to clear */
 int setenv(std::string key, std::string value) {
     if (debug) {
         std::cout << "Setting env variable " << key << "=" << value << std::endl;
@@ -145,9 +145,17 @@ int setenv(std::string key, std::string value) {
             return -1;
         }
     #else
-        if (setenv(key.c_str(), value.c_str(), 1) == -1) {
-            perror("setenv failed");
-            return -1;
+        if (value.empty()) {
+            /* on posix, unsetenv cleares the env variable */
+            if (unsetenv(key.c_str()) == -1) {
+                perror("unsetenv failed");
+                return -1;
+            }
+        } else {
+            if (setenv(key.c_str(), value.c_str(), 1) == -1) {
+                perror("setenv failed");
+                return -1;
+            }
         }
     #endif
     return 0;

@@ -76,7 +76,7 @@ public class ReachabilityFenceCanonicalizationTest extends HotSpotGraalCompilerT
          */
         assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
         assumeTrue("requires -XX:+UseCompressedOops", runtime().getVMConfig().useCompressedOops);
-        assumeTrue("skipping because of oop encoding", AMD64Address.Scale.isScaleShiftSupported(runtime().getVMConfig().getOopEncoding().getShift()));
+        assumeTrue("skipping because of oop encoding", AMD64Address.isScaleShiftSupported(runtime().getVMConfig().getOopEncoding().getShift()));
 
         Object[] inputs = new Payload[]{new Payload(), new Payload(), new Payload()};
         test("uncompressOnlyUsedByReachabilityFences", inputs, false);

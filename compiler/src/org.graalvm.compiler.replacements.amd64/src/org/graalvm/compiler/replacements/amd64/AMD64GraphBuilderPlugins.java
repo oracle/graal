@@ -38,6 +38,7 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -273,36 +274,41 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static final class ArrayCompareToPlugin extends InvocationPlugin {
-        private final JavaKind valueKind;
-        private final JavaKind otherKind;
+        private final Stride strideA;
+        private final Stride strideB;
         private final boolean swapped;
 
-        private ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind, boolean swapped, String name, Type... argumentTypes) {
+        private ArrayCompareToPlugin(Stride strideA, Stride strideB, boolean swapped, String name, Type... argumentTypes) {
             super(name, argumentTypes);
-            this.valueKind = valueKind;
-            this.otherKind = otherKind;
+            this.strideA = strideA;
+            this.strideB = strideB;
             this.swapped = swapped;
         }
 
-        private ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind, String name, Type... argumentTypes) {
-            this(valueKind, otherKind, false, name, argumentTypes);
+        private ArrayCompareToPlugin(Stride strideA, Stride strideB, String name, Type... argumentTypes) {
+            this(strideA, strideB, false, name, argumentTypes);
         }
 
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode other) {
-            ValueNode nonNullValue = b.nullCheckedValue(value);
-            ValueNode nonNullOther = b.nullCheckedValue(other);
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arrayA, ValueNode arrayB) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode nonNullA = b.nullCheckedValue(arrayA);
+                ValueNode nonNullB = b.nullCheckedValue(arrayB);
 
-            ValueNode valueLength = b.add(new ArrayLengthNode(nonNullValue));
-            ValueNode otherLength = b.add(new ArrayLengthNode(nonNullOther));
-            if (swapped) {
-                /*
-                 * Swapping array arguments because intrinsic expects order to be byte[]/char[] but
-                 * kind arguments stay in original order.
-                 */
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullOther, nonNullValue, otherLength, valueLength, valueKind, otherKind));
-            } else {
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullValue, nonNullOther, valueLength, otherLength, valueKind, otherKind));
+                ValueNode lengthA = b.add(new ArrayLengthNode(nonNullA));
+                ValueNode lengthB = b.add(new ArrayLengthNode(nonNullB));
+
+                ValueNode startA = helper.arrayStart(nonNullA, JavaKind.Byte);
+                ValueNode startB = helper.arrayStart(nonNullB, JavaKind.Byte);
+                if (swapped) {
+                    /*
+                     * Swapping array arguments because intrinsic expects order to be byte[]/char[]
+                     * but kind arguments stay in original order.
+                     */
+                    b.addPush(JavaKind.Int, new ArrayCompareToNode(startB, lengthB, startA, lengthA, strideA, strideB));
+                } else {
+                    b.addPush(JavaKind.Int, new ArrayCompareToNode(startA, lengthA, startB, lengthB, strideA, strideB));
+                }
             }
             return true;
         }
@@ -311,8 +317,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static void registerStringLatin1Plugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.StringLatin1", replacements);
         r.setAllowOverwrite(true);
-        r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte, "compareTo", byte[].class, byte[].class));
-        r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char, "compareToUTF16", byte[].class, byte[].class));
+        r.register(new ArrayCompareToPlugin(Stride.S1, Stride.S1, "compareTo", byte[].class, byte[].class));
+        r.register(new ArrayCompareToPlugin(Stride.S1, Stride.S2, "compareToUTF16", byte[].class, byte[].class));
         r.register(new InvocationPlugin("inflate", byte[].class, int.class, byte[].class, int.class, int.class) {
             @SuppressWarnings("try")
             @Override
@@ -402,7 +408,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
-                    b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(JavaKind.Byte, JavaKind.Byte, value, max, fromIndex, ch));
+                    b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, value, max, fromIndex, ch));
                     return true;
                 }
             });
@@ -413,8 +419,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
         Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
         r.setAllowOverwrite(true);
-        r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char, "compareTo", byte[].class, byte[].class));
-        r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true, "compareToLatin1", byte[].class, byte[].class));
+        r.register(new ArrayCompareToPlugin(Stride.S2, Stride.S2, "compareTo", byte[].class, byte[].class));
+        r.register(new ArrayCompareToPlugin(Stride.S2, Stride.S1, true, "compareToLatin1", byte[].class, byte[].class));
         r.register(new InvocationPlugin("compress", byte[].class, int.class, byte[].class, int.class, int.class) {
             @SuppressWarnings("try")
             @Override
@@ -509,7 +515,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
-                b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(JavaKind.Byte, JavaKind.Char, value, max, fromIndex, toChar));
+                b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S2, value, max, fromIndex, toChar));
                 return true;
             }
         });

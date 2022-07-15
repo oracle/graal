@@ -261,9 +261,17 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     protected void launch(Context.Builder contextBuilder) {
         if (config.isSingleEngine()) {
             contextBuilder.option("engine.Compilation", config.compilation());
+            setEnv(contextBuilder);
             runHarness(contextBuilder, config.evalSourceOnlyDefault, 0);
         } else {
             multiEngineLaunch(contextBuilder);
+        }
+    }
+
+    private static void setEnv(Context.Builder contextBuilder) {
+        String pythonpath = System.getenv("POLYBENCH_PYTHONPATH");
+        if (pythonpath != null) {
+            contextBuilder.option("python.PythonPath", pythonpath);
         }
     }
 

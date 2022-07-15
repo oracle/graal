@@ -24,13 +24,12 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -42,7 +41,6 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -52,7 +50,6 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
 
@@ -60,7 +57,7 @@ import jdk.vm.ci.meta.Value;
  * Compares two arrays with the same length.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements LIRLowerable, Canonicalizable, Virtualizable {
+public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, Virtualizable {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
 
@@ -75,30 +72,38 @@ public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements LI
     /** One array to be tested for equality. */
     @Input protected ValueNode array1;
 
+    /** array base offset of array1. */
+    @Input protected ValueNode offset1;
+
     /** The other array to be tested for equality. */
     @Input protected ValueNode array2;
+
+    /** array base offset of array2. */
+    @Input protected ValueNode offset2;
 
     /** Length of both arrays. */
     @Input protected ValueNode length;
 
-    public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length,
+    public ArrayEqualsNode(ValueNode array1, ValueNode offset1, ValueNode array2, ValueNode offset2, ValueNode length,
                     @ConstantNodeParameter JavaKind kind) {
-        this(TYPE, array1, array2, length, kind, null);
+        this(TYPE, array1, offset1, array2, offset2, length, kind, null);
     }
 
-    public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length,
+    public ArrayEqualsNode(ValueNode array1, ValueNode offset1, ValueNode array2, ValueNode offset2, ValueNode length,
                     @ConstantNodeParameter JavaKind kind,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, array1, array2, length, kind, runtimeCheckedCPUFeatures);
+        this(TYPE, array1, offset1, array2, offset2, length, kind, runtimeCheckedCPUFeatures);
     }
 
-    protected ArrayEqualsNode(NodeClass<? extends ArrayEqualsNode> c, ValueNode array1, ValueNode array2, ValueNode length,
+    protected ArrayEqualsNode(NodeClass<? extends ArrayEqualsNode> c, ValueNode array1, ValueNode offset1, ValueNode array2, ValueNode offset2, ValueNode length,
                     @ConstantNodeParameter JavaKind kind,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
         super(c, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(kind));
         this.kind = kind;
         this.array1 = array1;
+        this.offset1 = offset1;
         this.array2 = array2;
+        this.offset2 = offset2;
         this.length = length;
     }
 
@@ -128,7 +133,9 @@ public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements LI
         if (a1 == a2) {
             return ConstantNode.forBoolean(true);
         }
-        if (a1.isConstant() && a2.isConstant() && length.isConstant()) {
+        if (a1.isConstant() && offset1.isConstant() && a2.isConstant() && offset2.isConstant() && length.isConstant()) {
+            GraalError.guarantee(offset1.asJavaConstant().asLong() == tool.getMetaAccess().getArrayBaseOffset(kind), "offset must be exactly the array base offset");
+            GraalError.guarantee(offset2.asJavaConstant().asLong() == tool.getMetaAccess().getArrayBaseOffset(kind), "offset must be exactly the array base offset");
             ConstantNode c1 = (ConstantNode) a1;
             ConstantNode c2 = (ConstantNode) a2;
             if (c1.getStableDimension() >= 1 && c2.getStableDimension() >= 1) {
@@ -199,11 +206,11 @@ public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements LI
     }
 
     @NodeIntrinsic
-    public static native boolean equals(Object array1, Object array2, int length,
+    public static native boolean equals(Object array1, long offset1, Object array2, long offset2, int length,
                     @ConstantNodeParameter JavaKind kind);
 
     @NodeIntrinsic
-    public static native boolean equals(Object array1, Object array2, int length,
+    public static native boolean equals(Object array1, long offset1, Object array2, long offset2, int length,
                     @ConstantNodeParameter JavaKind kind,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
@@ -224,24 +231,25 @@ public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements LI
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
-            ForeignCallLinkage linkage = gen.lookupGraalStub(this);
-            if (linkage != null) {
-                Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(array1), gen.operand(array2), gen.operand(length));
-                gen.setResult(this, result);
-                return;
-            }
-        }
-        generateArrayEquals(gen);
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return ArrayEqualsForeignCalls.getArrayEqualsStub(this);
     }
 
-    protected void generateArrayEquals(NodeLIRBuilderTool gen) {
-        int array1BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
-        int array2BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
-        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, array1BaseOffset, array2BaseOffset, getRuntimeCheckedCPUFeatures(), gen.operand(array1), gen.operand(array2),
-                        gen.operand(length));
-        gen.setResult(this, result);
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{array1, offset1, array2, offset2, length};
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitArrayEquals(
+                        kind,
+                        getRuntimeCheckedCPUFeatures(),
+                        gen.operand(array1),
+                        gen.operand(offset1),
+                        gen.operand(array2),
+                        gen.operand(offset2),
+                        gen.operand(length)));
     }
 
 }

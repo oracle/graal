@@ -42,6 +42,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -98,11 +100,17 @@ public final class JavaThreads {
         return Target_jdk_internal_misc_VM.toThreadState(getThreadStatus(thread));
     }
 
-    @SuppressWarnings("deprecation")
-    @AlwaysInline("handle Thread.getId deprecation")
+    /**
+     * Returns the unique identifier of this thread. This method is necessary because
+     * {@link Thread#getId()} is a non-final method that can be overridden.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getThreadId(Thread thread) {
-        return thread.getId();
+        if (SubstrateUtil.HOSTED) {
+            return ReflectionUtil.readField(Thread.class, "tid", thread);
+        } else {
+            return toTarget(thread).tid;
+        }
     }
 
     /**
@@ -301,11 +309,13 @@ public final class JavaThreads {
     }
 
     static void sleep(long millis) throws InterruptedException {
+        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
             VirtualThreads.singleton().sleepMillis(millis);
         } else {
             PlatformThreads.sleep(millis);
         }
+        ThreadSleepEvent.emit(millis, startTicks);
     }
 
     static boolean isAlive(Thread thread) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.chromeinspector.objects;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.tools.utils.json.JSONArray;
@@ -42,7 +41,7 @@ final class TruffleObject2JSON {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    static JSONObject fromObject(TruffleObject object) {
+    static JSONObject fromObject(Object object) {
         JSONObject json = new JSONObject();
         Object keys;
         try {
@@ -70,7 +69,7 @@ final class TruffleObject2JSON {
         return json;
     }
 
-    static JSONArray fromArray(TruffleObject array) {
+    static JSONArray fromArray(Object array) {
         JSONArray json = new JSONArray();
         long size;
         try {
@@ -93,13 +92,16 @@ final class TruffleObject2JSON {
     }
 
     private static Object from(Object object) {
-        if (object instanceof TruffleObject) {
-            TruffleObject truffleObject = (TruffleObject) object;
-            if (INTEROP.hasArrayElements(truffleObject)) {
-                return fromArray(truffleObject);
-            } else {
-                return fromObject(truffleObject);
+        if (INTEROP.isString(object)) {
+            try {
+                return INTEROP.asString(object);
+            } catch (UnsupportedMessageException e) {
+                return object;
             }
+        } else if (INTEROP.hasArrayElements(object)) {
+            return fromArray(object);
+        } else if (INTEROP.hasMembers(object)) {
+            return fromObject(object);
         } else {
             return object;
         }

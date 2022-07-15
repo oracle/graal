@@ -4,7 +4,7 @@ The GraalVM documentation is open source and anyone can contribute to make it pe
 
 The GraalVM documentation is presented in the form of:
 * reference documentation which includes getting started and user guides, reference manuals, examples, security guidelines
-* Javadoc APIS documentation for application developers, or those who write Java compatibility tests or seek to re-implement the GraalVM platform
+* Javadoc APIs documentation for application developers, or those who write Java compatibility tests or seek to re-implement the GraalVM platform
 
 Here you will find most of the GraalVM documentation sources, in the same hierarchy as displayed on the [GraalVM website](https://www.graalvm.org/docs/introduction/).
 The Truffle framework documentation can be found in the [graal/truffle/docs](https://github.com/oracle/graal/tree/master/truffle/docs) folder.

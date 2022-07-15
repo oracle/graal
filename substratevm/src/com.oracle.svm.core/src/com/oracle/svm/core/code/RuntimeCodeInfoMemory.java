@@ -26,8 +26,6 @@ package com.oracle.svm.core.code;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
-import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -40,7 +38,9 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -203,23 +203,20 @@ public class RuntimeCodeInfoMemory {
         assert VMOperation.isGCInProgress() : "otherwise, we would need to make sure that the CodeInfo is not freeded by the GC";
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
-            RuntimeCodeInfoAccess.acquireThreadWriteAccess();
-            try {
-                for (int i = 0; i < length;) {
-                    UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
-                    if (info.isNonNull()) {
-                        visitor.visitCode(CodeInfoAccess.convert(info));
-                    }
-
-                    // If the visitor removed the current entry from the table, then it is necessary
-                    // to visit the now updated entry one more time. However, this could have the
-                    // effect that some entries are visited more than once.
-                    if (info == NonmovableArrays.getWord(table, i)) {
-                        i++;
-                    }
+            for (int i = 0; i < length;) {
+                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+                if (info.isNonNull()) {
+                    visitor.visitCode(CodeInfoAccess.convert(info));
                 }
-            } finally {
-                RuntimeCodeInfoAccess.releaseThreadWriteAccess();
+
+                /*
+                 * If the visitor removed the current entry from the table, then it is necessary to
+                 * visit the now updated entry one more time. However, this could have the effect
+                 * that some entries are visited more than once.
+                 */
+                if (info == NonmovableArrays.getWord(table, i)) {
+                    i++;
+                }
             }
         }
         return true;

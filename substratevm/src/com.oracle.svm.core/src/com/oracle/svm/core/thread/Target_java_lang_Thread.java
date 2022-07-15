@@ -125,7 +125,7 @@ public final class Target_java_lang_Thread {
 
     /* Thread ID */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadIdRecomputation.class) //
-    long tid;
+    public long tid;
 
     /** We have our own atomic number in {@link JavaThreads#threadSeqNumber}. */
     @Delete @TargetElement(onlyWith = JDK17OrEarlier.class)//
@@ -291,7 +291,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("static-method")
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     void setCurrentThread(Thread thread) {
         PlatformThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
     }
@@ -336,7 +336,14 @@ public final class Target_java_lang_Thread {
         // TODO: derive from characteristics bitset
         boolean inheritThreadLocals = false;
         /* Initialize the rest of the Thread object, ignoring `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc, inheritThreadLocals);
+        String nameLocal = (name != null) ? name : genThreadName();
+        JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, inheritThreadLocals);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static String genThreadName() {
+        return "Thread-" + JavaThreads.threadInitNumber.incrementAndGet();
     }
 
     /**
@@ -556,6 +563,12 @@ public final class Target_java_lang_Thread {
     @Substitute
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         return PlatformThreads.getAllStackTraces();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private static Thread[] getAllThreads() {
+        return PlatformThreads.getAllThreads();
     }
 
     /**

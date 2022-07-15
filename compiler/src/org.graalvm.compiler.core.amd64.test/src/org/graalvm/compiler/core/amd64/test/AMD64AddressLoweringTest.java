@@ -26,7 +26,7 @@ package org.graalvm.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.amd64.AMD64AddressLowering;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
@@ -60,14 +60,14 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode base = graph.unique(const64(1000));
         ValueNode index = graph.unique(const64(10));
         AddressNode result = lowering.lower(base, index);
-        assertAddress(result, null, null, Scale.Times1, 1010);
+        assertAddress(result, null, null, Stride.S1, 1010);
     }
 
     @Test
     public void convertBaseToDisplacement() {
         ValueNode constantAddress = graph.addOrUniqueWithInputs(const64(1000));
         AddressNode result = lowering.lower(constantAddress, null);
-        assertAddress(result, null, null, Scale.Times1, 1000);
+        assertAddress(result, null, null, Stride.S1, 1000);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode base = graph.addOrUniqueWithInputs(const64(1000));
         ValueNode index = graph.addOrUniqueWithInputs(new LeftShiftNode(const64(10), const32(1)));
         AddressNode result = lowering.lower(base, index);
-        assertAddress(result, null, null, Scale.Times2, 1020);
+        assertAddress(result, null, null, Stride.S2, 1020);
     }
 
     @Test
@@ -83,7 +83,7 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode base = graph.addOrUniqueWithInputs(const64(1000));
         ValueNode index = graph.addOrUniqueWithInputs(new NegateNode(new LeftShiftNode(const64(10), const32(2))));
         AddressNode result = lowering.lower(base, index);
-        assertAddress(result, null, null, Scale.Times4, 960);
+        assertAddress(result, null, null, Stride.S4, 960);
     }
 
     @Test
@@ -91,7 +91,7 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode base = graph.addOrUniqueWithInputs(new NegateNode(const64(1000)));
         ValueNode index = graph.addOrUniqueWithInputs(new NegateNode(new LeftShiftNode(const64(10), const32(2))));
         AddressNode result = lowering.lower(base, index);
-        assertAddress(result, null, null, Scale.Times4, -1040);
+        assertAddress(result, null, null, Stride.S4, -1040);
     }
 
     @Test
@@ -99,7 +99,7 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode base = graph.addOrUniqueWithInputs(new NegateNode(new LeftShiftNode(const64(10), const32(2))));
         ValueNode index = graph.addOrUniqueWithInputs(new NegateNode(const64(1000)));
         AddressNode result = lowering.lower(base, index);
-        assertAddress(result, null, null, Scale.Times4, -1040);
+        assertAddress(result, null, null, Stride.S4, -1040);
     }
 
     @Test
@@ -107,7 +107,7 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode base = graph.addOrUniqueWithInputs(new NegateNode(new LeftShiftNode(new NegateNode(new LeftShiftNode(const64(500), const32(1))), const32(1))));
         ValueNode index = graph.addOrUniqueWithInputs(new NegateNode(new AddNode(new NegateNode(const64(13)), const64(3))));
         AddressNode result = lowering.lower(base, index);
-        assertAddress(result, null, null, Scale.Times4, 2010);
+        assertAddress(result, null, null, Stride.S4, 2010);
     }
 
     private static ConstantNode const64(long value) {
@@ -118,11 +118,11 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         return ConstantNode.forIntegerBits(Integer.SIZE, value);
     }
 
-    private static void assertAddress(AddressNode actual, ValueNode expectedBase, ValueNode expectedIndex, Scale expectedScale, int expectedDisplacement) {
+    private static void assertAddress(AddressNode actual, ValueNode expectedBase, ValueNode expectedIndex, Stride expectedStride, int expectedDisplacement) {
         AMD64AddressNode address = (AMD64AddressNode) actual;
         Assert.assertEquals(expectedBase, address.getBase());
         Assert.assertEquals(expectedIndex, address.getIndex());
-        Assert.assertEquals(expectedScale, address.getScale());
+        Assert.assertEquals(expectedStride, address.getScale());
         Assert.assertEquals(expectedDisplacement, address.getDisplacement());
     }
 }

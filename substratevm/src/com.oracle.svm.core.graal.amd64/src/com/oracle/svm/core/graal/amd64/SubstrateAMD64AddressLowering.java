@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -50,7 +51,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
         assert SubstrateOptions.SpawnIsolates.getValue();
 
         CompressEncoding encoding = compression.getEncoding();
-        if (!Scale.isScaleShiftSupported(encoding.getShift())) {
+        if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
             return false;
         }
 
@@ -67,9 +68,9 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
             }
         }
 
-        Scale scale = Scale.fromShift(encoding.getShift());
+        Stride stride = Stride.fromLog2(encoding.getShift());
         addr.setBase(base);
-        addr.setScale(scale);
+        addr.setScale(stride);
         addr.setIndex(compression.getValue());
         return true;
     }

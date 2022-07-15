@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -133,6 +131,7 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -183,6 +182,7 @@ import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
+import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -646,7 +646,6 @@ public class CompileQueue {
         universe.getMethods().stream()
                         .filter(method -> method.getWrapped().isImplementationInvoked() && canDeoptForTesting(method))
                         .forEach(this::ensureParsedForDeoptTesting);
-
     }
 
     private void ensureParsedForDeoptTesting(HostedMethod method) {
@@ -1365,10 +1364,26 @@ public class CompileQueue {
 
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
         @Override
-        public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
-                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
-            return new CompilationResultBuilder(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister,
-                            EconomicMap.wrapMap(dataCache));
+        public CompilationResultBuilder createBuilder(CodeGenProviders providers,
+                        FrameMap frameMap,
+                        Assembler asm,
+                        DataBuilder dataBuilder,
+                        FrameContext frameContext,
+                        OptionValues options,
+                        DebugContext debug,
+                        CompilationResult compilationResult,
+                        Register uncompressedNullRegister) {
+            return new CompilationResultBuilder(providers,
+                            frameMap,
+                            asm,
+                            dataBuilder,
+                            frameContext,
+                            options,
+                            debug,
+                            compilationResult,
+                            uncompressedNullRegister,
+                            EconomicMap.wrapMap(dataCache),
+                            CompilationResultBuilder.NO_VERIFIERS);
         }
     }
 
@@ -1659,7 +1674,7 @@ public class CompileQueue {
     }
 
     public Map<HostedMethod, CompilationResult> getCompilationResults() {
-        Map<HostedMethod, CompilationResult> result = new TreeMap<>();
+        Map<HostedMethod, CompilationResult> result = new TreeMap<>(HostedUniverse.METHOD_COMPARATOR);
         for (Entry<HostedMethod, CompileTask> entry : compilations.entrySet()) {
             result.put(entry.getKey(), entry.getValue().result);
         }

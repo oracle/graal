@@ -27,6 +27,8 @@ package org.graalvm.compiler.nodes.loop;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopMaxUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
 import static org.graalvm.compiler.core.common.GraalOptions.MinimumPeelFrequency;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.DefaultLoopFrequency;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.DefaultUnswitchFactor;
 import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.ExactFullUnrollMaxNodes;
 import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.ExactPartialUnrollMaxNodes;
 import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.FullUnrollConstantCompareBoost;
@@ -75,15 +77,19 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Expert)
         public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(2000);
         @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Expert)
-        public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(10);
+        public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(20);
         @Option(help = "Number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for the unswitching is proportional to the relative frequency of the loop by this constant.", type = OptionType.Expert)
-        public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(10.0);
+        public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(20.0);
         @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
         @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchFrequencyMaxFactor = new OptionKey<>(0.95);
         @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchMinSplitFrequency = new OptionKey<>(1.0);
+        @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Expert)
+        public static final OptionKey<Double> DefaultLoopFrequency = new OptionKey<>(100.0);
+        @Option(help = "Default unswitching factor for control split node with unkown profile data", type = OptionType.Expert)
+        public static final OptionKey<Double> DefaultUnswitchFactor = new OptionKey<>(0.7);
 
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(400);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
@@ -369,9 +375,10 @@ public class DefaultLoopPolicies implements LoopPolicies {
      */
     private static int loopMaxCodeSizeChange(LoopEx loop) {
         StructuredGraph graph = loop.loopBegin().graph();
-
-        double loopFrequency = loop.localLoopFrequency();
         OptionValues options = loop.loopBegin().getOptions();
+
+        boolean isTrusted = ProfileSource.isTrusted(loop.localFrequencySource());
+        double loopFrequency = isTrusted ? loop.localLoopFrequency() : DefaultLoopFrequency.getValue(options);
         /* When a loop has a greater local loop frequency we allow a bigger change in code size */
         int maxDiff = LoopUnswitchTrivial.getValue(options) + (int) (LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0));
 
@@ -405,13 +412,6 @@ public class DefaultLoopPolicies implements LoopPolicies {
             boolean isTrusted = true;
             for (ControlSplitNode node : split) {
                 isTrusted = isTrusted && ProfileSource.isTrusted(node.getProfileData().getProfileSource());
-            }
-            if (!isTrusted) {
-                /**
-                 * If any of the nodes has an untrusted profile source, we don't unswitch it as its
-                 * probabilities are unknown.
-                 */
-                debug.log("control split %s discarded because unknown profile data", split);
             }
 
             int approxCodeSizeChange = approxCodeSizeChange(loop, split);
@@ -555,12 +555,17 @@ public class DefaultLoopPolicies implements LoopPolicies {
              * </pre>
              */
             double factor = Math.pow(split.get(0).getSuccessorCount(), split.get(0).getSuccessorCount() * split.size());
-            for (ControlSplitNode s : split) {
-                for (double p : s.successorProbabilities()) {
-                    factor *= p;
+            if (isTrusted) {
+                for (ControlSplitNode s : split) {
+                    for (double p : s.successorProbabilities()) {
+                        factor *= p;
+                    }
                 }
+                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+            } else {
+                debug.log("control split %s has an untrusted profile source", split);
+                factor = DefaultUnswitchFactor.getValue(options);
             }
-            assert 0 <= factor && factor <= 1 : "factor shold be between 0 and 1, but is : " + factor;
 
             // We cap the factor and we invert it to make guards' range narrow.
             double cappedFactor = 1 - Math.min(Math.max(factor, LoopUnswitchFrequencyMinFactor.getValue(options)), LoopUnswitchFrequencyMaxFactor.getValue(options));

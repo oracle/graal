@@ -84,7 +84,7 @@ import static org.graalvm.compiler.core.common.NumUtil.isUByte;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.debug.GraalError;
@@ -4764,7 +4764,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     @Override
     public AMD64Address getPlaceholder(int instructionStartPosition) {
-        return new AMD64Address(AMD64.rip, Register.None, Scale.Times1, 0, null, instructionStartPosition);
+        return new AMD64Address(AMD64.rip, Register.None, Stride.S1, 0, null, instructionStartPosition);
     }
 
     private void prefetchPrefix(AMD64Address src) {
@@ -4861,7 +4861,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert supportsCPUFeature("FLUSHOPT");
         // adr should be base reg only with no index or offset
         assert adr.getIndex().equals(Register.None) : adr;
-        assert adr.getScale().equals(Scale.Times1) : adr;
+        assert adr.getScale().equals(Stride.S1) : adr;
         assert adr.getDisplacement() == 0 : adr;
         // instruction prefix is 0x66
         emitByte(0x66);

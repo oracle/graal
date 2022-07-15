@@ -31,7 +31,7 @@ This way your application will handle signals and capture a heap dump when it re
 The guest language REPL process must be started also with the `--jvm` flag to monitor it using VisualVM.
 This functionality is available with [GraalVM Enterprise Edition](https://www.oracle.com/downloads/graalvm-downloads.html).
 It is not available in GraalVM Community Edition.
-See the [Generating Native Heap Dumps](../reference-manual/native-image/NativeImageHeapdumpEnterprise.md) page for details on capturing heap dumps from a native image process.
+See the [Generating Native Heap Dumps](../reference-manual/native-image/guides/create-heap-dump-from-native-executable.md) page for details on capturing heap dumps from a native image process.
 
 ### Analyzing Objects
 Initially the Summary view for the Java heap is displayed.

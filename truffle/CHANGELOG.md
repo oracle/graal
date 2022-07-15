@@ -4,6 +4,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.3.0
 
+* GR-39354 TruffleStrings: added ErrorHandling parameter to ByteLengthOfCodePointNode, CodePointAtIndexNode and CodePointAtByteIndexNode.
+
 * GR-39219 Removed several deprecated APIs:
     * Removed deprecated `FrameSlot` API. The API was deprecated in 22.0.
     * Removed deprecated `CompilerOptions` API. The API was deprecated in 22.1.

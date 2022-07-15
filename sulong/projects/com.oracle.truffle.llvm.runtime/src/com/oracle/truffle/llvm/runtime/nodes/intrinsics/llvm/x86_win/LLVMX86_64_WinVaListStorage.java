@@ -35,7 +35,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -67,7 +66,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-// @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
+@ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMX86_64_WinVaListStorage implements TruffleObject {
@@ -256,15 +255,33 @@ public final class LLVMX86_64_WinVaListStorage implements TruffleObject {
         initNative(realArguments, numberOfExplicitArguments, nativeAreaPointer, storeI64Node, storePointerNode);
     }
 
+    @ExportMessage
     public void initialize(Object[] realArgs, int numOfExpArgs, Frame frame,
-                    @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
+                    @Cached StackAllocationNode stackAllocationNode) {
         realArguments = realArgs;
         numberOfExplicitArguments = numOfExpArgs;
         argsArea = new WinArgsArea(realArgs, numOfExpArgs);
         assert numOfExpArgs <= realArgs.length;
 
         nativeAreaPointer = stackAllocationNode.executeWithTarget((realArgs.length - numOfExpArgs) * Long.BYTES, frame);
+    }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    void cleanup(@SuppressWarnings("unused") Frame frame) {
+        throw CompilerDirectives.shouldNotReachHere("should only be called on LLVMMaybeVaPointer");
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    void copy(@SuppressWarnings("unused") Object dest, @SuppressWarnings("unused") Frame frame) {
+        throw CompilerDirectives.shouldNotReachHere("should never be called directly");
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object shift(@SuppressWarnings("unused") Type type, @SuppressWarnings("unused") Frame frame) {
+        throw CompilerDirectives.shouldNotReachHere("should never be called directly");
     }
 
     @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 0)

@@ -74,6 +74,7 @@ public class TStringBackwardIteratorTest extends TStringTestBase {
             TruffleStringIterator iterator = createIteratorNode.execute(a, encoding);
             for (int i = codepoints.length - 1; i >= 0; i--) {
                 Assert.assertEquals(codepoints[i], prevNode.execute(iterator));
+                Assert.assertEquals(byteIndices[i], iterator.getByteIndex());
             }
         });
 
