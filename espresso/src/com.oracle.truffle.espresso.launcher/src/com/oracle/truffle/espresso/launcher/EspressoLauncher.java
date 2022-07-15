@@ -527,7 +527,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                                 .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
                                 .getMember("static");
 
-                // Convert arguments to a guest String[], avoiding passing a foreign object right away to Espresso.
+                // Convert arguments to a guest String[], avoiding passing a foreign object right
+                // away to Espresso.
                 Value stringArray = context.getBindings("java").getMember("[Ljava.lang.String;");
                 Value guestMainClassArgs = stringArray.newInstance(mainClassArgs.size());
                 for (int i = 0; i < mainClassArgs.size(); i++) {
