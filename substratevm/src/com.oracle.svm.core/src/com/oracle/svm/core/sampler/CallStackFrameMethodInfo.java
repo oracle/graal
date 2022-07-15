@@ -32,20 +32,15 @@ import com.oracle.svm.core.thread.Safepoint;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CallStackFrameMethodInfo {
-    private static final int INITIAL_METHOD_ID = -1;
 
-    private static final String ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME = "enterSlowPathSafepointCheckObject";
+    protected static final int INITIAL_METHOD_ID = -1;
 
     private final Map<Integer, String> sampledMethods = new HashMap<>();
-
     private int enterSafepointCheckId = INITIAL_METHOD_ID;
-
     private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
 
-    private int enterSafepointCheckObject = INITIAL_METHOD_ID;
-
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
-        String formattedMethod = method.format("%H.%n");
+        String formattedMethod = formatted(method);
         sampledMethods.put(methodId, formattedMethod);
         if (enterSafepointCheckId == INITIAL_METHOD_ID && formattedMethod.equals(formatted(Safepoint.ENTER_SLOW_PATH_SAFEPOINT_CHECK))) {
             enterSafepointCheckId = methodId;
@@ -53,15 +48,16 @@ public class CallStackFrameMethodInfo {
         if (enterSafepointFromNativeId == INITIAL_METHOD_ID && formattedMethod.equals(formatted(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS))) {
             enterSafepointFromNativeId = methodId;
         }
-        if (enterSafepointCheckObject == INITIAL_METHOD_ID && formattedMethod.contains(ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME)) {
-            enterSafepointCheckObject = methodId;
-        }
     }
 
-    private static String formatted(SnippetRuntime.SubstrateForeignCallDescriptor enterSlowPathSafepointCheck) {
+    protected static String formatted(ResolvedJavaMethod method) {
+        return method.format("%H.%n");
+    }
+
+    protected static String formatted(SnippetRuntime.SubstrateForeignCallDescriptor descriptor) {
         return String.format("%s.%s",
-                        enterSlowPathSafepointCheck.getDeclaringClass().getCanonicalName(),
-                        enterSlowPathSafepointCheck.getName());
+                        descriptor.getDeclaringClass().getCanonicalName(),
+                        descriptor.getName());
     }
 
     public String methodFor(int methodId) {
@@ -69,12 +65,6 @@ public class CallStackFrameMethodInfo {
     }
 
     public boolean isSamplingCodeEntry(int methodId) {
-        return enterSafepointCheckId == methodId || enterSafepointFromNativeId == methodId || enterSafepointCheckObject == methodId;
-    }
-
-    public void setEnterSamplingCodeMethodId(int enterSafepointCheckId, int enterSafepointFromNativeId, int enterSafepointCheckObject) {
-        this.enterSafepointCheckId = enterSafepointCheckId;
-        this.enterSafepointFromNativeId = enterSafepointFromNativeId;
-        this.enterSafepointCheckObject = enterSafepointCheckObject;
+        return enterSafepointCheckId == methodId || enterSafepointFromNativeId == methodId;
     }
 }
