@@ -67,4 +67,9 @@ public class CallStackFrameMethodInfo {
     public boolean isSamplingCodeEntry(int methodId) {
         return enterSafepointCheckId == methodId || enterSafepointFromNativeId == methodId;
     }
+
+    public void setEnterSamplingCodeMethodId(int i, int i1, int i2) {
+        enterSafepointCheckId = i;
+        enterSafepointFromNativeId = i1;
+    }
 }

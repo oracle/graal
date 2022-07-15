@@ -30,6 +30,7 @@ import org.graalvm.collections.LockFreePrefixTree;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.RuntimeAnalysisWorkarounds;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -68,6 +69,7 @@ public class SafepointProfilingSampler implements ProfilingSampler {
     @Override
     public void registerSampler() {
         if (collectingActive) {
+            RuntimeAnalysisWorkarounds.avoidFoldingSamplingCodeStart();
             Threading.registerRecurringCallback(10, TimeUnit.MILLISECONDS, (access) -> {
                 sampleThreadStack();
             });
