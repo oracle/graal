@@ -103,6 +103,12 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private StaticObject statics;
 
+    static {
+        // Ensures that 'statics' field can be non-volatile. This uses "Unsafe Local DCL + Safe
+        // Singleton" as described in https://shipilev.net/blog/2014/safe-public-construction
+        assert hasFinalInstanceField(StaticObject.class);
+    }
+
     private final Klass hostKlass;
 
     @CompilationFinal //
@@ -297,17 +303,21 @@ public final class ObjectKlass extends Klass {
     }
 
     StaticObject getStaticsImpl() {
-        if (statics == null) {
-            obtainStatics();
+        StaticObject result = this.statics;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            result = createStatics();
         }
-        return statics;
+        return result;
     }
 
-    private synchronized void obtainStatics() {
-        if (statics == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            statics = getAllocator().createStatics(this);
+    private synchronized StaticObject createStatics() {
+        CompilerAsserts.neverPartOfCompilation();
+        StaticObject result = this.statics;
+        if (result == null) {
+            this.statics = result = getAllocator().createStatics(this);
         }
+        return result;
     }
 
     // region InitStatus

@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
+import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
@@ -489,10 +490,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private final int id;
 
     @CompilationFinal //
-    private volatile ArrayKlass arrayClass;
+    private ArrayKlass arrayKlass;
 
     @CompilationFinal //
-    private volatile StaticObject mirrorCache;
+    private StaticObject espressoClass;
 
     @CompilationFinal //
     private Class<?> dispatch;
@@ -501,6 +502,26 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     // Raw modifiers provided by the VM.
     private final int modifiers;
+
+    protected static boolean hasFinalInstanceField(Class<?> clazz) {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            for (java.lang.reflect.Field f : clazz.getDeclaredFields()) {
+                int modifiers = f.getModifiers();
+                if (!Modifier.isStatic(modifiers) && Modifier.isFinal(modifiers)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static {
+        // Ensures that the 'espressoClass' and 'arrayKlass' fields can be non-volatile. This uses
+        // "Unsafe Local DCL + Safe Singleton" as described in
+        // https://shipilev.net/blog/2014/safe-public-construction
+        assert hasFinalInstanceField(StaticObject.class);
+        assert hasFinalInstanceField(ArrayKlass.class);
+    }
 
     /**
      * A class or interface C is accessible to a class or interface D if and only if either of the
@@ -634,43 +655,61 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return ModifiersProvider.super.isInterface();
     }
 
-    public StaticObject mirror() {
-        if (mirrorCache == null) {
-            mirrorCreate();
-        }
-        return mirrorCache;
-    }
-
-    private synchronized void mirrorCreate() {
-        if (mirrorCache == null) {
+    /**
+     * Returns the guest {@link Class} object associated with this {@link Klass} instance.
+     */
+    public final @JavaType(Class.class) StaticObject mirror() {
+        StaticObject result = this.espressoClass;
+        if (result == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.mirrorCache = getAllocator().createClass(this);
+            result = createEspressoClass();
         }
+        return result;
     }
 
-    public final ArrayKlass getArrayClass() {
-        ArrayKlass ak = arrayClass;
-        if (ak == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                ak = arrayClass;
-                if (ak == null) {
-                    ak = createArrayKlass();
-                    arrayClass = ak;
-                }
-            }
+    private synchronized StaticObject createEspressoClass() {
+        CompilerAsserts.neverPartOfCompilation();
+        StaticObject result = this.espressoClass;
+        if (result == null) {
+            this.espressoClass = result = getAllocator().createClass(this);
         }
-        return ak;
+        return result;
     }
 
+    /**
+     * Gets the array class type representing an array with elements of this type.
+     * 
+     * This method is equivalent to {@link Klass#getArrayClass()}.
+     */
     public final ArrayKlass array() {
         return getArrayClass();
+    }
+
+    /**
+     * Gets the array class type representing an array with elements of this type.
+     */
+    public final ArrayKlass getArrayClass() {
+        ArrayKlass result = this.arrayKlass;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            result = createArrayKlass();
+        }
+        return result;
+    }
+
+    private synchronized ArrayKlass createArrayKlass() {
+        CompilerAsserts.neverPartOfCompilation();
+        ArrayKlass result = this.arrayKlass;
+        if (result == null && Type._void != getType()) { // ignore void[]
+            this.arrayKlass = result = new ArrayKlass(this);
+        }
+        return result;
     }
 
     @Override
     public ArrayKlass getArrayClass(int dimensions) {
         assert dimensions > 0;
-        ArrayKlass array = getArrayClass();
+        ArrayKlass array = array();
 
         // Careful with of impossible void[].
         if (array == null) {
@@ -681,10 +720,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             array = array.getArrayClass();
         }
         return array;
-    }
-
-    protected ArrayKlass createArrayKlass() {
-        return new ArrayKlass(this);
     }
 
     @Override
