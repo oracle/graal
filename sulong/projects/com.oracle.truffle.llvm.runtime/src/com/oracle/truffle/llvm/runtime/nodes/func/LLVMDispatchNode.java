@@ -115,6 +115,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             // Early parsing of the function's signature for the sake of the AOT preparation
             try {
                 nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
+                /*
+                 * Here, we are interested in native functions only and so it assumed that native
+                 * functions have always at least one argument, the stack argument. Of course, it
+                 * actually parses signatures of other functions, but the result will not be used.
+                 */
                 if (nativeCtxExtKey != null && type.getNumberOfArguments() > 0) {
                     NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(context);
                     signatureSource = nativeContextExtension.getNativeSignatureSourceSkipStackArg(type);

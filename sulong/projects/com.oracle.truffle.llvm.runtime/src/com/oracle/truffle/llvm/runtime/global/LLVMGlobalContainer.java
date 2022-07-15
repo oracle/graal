@@ -48,10 +48,10 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupportFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -174,26 +174,26 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
-    public void toNative(@Cached LLVMToNativeNode toNative) {
+    public void toNative() {
         if (address == 0) {
-            doToNative(toNative);
+            doToNative();
         }
     }
 
     @TruffleBoundary
-    private synchronized void doToNative(LLVMToNativeNode toNative) {
+    private synchronized void doToNative() {
         if (address == 0) {
             LLVMMemory memory = LLVMLanguage.get(null).getLLVMMemory();
-            LLVMNativePointer pointer = memory.allocateMemory(toNative, 8);
+            LLVMNativePointer pointer = memory.allocateMemory(null, 8);
             address = pointer.asNative();
             long value;
             Object global = getFallback();
             if (global instanceof Number) {
                 value = ((Number) global).longValue();
             } else {
-                value = toNative.executeWithTarget(global).asNative();
+                value = LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached().execute(global).asNative();
             }
-            memory.putI64(toNative, pointer, value);
+            memory.putI64(LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached(), pointer, value);
         }
     }
 
@@ -216,9 +216,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "readNative")
         static byte readManaged(LLVMGlobalContainer self, long offset,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
-            self.toNative(toNative);
+            self.toNative();
             // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             return readNative(self, offset, location);
@@ -237,9 +236,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "readNative")
         static short readManaged(LLVMGlobalContainer self, long offset,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
-            self.toNative(toNative);
+            self.toNative();
             // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             return readNative(self, offset, location);
@@ -258,9 +256,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "readNative")
         static int readManaged(LLVMGlobalContainer self, long offset,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
-            self.toNative(toNative);
+            self.toNative();
             // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             return readNative(self, offset, location);
@@ -279,9 +276,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "readNative")
         static float readManaged(LLVMGlobalContainer self, long offset,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
-            self.toNative(toNative);
+            self.toNative();
             // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             return readNative(self, offset, location);
@@ -300,9 +296,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "readNative")
         static double readManaged(LLVMGlobalContainer self, long offset,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
-            self.toNative(toNative);
+            self.toNative();
             // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             return readNative(self, offset, location);
@@ -337,9 +332,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
         static Object readFallback(LLVMGlobalContainer self, long offset,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
-            self.toNative(toNative);
+            self.toNative();
             // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             return readNative(self, offset, location);
@@ -376,9 +370,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
         static LLVMPointer readFallback(LLVMGlobalContainer self, long offset,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
-            self.toNative(toNative);
+            self.toNative();
             // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             return readNative(self, offset, location);
@@ -397,10 +390,9 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "writeNative")
         static void writeManaged(LLVMGlobalContainer self, long offset, byte value,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
-            self.toNative(toNative);
-            // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
+            self.toNative();
+            // Don't dispatch through the LLVMManagedWriteLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             writeNative(self, offset, value, location);
         }
@@ -418,10 +410,9 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "writeNative")
         static void writeManaged(LLVMGlobalContainer self, long offset, short value,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
-            self.toNative(toNative);
-            // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
+            self.toNative();
+            // Don't dispatch through the LLVMManagedWriteLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             writeNative(self, offset, value, location);
         }
@@ -439,10 +430,9 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "writeNative")
         static void writeManaged(LLVMGlobalContainer self, long offset, int value,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
-            self.toNative(toNative);
-            // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
+            self.toNative();
+            // Don't dispatch through the LLVMManagedWriteLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             writeNative(self, offset, value, location);
         }
@@ -460,10 +450,9 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "writeNative")
         static void writeManaged(LLVMGlobalContainer self, long offset, float value,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
-            self.toNative(toNative);
-            // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
+            self.toNative();
+            // Don't dispatch through the LLVMManagedWriteLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             writeNative(self, offset, value, location);
         }
@@ -481,10 +470,9 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(replaces = "writeNative")
         static void writeManaged(LLVMGlobalContainer self, long offset, double value,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
-            self.toNative(toNative);
-            // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
+            self.toNative();
+            // Don't dispatch through the LLVMManagedWriteLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             writeNative(self, offset, value, location);
         }
@@ -527,10 +515,9 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
         static void writeFallback(LLVMGlobalContainer self, long offset, long value,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
-            self.toNative(toNative);
-            // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
+            self.toNative();
+            // Don't dispatch through the LLVMManagedWriteLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
             writeNative(self, offset, value, location);
         }
@@ -543,11 +530,11 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             return LLVMLanguage.get(null).singleContextAssumption;
         }
 
-        @Specialization(limit = "3", guards = "self.isPointer()")
+        @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMGlobalContainer self, long offset, Object value,
-                        @CachedLibrary("value") LLVMNativeLibrary toNative) {
+                        @Shared("toNative") @Cached LLVMNativePointerSupport.ToNativePointerNode toNative) {
             assert self.isPointer();
-            long ptr = toNative.toNativePointer(value).asNative();
+            long ptr = toNative.execute(value).asNative();
             LLVMLanguage.get(toNative).getLLVMMemory().putI64(toNative, self.getAddress() + offset, ptr);
         }
 
@@ -575,12 +562,11 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
         @GenerateAOT.Exclude
         static void writeFallback(LLVMGlobalContainer self, long offset, Object value,
-                        @Shared("toNative") @Cached LLVMToNativeNode toNative,
-                        @CachedLibrary("self") LLVMNativeLibrary nativeLib) {
-            self.toNative(toNative);
-            // Don't dispatch through the LLVMManagedReadLibrary again to break recursion.
+                        @Shared("toNative") @Cached LLVMNativePointerSupport.ToNativePointerNode toNative) {
+            self.toNative();
+            // Don't dispatch through the LLVMManagedWriteLibrary again to break recursion.
             // We already know we'll be in the self.isPointer() case after toNative.
-            writeNative(self, offset, value, nativeLib);
+            writeNative(self, offset, value, toNative);
         }
     }
 
