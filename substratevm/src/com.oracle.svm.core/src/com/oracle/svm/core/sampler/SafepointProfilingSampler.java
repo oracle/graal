@@ -30,7 +30,6 @@ import org.graalvm.collections.LockFreePrefixTree;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.ProfilingSampler;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;

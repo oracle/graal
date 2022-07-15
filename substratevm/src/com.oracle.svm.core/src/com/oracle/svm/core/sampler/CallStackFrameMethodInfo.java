@@ -77,8 +77,4 @@ public class CallStackFrameMethodInfo {
         this.enterSafepointFromNativeId = enterSafepointFromNativeId;
         this.enterSafepointCheckObject = enterSafepointCheckObject;
     }
-
-    public int getEnterSamplingCodeMethodId() {
-        return enterSafepointCheckId;
-    }
 }
