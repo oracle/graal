@@ -26,50 +26,185 @@
 
 package com.oracle.svm.core.monitor;
 
-import jdk.internal.misc.Unsafe;
-
-import java.util.Date;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrLater;
+
+import jdk.internal.misc.Unsafe;
 
 /**
- * JavaMonitorAbstractQueuedSynchronizer is derived from the AbstractQueuedSynchronizer class in the jdk 19 sources.
+ * {@link JavaMonitorAbstractQueuedSynchronizer} is derived from the class
+ * {@link java.util.concurrent.locks.AbstractQueuedSynchronizer} in the JDK 19 sources. Only the
+ * relevant methods from the JDK sources have been kept. Some additional Native Image-specific
+ * functionality has been added.
+ *
  * Git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec. JDK tag: jdk-19+30
  *
- * Only the methods required for substrateVM monitor support have been kept.
- * Additional functionality specific to substrateVM has been added.
+ * Main differences to the JDK implementation:
+ * <ul>
+ * <li>There is no need to support any locking modes besides the non-fair exclusive one.</li>
+ * <li>We explicitly treat ForkJoinPool threads in the same way as any other threads because
+ * notify/wait should always work the same regardless of the involved thread (see
+ * {@link java.util.concurrent.ForkJoinPool#managedBlock}).</li>
+ * </ul>
  */
-public class JavaMonitorAbstractQueuedSynchronizer {
+abstract class JavaMonitorAbstractQueuedSynchronizer {
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative
     static final int COND = 2; // in a condition wait
-    private static final Unsafe U = Unsafe.getUnsafe();
-    private static final long STATE = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "state");
-    private static final long HEAD = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "head");
-    private static final long TAIL = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "tail");
-    private volatile int state;
+
+    // see AbstractQueuedSynchronizer.Node
+    abstract static class Node {
+        volatile Node prev;
+        volatile Node next;
+        Thread waiter;
+        volatile int status;
+
+        // see AbstractQueuedSynchronizer.Node.casPrev(Node, Node)
+        final boolean casPrev(Node c, Node v) {
+            return weakCompareAndSetReference(this, PREV, c, v);
+        }
+
+        // see AbstractQueuedSynchronizer.Node.casNext(Node, Node)
+        final boolean casNext(Node c, Node v) {
+            return weakCompareAndSetReference(this, NEXT, c, v);
+        }
+
+        // see AbstractQueuedSynchronizer.Node.getAndUnsetStatus(int)
+        final int getAndUnsetStatus(int v) {
+            return U.getAndBitwiseAndInt(this, STATUS, ~v);
+        }
+
+        // see AbstractQueuedSynchronizer.Node.setPrevRelaxed(Node)
+        final void setPrevRelaxed(Node p) {
+            putReference(this, PREV, p);
+        }
+
+        // see AbstractQueuedSynchronizer.Node.setStatusRelaxed(int)
+        final void setStatusRelaxed(int s) {
+            U.putInt(this, STATUS, s);
+        }
+
+        // see AbstractQueuedSynchronizer.Node.clearStatus()
+        final void clearStatus() {
+            U.putIntOpaque(this, STATUS, 0);
+        }
+
+        private static final long STATUS = U.objectFieldOffset(Node.class, "status");
+        private static final long NEXT = U.objectFieldOffset(Node.class, "next");
+        private static final long PREV = U.objectFieldOffset(Node.class, "prev");
+    }
+
+    // see AbstractQueuedSynchronizer.ExclusiveNode
+    static final class ExclusiveNode extends Node {
+    }
+
+    // see AbstractQueuedSynchronizer.ConditionNode
+    static final class ConditionNode extends Node {
+        ConditionNode nextWaiter;
+
+        // see AbstractQueuedSynchronizer.ConditionNode.isReleasable()
+        public boolean isReleasable() {
+            // Checkstyle: allow Thread.isInterrupted"
+            return status <= 1 || Thread.currentThread().isInterrupted();
+            // Checkstyle: disallow Thread.isInterrupted"
+        }
+
+        // see AbstractQueuedSynchronizer.ConditionNode.block()
+        public boolean block() {
+            while (!isReleasable()) {
+                LockSupport.park();
+            }
+            return true;
+        }
+    }
+
     private transient volatile Node head;
     private transient volatile Node tail;
-
+    private volatile int state;
+    // see AbstractOwnableSynchronizer.exclusiveOwnerThread
     private transient Thread exclusiveOwnerThread;
 
+    // see AbstractOwnableSynchronizer.setExclusiveOwnerThread(Thread)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected final void setExclusiveOwnerThread(Thread thread) {
-        this.exclusiveOwnerThread = thread;
+        exclusiveOwnerThread = thread;
     }
 
+    // see AbstractOwnableSynchronizer.getExclusiveOwnerThread()
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected final Thread getExclusiveOwnerThread() {
-        return this.exclusiveOwnerThread;
+        return exclusiveOwnerThread;
     }
 
+    // see AbstractQueuedSynchronizer.getState()
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final int getState() {
+        return state;
+    }
+
+    // see AbstractQueuedSynchronizer.setState(int)
+    protected final void setState(int newState) {
+        this.state = newState;
+    }
+
+    // see AbstractQueuedSynchronizer.compareAndSetState(int, int)
+    protected final boolean compareAndSetState(int expect, int update) {
+        return U.compareAndSetInt(this, STATE, expect, update);
+    }
+
+    // see AbstractQueuedSynchronizer.casTail(Node, Node)
+    private boolean casTail(Node c, Node v) {
+        return compareAndSetReference(this, TAIL, c, v);
+    }
+
+    // see AbstractQueuedSynchronizer.tryInitializeHead()
+    private void tryInitializeHead() {
+        Node h = new ExclusiveNode();
+        if (compareAndSetReference(this, HEAD, null, h)) {
+            tail = h;
+        }
+    }
+
+    // see AbstractQueuedSynchronizer.enqueue(Node)
+    final void enqueue(Node node) {
+        if (node != null) {
+            for (;;) {
+                Node t = tail;
+                node.setPrevRelaxed(t); // avoid unnecessary fence
+                if (t == null) { // initialize
+                    tryInitializeHead();
+                } else if (casTail(t, node)) {
+                    t.next = node;
+                    if (t.status < 0) { // wake up to clean link
+                        LockSupport.unpark(node.waiter);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // see AbstractQueuedSynchronizer.isEnqueued(Node)
+    final boolean isEnqueued(Node node) {
+        for (Node t = tail; t != null; t = t.prev) {
+            if (t == node) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // see AbstractQueuedSynchronizer.signalNext(Node)
     private static void signalNext(Node h) {
         Node s;
         if (h != null && (s = h.next) != null && s.status != 0) {
@@ -78,47 +213,14 @@ public class JavaMonitorAbstractQueuedSynchronizer {
         }
     }
 
-    private static void signalNextIfShared(Node h) {
-        Node s;
-        if (h != null && (s = h.next) != null && (s instanceof SharedNode)
-                && s.status != 0) {
-            s.getAndUnsetStatus(WAITING);
-            LockSupport.unpark(s.waiter);
-        }
-    }
-
-    @Uninterruptible(reason = "called during deoptimization")
-    public final int getState() {
-        return state;
-    }
-
-    protected final void setState(int newState) {
-        this.state = newState;
-    }
-
-    public final void acquire(int arg) {
-        if (!tryAcquire(arg)) {
-            acquire(null, arg);
-        }
-
-    }
-
+    // see AbstractQueuedSynchronizer.acquire(Node, int, boolean, boolean, boolean, long)
+    @SuppressWarnings("all")
     final int acquire(Node node, int arg) {
         Thread current = Thread.currentThread();
         byte spins = 0;
-        byte postSpins = 0; // retries upon unpark of first thread
-        boolean interrupted = false;
+        byte postSpins = 0;
         boolean first = false;
-        Node pred = null; // predecessor of node when enqueued
-
-        /*
-         * Repeatedly: Check if node now first if so, ensure head stable, else ensure
-         * valid predecessor if node is first or not yet enqueued, try acquiring else if
-         * node not yet created, create it else if not yet enqueued, try once to enqueue
-         * else if woken from park, retry (up to postSpins times) else if WAITING status
-         * not set, set and retry else park and clear WAITING status, and check
-         * cancellation
-         */
+        Node pred = null;
 
         for (;;) {
             if (!first && (pred = (node == null) ? null : node.prev) != null && !(first = (head == pred))) {
@@ -135,7 +237,7 @@ public class JavaMonitorAbstractQueuedSynchronizer {
                 try {
                     acquired = tryAcquire(arg);
                 } catch (Throwable ex) {
-                    cancelAcquire(node, interrupted, false);
+                    cancelAcquire(node);
                     throw ex;
                 }
                 if (acquired) {
@@ -144,10 +246,6 @@ public class JavaMonitorAbstractQueuedSynchronizer {
                         head = node;
                         pred.next = null;
                         node.waiter = null;
-
-                        if (interrupted) {
-                            current.interrupt();
-                        }
                     }
                     return 1;
                 }
@@ -171,15 +269,14 @@ public class JavaMonitorAbstractQueuedSynchronizer {
             } else if (node.status == 0) {
                 node.status = WAITING; // enable signal and recheck
             } else {
-                long nanos;
                 spins = postSpins = (byte) ((postSpins << 1) | 1);
                 LockSupport.park(this);
                 node.clearStatus();
-
             }
         }
     }
 
+    // see AbstractQueuedSynchronizer.cleanQueue()
     private void cleanQueue() {
         for (;;) { // restart point
             for (Node q = tail, s = null, p, n;;) { // (p, q, s) triples
@@ -213,7 +310,8 @@ public class JavaMonitorAbstractQueuedSynchronizer {
         }
     }
 
-    private int cancelAcquire(Node node, boolean interrupted, boolean interruptible) {
+    // see AbstractQueuedSynchronizer.cancelAcquire(Node, boolean, boolean)
+    private int cancelAcquire(Node node) {
         if (node != null) {
             node.waiter = null;
             node.status = CANCELLED;
@@ -221,209 +319,41 @@ public class JavaMonitorAbstractQueuedSynchronizer {
                 cleanQueue();
             }
         }
-        if (interrupted) {
-            if (interruptible) {
-                return CANCELLED;
-            } else {
-                Thread.currentThread().interrupt();
-            }
-        }
         return 0;
     }
 
-    private boolean casTail(Node c, Node v) {
-        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-        if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-            return u.compareAndSetReference(this, TAIL, c, v);
-        }
-        return u.compareAndSetObject(this, TAIL, c, v);
-    }
+    // see AbstractQueuedSynchronizer.tryAcquire(int)
+    protected abstract boolean tryAcquire(int arg);
 
-    private void tryInitializeHead() {
-        Node h = new ExclusiveNode();
-        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-        if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-            if (u.compareAndSetReference(this, HEAD, null, h)) {
-                tail = h;
-            }
-        } else {
-            if (u.compareAndSetObject(this, HEAD, null, h)) {
-                tail = h;
-            }
+    // see AbstractQueuedSynchronizer.tryRelease(int)
+    protected abstract boolean tryRelease(int releases);
+
+    // see AbstractQueuedSynchronizer.isHeldExclusively()
+    protected abstract boolean isHeldExclusively();
+
+    // see AbstractQueuedSynchronizer.acquire(int)
+    public final void acquire(int arg) {
+        if (!tryAcquire(arg)) {
+            acquire(null, arg);
         }
     }
 
-    protected int tryAcquireShared(int arg) {
-        throw new UnsupportedOperationException();
-    }
-
-    protected boolean tryAcquire(int arg) {
-        throw new UnsupportedOperationException();
-    }
-
-    protected boolean isHeldExclusively() {
-        throw new UnsupportedOperationException();
-    }
-
-    protected boolean tryRelease(int arg) {
-        throw new UnsupportedOperationException();
-    }
-
-    protected final boolean compareAndSetState(int expect, int update) {
-        return U.compareAndSetInt(this, STATE, expect, update);
-    }
-
+    // see AbstractQueuedSynchronizer.release(int)
     public final boolean release(int arg) {
-        if (this.tryRelease(arg)) {
-            signalNext(this.head);
+        if (tryRelease(arg)) {
+            signalNext(head);
             return true;
-        } else {
-            return false;
-        }
-    }
-
-    final boolean isEnqueued(Node node) {
-        for (Node t = tail; t != null; t = t.prev) {
-            if (t == node) {
-                return true;
-            }
         }
         return false;
     }
 
-    final void enqueue(Node node) {
-        if (node != null) {
-            for (;;) {
-                Node t = tail;
-                node.setPrevRelaxed(t); // avoid unnecessary fence
-                if (t == null) { // initialize
-                    tryInitializeHead();
-                } else if (casTail(t, node)) {
-                    t.next = node;
-                    if (t.status < 0) { // wake up to clean link
-                        LockSupport.unpark(node.waiter);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    static final class ExclusiveNode extends Node {
-    }
-
-    static final class SharedNode extends Node {
-    }
-
-    abstract static class Node {
-        private static final long STATUS;
-        private static final long NEXT;
-        private static final long PREV;
-
-        static {
-            STATUS = U.objectFieldOffset(Node.class,
-                    "status");
-            NEXT = U.objectFieldOffset(Node.class,
-                    "next");
-            PREV = U.objectFieldOffset(Node.class,
-                    "prev");
-        }
-
-        volatile Node prev;
-        volatile Node next;
-        Thread waiter;
-        volatile int status;
-
-        Node() {
-        }
-
-        final boolean casPrev(Node c, Node v) {
-            Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-                return u.weakCompareAndSetReference(this, PREV, c, v);
-            } else {
-                return u.compareAndSetObject(this, PREV, c, v);
-            }
-        }
-
-        final boolean casNext(Node c, Node v) {
-            Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-                return u.weakCompareAndSetReference(this, NEXT, c, v);
-            } else {
-                return u.compareAndSetObject(this, NEXT, c, v);
-            }
-        }
-
-        final int getAndUnsetStatus(int v) {
-            return U.getAndBitwiseAndInt(this, STATUS, ~v);
-        }
-
-        final void setPrevRelaxed(Node p) {
-            Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-                u.putReference(this, PREV, p);
-            } else {
-                u.putObject(this, PREV, p);
-            }
-        }
-
-        final void setStatusRelaxed(int s) {
-            U.putInt(this, STATUS, s);
-        }
-
-        final void clearStatus() {
-            U.putIntOpaque(this, STATUS, 0);
-        }
-    }
-
-    static final class ConditionNode extends Node
-            implements ForkJoinPool.ManagedBlocker {
-        ConditionNode nextWaiter; // link to next waiting node
-
-        /**
-         * Allows Conditions to be used in ForkJoinPools without risking fixed pool
-         * exhaustion. This is usable only for untimed Condition waits, not timed
-         * versions.
-         */
-        // Checkstyle: allow Thread.isInterrupted"
-        @Override
-        public boolean isReleasable() {
-            return status <= 1 || Thread.currentThread().isInterrupted();
-        }
-        // Checkstyle: disallow Thread.isInterrupted"
-
-        @Override
-        public boolean block() {
-            while (!isReleasable()) {
-                LockSupport.park();
-            }
-            return true;
-        }
-    }
-
-    public class JavaMonitorConditionObject implements Condition{
-        /**
-         * First node of condition queue.
-         */
+    // see AbstractQueuedSynchronizer.ConditionObject
+    public class JavaMonitorConditionObject {
         private transient ConditionNode firstWaiter;
-        /**
-         * Last node of condition queue.
-         */
         private transient ConditionNode lastWaiter;
 
-        public JavaMonitorConditionObject() {
-        }
-
-        public JavaMonitorAbstractQueuedSynchronizer getOuter() {
-            return JavaMonitorAbstractQueuedSynchronizer.this;
-        }
-
-        // Signalling methods
-
-        /**
-         * Removes and transfers one or all waiters to sync queue.
-         */
+        // see AbstractQueuedSynchronizer.ConditionObject.doSignal(ConditionNode, boolean)
+        @SuppressWarnings("all")
         private void doSignal(ConditionNode first, boolean all) {
             while (first != null) {
                 ConditionNode next = first.nextWaiter;
@@ -440,14 +370,7 @@ public class JavaMonitorAbstractQueuedSynchronizer {
             }
         }
 
-        /**
-         * Moves the longest-waiting thread, if one exists, from the wait queue for this
-         * condition to the wait queue for the owning lock.
-         *
-         * @throws IllegalMonitorStateException if {@link #isHeldExclusively} returns
-         *                                      {@code false}
-         */
-        @Override
+        // see AbstractQueuedSynchronizer.ConditionObject.signal()
         public final void signal() {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
@@ -458,14 +381,7 @@ public class JavaMonitorAbstractQueuedSynchronizer {
             }
         }
 
-        /**
-         * Moves all threads from the wait queue for this condition to the wait queue
-         * for the owning lock.
-         *
-         * @throws IllegalMonitorStateException if {@link #isHeldExclusively} returns
-         *                                      {@code false}
-         */
-        @Override
+        // see AbstractQueuedSynchronizer.ConditionObject.signalAll()
         public final void signalAll() {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
@@ -476,12 +392,36 @@ public class JavaMonitorAbstractQueuedSynchronizer {
             }
         }
 
+        // see AbstractQueuedSynchronizer.ConditionObject.enableWait()
+        private int enableWait(ConditionNode node) {
+            if (isHeldExclusively()) {
+                node.waiter = Thread.currentThread();
+                node.setStatusRelaxed(COND | WAITING);
+                ConditionNode last = lastWaiter;
+                if (last == null) {
+                    firstWaiter = node;
+                } else {
+                    last.nextWaiter = node;
+                }
+                lastWaiter = node;
+                int savedState = getState();
+                if (release(savedState)) {
+                    return savedState;
+                }
+            }
+            node.status = CANCELLED; // lock not held or inconsistent
+            throw new IllegalMonitorStateException();
+        }
+
+        // see AbstractQueuedSynchronizer.ConditionObject.canReacquire(ConditionNode)
         private boolean canReacquire(ConditionNode node) {
             // check links, not status to avoid enqueue race
             Node p; // traverse unless known to be bidirectionally linked
-            return node != null && (p = node.prev) != null && (p.next == node || isEnqueued(node));
+            return node != null && (p = node.prev) != null &&
+                            (p.next == node || isEnqueued(node));
         }
 
+        // see AbstractQueuedSynchronizer.ConditionObject.unlinkCancelledWaiters(ConditionNode)
         private void unlinkCancelledWaiters(ConditionNode node) {
             if (node == null || node.nextWaiter != null || node == lastWaiter) {
                 ConditionNode w = firstWaiter;
@@ -506,53 +446,29 @@ public class JavaMonitorAbstractQueuedSynchronizer {
             }
         }
 
-        @Override
-        public final void awaitUninterruptibly() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public final boolean awaitUntil(Date deadline) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
+        // see AbstractQueuedSynchronizer.ConditionObject.await()
+        @SuppressWarnings("all")
         public final void await() throws InterruptedException {
             if (Thread.interrupted()) {
                 throw new InterruptedException();
             }
             ConditionNode node = new ConditionNode();
             int savedState = enableWait(node);
-            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-                Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(this); // for back-compatibility
-            }
+            setCurrentBlocker(this);
             boolean interrupted = false;
             boolean cancelled = false;
-            boolean rejected = false;
             while (!canReacquire(node)) {
                 if (interrupted |= Thread.interrupted()) {
                     if (cancelled = (node.getAndUnsetStatus(COND) & COND) != 0) {
                         break; // else interrupted after signal
                     }
                 } else if ((node.status & COND) != 0) {
-                    try {
-                        if (rejected) {
-                            node.block();
-                        } else {
-                            ForkJoinPool.managedBlock(node);
-                        }
-                    } catch (RejectedExecutionException ex) {
-                        rejected = true;
-                    } catch (InterruptedException ie) {
-                        interrupted = true;
-                    }
+                    node.block();
                 } else {
                     Thread.onSpinWait(); // awoke while enqueuing
                 }
             }
-            if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-                Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(null);
-            }
+            setCurrentBlocker(null);
             node.clearStatus();
             acquire(node, savedState);
             if (interrupted) {
@@ -564,7 +480,8 @@ public class JavaMonitorAbstractQueuedSynchronizer {
             }
         }
 
-        @Override
+        // see AbstractQueuedSynchronizer.ConditionObject.await(long, TimeUnit)
+        @SuppressWarnings("all")
         public final boolean await(long time, TimeUnit unit) throws InterruptedException {
             long nanosTimeout = unit.toNanos(time);
             if (Thread.interrupted()) {
@@ -597,32 +514,46 @@ public class JavaMonitorAbstractQueuedSynchronizer {
             }
             return !cancelled;
         }
+    }
 
-        @Override
-        public final long awaitNanos(long nanosTimeout) throws InterruptedException {
-            throw new UnsupportedOperationException();
-        }
-
-        private int enableWait(ConditionNode node) {
-            if (isHeldExclusively()) {
-                node.waiter = Thread.currentThread();
-                node.setStatusRelaxed(COND | WAITING);
-                ConditionNode last = lastWaiter;
-                if (last == null) {
-                    firstWaiter = node;
-                } else {
-                    last.nextWaiter = node;
-                }
-                lastWaiter = node;
-                int savedState = getState();
-                if (release(savedState)) {
-                    return savedState;
-                }
-            }
-            node.status = CANCELLED; // lock not held or inconsistent
-            throw new IllegalMonitorStateException();
+    static void setCurrentBlocker(JavaMonitorConditionObject condition) {
+        if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
+            Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(condition);
         }
     }
+
+    static boolean compareAndSetReference(Object object, long offset, Node expected, Node newValue) {
+        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            return u.compareAndSetReference(object, offset, expected, newValue);
+        } else {
+            return u.compareAndSetObject(object, offset, expected, newValue);
+        }
+    }
+
+    static boolean weakCompareAndSetReference(Object object, long offset, Node expected, Node newValue) {
+        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            return u.weakCompareAndSetReference(object, offset, expected, newValue);
+        } else {
+            return u.weakCompareAndSetObject(object, offset, expected, newValue);
+        }
+    }
+
+    static void putReference(Object object, long offset, Node p) {
+        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            u.putReference(object, offset, p);
+        } else {
+            u.putObject(object, offset, p);
+        }
+    }
+
+    // Unsafe
+    private static final Unsafe U = Unsafe.getUnsafe();
+    static final long STATE = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "state");
+    private static final long HEAD = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "head");
+    private static final long TAIL = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "tail");
 }
 
 @TargetClass(value = LockSupport.class)
@@ -635,20 +566,26 @@ final class Target_java_util_concurrent_locks_LockSupport {
 @TargetClass(value = Unsafe.class)
 final class Target_jdk_internal_misc_Unsafe {
     @Alias
-    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
-    public native boolean compareAndSetReference(Object var1, long var2, Object var4, Object var5);
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public native boolean compareAndSetReference(Object o, long offset, Object expected, Object x);
 
     @Alias
-    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
-    public native boolean weakCompareAndSetReference(Object o, long offset, Object expected, Object x);
-    @Alias
-    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK11OrEarlier.class)
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     public native boolean compareAndSetObject(Object o, long offset, Object expected, Object x);
-    @Alias
-    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK11OrEarlier.class)
-    public native void putObject(Object o, long offset, Object x);
 
     @Alias
-    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
-    public native void putReference(Object var1, long var2, Object var4);
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public native boolean weakCompareAndSetReference(Object o, long offset, Object expected, Object x);
+
+    @Alias
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    public native boolean weakCompareAndSetObject(Object o, long offset, Object expected, Object x);
+
+    @Alias
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public native void putReference(Object o, long offset, Object x);
+
+    @Alias
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    public native void putObject(Object o, long offset, Object x);
 }
