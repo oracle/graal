@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import org.graalvm.bisect.core.ExecutedMethodBuilder;
 import org.graalvm.bisect.core.Experiment;
@@ -77,16 +76,6 @@ public class ExperimentParser {
 
         ProftoolLog proftoolLog = parseProftoolLog(experimentFiles.getProftoolOutput());
 
-        // check that execution IDs match
-        for (ExecutedMethodBuilder methodBuilder : methodByCompilationId.values()) {
-            if (!Objects.equals(methodBuilder.getExecutionId(), proftoolLog.executionId)) {
-                throw new ExperimentParserException(
-                                "Execution ID mismatch: " + proftoolLog.executionId +
-                                                " vs " + methodBuilder.getExecutionId(),
-                                experimentFiles.getExperimentId());
-            }
-        }
-
         // augment optimization logs with proftool data
         for (ProftoolMethod method : proftoolLog.code) {
             if (method.level == null || method.level != GRAAL_COMPILER_LEVEL) {
@@ -117,7 +106,6 @@ public class ExperimentParser {
         JSONParser parser = new JSONParser(optimizationLog);
         EconomicMap<String, Object> log = expectMap(parser.parse(), "root");
         ExecutedMethodBuilder builder = new ExecutedMethodBuilder();
-        builder.setExecutionId(expectString(log.get("executionId"), "root.executionId"));
         builder.setCompilationId(expectString(log.get("compilationId"), "root.compilationId"));
         builder.setCompilationMethodName(
                         expectString(log.get("compilationMethodName"), "root.compilationMethodName"));

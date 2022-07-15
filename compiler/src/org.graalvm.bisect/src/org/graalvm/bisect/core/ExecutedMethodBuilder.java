@@ -33,10 +33,6 @@ import org.graalvm.bisect.core.optimization.OptimizationPhase;
  */
 public class ExecutedMethodBuilder {
     /**
-     * The execution ID as parsed from the optimization log.
-     */
-    private String executionId;
-    /**
      * The compilation ID of the executed method as reported in the optimization log. Matches
      * "compileId" in the proftool output.
      */
@@ -77,14 +73,6 @@ public class ExecutedMethodBuilder {
         return compilationId;
     }
 
-    public String getExecutionId() {
-        return executionId;
-    }
-
-    public void setExecutionId(String executionId) {
-        this.executionId = executionId;
-    }
-
     public void setExperiment(Experiment experiment) {
         this.experiment = experiment;
     }
@@ -93,7 +81,6 @@ public class ExecutedMethodBuilder {
         assert compilationId != null;
         assert compilationMethodName != null;
         assert experiment != null;
-        assert experiment.getExecutionId().equals(executionId);
         return new ExecutedMethodImpl(compilationId, compilationMethodName, rootPhase, period, experiment);
     }
 

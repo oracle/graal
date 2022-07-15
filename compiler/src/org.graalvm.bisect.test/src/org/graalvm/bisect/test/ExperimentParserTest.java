@@ -83,7 +83,6 @@ public class ExperimentParserTest {
             return List.of(
                             new StringReader("{\n" +
                                             "    \"compilationId\": \"2390\",\n" +
-                                            "    \"executionId\": \"16102\",\n" +
                                             "    \"compilationMethodName\": \"java.util.HashMap$HashIterator.nextNode()\",\n" +
                                             "    \"rootPhase\": {\n" +
                                             "        \"phaseName\": \"RootPhase\",\n" +
@@ -108,7 +107,6 @@ public class ExperimentParserTest {
                                             "}"),
                             new StringReader("{\n" +
                                             "    \"compilationId\": \"3677\",\n" +
-                                            "    \"executionId\": \"16102\",\n" +
                                             "    \"compilationMethodName\": \"org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)\",\n" +
                                             "    \"rootPhase\": {\n" +
                                             "        \"phaseName\": \"RootPhase\",\n" +

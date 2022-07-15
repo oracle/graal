@@ -124,12 +124,11 @@ with `-Dgraal.TrackNodeSourcePosition=true`.
 mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=true -Dgraal.DumpPath=/tmp/dump
 ```
 
-In the dump directory, you can find many files named `optimization_log/<compilation-id>.json`. Each of them corresponds
+In the dump directory, we can find many files named `optimization_log/<compilation-id>.json`. Each of them corresponds
 to one compilation. The structure is the following:
 
 ```json
 {
-  "executionId": "1675684",
   "compilationMethodName": "java.util.Formatter$FixedString.<init>(Formatter, String, int, int)",
   "compilationId": "17697",
   "rootPhase": {
@@ -141,9 +140,8 @@ to one compilation. The structure is the following:
 }
 ```
 
-All of the methods share the same `executionId`. The `compilationMethodName` can be used to match several compilations
-of one compilation unit. `rootPhase` contains the root of the optimization tree. Each node in the optimization tree is
-either:
+The `compilationMethodName` can be used to match several compilations of one compilation unit. `rootPhase` contains the
+root of the optimization tree. Each node in the optimization tree is either:
 
 - a phase node, which contains a `phaseName` derived from the class name and a list of children (phases and optimization
   entries),
