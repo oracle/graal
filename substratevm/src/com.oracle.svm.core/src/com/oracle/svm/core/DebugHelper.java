@@ -58,7 +58,6 @@ import org.graalvm.word.WordFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Optional;
@@ -306,7 +305,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_string_to_utf8", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static CCharPointer stringToUtf8(@SuppressWarnings("unused") IsolateThread thread, Pointer ptr) {
-            Object obj = (Object) ptr.toObject();
+            Object obj = ptr.toObject();
             return CTypeConversion.toCString((String) obj).get();
         }
 
@@ -390,7 +389,7 @@ public class DebugHelper {
                                          CCharPointer csignature,
                                          int index,
                                          Pointer value) {
-            Object obj = (Object) ptrArray.toObject();
+            Object obj = ptrArray.toObject();
             String strSignatura = Utf8.utf8ToString(csignature);
             Log
                     .log()
@@ -403,7 +402,7 @@ public class DebugHelper {
                             .string("object array: " + strSignatura.substring(2, strSignatura.length() - 1))
                             .character('\n');
 
-                    ((Object[]) obj)[index] = (Object) value.toObject();
+                    ((Object[]) obj)[index] = value.toObject();
                 } else {
                     char typeLetter = strSignatura.charAt(1);
                     Log
@@ -456,7 +455,7 @@ public class DebugHelper {
                                          Pointer ptrArray,
                                          CCharPointer csignature,
                                          int index) {
-            Object obj = (Object) ptrArray.toObject();
+            Object obj = ptrArray.toObject();
             String strSignatura = Utf8.utf8ToString(csignature);
             Log
                     .log()
@@ -518,7 +517,7 @@ public class DebugHelper {
 
                     Log.log()
                             .string(": frame-").unsigned(++frame[0]).string(": ");
-                    Class clazz = frameInfo.getSourceClass();
+                    Class<?> clazz = frameInfo.getSourceClass();
                     if (clazz != null) {
                         Log.log().string("className: ").string(clazz.getName());
                         classLoaders[0] = clazz.getClassLoader();
@@ -550,7 +549,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_class_for_name", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static Object getClassForName(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClassLoader, CCharPointer cClassName) {
-            Object classLoader = (Object)ptrClassLoader.toObject();
+            Object classLoader = ptrClassLoader.toObject();
             Log.log().string("getClassForName: ").string(cClassName).newline();
             String className = Utf8.utf8ToString(cClassName);
             Optional<Class<?>> opt = Heap.getHeap().getLoadedClasses().stream().filter((it) -> {
@@ -568,7 +567,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_allocate_object", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static Object getAllocateObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
-            Object classObject = (Object)ptrClass.toObject();
+            Object classObject = ptrClass.toObject();
             try {
                 return Unsafe.getUnsafe().allocateInstance((Class)classObject);
             } catch (InstantiationException e) {
@@ -585,7 +584,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_pin_object", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static Object pinObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrObj) {
-            Object obj = (Object)ptrObj.toObject();
+            Object obj = ptrObj.toObject();
             return PinnedObject.create(obj);
         }
 
@@ -610,7 +609,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_class_modifier", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static int classGetModifier(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
-            Class clazz = (Class)ptrClass.toObject();
+            Class<?> clazz = (Class<?>) ptrClass.toObject();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             return hub.getModifiers();
         }
@@ -625,7 +624,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_class_fields", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static String[] classGetFields(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
-            Class clazz = (Class)ptrClass.toObject();
+            Class<?> clazz = (Class<?>)ptrClass.toObject();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             Field[] fields = hub.getReachableFields();
             String[] strings = new String[fields.length];
@@ -634,7 +633,7 @@ public class DebugHelper {
                 builder.append(fields[i].getName())
                         .append(':')
                         .append(fields[i].getModifiers());
-                Class type = fields[i].getType();
+                Class<?> type = fields[i].getType();
                 Log.log().string(fields[i].getName()).character(':')
                         .hex(fields[i].getModifiers())
                         .character(':');
@@ -648,7 +647,7 @@ public class DebugHelper {
             return strings;
         }
 
-        private static String toSignature(Class type) {
+        private static String toSignature(Class<?> type) {
             if(type.isArray()){
                 return "[" + toSignature(type.getComponentType());
             }
@@ -687,10 +686,10 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_class_methods", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static String[] classGetMethods(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
-            Class clazz = (Class)ptrClass.toObject();
+            Class<?> clazz = (Class<?>)ptrClass.toObject();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             Method[] methods = hub.getReachableMethods();
-            Constructor[] constructors = hub.getReachableConstructors();
+            Constructor<?>[] constructors = hub.getReachableConstructors();
             String[] strings = new String[methods.length + constructors.length];
             for (int i = 0; i < methods.length; ++i) {
                 strings[i] = createMethodEntry(
@@ -719,7 +718,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_class_super", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static String classGetSuper(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
-            Class clazz = (Class) ptrClass.toObject();
+            Class<?> clazz = (Class<?>) ptrClass.toObject();
             Log.log().string("svm_dbg_class_super:").string(clazz.getName()).newline();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             return hub.getSuperHub().getName();
@@ -734,7 +733,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_class_interfaces", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
         public static String[] classGetInterfaces(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
-            Class clazz = (Class) ptrClass.toObject();
+            Class<?> clazz = (Class<?>) ptrClass.toObject();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             DynamicHub[] interfaces = hub.getInterfaces();
             String[] strings = new String[interfaces.length];
@@ -754,7 +753,7 @@ public class DebugHelper {
         public static Object getNull(@SuppressWarnings("unused") IsolateThread thread) {
             return null;
         }
-        private static String createMethodEntry(String name, int modifiers, Class returnType, Class[] parameters) {
+        private static String createMethodEntry(String name, int modifiers, Class<?> returnType, Class<?>[] parameters) {
             StringBuilder builder = new StringBuilder();
             builder.append(name)
                     .append(':')
