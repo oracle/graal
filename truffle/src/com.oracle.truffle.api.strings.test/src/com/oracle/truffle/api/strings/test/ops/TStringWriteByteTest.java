@@ -89,6 +89,7 @@ public class TStringWriteByteTest extends TStringTestBase {
                 };
                 node.execute((MutableTruffleString) a, 0, v, encoding);
                 assertBytesEqual(a, encoding, modified);
+                Assert.assertNotEquals(TruffleString.CodeRange.ASCII, a.getCodeRangeUncached(encoding));
                 for (TruffleString b : immutable) {
                     assertBytesEqual(b, encoding, array);
                 }
@@ -102,6 +103,7 @@ public class TStringWriteByteTest extends TStringTestBase {
                 for (MutableTruffleString b : mutable) {
                     node.execute(b, 0, v, encoding);
                     assertBytesEqual(b, encoding, modified);
+                    Assert.assertNotEquals(TruffleString.CodeRange.ASCII, b.getCodeRangeUncached(encoding));
                 }
                 assertBytesEqual(a, encoding, array);
             }

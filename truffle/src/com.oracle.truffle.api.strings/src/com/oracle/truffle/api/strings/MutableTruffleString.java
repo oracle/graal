@@ -425,7 +425,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
             int byteLength = a.length() << a.stride();
             TruffleString.boundsCheckI(byteIndex, byteLength);
             TStringOps.writeS0(a.data(), a.offset(), byteLength, byteIndex, value);
-            if (!(TSCodeRange.is7Bit(a.codeRange) && value < 0)) {
+            if (!(TSCodeRange.is7Bit(a.codeRange) && value >= 0)) {
                 a.invalidateCachedAttributes();
             }
         }
