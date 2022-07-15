@@ -26,16 +26,15 @@ package com.oracle.svm.core.sampler;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.thread.Safepoint;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CallStackFrameMethodInfo {
     private static final int INITIAL_METHOD_ID = -1;
 
-    private static final String ENTER_SAFEPOINT_METHOD_NAME = "Safepoint.enterSlowPathSafepointCheck";
-
-    private static final String ENTER_SAFEPOINT_FROM_NATIVE_METHOD_NAME = "Safepoint.enterSlowPathTransitionFromNativeToNewStatus";
-
-    private static final String ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME = "com.oracle.svm.enterprise.core.ae.enterSlowPathSafepointCheckObject";
+    private static final String ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME = "enterSlowPathSafepointCheckObject";
 
     private final Map<Integer, String> sampledMethods = new HashMap<>();
 
@@ -46,17 +45,23 @@ public class CallStackFrameMethodInfo {
     private int enterSafepointCheckObject = INITIAL_METHOD_ID;
 
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
-        sampledMethods.put(methodId, method.format("%H.%n"));
-        // TODO BS make this contains be equals
-        if (enterSafepointCheckId == INITIAL_METHOD_ID && method.format("%H.%n").contains(ENTER_SAFEPOINT_METHOD_NAME)) {
+        String formattedMethod = method.format("%H.%n");
+        sampledMethods.put(methodId, formattedMethod);
+        if (enterSafepointCheckId == INITIAL_METHOD_ID && formattedMethod.equals(formatted(Safepoint.ENTER_SLOW_PATH_SAFEPOINT_CHECK))) {
             enterSafepointCheckId = methodId;
         }
-        if (enterSafepointFromNativeId == INITIAL_METHOD_ID && method.format("%H.%n").contains(ENTER_SAFEPOINT_FROM_NATIVE_METHOD_NAME)) {
+        if (enterSafepointFromNativeId == INITIAL_METHOD_ID && formattedMethod.equals(formatted(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS))) {
             enterSafepointFromNativeId = methodId;
         }
-        if (enterSafepointCheckObject == INITIAL_METHOD_ID && method.format("%H.%n").contains(ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME)) {
+        if (enterSafepointCheckObject == INITIAL_METHOD_ID && formattedMethod.contains(ENTER_SAFEPOINT_CHECK_OBJECT_METHOD_NAME)) {
             enterSafepointCheckObject = methodId;
         }
+    }
+
+    private static String formatted(SnippetRuntime.SubstrateForeignCallDescriptor enterSlowPathSafepointCheck) {
+        return String.format("%s.%s",
+                        enterSlowPathSafepointCheck.getDeclaringClass().getCanonicalName(),
+                        enterSlowPathSafepointCheck.getName());
     }
 
     public String methodFor(int methodId) {
