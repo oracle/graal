@@ -28,19 +28,37 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import com.oracle.svm.core.windows.headers.Process;
+import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
-        throw new UnsupportedOperationException("Not yet supported.");
+        HANDLE hThread = Process.NoTransitions.GetCurrentThread();
+        FILETIME create = StackValue.get(FILETIME.class);
+        FILETIME exit = StackValue.get(FILETIME.class);
+        FILETIME kernel = StackValue.get(FILETIME.class);
+        FILETIME user = StackValue.get(FILETIME.class);
+        if (!Process.NoTransitions.GetThreadTimes(hThread, create, exit, kernel, user)) {
+            return -1;
+        }
+        UnsignedWord total = WordFactory.unsigned(user.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(user.dwLowDateTime()));
+        if (includeSystemTime) {
+            total.add(WordFactory.unsigned(kernel.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(kernel.dwLowDateTime())));
+        }
+        return total.multiply(100).rawValue();
     }
 }
 
