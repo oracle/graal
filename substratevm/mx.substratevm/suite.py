@@ -753,27 +753,6 @@ suite = {
             "testProject": True,
         },
 
-        "com.oracle.svm.methodhandles": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "sun.invoke.util",
-                    "jdk.internal.reflect",
-                ],
-            },
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "javaCompliance": "11+",
-            "spotbugs": "false",
-        },
-
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
@@ -1113,7 +1092,6 @@ suite = {
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
-                "com.oracle.svm.methodhandles"
             ],
             "manifestEntries" : {
                 "Premain-Class": "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent",

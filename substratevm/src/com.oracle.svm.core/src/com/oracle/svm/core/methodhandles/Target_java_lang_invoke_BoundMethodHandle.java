@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.methodhandles;
+package com.oracle.svm.core.methodhandles;
 
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 

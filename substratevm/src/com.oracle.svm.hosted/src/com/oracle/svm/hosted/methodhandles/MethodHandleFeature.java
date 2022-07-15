@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.methodhandles;
+package com.oracle.svm.hosted.methodhandles;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
@@ -72,7 +72,7 @@ import sun.invoke.util.Wrapper;
  * Some direct method handles with particular semantics (defined in {@link MethodHandleIntrinsic})
  * are directly executed without going through the reflection API. We also substitute the native
  * calls into the JDK internals with equivalent implementations (see
- * {@link Target_java_lang_invoke_MethodHandleNatives}).
+ * {@code Target_java_lang_invoke_MethodHandleNatives}).
  */
 @AutomaticFeature
 @SuppressWarnings("unused")
