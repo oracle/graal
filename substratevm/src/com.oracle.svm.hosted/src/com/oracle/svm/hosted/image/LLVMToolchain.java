@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.llvm.util;
+package com.oracle.svm.hosted.image;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -92,7 +92,7 @@ public class LLVMToolchain {
         return output;
     }
 
-    private static Path getLLVMBinDir() {
+    public static Path getLLVMBinDir() {
         final String property = System.getProperty("llvm.bin.dir");
         if (property != null) {
             return Paths.get(property);

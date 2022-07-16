@@ -111,63 +111,76 @@ public abstract class NativeImageViaCC extends NativeImage {
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            List<String> cmd = inv.getCommand();
-            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
 
-            Process linkerProcess = null;
             try {
-                ProcessBuilder linkerCommand = FileUtils.prepareCommand(cmd, inv.getTempDirectory());
-                linkerCommand.redirectErrorStream(true);
-
-                FileUtils.traceCommand(linkerCommand);
-
-                linkerProcess = linkerCommand.start();
-
-                List<String> lines;
-                try (InputStream inputStream = linkerProcess.getInputStream()) {
-                    lines = FileUtils.readAllLines(inputStream);
-                    FileUtils.traceCommandOutput(lines);
-                }
-
-                int status = linkerProcess.waitFor();
-                if (status != 0) {
-                    String output = String.join(System.lineSeparator(), lines);
-                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
-                }
-
-                Path imagePath = inv.getOutputFile();
-                // Update the file size for reporting as the object file before linking might be
-                // larger than the final file size.
-                resultingImageSize = (int) imagePath.toFile().length();
-                BuildArtifacts.singleton().add(imageKind.isExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
-
-                if (Platform.includedIn(Platform.WINDOWS.class) && !imageKind.isExecutable) {
-                    /* Provide an import library for the built shared library. */
-                    String importLib = imageName + ".lib";
-                    Path importLibPath = imagePath.resolveSibling(importLib);
-                    Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
-                    BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIB, importLibPath);
-                }
-
-                if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
-                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
-                    if (Platform.includedIn(Platform.WINDOWS.class)) {
-                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
-                    } else {
-                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
-                    }
-                }
-            } catch (IOException e) {
-                throw handleLinkerFailure(e.toString(), commandLine, null);
-            } catch (InterruptedException e) {
-                throw new InterruptImageBuilding("Interrupted during native-image linking step for " + imageName);
-            } finally {
-                if (linkerProcess != null) {
-                    linkerProcess.destroy();
+                List<String> cmd = inv.getCommand();
+                runLinkerCommand(imageName, inv, cmd, imageKind.isExecutable);
+            } catch (RuntimeException e) {
+                if (inv.shouldRunFallback(e.getMessage())) {
+                    List<String> cmd = inv.getFallbackCommand();
+                    runLinkerCommand(imageName, inv, cmd, imageKind.isExecutable);
+                } else {
+                    throw e;
                 }
             }
 
             return inv;
+        }
+    }
+
+    private void runLinkerCommand(String imageName, LinkerInvocation inv, List<String> cmd, boolean imageKindIsExecutable) {
+        Process linkerProcess = null;
+        String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
+        try {
+            ProcessBuilder linkerCommand = FileUtils.prepareCommand(cmd, inv.getTempDirectory());
+            linkerCommand.redirectErrorStream(true);
+
+            FileUtils.traceCommand(linkerCommand);
+
+            linkerProcess = linkerCommand.start();
+
+            List<String> lines;
+            try (InputStream inputStream = linkerProcess.getInputStream()) {
+                lines = FileUtils.readAllLines(inputStream);
+                FileUtils.traceCommandOutput(lines);
+            }
+
+            int status = linkerProcess.waitFor();
+            if (status != 0) {
+                String output = String.join(System.lineSeparator(), lines);
+                throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
+            }
+
+            Path imagePath = inv.getOutputFile();
+            // Update the file size for reporting as the object file before linking might be
+            // larger than the final file size.
+            resultingImageSize = (int) imagePath.toFile().length();
+            BuildArtifacts.singleton().add(imageKindIsExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
+
+            if (Platform.includedIn(Platform.WINDOWS.class) && !imageKindIsExecutable) {
+                /* Provide an import library for the built shared library. */
+                String importLib = imageName + ".lib";
+                Path importLibPath = imagePath.resolveSibling(importLib);
+                Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
+                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIB, importLibPath);
+            }
+
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
+                if (Platform.includedIn(Platform.WINDOWS.class)) {
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
+                } else {
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
+                }
+            }
+        } catch (IOException e) {
+            throw handleLinkerFailure(e.toString(), commandLine, null);
+        } catch (InterruptedException e) {
+            throw new InterruptImageBuilding("Interrupted during native-image linking step for " + imageName);
+        } finally {
+            if (linkerProcess != null) {
+                linkerProcess.destroy();
+            }
         }
     }
 

@@ -129,6 +129,11 @@
                 "os": "darwin",
                 "arch": "amd64",
                 "name_template": "{name}-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-{version}-macos-{arch}"
             }
         ]
     },
@@ -290,6 +295,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             }
         ]
     },
@@ -305,6 +314,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             }
         ]
     },
