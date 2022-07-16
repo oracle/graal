@@ -34,12 +34,10 @@ import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalPointer;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -60,18 +58,7 @@ public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMAccessSymbolNo
     public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
         LLVMPointer pointer = checkNull(getContext().getSymbol(symbol, exception), exception);
         LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
-        int offset = threadLocalPointer.getOffset();
-        BitcodeID bitcodeID = threadLocalPointer.getSymbol().getBitcodeID(exception);
-        if (offset < 0) {
-            LLVMGlobalContainer container = LLVMLanguage.get(this).contextThreadLocal.get().getGlobalContainer(Math.abs(offset), bitcodeID);
-            return LLVMManagedPointer.create(container);
-        } else {
-            LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(bitcodeID);
-            if (base == null) {
-                throw new LLVMIllegalSymbolIndexException("Section base for thread local global is null");
-            }
-            return checkNull(base.increment(offset), exception);
-        }
+        return threadLocalPointer.resolve(LLVMLanguage.get(this), exception);
     }
 
     protected LLVMStack.LLVMStackAccessHolder createStackAccessHolder() {
@@ -84,17 +71,6 @@ public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMAccessSymbolNo
                     @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
         LLVMPointer pointer = checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
         LLVMThreadLocalPointer threadLocalPointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(pointer).getObject();
-        int offset = threadLocalPointer.getOffset();
-        BitcodeID bitcodeID = threadLocalPointer.getSymbol().getBitcodeID(exception);
-        if (offset < 0) {
-            LLVMGlobalContainer container = LLVMLanguage.get(this).contextThreadLocal.get().getGlobalContainer(Math.abs(offset), bitcodeID);
-            return LLVMManagedPointer.create(container);
-        } else {
-            LLVMPointer base = LLVMLanguage.get(this).contextThreadLocal.get().getSection(bitcodeID);
-            if (base == null) {
-                throw new LLVMIllegalSymbolIndexException("Section base for thread local global is null");
-            }
-            return checkNull(base.increment(offset), exception);
-        }
+        return threadLocalPointer.resolve(LLVMLanguage.get(this), exception);
     }
 }
