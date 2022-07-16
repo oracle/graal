@@ -95,11 +95,26 @@ final class PthreadVMLockFeature implements Feature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int alignment = layout.getAlignment();
+        final int wordSize = ConfigurationValues.getTarget().wordSize;
 
-        int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
-        /* padding if first element is not object aligned */
+        // `alignment` should actually be: `max(alignof(pthread_mutex_t), alignof(pthread_cond_t))`.
+        //
+        // Until `alignof()` can be queried from the C compiler, we hard-code this alignment to:
+        // - One word on 64-bit architectures.
+        // - Two words on 32-bit architectures.
+        //
+        // This split is arbitrary. Actual alignment requirements depend on the architecture,
+        // the Pthread library implementation, and the C compiler.
+        // These hard-coded values will need to be adjusted to higher values if we find out
+        // that `pthread_mutex_t` or `pthread_cond_t` have higher alignment requirements on some
+        // particular architecture.
+        assert wordSize == 8 || wordSize == 4 : "Unsupported architecture bit width";
+        final int alignment = (wordSize == 8) ? wordSize : (2 * wordSize);
+
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
+        final int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
+
+        // Align the first element to word boundary.
         int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
 
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
