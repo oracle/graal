@@ -57,6 +57,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.reachability.DirectMethodProcessingHandler;
+import com.oracle.graal.reachability.MethodSummaryBasedHandler;
+import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
+import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -1091,10 +1095,16 @@ public class NativeImageGenerator {
                         aSnippetReflection, aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
-            MethodSummaryProvider methodSummaryProvider = HostedConfiguration.instance().createMethodSummaryProvider(aUniverse, aMetaAccess);
-            ImageSingletons.add(MethodSummaryProvider.class, methodSummaryProvider);
+            ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
+            if (PointstoOptions.UseReachabilityMethodSummaries.getValue(options)) {
+                MethodSummaryProvider methodSummaryProvider = new SimpleInMemoryMethodSummaryProvider();
+                ImageSingletons.add(MethodSummaryProvider.class, methodSummaryProvider);
+                reachabilityMethodProcessingHandler = new MethodSummaryBasedHandler(methodSummaryProvider, ImageSingletons.lookup(TimerCollection.class));
+            } else {
+                reachabilityMethodProcessingHandler = new DirectMethodProcessingHandler();
+            }
             return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
-                            methodSummaryProvider, ImageSingletons.lookup(TimerCollection.class));
+                            ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
                         ImageSingletons.lookup(TimerCollection.class));
