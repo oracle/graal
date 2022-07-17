@@ -5,7 +5,7 @@ suite = {
 
   "groupId" : "org.graalvm.compiler",
   "version" : "21.3.3",
-  "release" : True,
+  "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
     "name" : "GraalVM Development",
