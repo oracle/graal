@@ -45,6 +45,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -292,7 +293,7 @@ public final class EspressoContext {
         return vmProperties;
     }
 
-    public void initializeContext() {
+    public void initializeContext() throws ContextPatchingException {
         EspressoError.guarantee(getEnv().isNativeAccessAllowed(),
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
@@ -347,7 +348,7 @@ public final class EspressoContext {
     }
 
     @SuppressWarnings("try")
-    private void spawnVM() {
+    private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
 
             long initStartTimeNanos = System.nanoTime();
@@ -368,9 +369,7 @@ public final class EspressoContext {
                 JavaVersion languageJavaVersion = getLanguage().getJavaVersion();
                 if (languageJavaVersion != null) {
                     if (!contextJavaVersion.equals(languageJavaVersion)) {
-                        String errMsg = String.format("Configuration specified an Java version incompatible with the pre-initialized language - expected: %s, got: %s.", languageJavaVersion,
-                                        contextJavaVersion);
-                        throw EspressoError.shouldNotReachHere(errMsg);
+                        throw ContextPatchingException.javaVersionMismatch(languageJavaVersion, contextJavaVersion);
                     }
                 } else {
                     getLanguage().tryInitializeJavaVersion(contextJavaVersion);

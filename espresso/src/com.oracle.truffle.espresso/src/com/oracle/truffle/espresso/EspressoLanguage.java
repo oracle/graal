@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
@@ -238,7 +239,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             return false;
         }
         context.patchContext(newEnv);
-        context.initializeContext();
+        try {
+            context.initializeContext();
+        } catch (ContextPatchingException e) {
+            context.getLogger().severe(e.getMessage());
+            return false;
+        }
         return true;
     }
 
