@@ -92,6 +92,11 @@ public class DynamicHubInitializer {
         heapScanner.rescanObject(javaClass.getPackage());
 
         DynamicHub hub = hostVM.dynamicHub(type);
+        /*
+         * Start by rescanning the hub itself. This ensures the correct scan reason in case this is
+         * the first time we see this hub.
+         */
+        heapScanner.rescanObject(hub, OtherReason.HUB);
         if (hub.getClassInitializationInfo() == null) {
             buildClassInitializationInfo(heapScanner, type, hub);
         }
@@ -159,7 +164,6 @@ public class DynamicHubInitializer {
                 heapScanner.rescanField(hub, dynamicHubAnnotationsEnumConstantsReferenceField);
             }
         }
-        heapScanner.rescanObject(hub, OtherReason.HUB);
     }
 
     private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
