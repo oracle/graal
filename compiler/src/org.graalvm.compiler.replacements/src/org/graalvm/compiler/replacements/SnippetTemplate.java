@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements;
 import static java.util.FormattableFlags.ALTERNATE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
@@ -46,7 +47,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -70,7 +70,6 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -924,11 +923,8 @@ public class SnippetTemplate {
             }
         }
 
-        static final AtomicInteger nextSnippetTemplateId = new AtomicInteger();
-
         private DebugContext openSnippetDebugContext(DebugContext outer, Arguments args) {
-            Description description = new Description(args.cacheKey.method, "SnippetTemplate_" + nextSnippetTemplateId.incrementAndGet());
-            return replacements.openSnippetDebugContext(description, outer, options);
+            return replacements.openSnippetDebugContext("SnippetTemplate_", args.cacheKey.method, outer, options);
         }
 
         /**
@@ -1022,6 +1018,7 @@ public class SnippetTemplate {
                 snippetCopy.disableUnsafeAccessTracking();
             }
             assert snippetCopy.isSubstitution();
+            assert !DumpOnError.getValue(options) || debug.contextLookupTopdown(StructuredGraph.class) == snippetCopy : "DumpOnError should cause the snippet graph to be available for dumping";
 
             EconomicMap<Node, Node> nodeReplacements = EconomicMap.create(Equivalence.IDENTITY);
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
