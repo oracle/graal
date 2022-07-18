@@ -515,12 +515,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=[],
     truffle_jars=[],
     support_distributions=[],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination='bin/<exe:lli>',
+    library_configs=[
+        mx_sdk_vm.LanguageLibraryConfig(
+            launchers=['bin/<exe:lli>'],
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
             build_args=[],
+            build_args_enterprise=[
+                '-H:+AuxiliaryEngineCache',
+                '-H:ReservedAuxiliaryImageBytes=2145482548',
+            ] if not mx.is_windows() else [],
             language='llvm',
         ),
     ],
