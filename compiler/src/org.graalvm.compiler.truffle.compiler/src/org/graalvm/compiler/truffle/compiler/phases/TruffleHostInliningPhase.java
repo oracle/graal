@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -337,22 +336,17 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                     debug.log("Warning method host inlining limit exceeded limit %s with graph size %s.", sizeLimit, graphSize);
                 }
 
-                int diff = graphSize - beforeGraphSize;
-                long total = totalCostCounter.addAndGet(diff);
-
                 /*
                  * The call tree is very convenient to debug host inlining decisions in addition to
                  * IGV. To use pass
                  * -H:Log=TruffleHostInliningPhase,~TruffleHostInliningPhase.CanonicalizerPhase to
                  * filter noise by canonicalization.
                  */
-                debug.log("Truffle host inlining completed after %s rounds. Graph cost changed from %s to %s after inlining (total cost %s): %n%s", round, beforeGraphSize, graphSize, total,
+                debug.log("Truffle host inlining completed after %s rounds. Graph cost changed from %s to %s after inlining: %n%s", round, beforeGraphSize, graphSize,
                                 printCallTree(context, root));
             }
         }
     }
-
-    private static final AtomicLong totalCostCounter = new AtomicLong();
 
     private static boolean isInBudget(CallTree call, int graphSize, int sizeLimit) {
         if (call.forceShallowInline) {
