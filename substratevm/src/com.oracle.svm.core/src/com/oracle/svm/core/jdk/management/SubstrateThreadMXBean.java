@@ -193,7 +193,11 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public long getCurrentThreadUserTime() {
-        throw VMError.unsupportedFeature(MSG);
+        if (ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
+            return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getCurrentThreadCpuTime(false);
+        } else {
+            throw new UnsupportedOperationException("CurrentThreadUserTime is not supported.");
+        }
     }
 
     @Override
