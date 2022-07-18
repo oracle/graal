@@ -44,6 +44,11 @@ public class SafepointProfilingSampler implements ProfilingSampler {
         this.collectingActive = collectingActive;
     }
 
+    @Override
+    public boolean isCollectingActive() {
+        return collectingActive;
+    }
+
     public void sampleThreadStack() {
         SamplingStackVisitor visitor = new SamplingStackVisitor();
         SamplingStackVisitor.StackTrace data = new SamplingStackVisitor.StackTrace();

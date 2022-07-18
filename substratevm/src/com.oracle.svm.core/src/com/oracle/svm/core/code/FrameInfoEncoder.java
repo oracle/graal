@@ -611,7 +611,7 @@ public class FrameInfoEncoder {
             StackSlot stackSlot = (StackSlot) value;
             result.type = ValueType.StackSlot;
             result.data = stackSlot.getOffset(data.totalFrameSize);
-            result.isCompressedReference = isCompressedReference(stackSlot);
+            result.isCompressedReference = stackSlot.getPlatformKind().getVectorLength() == 1 && isCompressedReference(stackSlot);
             ImageSingletons.lookup(Counters.class).stackValueCount.inc();
 
         } else if (ReservedRegisters.singleton().isAllowedInFrameState(value)) {
