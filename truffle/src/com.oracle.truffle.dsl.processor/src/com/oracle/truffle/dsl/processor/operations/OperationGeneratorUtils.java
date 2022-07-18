@@ -106,7 +106,7 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree createReadOpcode(CodeTree bc, CodeTree bci) {
-        return CodeTreeBuilder.createBuilder().tree(bc).string("[").tree(bci).string("]").build();
+        return CodeTreeBuilder.createBuilder().startCall("unsafeFromBytecode").tree(bc).tree(bci).end().build();
     }
 
     public static CodeTree createReadOpcode(CodeVariableElement bc, CodeVariableElement bci) {

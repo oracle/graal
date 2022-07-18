@@ -236,15 +236,19 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             // remove all non-static or private elements
             // this includes all the execute methods
             ct.getEnclosedElements().removeIf(e -> !e.getModifiers().contains(Modifier.STATIC) || e.getModifiers().contains(Modifier.PRIVATE));
-
-            if (!isVariadic) {
-                addBoxingEliminationNodeChildAnnotations(props, ct);
-            }
-
         });
 
         if (proxyMirror == null || isShortCircuit) {
             clonedType.setSuperClass(types.Node);
+        }
+
+        if (!isVariadic) {
+            addBoxingEliminationNodeChildAnnotations(props, clonedType);
+        }
+
+        if (parentData.isGenerateUncached()) {
+            clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateUncached));
+            clonedType.add(createExecuteUncachedMethod(props));
         }
 
         clonedType.add(createExecuteMethod(props, isVariadic));
@@ -256,13 +260,13 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return data;
         }
 
+        nodeData.redirectMessagesOnGeneratedElements(data);
+        data.setNodeData(nodeData);
+
         // replace the default node type system with Operations one if we have it
         if (nodeData.getTypeSystem().isDefault() && parentData.getTypeSystem() != null) {
             nodeData.setTypeSystem(parentData.getTypeSystem());
         }
-
-        nodeData.redirectMessagesOnGeneratedElements(data);
-        data.setNodeData(nodeData);
 
         return data;
     }
@@ -309,19 +313,66 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                         Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
                         context.getType(resType), "execute");
 
-        metExecute.addParameter(new CodeVariableElement(types.Frame, "frame"));
+        metExecute.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
 
         if (isVariadic) {
             int i = 0;
             for (ParameterKind param : props.parameters) {
-                if (param == ParameterKind.STACK_VALUE) {
-                    metExecute.addParameter(new CodeVariableElement(context.getType(Object.class), "arg" + i));
-                } else if (param == ParameterKind.VARIADIC) {
-                    metExecute.addParameter(new CodeVariableElement(context.getType(Object[].class), "arg" + i));
+                switch (param) {
+                    case STACK_VALUE:
+                        metExecute.addParameter(new CodeVariableElement(context.getType(Object.class), "arg" + i));
+                        break;
+                    case VARIADIC:
+                        metExecute.addParameter(new CodeVariableElement(context.getType(Object[].class), "arg" + i));
+                        break;
+                    case LOCAL_SETTER:
+                    case LOCAL_SETTER_ARRAY:
+                    case VIRTUAL_FRAME:
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("" + param);
                 }
                 i++;
             }
         }
+        return metExecute;
+    }
+
+    private CodeExecutableElement createExecuteUncachedMethod(MethodProperties props) {
+
+        Class<?> resType;
+        if (isShortCircuit) {
+            resType = boolean.class;
+        } else if (props.returnsValue) {
+            resType = Object.class;
+        } else {
+            resType = void.class;
+        }
+        CodeExecutableElement metExecute = new CodeExecutableElement(
+                        Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
+                        context.getType(resType), "executeUncached");
+
+        metExecute.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+
+        int i = 0;
+        for (ParameterKind param : props.parameters) {
+            switch (param) {
+                case STACK_VALUE:
+                    metExecute.addParameter(new CodeVariableElement(context.getType(Object.class), "arg" + i));
+                    break;
+                case VARIADIC:
+                    metExecute.addParameter(new CodeVariableElement(context.getType(Object[].class), "arg" + i));
+                    break;
+                case LOCAL_SETTER:
+                case LOCAL_SETTER_ARRAY:
+                case VIRTUAL_FRAME:
+                    break;
+                default:
+                    throw new UnsupportedOperationException("" + param);
+            }
+            i++;
+        }
+
         return metExecute;
     }
 

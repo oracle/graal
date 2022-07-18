@@ -71,6 +71,8 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 
+import sun.misc.Unsafe;
+
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
     private ProcessorContext context;
@@ -167,6 +169,20 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilder.add(new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, types.OperationLabel, "createLabel"));
         typBuilder.add(new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, types.OperationNode, "publish"));
 
+        // unsafe stuff
+        if (OperationGeneratorFlags.USE_UNSAFE) {
+            typBuilder.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(Unsafe.class), "theUnsafe")).setInit(CodeTreeBuilder.singleString("Unsafe.getUnsafe()"));
+        }
+        CodeExecutableElement metUnsafeFromBytecode = typBuilder.add(new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(short.class), "unsafeFromBytecode"));
+        metUnsafeFromBytecode.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
+        metUnsafeFromBytecode.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+
+        if (OperationGeneratorFlags.USE_UNSAFE) {
+            metUnsafeFromBytecode.createBuilder().startReturn().string("theUnsafe.getShort(bc, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE)").end();
+        } else {
+            metUnsafeFromBytecode.createBuilder().startReturn().string("bc[index]").end();
+        }
+
         CodeTypeElement typBuilderImpl = createBuilderImpl(typBuilder, opNodesImpl);
         typBuilder.add(typBuilderImpl);
 
@@ -241,6 +257,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "_maxStack")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int[].class), "sourceInfo")));
 
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "uncachedExecuteCount")));
+
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object.class), "_osrMetadata")));
 
         if (!m.getMetadatas().isEmpty()) {
@@ -267,8 +285,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             }
         }
 
+        if (m.isGenerateUncached()) {
+            typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "UNCACHED_EXECUTE = new UncachedBytecodeNode()"));
+        }
         typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "COMMON_EXECUTE = new BytecodeNode()"));
-        typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "INITIAL_EXECUTE = COMMON_EXECUTE"));
+
+        typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "INITIAL_EXECUTE = " + (m.isGenerateUncached() ? "UNCACHED_EXECUTE" : "COMMON_EXECUTE")));
 
         typOperationNodeImpl.add(createNodeImplExecuteAt());
 
@@ -309,7 +331,22 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createNodeImplDeepCopy(typOperationNodeImpl));
         typOperationNodeImpl.add(createNodeImplCopy(typOperationNodeImpl));
 
+        typOperationNodeImpl.add(createChangeInterpreter(typBytecodeBase));
+
         return typOperationNodeImpl;
+    }
+
+    private CodeExecutableElement createChangeInterpreter(CodeTypeElement loopBase) {
+        CodeExecutableElement met = new CodeExecutableElement(context.getType(void.class), "changeInterpreters");
+        met.addParameter(new CodeVariableElement(loopBase.asType(), "impl"));
+
+        CodeTreeBuilder b = met.createBuilder();
+
+        // todo: everything here
+
+        b.statement("this.switchImpl = impl");
+
+        return met;
     }
 
     private CodeExecutableElement createNodeImplDeepCopy(CodeTypeElement typOperationNodeImpl) {
@@ -547,14 +584,23 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(fldSwitchImpl);
 
         CodeTypeElement builderBytecodeNodeType;
+        CodeTypeElement builderUncachedBytecodeNodeType;
         CodeTypeElement builderInstrBytecodeNodeType;
 
-        bytecodeGenerator = new OperationsBytecodeCodeGenerator(typBuilderImpl, bytecodeBaseClass, typOperationNodeImpl, typExceptionHandler, m, false);
+        bytecodeGenerator = new OperationsBytecodeCodeGenerator(typBuilderImpl, bytecodeBaseClass, typOperationNodeImpl, typExceptionHandler, m, false, false);
         builderBytecodeNodeType = bytecodeGenerator.createBuilderBytecodeNode();
         typBuilderImpl.add(builderBytecodeNodeType);
 
+        if (m.isGenerateUncached()) {
+            builderUncachedBytecodeNodeType = new OperationsBytecodeCodeGenerator(typBuilderImpl, bytecodeBaseClass, typOperationNodeImpl, typExceptionHandler, m, false,
+                            true).createBuilderBytecodeNode();
+            typBuilderImpl.add(builderUncachedBytecodeNodeType);
+        } else {
+            builderUncachedBytecodeNodeType = null;
+        }
+
         if (OperationGeneratorFlags.ENABLE_INSTRUMENTATION) {
-            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, bytecodeBaseClass, typOperationNodeImpl, typExceptionHandler, m, true);
+            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, bytecodeBaseClass, typOperationNodeImpl, typExceptionHandler, m, true, false);
             builderInstrBytecodeNodeType = bcg.createBuilderBytecodeNode();
             typBuilderImpl.add(builderInstrBytecodeNodeType);
         } else {

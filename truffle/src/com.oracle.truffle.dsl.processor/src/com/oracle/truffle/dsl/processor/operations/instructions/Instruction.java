@@ -262,10 +262,19 @@ public abstract class Instruction {
     }
 
     private CodeTree createIndirectIndex(ExecutionVariables vars, String suffix, int index) {
-        return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + internalName + suffix + "] + " + index).build();
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.startCall("unsafeFromBytecode");
+        b.variable(vars.bc);
+        b.startGroup().variable(vars.bci).string(" + " + internalName + suffix).end();
+        b.end();
+        b.string(" + " + index);
+
+        return b.build();
     }
 
     private CodeTree createDirectIndex(ExecutionVariables vars, String suffix, int index) {
+        // this should also become unsafe based, but we need to separate out reads and writes
         return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + internalName + suffix + " + " + index + "]").build();
     }
 
@@ -514,6 +523,14 @@ public abstract class Instruction {
     }
 
     public abstract CodeTree createExecuteCode(ExecutionVariables vars);
+
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        return createExecuteCode(vars);
+    }
+
+    public boolean neverInUncached() {
+        return false;
+    }
 
     @SuppressWarnings("unused")
     protected CodeTree createConstantInitCode(BuilderVariables vars, EmitArguments args, Object marker, int index) {

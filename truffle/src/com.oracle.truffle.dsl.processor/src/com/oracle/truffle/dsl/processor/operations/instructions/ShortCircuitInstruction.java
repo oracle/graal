@@ -94,6 +94,11 @@ public class ShortCircuitInstruction extends CustomInstruction {
     }
 
     @Override
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        return createExecuteCode(vars);
+    }
+
+    @Override
     public boolean isBranchInstruction() {
         return true;
     }

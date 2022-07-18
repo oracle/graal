@@ -68,11 +68,20 @@ public class BranchInstruction extends Instruction {
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
+        return createExecuteImpl(vars, false);
+    }
+
+    @Override
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        return createExecuteImpl(vars, true);
+    }
+
+    private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.declaration("int", "targetBci", createBranchTargetIndex(vars, 0));
 
-        if (SAFEPOINT_POLL || LOOP_COUNTING || TRY_OSR) {
+        if (SAFEPOINT_POLL || LOOP_COUNTING || TRY_OSR || uncached) {
             b.startIf().string("targetBci <= ").variable(vars.bci).end().startBlock(); // {
 
             if (SAFEPOINT_POLL) {
@@ -118,6 +127,17 @@ public class BranchInstruction extends Instruction {
 
                 b.end(); // }
             }
+
+            if (uncached) {
+                b.statement("uncachedExecuteCount++");
+                b.startIf().string("uncachedExecuteCount > 16").end().startBlock();
+
+                b.statement("$this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE)");
+                b.statement("return ($sp << 16) | targetBci");
+
+                b.end();
+            }
+
             b.end(); // }
         }
 

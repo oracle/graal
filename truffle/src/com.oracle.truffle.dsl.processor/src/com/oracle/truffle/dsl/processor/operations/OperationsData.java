@@ -70,6 +70,9 @@ public class OperationsData extends Template {
     private TypeSystemData typeSystem;
     private final Set<TypeKind> boxingEliminatedTypes = new HashSet<>();
 
+    private boolean isGenerateAOT;
+    private boolean isGenerateUncached;
+
     private int numTosSlots;
 
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
@@ -142,6 +145,14 @@ public class OperationsData extends Template {
 
     public boolean isGenerateAOT() {
         return true;
+    }
+
+    public void setGenerateUncached(boolean value) {
+        isGenerateUncached = true;
+    }
+
+    public boolean isGenerateUncached() {
+        return isGenerateUncached;
     }
 
     public void setDecisions(OperationDecisions decisions) {

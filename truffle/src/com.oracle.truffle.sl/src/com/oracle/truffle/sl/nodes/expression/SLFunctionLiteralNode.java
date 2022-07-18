@@ -68,7 +68,7 @@ public abstract class SLFunctionLiteralNode extends SLExpressionNode {
     @Specialization
     public static SLFunction perform(
                     TruffleString functionName,
-                    @Cached("lookupFunctionCached(functionName, this)") SLFunction result,
+                    @Cached(value = "lookupFunctionCached(functionName, this)", uncached = "lookupFunction(functionName, this)") SLFunction result,
                     @Bind("this") Node node) {
         if (result == null) {
             return lookupFunction(functionName, node);
@@ -78,7 +78,7 @@ public abstract class SLFunctionLiteralNode extends SLExpressionNode {
         }
     }
 
-    private static SLFunction lookupFunction(TruffleString functionName, Node node) {
+    public static SLFunction lookupFunction(TruffleString functionName, Node node) {
         return SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
     }
 

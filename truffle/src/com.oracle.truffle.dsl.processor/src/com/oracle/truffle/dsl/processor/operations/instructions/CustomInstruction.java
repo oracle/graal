@@ -60,6 +60,7 @@ public class CustomInstruction extends Instruction {
 
     private final SingleOperationData data;
     protected ExecutableElement executeMethod;
+    protected ExecutableElement uncachedExecuteMethod;
     private OperationsBytecodeNodeGeneratorPlugs plugs;
     private CodeExecutableElement prepareAOTMethod;
     private CodeExecutableElement getSpecializationBits;
@@ -126,9 +127,20 @@ public class CustomInstruction extends Instruction {
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
+        return createExecuteImpl(vars, false);
+    }
+
+    @Override
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        return createExecuteImpl(vars, true);
+    }
+
+    private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         createTracerCode(vars, b);
+
+        ExecutableElement method = uncached ? uncachedExecuteMethod : executeMethod;
 
         if (data.getMainProperties().isVariadic) {
 
@@ -165,7 +177,7 @@ public class CustomInstruction extends Instruction {
                 b.startStatement();
             }
 
-            b.startStaticCall(executeMethod);
+            b.startStaticCall(method);
             b.variable(vars.frame);
             b.string("$this");
             b.variable(vars.bc);
@@ -187,7 +199,7 @@ public class CustomInstruction extends Instruction {
 
         } else {
             b.startStatement();
-            b.startStaticCall(executeMethod);
+            b.startStaticCall(method);
             b.variable(vars.frame);
             b.string("$this");
             b.variable(vars.bc);
@@ -195,6 +207,13 @@ public class CustomInstruction extends Instruction {
             b.variable(vars.sp);
             b.variable(vars.consts);
             b.variable(vars.children);
+
+            if (uncached) {
+                for (int i = numPopStatic(); i > 0; i--) {
+                    b.string("$frame.getObject($sp - " + i + ")");
+                }
+            }
+
             b.end(2);
 
             b.startAssign(vars.sp).variable(vars.sp).string(" - " + data.getMainProperties().numStackValues + " + " + numPushedValues).end();
@@ -295,5 +314,9 @@ public class CustomInstruction extends Instruction {
 
     public List<QuickenedInstruction> getQuickenedVariants() {
         return quickenedVariants;
+    }
+
+    public void setUncachedExecuteMethod(ExecutableElement uncachedExecuteMethod) {
+        this.uncachedExecuteMethod = uncachedExecuteMethod;
     }
 }

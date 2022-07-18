@@ -236,4 +236,9 @@ public class LoadLocalInstruction extends Instruction {
         return null;
     }
 
+    @Override
+    public boolean neverInUncached() {
+        return kind != null;
+    }
+
 }

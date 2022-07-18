@@ -104,6 +104,12 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
         }
 
+        // find @GenerateUncached
+        AnnotationMirror generateUncachedMirror = ElementUtils.findAnnotationMirror(typeElement, types.GenerateUncached);
+        if (generateUncachedMirror != null) {
+            data.setGenerateUncached(true);
+        }
+
         // find and bind type system
         AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
         if (typeSystemRefMirror != null) {
@@ -152,8 +158,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             data.addOperationData(opData);
-            opData.redirectMessages(data);
-            opData.redirectMessagesOnGeneratedElements(data);
         }
 
         // find and bind all inner declared operations
@@ -183,8 +187,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             data.addOperationData(opData);
-            opData.redirectMessages(data);
-            opData.redirectMessagesOnGeneratedElements(data);
             opData.setShortCircuitContinueWhen((boolean) ElementUtils.getAnnotationValue(mir, "continueWhen").getValue());
         }
 

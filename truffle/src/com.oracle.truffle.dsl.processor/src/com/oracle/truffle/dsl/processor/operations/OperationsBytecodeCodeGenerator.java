@@ -93,18 +93,20 @@ public class OperationsBytecodeCodeGenerator {
     private final CodeTypeElement typBuilderImpl;
     private final OperationsData m;
     private final boolean withInstrumentation;
+    private final boolean isUncached;
     private final CodeTypeElement baseClass;
     private final CodeTypeElement opNodeImpl;
     private final CodeTypeElement typExceptionHandler;
 
     public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, CodeTypeElement baseClass, CodeTypeElement opNodeImpl, CodeTypeElement typExceptionHandler, OperationsData m,
-                    boolean withInstrumentation) {
+                    boolean withInstrumentation, boolean isUncached) {
         this.typBuilderImpl = typBuilderImpl;
         this.baseClass = baseClass;
         this.opNodeImpl = opNodeImpl;
         this.typExceptionHandler = typExceptionHandler;
         this.m = m;
         this.withInstrumentation = withInstrumentation;
+        this.isUncached = isUncached;
     }
 
     /**
@@ -112,7 +114,7 @@ public class OperationsBytecodeCodeGenerator {
      * executable Truffle node.
      */
     public CodeTypeElement createBuilderBytecodeNode() {
-        String namePrefix = withInstrumentation ? "Instrumentable" : "";
+        String namePrefix = withInstrumentation ? "Instrumentable" : isUncached ? "Uncached" : "";
 
         CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", baseClass.asType());
 
@@ -255,6 +257,10 @@ public class OperationsBytecodeCodeGenerator {
         b.declaration("int", vars.bci.getName(), CodeTreeBuilder.singleString("$startBci"));
         b.declaration("Counter", "loopCounter", "new Counter()");
 
+        if (isUncached) {
+            b.declaration("int", "uncachedExecuteCount", "$this.uncachedExecuteCount");
+        }
+
         CodeVariableElement varTracer;
 
         if (m.isTracing()) {
@@ -296,6 +302,10 @@ public class OperationsBytecodeCodeGenerator {
                 continue;
             }
 
+            if (op.neverInUncached() && isUncached) {
+                continue;
+            }
+
             for (String line : op.dumpInfo().split("\n")) {
                 b.lineComment(line);
             }
@@ -310,7 +320,11 @@ public class OperationsBytecodeCodeGenerator {
                 b.end(2);
             }
 
-            b.tree(op.createExecuteCode(vars));
+            if (isUncached) {
+                b.tree(op.createExecuteUncachedCode(vars));
+            } else {
+                b.tree(op.createExecuteCode(vars));
+            }
 
             if (!op.isBranchInstruction()) {
                 b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
@@ -325,7 +339,7 @@ public class OperationsBytecodeCodeGenerator {
 
         b.caseDefault().startCaseBlock();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-        b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered"));
+        b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \""));
         b.end();
 
         b.end(); // switch block
@@ -408,23 +422,46 @@ public class OperationsBytecodeCodeGenerator {
             plugs.finishUp();
             CodeTypeElement result = resultList.get(0);
 
-            CodeExecutableElement uncExec = null;
+            CodeExecutableElement executeMethod = null;
             List<CodeExecutableElement> execs = new ArrayList<>();
-            for (ExecutableElement ex : ElementFilter.methodsIn(result.getEnclosedElements())) {
+
+            TypeElement target = result;
+
+            if (isUncached) {
+                target = (TypeElement) result.getEnclosedElements().stream().filter(x -> x.getSimpleName().toString().equals("Uncached")).findFirst().get();
+            }
+
+            Set<String> copiedMethod = new HashSet<>();
+
+            for (ExecutableElement ex : ElementFilter.methodsIn(target.getEnclosedElements())) {
                 if (!methodNames.contains(ex.getSimpleName().toString())) {
                     continue;
                 }
 
-                if (ex.getSimpleName().toString().equals(plugs.transformNodeMethodName("execute"))) {
-                    uncExec = (CodeExecutableElement) ex;
+                if (copiedMethod.contains(ex.getSimpleName().toString())) {
+                    continue;
+                }
+
+                String targetName = isUncached ? "executeUncached" : "execute";
+                String otherTargetName = !isUncached ? "executeUncached" : "execute";
+
+                if (ex.getSimpleName().toString().equals(plugs.transformNodeMethodName(targetName))) {
+                    executeMethod = (CodeExecutableElement) ex;
+                }
+
+                if (ex.getSimpleName().toString().equals(plugs.transformNodeMethodName(otherTargetName))) {
+                    continue;
                 }
 
                 execs.add((CodeExecutableElement) ex);
+                copiedMethod.add(ex.getSimpleName().toString());
             }
 
-            if (uncExec == null) {
+            if (executeMethod == null) {
                 throw new AssertionError(String.format("execute method not found in: %s", result.getSimpleName()));
             }
+
+            executeMethod.getAnnotationMirrors().removeIf(x -> ElementUtils.typeEquals(x.getAnnotationType(), types.CompilerDirectives_TruffleBoundary));
 
             for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
                 if (!innerTypeNames.contains(te.getSimpleName().toString())) {
@@ -440,7 +477,7 @@ public class OperationsBytecodeCodeGenerator {
                 boolean isBoundary = exToCopy.getAnnotationMirrors().stream().anyMatch(x -> x.getAnnotationType().equals(types.CompilerDirectives_TruffleBoundary));
 
                 String exName = exToCopy.getSimpleName().toString();
-                boolean isExecute = exName.contains("_execute_");
+                boolean isExecute = exName.contains("_execute_") || exName.contains("_executeUncached_");
                 boolean isExecuteAndSpecialize = exName.endsWith("_executeAndSpecialize_");
                 boolean isFallbackGuard = exName.endsWith("_fallbackGuard__");
 
@@ -489,7 +526,11 @@ public class OperationsBytecodeCodeGenerator {
                 }
             }
 
-            cinstr.setExecuteMethod(uncExec);
+            if (isUncached) {
+                cinstr.setUncachedExecuteMethod(executeMethod);
+            } else {
+                cinstr.setExecuteMethod(executeMethod);
+            }
             cinstr.setPrepareAOTMethod(metPrepareForAOT);
 
             if (m.isTracing()) {

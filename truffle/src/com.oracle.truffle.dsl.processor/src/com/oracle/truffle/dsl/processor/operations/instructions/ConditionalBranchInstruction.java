@@ -41,14 +41,10 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class ConditionalBranchInstruction extends Instruction {
@@ -74,15 +70,8 @@ public class ConditionalBranchInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        // b.declaration(typeConditionProfile, "profile",
-        // CodeTreeBuilder.createBuilder().string("conditionProfiles[").tree(createBranchProfileIndex(vars,
-        // 0)).string("]"));
-
         // TODO: we should do (un)boxing elim here (but only if booleans are boxing elim'd)
-        TypeSystemData data = ctx.getData().getTypeSystem();
-        CodeTree conditionCode = TypeSystemCodeGenerator.cast(data, new CodeTypeMirror(TypeKind.BOOLEAN), CodeTreeBuilder.singleString("$frame.getObject($sp - 1)"));
-
-        b.declaration("boolean", "cond", conditionCode);
+        b.declaration("boolean", "cond", "$frame.getObject($sp - 1) == Boolean.TRUE");
 
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
 

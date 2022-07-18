@@ -111,4 +111,9 @@ public class LoadConstantInstruction extends Instruction {
 
         return OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadConstantInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField);
     }
+
+    @Override
+    public boolean neverInUncached() {
+        return kind != FrameKind.OBJECT;
+    }
 }

@@ -156,4 +156,9 @@ public class QuickenedInstruction extends CustomInstruction {
     public void addQuickenedVariant(QuickenedInstruction quick) {
         throw new AssertionError("should not add quickened variants to quickened instructions");
     }
+
+    @Override
+    public boolean neverInUncached() {
+        return true;
+    }
 }

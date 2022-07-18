@@ -54,4 +54,6 @@ public class OperationGeneratorFlags {
     public static final boolean ENABLE_INSTRUMENTATION = false;
     public static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = false;
 
+    public static final boolean USE_UNSAFE = false;
+
 }

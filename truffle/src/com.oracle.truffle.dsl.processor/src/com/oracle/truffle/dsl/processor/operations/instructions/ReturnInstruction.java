@@ -62,6 +62,10 @@ public class ReturnInstruction extends Instruction {
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
+        return createExecuteImpl(vars, false);
+    }
+
+    private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         if (ctx.getData().isTracing()) {
@@ -70,9 +74,21 @@ public class ReturnInstruction extends Instruction {
             b.end(2);
         }
 
+        if (uncached) {
+            b.statement("uncachedExecuteCount++");
+            b.startIf().string("uncachedExecuteCount > 16").end().startBlock();
+            b.statement("$this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE)");
+            b.end();
+        }
+
         b.startReturn().string("((").variable(vars.sp).string(" - 1) << 16) | 0xffff").end();
 
         return b.build();
+    }
+
+    @Override
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        return createExecuteImpl(vars, true);
     }
 
     @Override

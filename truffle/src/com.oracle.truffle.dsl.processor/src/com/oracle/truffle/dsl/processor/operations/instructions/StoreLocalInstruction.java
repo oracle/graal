@@ -194,6 +194,27 @@ public class StoreLocalInstruction extends Instruction {
         return b.build();
     }
 
+    @Override
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        if (kind != null) {
+            throw new AssertionError("only store.local.uninit should appear uncached");
+        }
+
+        b.startAssign("int localIdx");
+        b.tree(createLocalIndex(vars, 0));
+        b.end();
+
+        b.startAssign("int sourceSlot").variable(vars.sp).string(" - 1").end();
+
+        createCopyObject(vars, b);
+
+        b.startStatement().variable(vars.sp).string("--").end();
+
+        return b.build();
+    }
+
     private static final boolean USE_SPEC_FRAME_COPY = true;
 
     private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
@@ -265,5 +286,10 @@ public class StoreLocalInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
+    }
+
+    @Override
+    public boolean neverInUncached() {
+        return kind != null;
     }
 }
