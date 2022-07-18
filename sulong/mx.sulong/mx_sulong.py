@@ -446,6 +446,7 @@ class ToolchainConfig(object):
                 build_args=[
                     '--initialize-at-build-time=com.oracle.truffle.llvm.toolchain.launchers',
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
+                    '--gc=epsilon',
                 ],
                 is_main_launcher=False,
                 default_symlinks=False,
