@@ -330,7 +330,7 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_create_array", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static Object createArray(@SuppressWarnings("unused") IsolateThread thread, CCharPointer signature, int length) {
+        public static Pointer createArray(@SuppressWarnings("unused") IsolateThread thread, CCharPointer signature, int length) {
             String strSignatura = Utf8.utf8ToString(signature);
             Log
                     .log()
@@ -342,7 +342,7 @@ public class DebugHelper {
                             .log()
                             .string("object array: " + strSignatura.substring(2, strSignatura.length() - 1))
                             .character('\n');
-                    return new Object[length];
+                    return Word.objectToUntrackedPointer(new Object[length]);
                 } else {
                     char typeLetter = strSignatura.charAt(1);
                     Log
@@ -351,27 +351,27 @@ public class DebugHelper {
                             .character('\n');
                     switch (typeLetter) {
                         case 'Z':
-                            return new boolean[length];
+                            return Word.objectToUntrackedPointer(new boolean[length]);
                         case 'B':
-                            return new byte[length];
+                            return Word.objectToUntrackedPointer(new byte[length]);
                         case 'C':
-                            return new char[length];
+                            return Word.objectToUntrackedPointer(new char[length]);
                         case 'S':
-                            return new short[length];
+                            return Word.objectToUntrackedPointer(new short[length]);
                         case 'I':
-                            return new int[length];
+                            return Word.objectToUntrackedPointer(new int[length]);
                         case 'J':
-                            return new long[length];
+                            return Word.objectToUntrackedPointer(new long[length]);
                         case 'F':
-                            return new float[length];
+                            return Word.objectToUntrackedPointer(new float[length]);
                         case 'D':
-                            return new double[length];
+                            return Word.objectToUntrackedPointer(new double[length]);
                         default:
                             break;
                     }
                 }
             }
-            return null;
+            return Word.objectToUntrackedPointer(null);
         }
 
         /**
@@ -507,7 +507,7 @@ public class DebugHelper {
         @NeverInline("make compiler happy")
         @CEntryPoint(name = "svm_dbg_classloader", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static ClassLoader getClassloaderFromStack(@SuppressWarnings("unused") IsolateThread thread) {
+        public static Pointer getClassloaderFromStack(@SuppressWarnings("unused") IsolateThread thread) {
             Pointer sp = KnownIntrinsics.readStackPointer();
             int frame[] = {0};
             ClassLoader classLoaders[] = {null};
@@ -536,7 +536,7 @@ public class DebugHelper {
                 }
             });
 
-            return classLoaders[0];
+            return Word.objectToUntrackedPointer(classLoaders[0]);
         }
 
         /**
@@ -548,14 +548,14 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_class_for_name", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static Object getClassForName(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClassLoader, CCharPointer cClassName) {
+        public static Pointer getClassForName(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClassLoader, CCharPointer cClassName) {
             Object classLoader = ptrClassLoader.toObject();
             Log.log().string("getClassForName: ").string(cClassName).newline();
             String className = Utf8.utf8ToString(cClassName);
             Optional<Class<?>> opt = Heap.getHeap().getLoadedClasses().stream().filter((it) -> {
                 return it.getName().equals(className);
             }).findFirst();
-            return opt.orElse(null);
+            return Word.objectToUntrackedPointer(opt.orElse(null));
         }
 
         /**
@@ -566,12 +566,12 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_allocate_object", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static Object getAllocateObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+        public static Pointer getAllocateObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
             Object classObject = ptrClass.toObject();
             try {
-                return Unsafe.getUnsafe().allocateInstance((Class)classObject);
+                return Word.objectToUntrackedPointer(Unsafe.getUnsafe().allocateInstance((Class)classObject));
             } catch (InstantiationException e) {
-                return null;
+                return Word.objectToUntrackedPointer(null);
             }
         }
 
@@ -583,9 +583,9 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_pin_object", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static Object pinObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrObj) {
+        public static Pointer pinObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrObj) {
             Object obj = ptrObj.toObject();
-            return PinnedObject.create(obj);
+            return Word.objectToUntrackedPointer(PinnedObject.create(obj));
         }
 
         /**
@@ -623,7 +623,7 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_class_fields", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static String[] classGetFields(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+        public static Pointer classGetFields(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
             Class<?> clazz = (Class<?>)ptrClass.toObject();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             Field[] fields = hub.getReachableFields();
@@ -644,7 +644,7 @@ public class DebugHelper {
                 Log.log().newline();
                 strings[i] = builder.toString();
             }
-            return strings;
+            return Word.objectToUntrackedPointer(strings);
         }
 
         private static String toSignature(Class<?> type) {
@@ -685,7 +685,7 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_class_methods", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static String[] classGetMethods(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+        public static Pointer classGetMethods(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
             Class<?> clazz = (Class<?>)ptrClass.toObject();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             Method[] methods = hub.getReachableMethods();
@@ -706,7 +706,7 @@ public class DebugHelper {
                         void.class,
                         constructors[i].getParameterTypes());
             }
-            return strings;
+            return Word.objectToUntrackedPointer(strings);
         }
 
         /**
@@ -717,11 +717,11 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_class_super", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static String classGetSuper(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+        public static Pointer classGetSuper(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
             Class<?> clazz = (Class<?>) ptrClass.toObject();
             Log.log().string("svm_dbg_class_super:").string(clazz.getName()).newline();
             DynamicHub hub = DynamicHub.fromClass(clazz);
-            return hub.getSuperHub().getName();
+            return Word.objectToUntrackedPointer(hub.getSuperHub().getName());
         }
 
         /**
@@ -732,7 +732,7 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_class_interfaces", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static String[] classGetInterfaces(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
+        public static Pointer classGetInterfaces(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
             Class<?> clazz = (Class<?>) ptrClass.toObject();
             DynamicHub hub = DynamicHub.fromClass(clazz);
             DynamicHub[] interfaces = hub.getInterfaces();
@@ -740,7 +740,7 @@ public class DebugHelper {
             for (int i = 0; i < interfaces.length; ++i) {
                 strings[i] = interfaces[i].getName();
             }
-            return strings;
+            return Word.objectToUntrackedPointer(strings);
         }
 
         /**
@@ -750,8 +750,8 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_null", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static Object getNull(@SuppressWarnings("unused") IsolateThread thread) {
-            return null;
+        public static Pointer getNull(@SuppressWarnings("unused") IsolateThread thread) {
+            return Word.objectToUntrackedPointer(null);
         }
         private static String createMethodEntry(String name, int modifiers, Class<?> returnType, Class<?>[] parameters) {
             StringBuilder builder = new StringBuilder();
