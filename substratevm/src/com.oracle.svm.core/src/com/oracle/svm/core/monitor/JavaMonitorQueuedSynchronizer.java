@@ -42,22 +42,25 @@ import com.oracle.svm.core.jdk.JDK17OrLater;
 import jdk.internal.misc.Unsafe;
 
 /**
- * {@link JavaMonitorAbstractQueuedSynchronizer} is derived from the class
- * {@link java.util.concurrent.locks.AbstractQueuedSynchronizer} in the JDK 19 sources. Only the
- * relevant methods from the JDK sources have been kept. Some additional Native Image-specific
- * functionality has been added.
- *
- * Git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec. JDK tag: jdk-19+30
- *
+ * {@link JavaMonitorQueuedSynchronizer} is based on the code of
+ * {@link java.util.concurrent.locks.AbstractQueuedSynchronizer} as of JDK 19 (git commit hash:
+ * f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30). This class could be merged with
+ * {@link JavaMonitor} but we keep it separate because that way diffing against the JDK sources is
+ * easier.
+ * 
+ * Only the relevant methods from the JDK sources have been kept. Some additional Native
+ * Image-specific functionality has been added.
+ * 
  * Main differences to the JDK implementation:
  * <ul>
  * <li>There is no need to support any locking modes besides the non-fair exclusive one.</li>
+ * <li>The visibility of methods and fields is reduced to hide implementation details.</li>
  * <li>We explicitly treat ForkJoinPool threads in the same way as any other threads because
  * notify/wait should always work the same regardless of the involved thread (see
  * {@link java.util.concurrent.ForkJoinPool#managedBlock}).</li>
  * </ul>
  */
-abstract class JavaMonitorAbstractQueuedSynchronizer {
+abstract class JavaMonitorQueuedSynchronizer {
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative
     static final int COND = 2; // in a condition wait
@@ -148,7 +151,7 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
 
     // see AbstractQueuedSynchronizer.getState()
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final int getState() {
+    protected final int getState() {
         return state;
     }
 
@@ -332,14 +335,14 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
     protected abstract boolean isHeldExclusively();
 
     // see AbstractQueuedSynchronizer.acquire(int)
-    public final void acquire(int arg) {
+    protected final void acquire(int arg) {
         if (!tryAcquire(arg)) {
             acquire(null, arg);
         }
     }
 
     // see AbstractQueuedSynchronizer.release(int)
-    public final boolean release(int arg) {
+    protected final boolean release(int arg) {
         if (tryRelease(arg)) {
             signalNext(head);
             return true;
@@ -348,7 +351,7 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
     }
 
     // see AbstractQueuedSynchronizer.ConditionObject
-    public class JavaMonitorConditionObject {
+    public final class JavaMonitorConditionObject {
         private transient ConditionNode firstWaiter;
         private transient ConditionNode lastWaiter;
 
@@ -371,7 +374,7 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
         }
 
         // see AbstractQueuedSynchronizer.ConditionObject.signal()
-        public final void signal() {
+        public void signal() {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
                 throw new IllegalMonitorStateException();
@@ -382,7 +385,7 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
         }
 
         // see AbstractQueuedSynchronizer.ConditionObject.signalAll()
-        public final void signalAll() {
+        public void signalAll() {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
                 throw new IllegalMonitorStateException();
@@ -448,7 +451,7 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
 
         // see AbstractQueuedSynchronizer.ConditionObject.await()
         @SuppressWarnings("all")
-        public final void await() throws InterruptedException {
+        public void await() throws InterruptedException {
             if (Thread.interrupted()) {
                 throw new InterruptedException();
             }
@@ -482,7 +485,7 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
 
         // see AbstractQueuedSynchronizer.ConditionObject.await(long, TimeUnit)
         @SuppressWarnings("all")
-        public final boolean await(long time, TimeUnit unit) throws InterruptedException {
+        public boolean await(long time, TimeUnit unit) throws InterruptedException {
             long nanosTimeout = unit.toNanos(time);
             if (Thread.interrupted()) {
                 throw new InterruptedException();
@@ -551,9 +554,9 @@ abstract class JavaMonitorAbstractQueuedSynchronizer {
 
     // Unsafe
     private static final Unsafe U = Unsafe.getUnsafe();
-    static final long STATE = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "state");
-    private static final long HEAD = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "head");
-    private static final long TAIL = U.objectFieldOffset(JavaMonitorAbstractQueuedSynchronizer.class, "tail");
+    static final long STATE = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "state");
+    private static final long HEAD = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "head");
+    private static final long TAIL = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "tail");
 }
 
 @TargetClass(value = LockSupport.class)

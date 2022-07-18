@@ -48,7 +48,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.monitor.JavaMonitorAbstractQueuedSynchronizer.JavaMonitorConditionObject;
+import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
@@ -190,7 +190,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                 return ThreadStatus.IN_OBJECT_WAIT_TIMED;
             }
             return ThreadStatus.IN_OBJECT_WAIT;
-        } else if (blocker instanceof JavaMonitor.Sync) {
+        } else if (blocker instanceof JavaMonitor) {
             // Blocked directly on the lock
             return ThreadStatus.BLOCKED_ON_MONITOR_ENTER;
         }
