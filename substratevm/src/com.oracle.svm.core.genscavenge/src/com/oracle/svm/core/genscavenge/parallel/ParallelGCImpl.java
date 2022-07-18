@@ -4,12 +4,15 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
+import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
@@ -17,8 +20,12 @@ public class ParallelGCImpl extends ParallelGC {
     /// static -> ImageSingletons
     public static final int WORKERS_COUNT = 4;
 
-    private static final TaskQueue QUEUE = new TaskQueue("pargc");
-    private static final TaskQueue.Consumer PROMOTE_TASK =
+    private static final VMMutex mutex = new VMMutex("pargc");
+    private static final VMCondition cond = new VMCondition(mutex);
+    private static AtomicInteger busy = new AtomicInteger(0);
+
+    private static final CasQueue QUEUE = new CasQueue();
+    private static final CasQueue.Consumer PROMOTE_TASK =
             obj -> getVisitor().doVisitObject(obj);
 
     private static volatile boolean enabled;
@@ -33,10 +40,22 @@ public class ParallelGCImpl extends ParallelGC {
         Thread t = new Thread(() -> {
 //                VMThreads.ParallelGCSupport.setParallelGCThread();
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
+                log().string("WW start ").unsigned(n).newline();
                 getStats().install();
                 try {
                     while (!stopped) {
-                        QUEUE.consume(PROMOTE_TASK);
+                        mutex.lock();
+                        while (busy.get() < WORKERS_COUNT) {
+                            log().string("WW block ").unsigned(n).newline();
+                            cond.block();
+                        }
+                        mutex.unlock();
+
+                        QUEUE.drain(PROMOTE_TASK);
+                        if (busy.decrementAndGet() <= 0) {
+                            cond.broadcast();
+                        }
+                        log().string("WW idle ").unsigned(n).newline();
                     }
                 } catch (Throwable e) {
                     throwable = e;
@@ -58,11 +77,16 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public static void waitForIdle() {
-        if (WORKERS_COUNT > 0) {
-            QUEUE.waitUntilIdle(WORKERS_COUNT);
-        } else {
-            QUEUE.drain(PROMOTE_TASK); // execute synchronously
+        log().string("PP start workers\n");
+        busy.set(WORKERS_COUNT);
+        cond.broadcast();     // let worker threads run
+
+        mutex.lock();
+        while (busy.get() > 0) {
+            log().string("PP wait busy=").unsigned(busy.get()).newline();
+            cond.block();     // wait for them to become idle
         }
+        mutex.unlock();
     }
 
     public static boolean isEnabled() {
