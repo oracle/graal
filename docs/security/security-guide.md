@@ -111,7 +111,7 @@ Developers can request static initializers that process sensitive information to
 
 Native-image provides multiple ways to specify the certificate file used to define the default TrustStore.
 While the default behavior for native-image is to capture and use the default TrustStore from the buildtime host environment, this can be changed at runtime by setting the "javax.net.ssl.trustStore\*" system properties.
-Please see the [documentation](/reference-manual/native-image/CertificateManagement/) for more details.
+See the [documentation](../reference-manual/native-image/CertificateManagement.md) for more details.
 
 In addition, developers can run the `native-image` builder in a dedicated environment, such as a container, that does not contain any sensitive information in the first place.
 
