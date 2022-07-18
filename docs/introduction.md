@@ -68,26 +68,26 @@ The core components enable using GraalVM as a runtime platform for programs writ
 * Java HotSpot VM
 * Graal compiler - the top-tier JIT compiler
 * Polyglot API – the APIs for combining programming languages in a shared runtime
-* [GraalVM Updater](../reference-manual/graalvm-updater.md) - a utility to install additional functionalities
+* [GraalVM Updater](reference-manual/graalvm-updater.md) - a utility to install additional functionalities
 
 ### Additional Components
 GraalVM core installation can be extended with more languages runtimes and utilities.
 
 Tools/Utilities:
 
-* [Native Image](../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native platform executable.
-* [LLVM toolchain](../reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM.
+* [Native Image](reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native platform executable.
+* [LLVM toolchain](reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM.
 
 Runtimes:
 
-* [JavaScript runtime](../reference-manual/js/README.md) with JavaScript REPL with the JavaScript interpreter
-* [Node.js](../../reference-manual/js/NodeJS.md) -- the Node.js 16.14.2 runtime for JavaScript
-* [LLVM runtime](../reference-manual/llvm/README.md) with `lli` tool to directly execute programs from LLVM bitcode
-* [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible
-* [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
-* [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
+* [JavaScript runtime](reference-manual/js/README.md) with JavaScript REPL with the JavaScript interpreter
+* [Node.js](reference-manual/js/NodeJS.md) -- the Node.js 16.14.2 runtime for JavaScript
+* [LLVM runtime](reference-manual/llvm/README.md) with `lli` tool to directly execute programs from LLVM bitcode
+* [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
+* [Python](reference-manual/python/README.md) -- Python 3.8.5 compatible
+* [Ruby](reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible
+* [R](reference-manual/r/README.md) -- GNU R 4.0.3 compatible
+* [GraalWasm](reference-manual/wasm/README.md) -- WebAssembly (Wasm)
 
 ## Licensing and Support
 

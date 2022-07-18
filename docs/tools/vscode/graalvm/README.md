@@ -250,7 +250,7 @@ Your application will:
   * Achieve peak performance with no warmup time
   * Have improved security by reducing attack surfaces and thwarting reverse engineering
 
-Find more information in [Building Native Executables](#building-native-executables) below. 
+Find more information in [Building Native Executables](#debugging-native-executables) below. 
 
 ### Configuration with Tracing Agent
 
