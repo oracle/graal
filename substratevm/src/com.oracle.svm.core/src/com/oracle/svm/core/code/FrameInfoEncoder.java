@@ -506,14 +506,7 @@ public class FrameInfoEncoder {
     }
 
     private static void countVirtualObjects(JavaValue[] values, BitSet visitedVirtualObjects) {
-        for (JavaValue v : values) {
-            /**
-             * TODO BS Why do we need this if?
-             */
-            JavaValue value = v;
-            if (value instanceof StackLockValue) {
-                value = ((StackLockValue) value).getOwner();
-            }
+        for (JavaValue value : values) {
             if (value instanceof VirtualObject) {
                 VirtualObject virtualObject = (VirtualObject) value;
                 if (!visitedVirtualObjects.get(virtualObject.getId())) {
