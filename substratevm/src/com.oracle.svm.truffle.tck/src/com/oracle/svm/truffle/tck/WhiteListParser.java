@@ -30,19 +30,20 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 import jdk.vm.ci.meta.MetaUtil;
@@ -85,7 +86,7 @@ final class WhiteListParser extends ConfigurationParser {
         }
     }
 
-    private void parseClass(Map<String, Object> data) {
+    private void parseClass(EconomicMap<String, Object> data) {
         checkAttributes(data, "class descriptor object", Collections.singleton("name"), Arrays.asList("justification", "allDeclaredConstructors", "allDeclaredMethods", "methods"));
         Object classObject = data.get("name");
         String className = castProperty(classObject, String.class, "name");
@@ -96,9 +97,10 @@ final class WhiteListParser extends ConfigurationParser {
                 throw new JSONParserException("Class " + className + " not found");
             }
 
-            for (Map.Entry<String, Object> entry : data.entrySet()) {
-                String name = entry.getKey();
-                Object value = entry.getValue();
+            MapCursor<String, Object> cursor = data.getEntries();
+            while (cursor.advance()) {
+                String name = cursor.getKey();
+                Object value = cursor.getValue();
                 switch (name) {
                     case "allDeclaredConstructors":
                         if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
@@ -126,7 +128,7 @@ final class WhiteListParser extends ConfigurationParser {
         }
     }
 
-    private void parseMethod(Map<String, Object> data, AnalysisType clazz) {
+    private void parseMethod(EconomicMap<String, Object> data, AnalysisType clazz) {
         checkAttributes(data, "method descriptor object", Collections.singleton("name"), Arrays.asList("justification", "parameterTypes"));
         String methodName = castProperty(data.get("name"), String.class, "name");
         List<AnalysisType> methodParameterTypes = null;
@@ -261,8 +263,8 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> castMap(Object obj, String errorMessage) {
-        return cast(obj, Map.class, errorMessage);
+    private static EconomicMap<String, Object> castMap(Object obj, String errorMessage) {
+        return cast(obj, EconomicMap.class, errorMessage);
     }
 
     private static final class SignaturePredicate implements Predicate<ResolvedJavaMethod> {

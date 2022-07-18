@@ -31,9 +31,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map;
 
-import com.oracle.svm.core.util.json.JSONParserException;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.util.json.JSONParserException;
 
 public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     public static InputStream openClassdataStream(URI baseUri, String providedHash) throws IOException {
@@ -100,7 +100,7 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
         }
     }
 
-    private void parseOrigin(URI baseUri, Map<String, Object> data) {
+    private void parseOrigin(URI baseUri, EconomicMap<String, Object> data) {
         checkAttributes(data, "class origin descriptor object", Arrays.asList("type", "classes"));
 
         String type = asString(data.get("type"), "type");
@@ -113,7 +113,7 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
         }
     }
 
-    private void parseClass(URI baseUri, Map<String, Object> data) {
+    private void parseClass(URI baseUri, EconomicMap<String, Object> data) {
         checkAttributes(data, "class descriptor object", Collections.singleton("hash"), Collections.singleton("nameInfo"));
 
         String hash = asString(data.get("hash"), "hash");

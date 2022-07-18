@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.configure.filters;
 
-import com.oracle.svm.configure.json.JsonWriter;
-
 import java.io.IOException;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.svm.configure.json.JsonWriter;
 
 public class ComplexFilter implements ConfigurationFilter {
     private HierarchyFilterNode hierarchyFilterNode;
@@ -49,7 +50,7 @@ public class ComplexFilter implements ConfigurationFilter {
     }
 
     @Override
-    public void parseFromJson(Map<String, Object> topJsonObject) {
+    public void parseFromJson(EconomicMap<String, Object> topJsonObject) {
         hierarchyFilterNode.parseFromJson(topJsonObject);
         regexFilter.parseFromJson(topJsonObject);
     }

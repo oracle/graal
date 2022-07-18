@@ -27,8 +27,8 @@ package com.oracle.svm.configure.trace;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
 import java.util.List;
-import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -48,7 +48,7 @@ class JniProcessor extends AbstractProcessor {
 
     @Override
     @SuppressWarnings("fallthrough")
-    void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
+    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {

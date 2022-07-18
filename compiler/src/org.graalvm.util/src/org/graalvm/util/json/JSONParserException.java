@@ -25,8 +25,8 @@
 package org.graalvm.util.json;
 
 @SuppressWarnings("serial")
-final class JSONParserException extends RuntimeException {
-    JSONParserException(final String msg) {
+public final class JSONParserException extends RuntimeException {
+    public JSONParserException(final String msg) {
         super(msg);
     }
 }

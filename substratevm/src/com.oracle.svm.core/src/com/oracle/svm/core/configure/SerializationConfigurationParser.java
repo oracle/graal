@@ -29,12 +29,11 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-
-import com.oracle.svm.core.util.json.JSONParserException;
+import org.graalvm.util.json.JSONParserException;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
 
@@ -57,7 +56,7 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     public void parseAndRegister(Object json, URI origin) {
         if (json instanceof List) {
             parseOldConfiguration(asList(json, "first level of document must be an array of serialization lists"));
-        } else if (json instanceof Map) {
+        } else if (json instanceof EconomicMap) {
             parseNewConfiguration(asMap(json, "first level of document must be a map of serialization types"));
         } else {
             throw new JSONParserException("first level of document must either be an array of serialization lists or a map of serialization types");
@@ -68,7 +67,7 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         parseSerializationTypes(asList(listOfSerializationConfigurationObjects, "second level of document must be serialization descriptor objects"), false);
     }
 
-    private void parseNewConfiguration(Map<String, Object> listOfSerializationConfigurationObjects) {
+    private void parseNewConfiguration(EconomicMap<String, Object> listOfSerializationConfigurationObjects) {
         if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY)) {
             throw new JSONParserException("second level of document must be arrays of serialization descriptor objects");
         }
@@ -89,7 +88,7 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         }
     }
 
-    private void parseSerializationDescriptorObject(Map<String, Object> data, boolean lambdaCapturingType) {
+    private void parseSerializationDescriptorObject(EconomicMap<String, Object> data, boolean lambdaCapturingType) {
         if (lambdaCapturingType) {
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CONDITIONAL_KEY));
         } else {

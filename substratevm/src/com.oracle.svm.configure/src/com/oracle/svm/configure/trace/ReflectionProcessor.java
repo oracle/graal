@@ -29,9 +29,9 @@ import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -55,7 +55,7 @@ class ReflectionProcessor extends AbstractProcessor {
 
     @Override
     @SuppressWarnings("fallthrough")
-    public void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
+    public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult && !reportReflectiveFailure(entry)) {
@@ -305,7 +305,7 @@ class ReflectionProcessor extends AbstractProcessor {
         proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
     }
 
-    private static boolean reportReflectiveFailure(Map<String, ?> entry) {
+    private static boolean reportReflectiveFailure(EconomicMap<String, ?> entry) {
         String function = (String) entry.get("function");
         switch (function) {
             case "forName":

@@ -47,7 +47,7 @@ public class JSONParser {
     private static final int STATE_ELEMENT_PARSED = 1;
     private static final int STATE_COMMA_PARSED = 2;
 
-    protected JSONParser(String source) {
+    public JSONParser(String source) {
         this.source = source;
         this.length = source.length();
     }
