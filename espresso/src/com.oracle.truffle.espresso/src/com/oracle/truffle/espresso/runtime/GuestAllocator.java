@@ -374,7 +374,7 @@ public final class GuestAllocator implements LanguageAccess {
         return trackAllocation(klass, newObj, lang, klass);
     }
 
-    private void setModule(StaticObject obj, Klass klass) {
+    private static void setModule(StaticObject obj, Klass klass) {
         StaticObject module = klass.module().module();
         if (StaticObject.isNull(module)) {
             if (klass.getContext().getRegistries().javaBaseDefined()) {

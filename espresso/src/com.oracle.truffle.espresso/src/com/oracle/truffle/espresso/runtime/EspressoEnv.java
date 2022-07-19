@@ -44,7 +44,7 @@ import java.util.Set;
 
 /**
  * Represents an immutable holder class for context-specific fields bound to the
- * {@link TruffleLanguage.Env} (e.g., {@link EspressoOptions} values).
+ * {@link com.oracle.truffle.api.TruffleLanguage.Env} (e.g., {@link EspressoOptions} values).
  * <p>
  * When using context pre-initialization, the first {@link EspressoContext} is running in both
  * build-time and runtime environments. This means that the build-time {@link EspressoEnv} needs to
