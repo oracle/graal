@@ -36,6 +36,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class MethodEntry extends MemberEntry {
     private final TypeEntry[] paramTypes;
@@ -283,6 +284,11 @@ public class MethodEntry extends MemberEntry {
         DebugLocalInfoWrapper(DebugLocalValueInfo value) {
             this.value = value;
             this.line = value.line();
+        }
+
+        @Override
+        public ResolvedJavaType valueType() {
+            return value.valueType();
         }
 
         @Override

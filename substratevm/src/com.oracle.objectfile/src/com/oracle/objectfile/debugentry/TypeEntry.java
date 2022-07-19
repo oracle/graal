@@ -96,8 +96,4 @@ public abstract class TypeEntry {
     }
 
     public abstract void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext);
-
-    public static String canonicalize(String typeName) {
-        return typeName.replace(" ", "__");
-    }
 }

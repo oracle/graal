@@ -327,7 +327,25 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * n.b. this collection includes entries for the structure types used to define the object and
      * array headers which do not have an associated TypeEntry.
      */
-    private HashMap<String, DwarfTypeProperties> propertiesIndex;
+    private HashMap<TypeEntry, DwarfTypeProperties> typePropertiesIndex;
+
+    /**
+     * A collection of method properties associated with each generated method record.
+     */
+    private HashMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex;
+
+    /**
+     * A collection of local variable properties associated with a generated method record,
+     * potentially including a method which is abstract (hence why it is not indexed off the primary
+     * range).
+     */
+
+    private HashMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
+
+    /**
+     * A collection of local variable properties associated with an inlined subrange.
+     */
+    private HashMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex;
 
     public DwarfDebugInfo(ELFMachine elfMachine, ByteOrder byteOrder) {
         super(byteOrder);
@@ -348,7 +366,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.heapbaseRegister = rheapbase_x86;
             this.threadRegister = rthread_x86;
         }
-        propertiesIndex = new HashMap<>();
+        typePropertiesIndex = new HashMap<>();
+        methodPropertiesIndex = new HashMap<>();
         methodLocalPropertiesIndex = new HashMap<>();
         rangeLocalPropertiesIndex = new HashMap<>();
     }
@@ -480,14 +499,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
          * Map from field names to info section index for the field declaration.
          */
         private HashMap<String, Integer> fieldDeclarationIndex;
-        /**
-         * Map from method names to info section index for the field declaration.
-         */
-        private HashMap<String, Integer> methodDeclarationIndex;
-        /**
-         * Map from method names to info section index for the field declaration.
-         */
-        private HashMap<String, Integer> abstractInlineMethodIndex;
 
         DwarfClassProperties(StructureTypeEntry entry) {
             super(entry);
@@ -499,35 +510,76 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.linePrologueSize = -1;
             this.lineSectionSize = -1;
             fieldDeclarationIndex = null;
-            methodDeclarationIndex = null;
-            abstractInlineMethodIndex = null;
+        }
+    }
+
+    /**
+     * A class used to associate properties with a specific method.
+     */
+    static class DwarfMethodProperties {
+        /**
+         * The index in the info section at which the method's declaration resides.
+         */
+        private int methodDeclarationIndex;
+        /**
+         * The index in the info section at which the method's abstract inline declaration resides.
+         */
+        private int abstractInlineMethodIndex;
+
+        DwarfMethodProperties() {
+            methodDeclarationIndex = -1;
+            abstractInlineMethodIndex = -1;
+        }
+
+        public int getMethodDeclarationIndex() {
+            assert methodDeclarationIndex >= 0 : "unset declaration index";
+            return methodDeclarationIndex;
+        }
+
+        public int getAbstractInlineMethodIndex() {
+            assert abstractInlineMethodIndex >= 0 : "unset inline index";
+            return abstractInlineMethodIndex;
+        }
+
+        public void setMethodDeclarationIndex(int pos) {
+            assert methodDeclarationIndex == -1 || methodDeclarationIndex == pos : "bad declaration index";
+            methodDeclarationIndex = pos;
+        }
+
+        public void setAbstractInlineMethodIndex(int pos) {
+            assert abstractInlineMethodIndex == -1 || abstractInlineMethodIndex == pos : "bad inline index";
+            abstractInlineMethodIndex = pos;
         }
     }
 
     private DwarfTypeProperties addTypeProperties(TypeEntry typeEntry) {
         assert typeEntry != null;
         assert !typeEntry.isClass();
-        String typeName = typeEntry.getTypeName();
-        assert propertiesIndex.get(typeName) == null;
+        assert typePropertiesIndex.get(typeEntry) == null;
         DwarfTypeProperties typeProperties = new DwarfTypeProperties(typeEntry);
-        this.propertiesIndex.put(typeName, typeProperties);
+        this.typePropertiesIndex.put(typeEntry, typeProperties);
         return typeProperties;
     }
 
     private DwarfClassProperties addClassProperties(StructureTypeEntry entry) {
-        String typeName = entry.getTypeName();
-        assert propertiesIndex.get(typeName) == null;
+        assert typePropertiesIndex.get(entry) == null;
         DwarfClassProperties classProperties = new DwarfClassProperties(entry);
-        this.propertiesIndex.put(typeName, classProperties);
+        this.typePropertiesIndex.put(entry, classProperties);
         return classProperties;
+    }
+
+    private DwarfMethodProperties addMethodProperties(MethodEntry methodEntry) {
+        assert methodPropertiesIndex.get(methodEntry) == null;
+        DwarfMethodProperties methodProperties = new DwarfMethodProperties();
+        this.methodPropertiesIndex.put(methodEntry, methodProperties);
+        return methodProperties;
     }
 
     private DwarfTypeProperties lookupTypeProperties(TypeEntry typeEntry) {
         if (typeEntry instanceof ClassEntry) {
             return lookupClassProperties((ClassEntry) typeEntry);
         } else {
-            String typeName = typeEntry.getTypeName();
-            DwarfTypeProperties typeProperties = propertiesIndex.get(typeName);
+            DwarfTypeProperties typeProperties = typePropertiesIndex.get(typeEntry);
             if (typeProperties == null) {
                 typeProperties = addTypeProperties(typeEntry);
             }
@@ -536,8 +588,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     private DwarfClassProperties lookupClassProperties(StructureTypeEntry entry) {
-        String typeName = entry.getTypeName();
-        DwarfTypeProperties typeProperties = propertiesIndex.get(typeName);
+        DwarfTypeProperties typeProperties = typePropertiesIndex.get(entry);
         assert typeProperties == null || typeProperties instanceof DwarfClassProperties;
         DwarfClassProperties classProperties = (DwarfClassProperties) typeProperties;
         if (classProperties == null) {
@@ -546,20 +597,12 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return classProperties;
     }
 
-    private DwarfTypeProperties lookupTypeProperties(String typeName) {
-        DwarfTypeProperties typeProperties = propertiesIndex.get(typeName);
-        assert typeProperties != null;
-        assert typeProperties.getTypeEntry().getTypeName().equals(typeName);
-        return typeProperties;
-    }
-
-    @SuppressWarnings("unused")
-    private DwarfClassProperties lookupClassProperties(String typeName) {
-        DwarfTypeProperties classProperties = propertiesIndex.get(typeName);
-        assert classProperties != null;
-        assert classProperties.getClass() == DwarfClassProperties.class;
-        assert classProperties.getTypeEntry().getTypeName().equals(typeName);
-        return (DwarfClassProperties) classProperties;
+    private DwarfMethodProperties lookupMethodProperties(MethodEntry methodEntry) {
+        DwarfMethodProperties methodProperties = methodPropertiesIndex.get(methodEntry);
+        if (methodProperties == null) {
+            methodProperties = addMethodProperties(methodEntry);
+        }
+        return methodProperties;
     }
 
     void setTypeIndex(TypeEntry typeEntry, int idx) {
@@ -568,8 +611,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
         typeProperties.setTypeInfoIndex(idx);
     }
 
-    int getTypeIndex(String typeName) {
-        DwarfTypeProperties typeProperties = lookupTypeProperties(typeName);
+    int getTypeIndex(TypeEntry typeEntry) {
+        DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
         return getTypeIndex(typeProperties);
     }
 
@@ -584,8 +627,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
         typeProperties.setIndirectTypeInfoIndex(idx);
     }
 
-    int getIndirectTypeIndex(String typeName) {
-        DwarfTypeProperties typeProperties = lookupTypeProperties(typeName);
+    int getIndirectTypeIndex(TypeEntry typeEntry) {
+        DwarfTypeProperties typeProperties = lookupTypeProperties(typeEntry);
         return getIndirectTypeIndex(typeProperties);
     }
 
@@ -729,54 +772,24 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return fieldDeclarationIndex.get(fieldName);
     }
 
-    public void setMethodDeclarationIndex(ClassEntry classEntry, String methodName, int pos) {
-        DwarfClassProperties classProperties;
-        classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
-        HashMap<String, Integer> methodDeclarationIndex = classProperties.methodDeclarationIndex;
-        if (methodDeclarationIndex == null) {
-            classProperties.methodDeclarationIndex = methodDeclarationIndex = new HashMap<>();
-        }
-        if (methodDeclarationIndex.get(methodName) != null) {
-            assert methodDeclarationIndex.get(methodName) == pos : classEntry.getTypeName() + methodName;
-        } else {
-            methodDeclarationIndex.put(methodName, pos);
-        }
+    public void setMethodDeclarationIndex(MethodEntry methodEntry, int pos) {
+        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
+        methodProperties.setMethodDeclarationIndex(pos);
     }
 
-    public int getMethodDeclarationIndex(ClassEntry classEntry, String methodName) {
-        DwarfClassProperties classProperties;
-        classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
-        HashMap<String, Integer> methodDeclarationIndex = classProperties.methodDeclarationIndex;
-        assert methodDeclarationIndex != null : classEntry.getTypeName() + methodName;
-        assert methodDeclarationIndex.get(methodName) != null : classEntry.getTypeName() + methodName;
-        return methodDeclarationIndex.get(methodName);
+    public int getMethodDeclarationIndex(MethodEntry methodEntry) {
+        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
+        return methodProperties.getMethodDeclarationIndex();
     }
 
-    public void setAbstractInlineMethodIndex(ClassEntry classEntry, String methodName, int pos) {
-        DwarfClassProperties classProperties;
-        classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
-        HashMap<String, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
-        if (abstractInlineMethodIndex == null) {
-            classProperties.abstractInlineMethodIndex = abstractInlineMethodIndex = new HashMap<>();
-        }
-        if (abstractInlineMethodIndex.get(methodName) != null) {
-            assert abstractInlineMethodIndex.get(methodName) == pos : classEntry.getTypeName() + methodName;
-        } else {
-            abstractInlineMethodIndex.put(methodName, pos);
-        }
+    public void setAbstractInlineMethodIndex(MethodEntry methodEntry, int pos) {
+        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
+        methodProperties.setAbstractInlineMethodIndex(pos);
     }
 
-    public int getAbstractInlineMethodIndex(ClassEntry classEntry, String methodName) {
-        DwarfClassProperties classProperties;
-        classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
-        HashMap<String, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
-        assert abstractInlineMethodIndex != null : classEntry.getTypeName() + methodName;
-        assert abstractInlineMethodIndex.get(methodName) != null : classEntry.getTypeName() + methodName;
-        return abstractInlineMethodIndex.get(methodName);
+    public int getAbstractInlineMethodIndex(MethodEntry methodEntry) {
+        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
+        return methodProperties.getAbstractInlineMethodIndex();
     }
 
     /**
@@ -803,10 +816,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
             }
         }
     }
-
-    private HashMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
-
-    private HashMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex;
 
     private DwarfLocalProperties addMethodLocalProperties(MethodEntry methodEntry) {
         DwarfLocalProperties localProperties = new DwarfLocalProperties();

@@ -68,7 +68,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
@@ -108,6 +107,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
+import java.util.HashMap;
 
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
@@ -127,6 +127,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
     HostedType wordBaseType;
+    HostedType hubType;
+    HashMap<JavaKind, HostedType> javaKindToHostedType;
 
     NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, HostedMetaAccess metaAccess) {
         super();
@@ -158,6 +160,28 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
         wordBaseType = metaAccess.lookupJavaType(WordBase.class);
+        hubType = metaAccess.lookupJavaType(Class.class);
+        javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
+    }
+
+    private static HashMap<JavaKind, HostedType> initJavaKindToHostedTypes(HostedMetaAccess metaAccess) {
+        HashMap<JavaKind, HostedType> map = new HashMap<>();
+        for (JavaKind kind : JavaKind.values()) {
+            Class<?> clazz;
+            switch (kind) {
+                case Illegal:
+                    clazz = null;
+                    break;
+                case Object:
+                    clazz = java.lang.Object.class;
+                    break;
+                default:
+                    clazz = kind.toJavaClass();
+            }
+            HostedType javaType = clazz != null ? metaAccess.lookupJavaType(clazz) : null;
+            map.put(kind, javaType);
+        }
+        return map;
     }
 
     @Override
@@ -259,7 +283,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
         // we want a substituted target if there is one. if there is a substitution at the end of
         // the method chain fetch the annotated target class
-        ResolvedJavaMethod javaMethod = getOriginal(hostedMethod);
+        ResolvedJavaMethod javaMethod = getAnnotatedOrOriginal(hostedMethod);
         return javaMethod.getDeclaringClass();
     }
 
@@ -284,29 +308,39 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return javaType;
     }
 
-    private static ResolvedJavaMethod getOriginal(HostedMethod hostedMethod) {
+    private static ResolvedJavaMethod getAnnotatedOrOriginal(HostedMethod hostedMethod) {
         ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
+        // This method is only used when identifying the modifiers or the declaring class
+        // of a HostedMethod. Normally the method unwraps to the underlying JVMCI method
+        // which is the one that provides bytecode to the compiler as well as, line numbers
+        // and local info. If we unwrap to a SubstitutionMethod then we use the annotated
+        // method, not the JVMCI method that the annotation refers to since that will be the
+        // one providing the bytecode etc used by the compiler. If we unwrap to any other,
+        // custom substitution method we simply use it rather than dereferencing to the
+        // original. The difference is that the annotated method's bytecode will be used to
+        // replace the original and the debugger needs to use it to identify the file and access
+        // permissions. A custom substitution may exist alongside the original, as is the case
+        // with some uses for reflection. So, we don't want to conflate the custom substituted
+        // method and the original. In this latter case the method code will be synthesized without
+        // reference to the bytecode of the original. Hence there is no associated file and the
+        // permissions need to be determined from the custom substitution method itself.
+
         if (javaMethod instanceof SubstitutionMethod) {
             SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
             javaMethod = substitutionMethod.getAnnotated();
-        } else if (javaMethod instanceof CustomSubstitutionMethod) {
-            javaMethod = ((CustomSubstitutionMethod) javaMethod).getOriginal();
         }
         return javaMethod;
     }
 
     private static int getOriginalModifiers(HostedMethod hostedMethod) {
-        return getOriginal(hostedMethod).getModifiers();
-    }
-
-    private static String toJavaName(JavaType javaType) {
-        if (javaType instanceof HostedType) {
-            return getDeclaringClass((HostedType) javaType, true).toJavaName();
-        }
-        return javaType.toJavaName();
+        return getAnnotatedOrOriginal(hostedMethod).getModifiers();
     }
 
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
+
+    private HostedType hostedTypeForKind(JavaKind kind) {
+        return javaKindToHostedType.get(kind);
+    }
 
     private abstract class NativeImageDebugFileInfo implements DebugFileInfo {
         private final Path fullFilePath;
@@ -411,6 +445,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public ResolvedJavaType idType() {
+            // always use the original type for establishing identity
+            return getOriginal(hostedType);
+        }
+
+        @Override
         public String typeName() {
             return toJavaName(hostedType);
         }
@@ -446,9 +486,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.fieldInfos = new LinkedList<>();
         }
 
-        void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
+        void addField(String name, ResolvedJavaType valueType, int offset, @SuppressWarnings("hiding") int size) {
             NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
+        }
+
+        @Override
+        public ResolvedJavaType idType() {
+            // The header type is unique in that it does not have an associated ResolvedJavaType
+            return null;
         }
 
         @SuppressWarnings("try")
@@ -499,12 +545,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private class NativeImageDebugHeaderFieldInfo implements DebugFieldInfo {
         private final String name;
-        private final String valueType;
+        private final ResolvedJavaType valueType;
         private final int offset;
         private final int size;
         private final int modifiers;
 
-        NativeImageDebugHeaderFieldInfo(String name, String valueType, int offset, int size) {
+        NativeImageDebugHeaderFieldInfo(String name, ResolvedJavaType valueType, int offset, int size) {
             this.name = name;
             this.valueType = valueType;
             this.offset = offset;
@@ -518,7 +564,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String valueType() {
+        public ResolvedJavaType valueType() {
+            if (valueType instanceof HostedType) {
+                return getOriginal((HostedType) valueType);
+            }
             return valueType;
         }
 
@@ -557,7 +606,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = getObjectLayout().getHubOffset();
         int hubFieldSize = referenceSize;
-        String hubTypeName = "java.lang.Class";
         int idHashOffset = getObjectLayout().getIdentityHashCodeOffset();
         int idHashSize = getObjectLayout().sizeInBytes(JavaKind.Int);
         int objHeaderSize = getObjectLayout().getMinimumInstanceObjectSize();
@@ -565,9 +613,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         /* We need array headers for all Java kinds */
 
         NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", objHeaderSize);
-        objHeader.addField("hub", hubTypeName, hubOffset, hubFieldSize);
+        objHeader.addField("hub", hubType, hubOffset, hubFieldSize);
         if (idHashOffset > 0) {
-            objHeader.addField("idHash", "int", idHashOffset, idHashSize);
+            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), idHashOffset, idHashSize);
         }
         infos.add(objHeader);
 
@@ -618,22 +666,22 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String superName() {
+        public ResolvedJavaType superClass() {
             HostedClass superClass = hostedType.getSuperclass();
             /*
-             * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
-             * getSourceFilename to the wrapped class so for consistency we need to do the path
-             * lookup relative to the doubly unwrapped HostedType.
+             * Unwrap the hosted type's super class to the original to provide the correct identity
+             * type.
              */
             if (superClass != null) {
-                return getDeclaringClass(superClass, true).toJavaName();
+                return getOriginal(superClass);
             }
             return null;
         }
 
         @Override
-        public Stream<String> interfaces() {
-            return Arrays.stream(hostedType.getInterfaces()).map(this::toJavaName);
+        public Stream<ResolvedJavaType> interfaces() {
+            // map through getOriginal so we can use the result as an id type
+            return Arrays.stream(hostedType.getInterfaces()).map(interfaceType -> getOriginal(interfaceType));
         }
 
         private NativeImageDebugFieldInfo createDebugFieldInfo(HostedField field) {
@@ -662,9 +710,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public String valueType() {
-                HostedType valueType = field.getType();
-                return toJavaName(valueType);
+            public ResolvedJavaType valueType() {
+                return getOriginal(field.getType());
             }
 
             @Override
@@ -740,10 +787,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             int arrayLengthSize = getObjectLayout().sizeInBytes(JavaKind.Int);
             assert arrayLengthOffset + arrayLengthSize <= headerSize;
 
-            addField("len", "int", arrayLengthOffset, arrayLengthSize);
+            addField("len", javaKindToHostedType.get(JavaKind.Int), arrayLengthOffset, arrayLengthSize);
         }
 
-        void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
+        void addField(String name, ResolvedJavaType valueType, int offset, @SuppressWarnings("hiding") int size) {
             NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
         }
@@ -764,9 +811,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String elementType() {
+        public ResolvedJavaType elementType() {
             HostedType elementType = arrayClass.getComponentType();
-            return toJavaName(elementType);
+            return getOriginal(elementType);
         }
 
         @Override
@@ -881,6 +928,20 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return m;
         }
 
+        private ResolvedJavaMethod originalMethod() {
+            // unwrap to an original method as far as we can
+            ResolvedJavaMethod targetMethod = method;
+            while (targetMethod instanceof WrappedJavaMethod) {
+                targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
+            }
+            // if we hit a substitution then we can translate to the original
+            // for identity otherwise we use whatever we unwrapped to.
+            if (targetMethod instanceof SubstitutionMethod) {
+                targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
+            }
+            return targetMethod;
+        }
+
         /**
          * Return the unique type that owns this method.
          * <p/>
@@ -932,16 +993,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public ResolvedJavaMethod idMethod() {
+            // translating to the original ensures we equate a
+            // substituted method with the original in case we ever see both
+            return originalMethod();
+        }
+
+        @Override
         public String name() {
-            ResolvedJavaMethod targetMethod = method;
-            while (targetMethod instanceof WrappedJavaMethod) {
-                targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
-            }
-            if (targetMethod instanceof SubstitutionMethod) {
-                targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
-            } else if (targetMethod instanceof CustomSubstitutionMethod) {
-                targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
-            }
+            ResolvedJavaMethod targetMethod = originalMethod();
             String name = targetMethod.getName();
             if (name.equals("<init>")) {
                 if (method instanceof HostedMethod) {
@@ -963,8 +1023,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String valueType() {
-            return toJavaName(method.getSignature().getReturnType(null));
+        public ResolvedJavaType valueType() {
+            ResolvedJavaType resultType = (ResolvedJavaType) method.getSignature().getReturnType(null);
+            if (resultType instanceof HostedType) {
+                return getOriginal((HostedType) resultType);
+            }
+            return resultType;
         }
 
         @Override
@@ -2074,12 +2138,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this(name, Value.ILLEGAL, 0, kind, type, slot, line);
         }
 
-        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType type, int slot, int line) {
+        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
             this.name = name;
             this.kind = kind;
-            this.type = type;
             this.slot = slot;
             this.line = line;
+            // if we don't have a type default it for the JavaKind
+            // it may still end up null when kind is Undefined.
+            this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
             if (value instanceof RegisterValue) {
                 this.localKind = LocalKind.REGISTER;
                 this.value = new NativeImageDebugRegisterValue((RegisterValue) value);
@@ -2126,6 +2192,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public ResolvedJavaType valueType() {
+            if (type != null && type instanceof HostedType) {
+                return getOriginal((HostedType) type);
+            }
+            return type;
+        }
+
+        @Override
         public boolean equals(Object o) {
             if (!(o instanceof NativeImageDebugLocalValueInfo)) {
                 return false;
@@ -2166,14 +2240,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String typeName() {
-            if (type != null) {
-                return toJavaName(type);
-            }
-            if (kind == JavaKind.Object) {
-                return "java.lang.Object";
-            } else {
-                return kind.getJavaName();
-            }
+            ResolvedJavaType valueType = valueType();
+            return (valueType == null ? "" : valueType().toJavaName());
         }
 
         @Override
