@@ -178,18 +178,18 @@ public final class Space {
      */
     @NeverInline("GC performance")
     Pointer allocateMemory(UnsignedWord objectSize) {
+        Pointer result = WordFactory.nullPointer();
+        /* Fast-path: try allocating in the last chunk. */
+        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.TLAB.get();
+        if (oldChunk.isNonNull()) {
+            result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
+        }
+        if (result.isNonNull()) {
+            return result;
+        }
+        /* Slow-path: try allocating a new chunk for the requested memory. */
         mutex.lock();
         try {
-            Pointer result = WordFactory.nullPointer();
-            /* Fast-path: try allocating in the last chunk. */
-            AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
-            if (oldChunk.isNonNull()) {
-                result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
-            }
-            if (result.isNonNull()) {
-                return result;
-            }
-            /* Slow-path: try allocating a new chunk for the requested memory. */
             result = allocateInNewChunk(objectSize);
             return result;
         } finally {
@@ -199,6 +199,7 @@ public final class Space {
 
     private Pointer allocateInNewChunk(UnsignedWord objectSize) {
         AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
+        ParallelGCImpl.TLAB.set(newChunk);
         if (newChunk.isNonNull()) {
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }

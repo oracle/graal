@@ -1157,6 +1157,7 @@ public final class GCImpl implements GC {
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces(chunkReleaser);
         }
+        ParallelGCImpl.TLAB.set(WordFactory.nullPointer());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

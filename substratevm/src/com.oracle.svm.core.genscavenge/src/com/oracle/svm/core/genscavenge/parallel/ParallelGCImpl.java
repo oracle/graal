@@ -1,6 +1,7 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
@@ -8,9 +9,12 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -19,6 +23,10 @@ public class ParallelGCImpl extends ParallelGC {
 
     /// static -> ImageSingletons
     public static final int WORKERS_COUNT = 4;
+
+    /// tlab of the current to-space
+    public static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> TLAB =
+            FastThreadLocalFactory.createWord("ParallelGCImpl.TLAB");
 
     private static final VMMutex mutex = new VMMutex("pargc");
     private static final VMCondition cond = new VMCondition(mutex);
@@ -52,6 +60,7 @@ public class ParallelGCImpl extends ParallelGC {
                         mutex.unlock();
 
                         QUEUE.drain(PROMOTE_TASK);
+                        TLAB.set(WordFactory.nullPointer());
                         if (busy.decrementAndGet() <= 0) {
                             cond.broadcast();
                         }
