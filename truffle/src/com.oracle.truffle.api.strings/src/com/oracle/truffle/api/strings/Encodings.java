@@ -47,6 +47,7 @@ import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
 final class Encodings {
 
@@ -216,7 +217,7 @@ final class Encodings {
     }
 
     @SuppressWarnings("fallthrough")
-    static int utf8DecodeBroken(AbstractTruffleString a, Object arrayA, int i) {
+    static int utf8DecodeBroken(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
         int b = readS0(a, arrayA, i);
         if (b < 0x80) {
             return b;
@@ -228,32 +229,32 @@ final class Encodings {
         switch (nBytes) {
             case 4:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepoint();
+                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
             case 3:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepoint();
+                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
             case 2:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepoint();
+                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j) & 0x3f);
                 break;
             default:
-                return invalidCodepoint();
+                return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
         }
         // Checkstyle: resume
         if (utf8IsInvalidCodePoint(codepoint, nBytes)) {
-            return invalidCodepoint();
+            return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
         }
         return codepoint;
     }
 
-    static int utf8GetCodePointLength(AbstractTruffleString a, Object arrayA, int i) {
-        return utf8GetCodePointLength(arrayA, a.offset(), a.length(), i);
+    static int utf8GetCodePointLength(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
+        return utf8GetCodePointLength(arrayA, a.offset(), a.length(), i, errorHandling);
     }
 
     /**
@@ -261,7 +262,7 @@ final class Encodings {
      * the codepoint is valid, otherwise return {@code 1}.
      */
     @SuppressWarnings("fallthrough")
-    static int utf8GetCodePointLength(Object arrayA, int offset, int length, int i) {
+    static int utf8GetCodePointLength(Object arrayA, int offset, int length, int i, ErrorHandling errorHandling) {
         int b = readS0(arrayA, offset, length, i);
         if (b < 0x80) {
             return 1;
@@ -271,35 +272,55 @@ final class Encodings {
         int continuationByte;
         int j = i + 1;
         if (i + nBytes > length) {
-            return 1;
+            if (errorHandling == ErrorHandling.BEST_EFFORT) {
+                return 1;
+            }
+            assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+            if (nBytes < 2 || nBytes > 4) {
+                return -1;
+            }
+            if (j == length && codepoint == 0) {
+                return nBytes == 2 ? -1 : -nBytes;
+            }
+            for (; j < i + nBytes; j++) {
+                codepoint = codepoint << 6;
+                if (j < length) {
+                    continuationByte = readS0(arrayA, offset, length, j);
+                    if (!isUTF8ContinuationByte(continuationByte)) {
+                        return -1;
+                    }
+                    codepoint |= continuationByte & 0x3f;
+                }
+            }
+            return utf8IsInvalidCodePoint(codepoint, nBytes) ? -1 : length - (i + nBytes) - 1;
         }
         // Checkstyle: stop
         switch (nBytes) {
             case 4:
                 continuationByte = readS0(arrayA, offset, length, j++);
                 if (!isUTF8ContinuationByte(continuationByte)) {
-                    return 1;
+                    return invalidCodepointReturnValue(1, errorHandling);
                 }
                 codepoint = codepoint << 6 | (continuationByte & 0x3f);
             case 3:
                 continuationByte = readS0(arrayA, offset, length, j++);
                 if (!isUTF8ContinuationByte(continuationByte)) {
-                    return 1;
+                    return invalidCodepointReturnValue(1, errorHandling);
                 }
                 codepoint = codepoint << 6 | (continuationByte & 0x3f);
             case 2:
                 continuationByte = readS0(arrayA, offset, length, j);
                 if (!isUTF8ContinuationByte(continuationByte)) {
-                    return 1;
+                    return invalidCodepointReturnValue(1, errorHandling);
                 }
                 codepoint = codepoint << 6 | (continuationByte & 0x3f);
                 break;
             default:
-                return 1;
+                return invalidCodepointReturnValue(1, errorHandling);
         }
         // Checkstyle: resume
         if (utf8IsInvalidCodePoint(codepoint, nBytes)) {
-            return 1;
+            return invalidCodepointReturnValue(1, errorHandling);
         }
         return nBytes;
     }
@@ -308,8 +329,40 @@ final class Encodings {
         return isUTF16Surrogate(codepoint) || codepoint < UTF_8_MIN_CODEPOINT[nBytes] || codepoint > 0x10ffff;
     }
 
+    static int invalidCodepointReturnValue(int bestEffortValue, ErrorHandling errorHandling) {
+        if (errorHandling == ErrorHandling.BEST_EFFORT) {
+            return bestEffortValue;
+        }
+        assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+        return -1;
+    }
+
     static int utf16EncodedSize(int codepoint) {
         return codepoint < 0x10000 ? 1 : 2;
+    }
+
+    static int utf16BrokenGetCodePointByteLength(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
+        return utf16BrokenGetCodePointByteLength(arrayA, a.offset(), a.length(), i, errorHandling);
+    }
+
+    static int utf16BrokenGetCodePointByteLength(Object arrayA, int offset, int length, int i, ErrorHandling errorHandling) {
+        char c = readS1(arrayA, offset, length, i);
+        if (errorHandling == ErrorHandling.BEST_EFFORT) {
+            return isUTF16HighSurrogate(c) && i + 1 < length && isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1)) ? 4 : 2;
+        }
+        assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+        if (isUTF16Surrogate(c)) {
+            if (isUTF16HighSurrogate(c)) {
+                if (i + 1 == length) {
+                    return -3;
+                }
+                if (isUTF16LowSurrogate(TStringOps.readS1(arrayA, offset, length, i + 1))) {
+                    return 4;
+                }
+            }
+            return -1;
+        }
+        return 2;
     }
 
     static int utf16Encode(int codepoint, byte[] bytes, int index) {
@@ -376,11 +429,25 @@ final class Encodings {
         return c;
     }
 
-    static int utf16DecodeBroken(AbstractTruffleString a, Object arrayA, int i) {
+    static int utf16DecodeBroken(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
         char c = readS1(a, arrayA, i);
-        if (isUTF16HighSurrogate(c) && (i + 1) < a.length()) {
-            char c2 = readS1(a, arrayA, i + 1);
-            if (isUTF16LowSurrogate(c2)) {
+        if (errorHandling == ErrorHandling.BEST_EFFORT) {
+            if (isUTF16HighSurrogate(c) && (i + 1) < a.length()) {
+                char c2 = readS1(a, arrayA, i + 1);
+                if (isUTF16LowSurrogate(c2)) {
+                    return Character.toCodePoint(c, c2);
+                }
+            }
+        } else {
+            assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+            if (isUTF16Surrogate(c)) {
+                if (isUTF16LowSurrogate(c) || i + 1 >= a.length()) {
+                    return -1;
+                }
+                char c2 = readS1(a, arrayA, i + 1);
+                if (!isUTF16LowSurrogate(c2)) {
+                    return -1;
+                }
                 return Character.toCodePoint(c, c2);
             }
         }

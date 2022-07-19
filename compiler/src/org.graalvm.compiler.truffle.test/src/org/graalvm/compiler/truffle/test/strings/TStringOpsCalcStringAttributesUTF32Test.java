@@ -109,10 +109,6 @@ public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<AMD6
 
     @Test
     public void testUTF32I() {
-        int[] intArray = new int[array.length / 4];
-        for (int i = 0; i < intArray.length; i++) {
-            intArray[i] = readValue(array, 2, i);
-        }
-        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, int.class, int.class), null, DUMMY_LOCATION, intArray, offset, length);
+        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, int.class, int.class), null, DUMMY_LOCATION, toIntArray(array), offset, length);
     }
 }

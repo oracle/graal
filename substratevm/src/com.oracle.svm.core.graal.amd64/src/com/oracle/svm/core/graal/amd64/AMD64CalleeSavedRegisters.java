@@ -40,6 +40,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -257,6 +258,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             this.hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
         }
 
+        @SuppressWarnings("unlikely-arg-type")
         public void emit() {
             assert isRuntimeCompilationEnabled == DeoptimizationSupport.enabled() : "JIT compilation enabled after registering singleton?";
             if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
@@ -326,6 +328,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          * Emits a {@linkplain #emitRuntimeFeatureTest runtime feature check} if the {@code feature}
          * is not statically available.
          */
+        @SuppressWarnings("unlikely-arg-type")
         private void testFeature(CPUFeature feature, Label falseLabel) {
             if (!hostedCPUFeatures.contains(feature)) {
                 emitRuntimeFeatureTest(feature, falseLabel);
@@ -338,6 +341,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
          * was {@linkplain #enterAvxRegion(CPUFeature) entered}, it must be
          * {@linkplain #leaveAvxRegion(CPUFeature) left} before calling this method.
          */
+        @SuppressWarnings("unlikely-arg-type")
         private void jumpToEndOrReturn(CPUFeature feature, Label end) throws StaticFeatureException {
             if (hostedCPUFeatures.contains(feature)) {
                 throw new StaticFeatureException();
@@ -446,7 +450,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
             Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
             GraalError.guarantee(heapBase != null, "Heap base register must not be null");
-            return new AMD64Address(heapBase, Register.None, AMD64Address.Scale.Times1, displacement(object, (SharedConstantReflectionProvider) crb.providers.getConstantReflection()) + fieldOffset,
+            return new AMD64Address(heapBase, Register.None, Stride.S1, displacement(object, (SharedConstantReflectionProvider) crb.providers.getConstantReflection()) + fieldOffset,
                             displacementAnnotation(object));
         }
 

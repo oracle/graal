@@ -32,13 +32,15 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -48,7 +50,6 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -59,56 +60,50 @@ import jdk.vm.ci.meta.Value;
 public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64ArrayCompareToOp> TYPE = LIRInstructionClass.create(AMD64ArrayCompareToOp.class);
 
-    private final JavaKind kind1;
-    private final JavaKind kind2;
-    private final int array1BaseOffset;
-    private final int array2BaseOffset;
-
+    private final Stride strideA;
+    private final Stride strideB;
     private final int useAVX3Threshold;
 
     @Def({REG}) protected Value resultValue;
-    @Alive({REG}) protected Value array1Value;
-    @Alive({REG}) protected Value array2Value;
-    @Use({REG}) protected Value length1Value;
-    @Use({REG}) protected Value length2Value;
-    @Temp({REG}) protected Value length1ValueTemp;
-    @Temp({REG}) protected Value length2ValueTemp;
+    @Alive({REG}) protected Value arrayAValue;
+    @Alive({REG}) protected Value arrayBValue;
+    @Use({REG}) protected Value lengthAValue;
+    @Use({REG}) protected Value lengthBValue;
+    @Temp({REG}) protected Value lengthAValueTemp;
+    @Temp({REG}) protected Value lengthBValueTemp;
     @Temp({REG}) protected Value temp1;
     @Temp({REG}) protected Value temp2;
 
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
 
-    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2,
-                    Value length1, Value length2) {
-        super(TYPE, tool, AVXSize.ZMM);
+    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, Stride strideA, Stride strideB,
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+                    Value result,
+                    Value arrayA, Value lengthA,
+                    Value arrayB, Value lengthB) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures, AVXSize.ZMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
-        this.kind1 = kind1;
-        this.kind2 = kind2;
-
-        // Both offsets should be the same but better be safe than sorry.
-        this.array1BaseOffset = array1BaseOffset;
-        this.array2BaseOffset = array2BaseOffset;
+        this.strideA = strideA;
+        this.strideB = strideB;
 
         this.resultValue = result;
-        this.array1Value = array1;
-        this.array2Value = array2;
+        this.arrayAValue = arrayA;
+        this.arrayBValue = arrayB;
         /*
          * The length values are inputs but are also killed like temporaries so need both Use and
          * Temp annotations, which will only work with fixed registers.
          */
-        this.length1Value = length1;
-        this.length2Value = length2;
-        this.length1ValueTemp = length1;
-        this.length2ValueTemp = length2;
+        this.lengthAValue = lengthAValueTemp = lengthA;
+        this.lengthBValue = lengthBValueTemp = lengthB;
 
         // Allocate some temporaries.
         this.temp1 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
         this.temp2 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
 
         // We only need the vector temporaries if we generate SSE code.
-        if (supports(tool.target(), CPUFeature.SSE4_2)) {
+        if (supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE4_2)) {
             this.vectorTemp1 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
         } else {
             this.vectorTemp1 = Value.ILLEGAL;
@@ -122,32 +117,29 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         Register str2 = asRegister(temp2);
 
         // Load array base addresses.
-        masm.leaq(str1, new AMD64Address(asRegister(array1Value), array1BaseOffset));
-        masm.leaq(str2, new AMD64Address(asRegister(array2Value), array2BaseOffset));
-        Register cnt1 = asRegister(length1Value);
-        Register cnt2 = asRegister(length2Value);
+        masm.movq(str1, asRegister(arrayAValue));
+        masm.movq(str2, asRegister(arrayBValue));
+        Register cnt1 = asRegister(lengthAValue);
+        Register cnt2 = asRegister(lengthBValue);
 
         Label labelLengthDiff = new Label();
         Label labelPop = new Label();
         Label labelDone = new Label();
         Label labelWhileHead = new Label();
         Label labelCompareWideVectorsLoopFailed = new Label(); // used only _LP64 && AVX3
-        int stride;
-        int stride2;
-        int adrStride = -1;
-        int adrStride1 = -1;
-        int adrStride2 = -1;
 
         int stride2x2 = 0x40;
-        AMD64Address.Scale scale = null;
-        AMD64Address.Scale scale1 = null;
-        AMD64Address.Scale scale2 = null;
+        Stride maxStride = Stride.max(strideA, strideB);
+        Stride scale1 = Stride.S1;
+        Stride scale2 = Stride.S2;
+        int elementsPerXMMVector = 16 >> maxStride.log2;
+        int elementsPerYMMVector = 32 >> maxStride.log2;
 
-        if (!(kind1 == JavaKind.Byte && kind2 == JavaKind.Byte)) {
+        if (!(strideA == Stride.S1 && strideB == Stride.S1)) {
             stride2x2 = 0x20;
         }
 
-        if (kind1 != kind2) {
+        if (strideA != strideB) {
             masm.shrl(cnt2, 1);
         }
         // Compute the minimum of the string lengths and the
@@ -161,11 +153,11 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         // Is the minimum length zero?
         masm.testlAndJcc(cnt2, cnt2, ConditionFlag.Zero, labelLengthDiff, false);
 
-        if (kind1 == JavaKind.Byte && kind2 == JavaKind.Byte) {
+        if (strideA == Stride.S1 && strideB == Stride.S1) {
             // Load first bytes
             masm.movzbl(result, new AMD64Address(str1, 0));  // result = str1[0]
             masm.movzbl(cnt1, new AMD64Address(str2, 0));    // cnt1 = str2[0]
-        } else if (kind1 == JavaKind.Char && kind2 == JavaKind.Char) {
+        } else if (strideA == Stride.S2 && strideB == Stride.S2) {
             // Load first characters
             masm.movzwl(result, new AMD64Address(str1, 0));
             masm.movzwl(cnt1, new AMD64Address(str2, 0));
@@ -175,28 +167,15 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         }
         masm.sublAndJcc(result, cnt1, ConditionFlag.NotZero, labelPop, false);
 
-        if (kind1 == JavaKind.Char && kind2 == JavaKind.Char) {
+        if (strideA == Stride.S2 && strideB == Stride.S2) {
             // Divide length by 2 to get number of chars
             masm.shrl(cnt2, 1);
         }
         masm.cmplAndJcc(cnt2, 1, ConditionFlag.Equal, labelLengthDiff, false);
 
         // Check if the strings start at the same location and setup scale and stride
-        if (kind1 == kind2) {
+        if (strideA == strideB) {
             masm.cmpqAndJcc(str1, str2, ConditionFlag.Equal, labelLengthDiff, false);
-
-            if (kind1 == JavaKind.Byte && kind2 == JavaKind.Byte) {
-                scale = AMD64Address.Scale.Times1;
-                stride = 16;
-            } else {
-                scale = AMD64Address.Scale.Times2;
-                stride = 8;
-            }
-        } else {
-            scale1 = AMD64Address.Scale.Times1;
-            scale2 = AMD64Address.Scale.Times2;
-            // scale not used
-            stride = 8;
         }
 
         if (supportsAVX2AndYMM() && masm.supports(CPUFeature.SSE4_2)) {
@@ -214,33 +193,21 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             Label labelCompareWideVectorsLoopAVX3 = new Label();  // used only _LP64 && AVX3
 
             int pcmpmask = 0x19;
-            if (kind1 == JavaKind.Byte && kind2 == JavaKind.Byte) {
+            if (strideA == Stride.S1 && strideB == Stride.S1) {
                 pcmpmask &= ~0x01;
             }
 
             // Setup to compare 16-chars (32-bytes) vectors,
             // start from first character again because it has aligned address.
-            if (kind1 == JavaKind.Byte && kind2 == JavaKind.Byte) {
-                stride2 = 32;
-            } else {
-                stride2 = 16;
-            }
-
-            if (kind1 == kind2) {
-                adrStride = stride << scale.log2;
-            } else {
-                adrStride1 = 8;  // stride << scale1;
-                adrStride2 = 16; // stride << scale2;
-            }
 
             assert result.equals(rax) && cnt2.equals(rdx) && cnt1.equals(rcx) : "pcmpestri";
             // rax and rdx are used by pcmpestri as elements counters
             masm.movl(result, cnt2);
-            masm.andlAndJcc(cnt2, ~(stride2 - 1), ConditionFlag.Zero, labelCompareTailLong, false);
+            masm.andlAndJcc(cnt2, ~(elementsPerYMMVector - 1), ConditionFlag.Zero, labelCompareTailLong, false);
 
             // fast path : compare first 2 8-char vectors.
             masm.bind(labelCompare16Chars);
-            if (kind1 == kind2) {
+            if (strideA == strideB) {
                 masm.movdqu(vec1, new AMD64Address(str1, 0));
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, 0));
@@ -248,33 +215,32 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.pcmpestri(vec1, new AMD64Address(str2, 0), pcmpmask);
             masm.jccb(ConditionFlag.Below, labelCompareIndexChar);
 
-            if (kind1 == kind2) {
-                masm.movdqu(vec1, new AMD64Address(str1, adrStride));
-                masm.pcmpestri(vec1, new AMD64Address(str2, adrStride), pcmpmask);
+            if (strideA == strideB) {
+                masm.movdqu(vec1, new AMD64Address(str1, 16));
             } else {
-                masm.pmovzxbw(vec1, new AMD64Address(str1, adrStride1));
-                masm.pcmpestri(vec1, new AMD64Address(str2, adrStride2), pcmpmask);
+                masm.pmovzxbw(vec1, new AMD64Address(str1, 8));
             }
+            masm.pcmpestri(vec1, new AMD64Address(str2, 16), pcmpmask);
             masm.jccb(ConditionFlag.AboveEqual, labelCompareWideVectors);
-            masm.addl(cnt1, stride);
+            masm.addl(cnt1, elementsPerXMMVector);
 
             // Compare the characters at index in cnt1
             masm.bind(labelCompareIndexChar); // cnt1 has the offset of the mismatching character
-            loadNextElements(masm, result, cnt2, str1, str2, scale, scale1, scale2, cnt1);
+            loadNextElements(masm, result, cnt2, str1, str2, maxStride, scale1, scale2, cnt1);
             masm.subl(result, cnt2);
             masm.jmp(labelPop);
 
             // Setup the registers to start vector comparison loop
             masm.bind(labelCompareWideVectors);
-            if (kind1 == kind2) {
-                masm.leaq(str1, new AMD64Address(str1, result, scale));
-                masm.leaq(str2, new AMD64Address(str2, result, scale));
+            if (strideA == strideB) {
+                masm.leaq(str1, new AMD64Address(str1, result, maxStride));
+                masm.leaq(str2, new AMD64Address(str2, result, maxStride));
             } else {
                 masm.leaq(str1, new AMD64Address(str1, result, scale1));
                 masm.leaq(str2, new AMD64Address(str2, result, scale2));
             }
-            masm.subl(result, stride2);
-            masm.sublAndJcc(cnt2, stride2, ConditionFlag.Zero, labelCompareWideTail, false);
+            masm.subl(result, elementsPerYMMVector);
+            masm.sublAndJcc(cnt2, elementsPerYMMVector, ConditionFlag.Zero, labelCompareWideTail, false);
             masm.negq(result);
 
             // In a loop, compare 16-chars (32-bytes) at once using (vpxor+vptest)
@@ -287,10 +253,10 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
                 masm.testlAndJcc(cnt2, stride2x2 - 1, ConditionFlag.NotZero, labelCompareWideVectorsLoopAVX2, true);
 
                 masm.bind(labelCompareWideVectorsLoopAVX3); // the hottest loop
-                if (kind1 == kind2) {
-                    masm.evmovdqu64(vec1, new AMD64Address(str1, result, scale));
+                if (strideA == strideB) {
+                    masm.evmovdqu64(vec1, new AMD64Address(str1, result, maxStride));
                     // k7 == 11..11, if operands equal, otherwise k7 has some 0
-                    masm.evpcmpeqb(k7, vec1, new AMD64Address(str2, result, scale));
+                    masm.evpcmpeqb(k7, vec1, new AMD64Address(str2, result, maxStride));
                 } else {
                     masm.evpmovzxbw(vec1, new AMD64Address(str1, result, scale1));
                     // k7 == 11..11, if operands equal, otherwise k7 has some 0
@@ -307,17 +273,17 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             }
 
             masm.bind(labelCompareWideVectorsLoopAVX2);
-            if (kind1 == kind2) {
-                masm.vmovdqu(vec1, new AMD64Address(str1, result, scale));
-                masm.vpxor(vec1, vec1, new AMD64Address(str2, result, scale));
+            if (strideA == strideB) {
+                masm.vmovdqu(vec1, new AMD64Address(str1, result, maxStride));
+                masm.vpxor(vec1, vec1, new AMD64Address(str2, result, maxStride));
             } else {
                 masm.vpmovzxbw(vec1, new AMD64Address(str1, result, scale1));
                 masm.vpxor(vec1, vec1, new AMD64Address(str2, result, scale2));
             }
             masm.vptest(vec1, vec1);
             masm.jcc(ConditionFlag.NotZero, labelVectorNotEqual);
-            masm.addq(result, stride2);
-            masm.sublAndJcc(cnt2, stride2, ConditionFlag.NotZero, labelCompareWideVectorsLoop, false);
+            masm.addq(result, elementsPerYMMVector);
+            masm.sublAndJcc(cnt2, elementsPerYMMVector, ConditionFlag.NotZero, labelCompareWideVectorsLoop, false);
             // clean upper bits of YMM registers
             masm.vpxor(vec1, vec1, vec1);
 
@@ -325,7 +291,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.bind(labelCompareWideTail);
             masm.testqAndJcc(result, result, ConditionFlag.Zero, labelLengthDiff, false);
 
-            masm.movl(result, stride2);
+            masm.movl(result, elementsPerYMMVector);
             masm.movl(cnt2, result);
             masm.negq(result);
             masm.jmp(labelCompareWideVectorsLoopAVX2);
@@ -334,9 +300,9 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.bind(labelVectorNotEqual);
             // clean upper bits of YMM registers
             masm.vpxor(vec1, vec1, vec1);
-            if (kind1 == kind2) {
-                masm.leaq(str1, new AMD64Address(str1, result, scale));
-                masm.leaq(str2, new AMD64Address(str2, result, scale));
+            if (strideA == strideB) {
+                masm.leaq(str1, new AMD64Address(str1, result, maxStride));
+                masm.leaq(str2, new AMD64Address(str2, result, maxStride));
             } else {
                 masm.leaq(str1, new AMD64Address(str1, result, scale1));
                 masm.leaq(str2, new AMD64Address(str2, result, scale2));
@@ -346,19 +312,19 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             // Compare tail chars, length between 1 to 15 chars
             masm.bind(labelCompareTailLong);
             masm.movl(cnt2, result);
-            masm.cmplAndJcc(cnt2, stride, ConditionFlag.Less, labelCompareSmallStr, false);
+            masm.cmplAndJcc(cnt2, elementsPerXMMVector, ConditionFlag.Less, labelCompareSmallStr, false);
 
-            if (kind1 == kind2) {
+            if (strideA == strideB) {
                 masm.movdqu(vec1, new AMD64Address(str1, 0));
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, 0));
             }
             masm.pcmpestri(vec1, new AMD64Address(str2, 0), pcmpmask);
             masm.jcc(ConditionFlag.Below, labelCompareIndexChar);
-            masm.subqAndJcc(cnt2, stride, ConditionFlag.Zero, labelLengthDiff, false);
-            if (kind1 == kind2) {
-                masm.leaq(str1, new AMD64Address(str1, result, scale));
-                masm.leaq(str2, new AMD64Address(str2, result, scale));
+            masm.subqAndJcc(cnt2, elementsPerXMMVector, ConditionFlag.Zero, labelLengthDiff, false);
+            if (strideA == strideB) {
+                masm.leaq(str1, new AMD64Address(str1, result, maxStride));
+                masm.leaq(str2, new AMD64Address(str2, result, maxStride));
             } else {
                 masm.leaq(str1, new AMD64Address(str1, result, scale1));
                 masm.leaq(str2, new AMD64Address(str2, result, scale2));
@@ -377,13 +343,13 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             // Setup to compare 8-char (16-byte) vectors,
             // start from first character again because it has aligned address.
             masm.movl(result, cnt2);
-            if (kind1 == JavaKind.Byte && kind2 == JavaKind.Byte) {
+            if (strideA == Stride.S1 && strideB == Stride.S1) {
                 pcmpmask &= ~0x01;
             }
-            masm.andlAndJcc(cnt2, ~(stride - 1), ConditionFlag.Zero, labelCompareTail, false);
-            if (kind1 == kind2) {
-                masm.leaq(str1, new AMD64Address(str1, result, scale));
-                masm.leaq(str2, new AMD64Address(str2, result, scale));
+            masm.andlAndJcc(cnt2, ~(elementsPerXMMVector - 1), ConditionFlag.Zero, labelCompareTail, false);
+            if (strideA == strideB) {
+                masm.leaq(str1, new AMD64Address(str1, result, maxStride));
+                masm.leaq(str2, new AMD64Address(str2, result, maxStride));
             } else {
                 masm.leaq(str1, new AMD64Address(str1, result, scale1));
                 masm.leaq(str2, new AMD64Address(str2, result, scale2));
@@ -403,9 +369,9 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             assert result.equals(rax) && cnt2.equals(rdx) && cnt1.equals(rcx) : "pcmpestri";
 
             masm.bind(labelCompareWideVectors);
-            if (kind1 == kind2) {
-                masm.movdqu(vec1, new AMD64Address(str1, result, scale));
-                masm.pcmpestri(vec1, new AMD64Address(str2, result, scale), pcmpmask);
+            if (strideA == strideB) {
+                masm.movdqu(vec1, new AMD64Address(str1, result, maxStride));
+                masm.pcmpestri(vec1, new AMD64Address(str2, result, maxStride), pcmpmask);
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, result, scale1));
                 masm.pcmpestri(vec1, new AMD64Address(str2, result, scale2), pcmpmask);
@@ -413,18 +379,18 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             // After pcmpestri cnt1(rcx) contains mismatched element index
 
             masm.jccb(ConditionFlag.Below, labelVectorNotEqual);  // CF==1
-            masm.addq(result, stride);
-            masm.subqAndJcc(cnt2, stride, ConditionFlag.NotZero, labelCompareWideVectors, true);
+            masm.addq(result, elementsPerXMMVector);
+            masm.subqAndJcc(cnt2, elementsPerXMMVector, ConditionFlag.NotZero, labelCompareWideVectors, true);
 
             // compare wide vectors tail
             masm.testqAndJcc(result, result, ConditionFlag.Zero, labelLengthDiff, false);
 
-            masm.movl(cnt2, stride);
-            masm.movl(result, stride);
+            masm.movl(cnt2, elementsPerXMMVector);
+            masm.movl(result, elementsPerXMMVector);
             masm.negq(result);
-            if (kind1 == kind2) {
-                masm.movdqu(vec1, new AMD64Address(str1, result, scale));
-                masm.pcmpestri(vec1, new AMD64Address(str2, result, scale), pcmpmask);
+            if (strideA == strideB) {
+                masm.movdqu(vec1, new AMD64Address(str1, result, maxStride));
+                masm.pcmpestri(vec1, new AMD64Address(str2, result, maxStride), pcmpmask);
             } else {
                 masm.pmovzxbw(vec1, new AMD64Address(str1, result, scale1));
                 masm.pcmpestri(vec1, new AMD64Address(str2, result, scale2), pcmpmask);
@@ -434,7 +400,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             // Mismatched characters in the vectors
             masm.bind(labelVectorNotEqual);
             masm.addq(cnt1, result);
-            loadNextElements(masm, result, cnt2, str1, str2, scale, scale1, scale2, cnt1);
+            loadNextElements(masm, result, cnt2, str1, str2, maxStride, scale1, scale2, cnt1);
             masm.subl(result, cnt2);
             masm.jmpb(labelPop);
 
@@ -444,9 +410,9 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         }
 
         // Shift str2 and str1 to the end of the arrays, negate min
-        if (kind1 == kind2) {
-            masm.leaq(str1, new AMD64Address(str1, cnt2, scale));
-            masm.leaq(str2, new AMD64Address(str2, cnt2, scale));
+        if (strideA == strideB) {
+            masm.leaq(str1, new AMD64Address(str1, cnt2, maxStride));
+            masm.leaq(str2, new AMD64Address(str2, cnt2, maxStride));
         } else {
             masm.leaq(str1, new AMD64Address(str1, cnt2, scale1));
             masm.leaq(str2, new AMD64Address(str2, cnt2, scale2));
@@ -456,14 +422,14 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
 
         // Compare the rest of the elements
         masm.bind(labelWhileHead);
-        loadNextElements(masm, result, cnt1, str1, str2, scale, scale1, scale2, cnt2);
+        loadNextElements(masm, result, cnt1, str1, str2, maxStride, scale1, scale2, cnt2);
         masm.sublAndJcc(result, cnt1, ConditionFlag.NotZero, labelPop, true);
         masm.incqAndJcc(cnt2, ConditionFlag.NotZero, labelWhileHead, true);
 
         // Strings are equal up to min length. Return the length difference.
         masm.bind(labelLengthDiff);
         masm.pop(result);
-        if (kind1 == JavaKind.Char && kind2 == JavaKind.Char) {
+        if (strideA == Stride.S2 && strideB == Stride.S2) {
             // Divide diff by 2 to get number of chars
             masm.sarl(result, 1);
         }
@@ -476,17 +442,17 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.notq(cnt1);
             masm.bsfq(cnt2, cnt1);
             // if (ae != StrIntrinsicNode::LL) {
-            if (!(kind1 == JavaKind.Byte && kind2 == JavaKind.Byte)) {
+            if (!(strideA == Stride.S1 && strideB == Stride.S1)) {
                 // Divide diff by 2 to get number of chars
                 masm.sarl(cnt2, 1);
             }
             masm.addq(result, cnt2);
-            if (kind1 == JavaKind.Byte && kind2 == JavaKind.Byte) {
-                masm.movzbl(cnt1, new AMD64Address(str2, result, Scale.Times1));
-                masm.movzbl(result, new AMD64Address(str1, result, Scale.Times1));
-            } else if (kind1 == JavaKind.Char && kind2 == JavaKind.Char) {
-                masm.movzwl(cnt1, new AMD64Address(str2, result, scale));
-                masm.movzwl(result, new AMD64Address(str1, result, scale));
+            if (strideA == Stride.S1 && strideB == Stride.S1) {
+                masm.movzbl(cnt1, new AMD64Address(str2, result, Stride.S1));
+                masm.movzbl(result, new AMD64Address(str1, result, Stride.S1));
+            } else if (strideA == Stride.S2 && strideB == Stride.S2) {
+                masm.movzwl(cnt1, new AMD64Address(str2, result, maxStride));
+                masm.movzwl(result, new AMD64Address(str1, result, maxStride));
             } else {
                 masm.movzwl(cnt1, new AMD64Address(str2, result, scale2));
                 masm.movzbl(result, new AMD64Address(str1, result, scale1));
@@ -501,23 +467,23 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
 
         // That's it
         masm.bind(labelDone);
-        if (kind1 == JavaKind.Char && kind2 == JavaKind.Byte) {
+        if (strideA == Stride.S2 && strideB == Stride.S1) {
             masm.negl(result);
         }
     }
 
     private void loadNextElements(AMD64MacroAssembler masm, Register elem1, Register elem2, Register str1, Register str2,
-                    AMD64Address.Scale scale, AMD64Address.Scale scale1,
-                    AMD64Address.Scale scale2, Register index) {
-        if (kind1 == JavaKind.Byte && kind2 == JavaKind.Byte) {
-            masm.movzbl(elem1, new AMD64Address(str1, index, scale, 0));
-            masm.movzbl(elem2, new AMD64Address(str2, index, scale, 0));
-        } else if (kind1 == JavaKind.Char && kind2 == JavaKind.Char) {
-            masm.movzwl(elem1, new AMD64Address(str1, index, scale, 0));
-            masm.movzwl(elem2, new AMD64Address(str2, index, scale, 0));
+                    Stride stride, Stride stride1,
+                    Stride stride2, Register index) {
+        if (strideA == Stride.S1 && strideB == Stride.S1) {
+            masm.movzbl(elem1, new AMD64Address(str1, index, stride, 0));
+            masm.movzbl(elem2, new AMD64Address(str2, index, stride, 0));
+        } else if (strideA == Stride.S2 && strideB == Stride.S2) {
+            masm.movzwl(elem1, new AMD64Address(str1, index, stride, 0));
+            masm.movzwl(elem2, new AMD64Address(str2, index, stride, 0));
         } else {
-            masm.movzbl(elem1, new AMD64Address(str1, index, scale1, 0));
-            masm.movzwl(elem2, new AMD64Address(str2, index, scale2, 0));
+            masm.movzbl(elem1, new AMD64Address(str1, index, stride1, 0));
+            masm.movzwl(elem2, new AMD64Address(str2, index, stride2, 0));
         }
     }
 }

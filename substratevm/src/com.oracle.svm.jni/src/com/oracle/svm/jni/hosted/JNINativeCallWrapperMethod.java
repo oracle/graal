@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,19 +29,11 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -63,7 +55,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -80,17 +71,14 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
     JNINativeCallWrapperMethod(ResolvedJavaMethod method) {
         super(method);
-        linkage = createLinkage(method);
+        assert !(method instanceof WrappedJavaMethod);
+        this.linkage = createLinkage(method);
     }
 
     private static JNINativeLinkage createLinkage(ResolvedJavaMethod method) {
-        ResolvedJavaMethod unwrapped = method;
-        while (unwrapped instanceof WrappedJavaMethod) {
-            unwrapped = ((WrappedJavaMethod) unwrapped).getWrapped();
-        }
-        String className = unwrapped.getDeclaringClass().getName();
-        String descriptor = unwrapped.getSignature().toMethodDescriptor();
-        return JNIAccessFeature.singleton().makeLinkage(className, unwrapped.getName(), descriptor);
+        String className = method.getDeclaringClass().getName();
+        String descriptor = method.getSignature().toMethodDescriptor();
+        return JNIAccessFeature.singleton().makeLinkage(className, method.getName(), descriptor);
     }
 
     @Override
@@ -185,25 +173,10 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         kit.rethrowPendingException();
         if (javaReturnType.getJavaKind().isObject()) {
             // Just before return to always run the epilogue and never suppress a pending exception
-            returnValue = castObject(kit, returnValue, (ResolvedJavaType) javaReturnType);
+            returnValue = kit.checkObjectType(returnValue, (ResolvedJavaType) javaReturnType, false);
         }
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
         return kit.finalizeGraph();
-    }
-
-    private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type) {
-        ValueNode casted = object;
-        if (!type.isJavaLangObject()) { // safe cast to expected type
-            TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
-            LogicNode condition = kit.append(InstanceOfNode.createAllowNull(typeRef, object, null, null));
-            if (!condition.isTautology()) {
-                ObjectStamp stamp = StampFactory.object(typeRef, false);
-                ValueNode expectedClass = kit.createConstant(kit.getConstantReflection().asJavaClass(type), JavaKind.Object);
-                GuardingNode guard = kit.createCheckThrowingBytecodeException(condition, false, BytecodeExceptionKind.CLASS_CAST, object, expectedClass);
-                casted = kit.append(PiNode.create(object, stamp, guard.asNode()));
-            }
-        }
-        return casted;
     }
 }

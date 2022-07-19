@@ -121,20 +121,4 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
     protected void checkIntrinsicNode(ArrayCopyWithConversionsNode node) {
         Assert.assertTrue(node.getDirectStubCallIndex() < 0);
     }
-
-    private static char[] toCharArray(byte[] array) {
-        char[] ret = new char[array.length >> 1];
-        for (int i = 0; i < ret.length; i++) {
-            ret[i] = (char) readValue(array, 1, i);
-        }
-        return ret;
-    }
-
-    private static int[] toIntArray(byte[] array) {
-        int[] ret = new int[array.length >> 2];
-        for (int i = 0; i < ret.length; i++) {
-            ret[i] = (char) readValue(array, 2, i);
-        }
-        return ret;
-    }
 }

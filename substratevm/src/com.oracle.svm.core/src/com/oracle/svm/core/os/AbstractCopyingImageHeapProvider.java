@@ -57,7 +57,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         Pointer allocatedMemory = WordFactory.nullPointer();
         if (reservedAddressSpace.isNull()) {
             UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(imageHeapAddressSpaceSize, alignment);
+            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(imageHeapAddressSpaceSize, alignment, false);
             if (allocatedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }

@@ -62,6 +62,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.ClassLoadingExceptionSupport;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -90,6 +91,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private boolean sealed;
 
     private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Map<String, Throwable> inaccessibleClasses = new ConcurrentHashMap<>();
     private final Set<Class<?>> unsafeInstantiatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<Executable, ExecutableAccessibility> reflectionMethods = new ConcurrentHashMap<>();
     private final Map<Executable, Object> methodAccessors = new ConcurrentHashMap<>();
@@ -133,6 +135,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (reflectionClasses.add(clazz)) {
                 modifiedClasses.add(clazz);
             }
+        });
+    }
+
+    @Override
+    public void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t) {
+        checkNotSealed();
+        registerConditionalConfiguration(condition, () -> {
+            inaccessibleClasses.put(typeName, t);
         });
     }
 
@@ -409,24 +419,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForClass(DuringAnalysisAccessImpl access, AnalysisType analysisType, Class<?> clazz) {
-        List<Throwable> errors = new ArrayList<>();
-        makeTypeReachable(access, query(clazz::getGenericSuperclass, errors));
-        Type[] genericInterfaces = query(clazz::getGenericInterfaces, errors);
+        makeTypeReachable(access, query(clazz::getGenericSuperclass, null));
+        Type[] genericInterfaces = query(clazz::getGenericInterfaces, null);
         if (genericInterfaces != null) {
             for (Type genericInterface : genericInterfaces) {
                 try {
                     makeTypeReachable(access, genericInterface);
-                } catch (TypeNotPresentException | LinkageError e) {
-                    errors.add(e);
+                } catch (TypeNotPresentException | LinkageError ignored) {
                 }
             }
         }
-        Executable enclosingMethod = enclosingMethodOrConstructor(clazz, errors);
+        Executable enclosingMethod = enclosingMethodOrConstructor(clazz, null);
         if (enclosingMethod != null) {
             makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(enclosingMethod.getDeclaringClass()));
             RuntimeReflection.registerAsQueried(enclosingMethod);
         }
-        reportLinkingErrors(clazz, errors);
 
         Object[] recordComponents = buildRecordComponents(clazz, access);
         if (recordComponents != null) {
@@ -643,15 +650,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void processRegisteredElements(DuringAnalysisAccessImpl access) {
-        if (modifiedClasses.isEmpty()) {
-            return;
+        if (!modifiedClasses.isEmpty()) {
+            for (Class<?> clazz : modifiedClasses) {
+                processClass(access, clazz);
+            }
+            modifiedClasses.clear();
+            access.requireAnalysisIteration();
         }
-        access.requireAnalysisIteration();
 
-        for (Class<?> clazz : modifiedClasses) {
-            processClass(access, clazz);
+        if (!inaccessibleClasses.isEmpty()) {
+            inaccessibleClasses.forEach(ClassLoadingExceptionSupport::registerClass);
+            inaccessibleClasses.clear();
+            access.requireAnalysisIteration();
         }
-        modifiedClasses.clear();
     }
 
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
@@ -704,7 +715,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             return callable.call();
         } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
-            errors.add(e);
+            if (errors != null) {
+                errors.add(e);
+            }
         } catch (Exception e) {
             throw VMError.shouldNotReachHere(e);
         }

@@ -48,7 +48,7 @@ public class JfrRecorderThread extends Thread {
     private volatile boolean stopped;
 
     public JfrRecorderThread(JfrGlobalMemory globalMemory, JfrUnlockedChunkWriter unlockedChunkWriter) {
-        super("JFR Recorder Thread");
+        super("JFR recorder");
         this.globalMemory = globalMemory;
         this.unlockedChunkWriter = unlockedChunkWriter;
         this.mutex = new VMMutex("jfrRecorder");

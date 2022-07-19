@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
 public interface PerfDataSupport {
-    ByteBuffer attach(String user, int lvmid, int mode);
+    ByteBuffer attach(int lvmid);
 
     void detach(ByteBuffer bb);
 
@@ -53,7 +53,7 @@ class NoPerfDataSupport implements PerfDataSupport {
     }
 
     @Override
-    public ByteBuffer attach(String user, int lvmid, int mode) {
+    public ByteBuffer attach(int lvmid) {
         throw new IllegalArgumentException("Performance data is not supported.");
     }
 

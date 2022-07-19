@@ -106,6 +106,13 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
         }
     }
 
+    /**
+     * Apply the inverse of this node's {@linkplain #getOp() operation} (with the same
+     * {@linkplain #getEncoding() encoding}) to the given {@code input} node. Implementers may
+     * return an existing node. If a new node is returned, it is not added to the graph.
+     */
+    public abstract ValueNode reverse(ValueNode input);
+
     @Override
     public boolean isLossless() {
         return true;

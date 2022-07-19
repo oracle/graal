@@ -52,6 +52,7 @@ import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_unittest import _run_tests, _VMLauncher
+from mx_substratevm_sync_stubs import _sync_graal_stubs, _check_graal_stubs_synced
 
 import sys
 
@@ -69,7 +70,7 @@ def get_jdk():
 def graal_compiler_flags():
     version_tag = get_jdk().javaCompliance.value
     compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map()
-    if version_tag not in compiler_flags:
+    if str(version_tag) not in compiler_flags:
         missing_flags_message = 'Missing graal-compiler-flags for {0}.\n Did you forget to run "mx build"?'
         mx.abort(missing_flags_message.format(version_tag))
     def adjusted_exports(line):
@@ -84,7 +85,8 @@ def graal_compiler_flags():
             return before + sep + 'ALL-UNNAMED'
         else:
             return line
-    return [adjusted_exports(line) for line in compiler_flags[version_tag]]
+
+    return [adjusted_exports(line) for line in compiler_flags[str(version_tag)]]
 
 def svm_unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -216,6 +218,7 @@ GraalTags = Tags([
     'muslcbuild',
     'hellomodule',
     'condconfig',
+    'checkstubs',
 ])
 
 def vm_native_image_path(config=None):
@@ -319,7 +322,9 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
     helloworld(image_args + javac_command)
     helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
-    if not mx.is_windows() and flightrecorder:
+    # JFR is currently not supported on JDK 19 [GR-39564] [GR-39642]
+    is_jdk_version_supported = mx.get_jdk().version < mx.VersionSpec("19")
+    if is_jdk_version_supported and not mx.is_windows() and flightrecorder:
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
     cinterfacetutorial(extra_image_args)
     clinittest([])
@@ -445,6 +450,11 @@ def svm_gate_body(args, tasks):
 
             mx.log('mx native-image --help output check detected no errors.')
 
+    with Task('Check if generated stub code is in sync', tasks, tags=[GraalTags.checkstubs]) as t:
+        if t:
+            if check_graal_stubs_synced([]) != 0:
+                mx.abort('mx svm-sync-graal-stubs-check found differences when re-generating stub code, you may need to run "mx svm-sync-graal-stubs"')
+
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:
             config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
@@ -466,6 +476,29 @@ def svm_gate_body(args, tasks):
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
             hellomodule([])
+
+    with Task('Validate JSON build output', tasks, tags=[mx_gate.Tags.style]) as t:
+        if t:
+            import json
+            try:
+                from jsonschema import validate as json_validate
+                from jsonschema.exceptions import ValidationError, SchemaError
+            except ImportError:
+                mx.abort('Unable to import jsonschema')
+            with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', 'build-output-schema-v0.9.0.json')) as f:
+                json_schema = json.load(f)
+            with tempfile.NamedTemporaryFile(prefix='build_json') as json_file:
+                helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={json_file.name}'])
+                try:
+                    with open(json_file.name) as f:
+                        json_output = json.load(f)
+                    json_validate(json_output, json_schema)
+                except IOError as e:
+                    mx.abort(f'Unable to load JSON build output: {e}')
+                except ValidationError as e:
+                    mx.abort(f'Unable to validate JSON build output against the schema: {e}')
+                except SchemaError as e:
+                    mx.abort(f'JSON schema not valid: {e}')
 
 
 def native_unittests_task(extra_build_args=None):
@@ -1046,6 +1079,7 @@ if llvm_supported:
             'substratevm:LLVM_WRAPPER_SHADOWED',
             'substratevm:JAVACPP_SHADOWED',
             'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+            'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
         ],
         stability="experimental-earlyadopter",
         jlink=False,
@@ -1577,7 +1611,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         layout = {
             './': ['file:' + join(base_jdk_home, 'lib', lib_prefix + '*' + lib_suffix)]
         }
-    register_distribution(mx.LayoutTARDistribution(suite, 'SVM_STATIC_LIBRARIES_SUPPORT', [], layout, None, True, None))
+    register_distribution(JDKLayoutTARDistribution(suite, 'SVM_STATIC_LIBRARIES_SUPPORT', [], layout, None, True, None))
+
+
+class JDKLayoutTARDistribution(mx.LayoutTARDistribution):
+    def isJDKDependent(self):
+        return True
+
 
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
@@ -1648,12 +1688,12 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
     def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
-        graal_compiler_flags_map[8] = [
+        graal_compiler_flags_map['8'] = [
             '-d64',
             '-XX:-UseJVMCIClassLoader'
         ]
 
-        graal_compiler_flags_map[11] = [
+        graal_compiler_flags_map['11'] = [
             # Disable the check for JDK-8 graal version.
             '-Dsubstratevm.IgnoreGraalVersionCheck=true',
         ]
@@ -1662,9 +1702,12 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         distributions_transitive = mx.classpath_entries(self.buildDependencies)
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
-        graal_compiler_flags_map[11].extend(exports_flags)
+        graal_compiler_flags_map['11'].extend(exports_flags)
         # Currently JDK 17 and JDK 11 have the same flags
-        graal_compiler_flags_map[17] = graal_compiler_flags_map[11]
+        graal_compiler_flags_map['17'] = graal_compiler_flags_map['11']
+        # Currently JDK 19 and JDK 17 have the same flags
+        graal_compiler_flags_map['19'] = graal_compiler_flags_map['17']
+        graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo
@@ -1763,3 +1806,13 @@ if is_musl_supported():
     def musl_helloworld(args, config=None):
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')
+
+
+@mx.command(suite.name, 'svm-sync-graal-stubs-check')
+def check_graal_stubs_synced(_args):
+    return _check_graal_stubs_synced(suite)
+
+
+@mx.command(suite.name, 'svm-sync-graal-stubs')
+def sync_graal_stubs(_args):
+    _sync_graal_stubs(suite)

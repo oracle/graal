@@ -291,7 +291,7 @@ public final class Encodings {
         return ret;
     }
 
-    private static boolean isValidCodePoint(int codePoint, Encoding jCoding) {
+    static boolean isValidCodePoint(int codePoint, Encoding jCoding) {
         int length = jCoding.codeToMbcLength(codePoint);
         if (length < 1) {
             return false;

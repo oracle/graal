@@ -94,17 +94,17 @@ public class EATestBase extends GraalCompilerTest {
 
         static {
             try {
-                long localFieldOffset1 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("x"));
+                long localFieldOffset1 = getObjectFieldOffset(EATestBase.TestClassInt.class.getField("x"));
                 // Make the fields 8 byte aligned (Required for testing setLong on Architectures
                 // which does not support unaligned memory access. The code has to be extra careful
                 // because some JDKs do a better job of packing fields.
                 if (localFieldOffset1 % 8 == 0) {
                     fieldOffset1 = localFieldOffset1;
-                    fieldOffset2 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("y"));
+                    fieldOffset2 = getObjectFieldOffset(EATestBase.TestClassInt.class.getField("y"));
                     firstFieldIsX = true;
                 } else {
-                    fieldOffset1 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("y"));
-                    fieldOffset2 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("z"));
+                    fieldOffset1 = getObjectFieldOffset(EATestBase.TestClassInt.class.getField("y"));
+                    fieldOffset2 = getObjectFieldOffset(EATestBase.TestClassInt.class.getField("z"));
                     firstFieldIsX = false;
                 }
                 assert fieldOffset2 == fieldOffset1 + 4;
@@ -188,6 +188,9 @@ public class EATestBase extends GraalCompilerTest {
         prepareGraph(snippet, iterativeEscapeAnalysis);
         if (expectedConstantResult != null) {
             for (ReturnNode returnNode : returnNodes) {
+                if (!returnNode.result().isConstant()) {
+                    graph.getDebug().forceDump(graph, "ERROR");
+                }
                 Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
                 Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
             }

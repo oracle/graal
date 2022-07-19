@@ -26,8 +26,8 @@
 package org.graalvm.compiler.core.amd64;
 
 import jdk.vm.ci.code.Register;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -53,7 +53,7 @@ public abstract class AMD64CompressAddressLowering extends AMD64AddressLowering 
             return true;
         }
 
-        if (!isBaseNegated && !isIndexNegated && addr.getScale() == AMD64Address.Scale.Times1) {
+        if (!isBaseNegated && !isIndexNegated && addr.getScale() == Stride.S1) {
             ValueNode base = addr.getBase();
             ValueNode index = addr.getIndex();
 

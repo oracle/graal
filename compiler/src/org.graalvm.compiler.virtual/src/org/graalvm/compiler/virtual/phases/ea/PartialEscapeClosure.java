@@ -1274,6 +1274,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             int virtualInputs = 0;
             boolean uniqueVirtualObject = true;
             boolean ensureVirtual = true;
+            boolean selfReference = false;
             VirtualObjectNode[] virtualObjs = new VirtualObjectNode[states.length];
             for (int i = 0; i < states.length; i++) {
                 ValueNode alias = getAlias(getPhiValueAt(phi, i));
@@ -1295,6 +1296,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 } else if (alias == phi) {
                     assert i > 0;
                     virtualInputs++;
+                    selfReference = true;
                 }
             }
             if (virtualInputs == states.length) {
@@ -1326,10 +1328,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             VirtualObjectNode virtual = virtualObjs[i];
                             if (virtual != null) {
                                 /*
-                                 * check whether we trivially see that this is the only reference to
-                                 * this allocation
+                                 * Check whether we trivially see that this is the only reference to
+                                 * this allocation. Self-references add another virtual object, they
+                                 * are only allowed for allocations without identity.
                                  */
-                                if (virtual.hasIdentity() && !isSingleUsageAllocation(getPhiValueAt(phi, i), virtualObjs, states[i])) {
+                                if (virtual.hasIdentity() && (selfReference || !isSingleUsageAllocation(getPhiValueAt(phi, i), virtualObjs, states[i]))) {
                                     compatible = false;
                                     break;
                                 }

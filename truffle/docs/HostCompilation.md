@@ -1,8 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-link_title: Host Optimization for interpreter code
-permalink: /graalvm-as-a-platform/language-implementation-framework/HostOptimization
+link_title: Host Optimization for Interpreter Code
+permalink: /graalvm-as-a-platform/language-implementation-framework/HostOptimization/
 ---
 # Host Compilation for Interpreter Java code
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
@@ -96,6 +96,16 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
         }
     }
 
+    static class SchemaFactoryClasses extends XMLParsersRegistration {
+
+        @Override
+        List<String> xmlParserClasses() {
+            return Arrays.asList(
+                            "com.sun.org.apache.xerces.internal.impl.dv.xs.ExtendedSchemaDVFactoryImpl",
+                            "com.sun.org.apache.xerces.internal.impl.dv.xs.SchemaDVFactoryImpl");
+        }
+    }
+
     static class StAXParserClasses extends XMLParsersRegistration {
 
         @Override
@@ -114,7 +124,7 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
             /*
              * To allow register new resource bundle classes during analysis phase
              */
-            ConfigurableClassInitialization classInitializationSupport = (ConfigurableClassInitialization) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             classInitializationSupport.setConfigurationSealed(false);
 
             ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);

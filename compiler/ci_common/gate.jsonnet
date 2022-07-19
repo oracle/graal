@@ -71,7 +71,7 @@
                   "-Dpolyglot.engine.CompileImmediately=true " +
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
                   "-Dtck.inlineVerifierInstrument=false",
-    extra_unittest_args="truffle"),
+    extra_unittest_args="--very-verbose truffle"),
 
   ctw:: s.base("build,ctw", no_warning_as_error=true),
 
@@ -112,7 +112,7 @@
   bootstrap_lite:: s.base("build,bootstraplite", no_warning_as_error=true),
   bootstrap_full:: s.base("build,bootstrapfullverify", no_warning_as_error=true),
   bootstrap_economy:: s.base("build,bootstrapeconomy", no_warning_as_error=true, extra_vm_args="-Dgraal.CompilerConfiguration=economy"),
-  
+
   style:: c.eclipse + c.jdt + s.base("style,fullbuild,javadoc"),
 
   avx3:: {
@@ -140,7 +140,7 @@
     {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk17"] + s.save_as_json + c.mach5_target,
 
     # Linux AMD64
-    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("50:00") + s.save_as_json + c.mach5_target,
+    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("55:00") + s.save_as_json + c.mach5_target,
     {name: "gate-compiler-test-labsjdk-17-linux-amd64"} +               s.test +           c.labsjdk17 +      c.linux_amd64 + t("55:00") + s.save_as_json + c.mach5_target,
     {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.linux_amd64 + c.mach5_target,
     {name: "gate-compiler-ctw-labsjdk-17-linux-amd64"} +                s.ctw +            c.labsjdk17 +      c.linux_amd64 + c.mach5_target,
@@ -149,7 +149,7 @@
     {name: "gate-compiler-benchmarktest-labsjdk-11-linux-amd64"} +      s.benchmark +      c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-benchmarktest-labsjdk-17-linux-amd64"} +      s.benchmark +      c.labsjdk17 +      c.linux_amd64,
     {name: "gate-compiler-style-linux-amd64"} +                         s.style +          c.labsjdk17 +      c.linux_amd64 + t("45:00"),
-    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:00:00") + s.save_as_json,
+    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:15:00") + s.save_as_json + {environment+: {"TRACE_COMPILATION": "true"}, logs+: ['*/*_compilation.log']},
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-vector16"} +    s.test_vec16 +     c.labsjdk17 +      c.linux_amd64 + s.weekly,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx0"} +        s.test_avx0 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx1"} +        s.test_avx1 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,

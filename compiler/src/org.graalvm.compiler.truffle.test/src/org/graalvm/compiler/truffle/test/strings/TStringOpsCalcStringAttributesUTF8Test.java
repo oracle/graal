@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -134,8 +135,8 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64
 
     @Test
     public void testUtf8() {
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class);
-        test(method, null, DUMMY_LOCATION, array, offset, length, true, false);
-        test(method, null, DUMMY_LOCATION, array, offset, length, false, false);
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, ConditionProfile.class);
+        test(method, null, DUMMY_LOCATION, array, offset, length, true, false, ConditionProfile.getUncached());
+        test(method, null, DUMMY_LOCATION, array, offset, length, false, false, ConditionProfile.getUncached());
     }
 }

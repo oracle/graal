@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test.strings;
 
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -45,6 +46,19 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     static final TruffleString a = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
     static final TruffleString b = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
+
+    @Test
+    public void testCodePointAtIndex() {
+        assertConstant(new RootNode(null) {
+
+            @Child TruffleString.CodePointAtIndexNode node = TruffleString.CodePointAtIndexNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(a, 0, UTF_32);
+            }
+        });
+    }
 
     @Test
     public void testRegionEquals() {

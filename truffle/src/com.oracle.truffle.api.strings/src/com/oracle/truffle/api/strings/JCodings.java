@@ -109,7 +109,7 @@ interface JCodings {
     @TruffleBoundary
     int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding);
 
-    int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding);
+    int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding, TruffleString.ErrorHandling errorHandling);
 
     long calcStringAttributes(Node location, Object array, int offset, int length, int encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile);
 

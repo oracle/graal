@@ -71,4 +71,10 @@ typedef struct {
   char fAVX512_VBMI2;
   char fAVX512_VBMI;
   char fHV;
+  char fSERIALIZE;
+  char fRDTSCP;
+  char fRDPID;
+  char fFSRM;
+  char fGFNI;
+  char fAVX512_BITALG;
 } CPUFeatures;

@@ -1124,6 +1124,9 @@ public class NativeImage {
         if (!addModules.isEmpty()) {
             imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" + String.join(",", addModules));
         }
+        if (config.modulePathBuild && !finalImageClasspath.isEmpty()) {
+            imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
+        }
 
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
         return buildImage(finalImageBuilderJavaArgs, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);

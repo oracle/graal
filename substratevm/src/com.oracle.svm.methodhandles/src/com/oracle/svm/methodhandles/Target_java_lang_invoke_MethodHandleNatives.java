@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -52,7 +53,9 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
+import com.oracle.svm.util.ReflectionUtil;
 
 import sun.invoke.util.VerifyAccess;
 
@@ -229,13 +232,19 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 }
 
 /**
- * The method handles API looks up methods and fields in a diffent way than the reflection API. The
- * specified member is searched in the given declaring class and its superclasses (like
+ * The method handles API looks up methods and fields in a different way than the reflection API.
+ * The specified member is searched in the given declaring class and its superclasses (like
  * {@link Class#getMethod(String, Class[])}) but including private members (like
  * {@link Class#getDeclaredMethod(String, Class[])}). We solve this by recursively looking up the
  * declared methods of the declaring class and its superclasses.
+ * <p>
+ * Also, the C++ implementation of MethodHandleNatives does not perform access control as it was
+ * already performed by the JDK code calling invokeBasic. To avoid interferences with the access
+ * control infrastructure, methods, constructors, and fields are made accessible via
+ * {@code setAccessible0(boolean)} of {@link AccessibleObject}.
  */
 final class Util_java_lang_invoke_MethodHandleNatives {
+    private static final Method SET_ACCESSIBLE0 = ReflectionUtil.lookupMethod(AccessibleObject.class, "setAccessible0", boolean.class);
 
     static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes) throws NoSuchMethodException {
         return lookupMethod(declaringClazz, name, parameterTypes, null);
@@ -243,7 +252,9 @@ final class Util_java_lang_invoke_MethodHandleNatives {
 
     private static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes, NoSuchMethodException originalException) throws NoSuchMethodException {
         try {
-            return declaringClazz.getDeclaredMethod(name, parameterTypes);
+            Method result = declaringClazz.getDeclaredMethod(name, parameterTypes);
+            forceAccess(result);
+            return result;
         } catch (NoSuchMethodException e) {
             Class<?> superClass = declaringClazz.getSuperclass();
             NoSuchMethodException newOriginalException = originalException == null ? e : originalException;
@@ -261,7 +272,9 @@ final class Util_java_lang_invoke_MethodHandleNatives {
 
     private static Field lookupField(Class<?> declaringClazz, String name, NoSuchFieldException originalException) throws NoSuchFieldException {
         try {
-            return declaringClazz.getDeclaredField(name);
+            Field result = declaringClazz.getDeclaredField(name);
+            forceAccess(result);
+            return result;
         } catch (NoSuchFieldException e) {
             Class<?> superClass = declaringClazz.getSuperclass();
             NoSuchFieldException newOriginalException = originalException == null ? e : originalException;
@@ -270,6 +283,14 @@ final class Util_java_lang_invoke_MethodHandleNatives {
             } else {
                 return lookupField(superClass, name, newOriginalException);
             }
+        }
+    }
+
+    private static void forceAccess(AccessibleObject target) {
+        try {
+            SET_ACCESSIBLE0.invoke(target, true);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -304,6 +325,7 @@ final class Util_java_lang_invoke_MethodHandleNatives {
                 self.flags |= method.getModifiers();
             } else if (self.isConstructor()) {
                 Constructor<?> constructor = declaringClass.getDeclaredConstructor(self.getMethodType().parameterArray());
+                forceAccess(constructor);
                 self.reflectAccess = constructor;
                 self.flags |= constructor.getModifiers();
             } else if (self.isField()) {

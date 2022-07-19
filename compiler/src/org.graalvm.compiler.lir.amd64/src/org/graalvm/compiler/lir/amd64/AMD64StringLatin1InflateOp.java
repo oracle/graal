@@ -37,6 +37,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -68,7 +69,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value rtmp2;
 
     public AMD64StringLatin1InflateOp(LIRGeneratorTool tool, int useAVX3Threshold, Value src, Value dst, Value len) {
-        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.YMM);
+        super(TYPE, tool, null, supportsAVX512VLBW(tool.target(), null) && supports(tool.target(), null, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.YMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
@@ -144,15 +145,15 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
             // The vector count (in chars).
             masm.andlAndJcc(len, -32, ConditionFlag.Zero, labelCopyTail, true);
 
-            masm.leaq(src, new AMD64Address(src, len, AMD64Address.Scale.Times1));
-            masm.leaq(dst, new AMD64Address(dst, len, AMD64Address.Scale.Times2));
+            masm.leaq(src, new AMD64Address(src, len, Stride.S1));
+            masm.leaq(dst, new AMD64Address(dst, len, Stride.S2));
             masm.negq(len);
 
             // Inflate 32 chars per iteration, reading 256-bit compact vectors
             // and writing 512-bit inflated ditto.
             masm.bind(labelCopy32Loop);
-            masm.evpmovzxbw(tmp1, new AMD64Address(src, len, AMD64Address.Scale.Times1));
-            masm.evmovdqu16(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp1);
+            masm.evpmovzxbw(tmp1, new AMD64Address(src, len, Stride.S1));
+            masm.evmovdqu16(new AMD64Address(dst, len, Stride.S2), tmp1);
             masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCopy32Loop, false);
 
             masm.bind(labelCopyTail);
@@ -189,14 +190,14 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
             }
 
             // vectored inflation
-            masm.leaq(src, new AMD64Address(src, len, AMD64Address.Scale.Times1));
-            masm.leaq(dst, new AMD64Address(dst, len, AMD64Address.Scale.Times2));
+            masm.leaq(src, new AMD64Address(src, len, Stride.S1));
+            masm.leaq(dst, new AMD64Address(dst, len, Stride.S2));
             masm.negq(len);
 
             if (masm.supports(CPUFeature.AVX2)) {
                 masm.bind(labelCopy16Loop);
-                masm.vpmovzxbw(tmp1, new AMD64Address(src, len, AMD64Address.Scale.Times1));
-                masm.vmovdqu(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp1);
+                masm.vpmovzxbw(tmp1, new AMD64Address(src, len, Stride.S1));
+                masm.vmovdqu(new AMD64Address(dst, len, Stride.S2), tmp1);
                 masm.addqAndJcc(len, 16, ConditionFlag.NotZero, labelCopy16Loop, false);
 
                 // The avx512 logic may branch here. We assume that avx2 is supported when we use
@@ -219,8 +220,8 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
             // Inflate 8 bytes (chars) per iteration, reading 64-bit compact vectors
             // and writing 128-bit inflated ditto.
             masm.bind(labelCopy8Loop);
-            masm.pmovzxbw(tmp1, new AMD64Address(src, len, AMD64Address.Scale.Times1));
-            masm.movdqu(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp1);
+            masm.pmovzxbw(tmp1, new AMD64Address(src, len, Stride.S1));
+            masm.movdqu(new AMD64Address(dst, len, Stride.S2), tmp1);
             masm.addqAndJcc(len, 8, ConditionFlag.NotZero, labelCopy8Loop, false);
 
             masm.bind(labelCopyTail);
@@ -243,14 +244,14 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
 
         // Inflate any remaining characters (bytes) using a vanilla implementation.
         masm.testlAndJcc(len, len, ConditionFlag.Zero, labelDone, true);
-        masm.leaq(src, new AMD64Address(src, len, AMD64Address.Scale.Times1));
-        masm.leaq(dst, new AMD64Address(dst, len, AMD64Address.Scale.Times2));
+        masm.leaq(src, new AMD64Address(src, len, Stride.S1));
+        masm.leaq(dst, new AMD64Address(dst, len, Stride.S2));
         masm.negq(len);
 
         // Inflate a single byte (char) per iteration.
         masm.bind(labelCopyCharsLoop);
-        masm.movzbl(tmp2, new AMD64Address(src, len, AMD64Address.Scale.Times1));
-        masm.movw(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp2);
+        masm.movzbl(tmp2, new AMD64Address(src, len, Stride.S1));
+        masm.movw(new AMD64Address(dst, len, Stride.S2), tmp2);
         masm.incqAndJcc(len, ConditionFlag.NotZero, labelCopyCharsLoop, false);
 
         masm.bind(labelDone);

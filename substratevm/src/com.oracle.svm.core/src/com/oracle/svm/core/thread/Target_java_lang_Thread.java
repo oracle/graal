@@ -45,9 +45,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.ContinuationsNotSupported;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -94,19 +95,19 @@ public final class Target_java_lang_Thread {
     @Alias//
     volatile String name;
 
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     int priority;
 
     /* Whether or not the thread is a daemon . */
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     boolean daemon;
 
     /* What will be run. */
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     Runnable target;
 
     /* The group of this thread */
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     ThreadGroup group;
 
     @Alias//
@@ -116,21 +117,22 @@ public final class Target_java_lang_Thread {
      * The requested stack size for this thread, or 0 if the creator did not specify a stack size.
      * It is up to the VM to do whatever it likes with this number; some VMs will ignore it.
      */
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     long stackSize;
 
-    @Alias @TargetElement(onlyWith = LoomJDK.class)//
+    @Alias @TargetElement(onlyWith = JDK19OrLater.class)//
     Target_java_lang_Thread_FieldHolder holder;
 
     /* Thread ID */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadIdRecomputation.class) //
-    long tid;
+    public long tid;
 
     /** We have our own atomic number in {@link JavaThreads#threadSeqNumber}. */
-    @Delete @TargetElement(onlyWith = NotLoomJDK.class)//
+    @Delete @TargetElement(onlyWith = JDK17OrEarlier.class)//
     static long threadSeqNumber;
     /** We have our own atomic number in {@link JavaThreads#threadInitNumber}. */
     @Delete//
+    @TargetElement(onlyWith = JDK17OrEarlier.class) //
     static int threadInitNumber;
 
     /*
@@ -140,16 +142,16 @@ public final class Target_java_lang_Thread {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     public AccessControlContext inheritedAccessControlContext;
 
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
     volatile int threadStatus;
 
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
     /* private */ /* final */ Object blockerLock;
-    @Alias @TargetElement(onlyWith = LoomJDK.class) //
+    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
     Object interruptLock;
 
-    @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
+    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
     volatile Target_sun_nio_ch_Interruptible blocker;
 
     /** @see JavaThreads#setCurrentThreadLockHelper */
@@ -172,19 +174,21 @@ public final class Target_java_lang_Thread {
 
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
-    @TargetElement(onlyWith = NotLoomJDK.class) //
+    @TargetElement(onlyWith = JDK17OrEarlier.class) //
     static long nextThreadID() {
         return JavaThreads.threadSeqNumber.incrementAndGet();
     }
 
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
+    @TargetElement(onlyWith = JDK17OrEarlier.class) //
     private static int nextThreadNum() {
         return JavaThreads.threadInitNumber.incrementAndGet();
     }
 
-    @Alias
-    @TargetElement(onlyWith = LoomJDK.class)
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     public native boolean isVirtual();
 
     @Alias
@@ -202,7 +206,7 @@ public final class Target_java_lang_Thread {
                         null, 0,
                         Thread.NORM_PRIORITY, asDaemon, ThreadStatus.RUNNABLE);
 
-        if (LoomSupport.isEnabled()) {
+        if (LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
             tid = Target_java_lang_Thread_ThreadIdentifiers.next();
         } else {
             tid = nextThreadID();
@@ -226,11 +230,24 @@ public final class Target_java_lang_Thread {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public native ThreadGroup getThreadGroup();
 
+    @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Substitute
-    public boolean isDaemon() {
-        return daemon;
-    }
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static native ThreadGroup virtualThreadGroup();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native boolean isTerminated();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native Thread.State threadState();
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @AnnotateOriginal
+    public native boolean isDaemon();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
@@ -245,6 +262,15 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static Thread currentThread0() {
+        Thread thread = PlatformThreads.currentThread.get();
+        assert thread != null : "Thread has not been set yet";
+        return thread;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static Thread currentCarrierThread() {
+        // missing support for VirtualThreads (GR-39563)
         Thread thread = PlatformThreads.currentThread.get();
         assert thread != null : "Thread has not been set yet";
         return thread;
@@ -265,7 +291,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("static-method")
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     void setCurrentThread(Thread thread) {
         PlatformThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
     }
@@ -276,7 +302,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @SuppressWarnings({"unused"})
-    @TargetElement(onlyWith = NotLoomJDK.class)
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     Runnable target,
@@ -294,7 +320,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @SuppressWarnings({"unused"})
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     String name,
@@ -307,12 +333,17 @@ public final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
 
-        checkCharacteristics(characteristics);
-
         // TODO: derive from characteristics bitset
         boolean inheritThreadLocals = false;
         /* Initialize the rest of the Thread object, ignoring `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc, inheritThreadLocals);
+        String nameLocal = (name != null) ? name : genThreadName();
+        JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, inheritThreadLocals);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static String genThreadName() {
+        return "Thread-" + JavaThreads.threadInitNumber.incrementAndGet();
     }
 
     /**
@@ -337,7 +368,7 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        parentThreadId = Thread.currentThread().getId();
+        parentThreadId = JavaThreads.getThreadId(Thread.currentThread());
         long stackSize = PlatformThreads.getRequestedStackSize(JavaThreads.fromTarget(this));
         try {
             PlatformThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
@@ -461,38 +492,38 @@ public final class Target_java_lang_Thread {
     private static native Thread[] getThreads();
 
     @Substitute
-    @TargetElement(onlyWith = NotLoomJDK.class)
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     private boolean isAlive() {
         return JavaThreads.isAlive(JavaThreads.fromTarget(this));
     }
 
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     private boolean isAlive0() {
         return PlatformThreads.isAlive(JavaThreads.fromTarget(this));
     }
 
     @Substitute
-    @TargetElement(onlyWith = NotLoomJDK.class)
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     private static void yield() {
         JavaThreads.yieldCurrent();
     }
 
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     private static void yield0() {
         // Loom virtual threads are handled in yield()
         JavaThreads.yieldCurrent();
     }
 
     @Substitute
-    @TargetElement(onlyWith = NotLoomJDK.class)
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     private static void sleep(long millis) throws InterruptedException {
         JavaThreads.sleep(millis);
     }
 
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     private static void sleep0(long millis) throws InterruptedException {
         // Loom virtual threads are handled in sleep()
         JavaThreads.sleep(millis);
@@ -534,6 +565,12 @@ public final class Target_java_lang_Thread {
         return PlatformThreads.getAllStackTraces();
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private static Thread[] getAllThreads() {
+        return PlatformThreads.getAllThreads();
+    }
+
     /**
      * In the JDK, this is a no-op except on Windows. The JDK resets the interrupt event used by
      * Process.waitFor ResetEvent((HANDLE) JVM_GetThreadInterruptEvent()); Our implementation in
@@ -568,7 +605,7 @@ public final class Target_java_lang_Thread {
 
 }
 
-@TargetClass(value = Thread.class, innerClass = "FieldHolder", onlyWith = LoomJDK.class)
+@TargetClass(value = Thread.class, innerClass = "FieldHolder", onlyWith = JDK19OrLater.class)
 final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     ThreadGroup group;
@@ -607,7 +644,7 @@ final class Target_java_lang_Thread_ThreadIdentifiers {
     }
 }
 
-@TargetClass(value = Thread.class, innerClass = "VirtualThreads", onlyWith = LoomJDK.class)
+@TargetClass(value = Thread.class, innerClass = "VirtualThreads", onlyWith = {LoomJDK.class, JDK17OrEarlier.class})
 final class Target_java_lang_Thread_VirtualThreads {
 }
 

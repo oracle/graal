@@ -4,6 +4,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.3.0
 
+* GR-39354 TruffleStrings: added ErrorHandling parameter to ByteLengthOfCodePointNode, CodePointAtIndexNode and CodePointAtByteIndexNode.
+
 * GR-39219 Removed several deprecated APIs:
     * Removed deprecated `FrameSlot` API. The API was deprecated in 22.0.
     * Removed deprecated `CompilerOptions` API. The API was deprecated in 22.1.
@@ -16,6 +18,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Removed deprecated equality `ValueProfile` . The API was deprecated in 21.2.
     * Removed deprecated `UnionAssumption`, `AlwaysValidAssumption` and `NeverValidAssumption`. The API was deprecated in 22.1.
     
+* (GR-35797) The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
+
 ## Version 22.2.0
 
 * GR-33829 Added support on libgraal for caching encoded graphs across Truffle compilations to speedup partial evaluation. The cache is enabled by default and can be enabled/disabled with the `--engine.EncodedGraphCache` option.

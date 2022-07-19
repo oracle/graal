@@ -3477,7 +3477,7 @@ public abstract class InteropLibrary extends Library {
                 assert validInteropReturn(receiver, result);
                 assert validProtocolArgument(receiver, internal);
                 assert isMultiThreaded(receiver) || assertMemberKeys(receiver, result, internal);
-                assert !delegate.hasScopeParent(receiver) || assertScopeMembers(receiver, result, delegate.getMembers(delegate.getScopeParent(receiver), internal));
+                assert !delegate.hasScopeParent(receiver) || assertScopeMembers(receiver, result, getUncached().getMembers(delegate.getScopeParent(receiver), internal));
                 assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {

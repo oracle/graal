@@ -104,7 +104,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void onTypeInitialized(AnalysisType type) {
-        postTask(debug -> initializeMetaData(type));
+        postTask(d -> initializeMetaData(type));
     }
 
     @Override

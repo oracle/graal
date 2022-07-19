@@ -45,6 +45,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
@@ -245,16 +246,18 @@ public final class JNIReflectionDictionary {
         return (JNIMethodId) value;
     }
 
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        Object obj = null;
-        if (method.notEqual(WordFactory.zero())) {
-            Pointer p = (Pointer) method;
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
-            }
-            obj = p.toObject();
+        return (JNIAccessibleMethod) getObjectFromMethodID(method);
+    }
+
+    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    public static Object getObjectFromMethodID(JNIMethodId method) {
+        Pointer p = (Pointer) method;
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
         }
-        return (JNIAccessibleMethod) obj;
+        return p.toObject();
     }
 
     private JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {

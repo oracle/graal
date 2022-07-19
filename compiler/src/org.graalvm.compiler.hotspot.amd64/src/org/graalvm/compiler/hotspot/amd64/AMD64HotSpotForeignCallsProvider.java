@@ -33,6 +33,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeti
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
@@ -49,11 +50,17 @@ import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOf;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -89,35 +96,28 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
 
-        for (ForeignCallDescriptor descriptor : ArrayIndexOf.STUBS_AMD64) {
-            link(new ArrayIndexOfStub(options, providers, registerStubCall(descriptor.getSignature(), LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        for (ForeignCallDescriptor stub : ArrayIndexOfForeignCalls.STUBS_AMD64) {
+            link(new ArrayIndexOfStub(options, providers, registerPureFunctionStubCall(stub)));
         }
-
-        for (HotSpotForeignCallDescriptor stub : AMD64CalcStringAttributesStub.STUBS) {
-            link(new AMD64CalcStringAttributesStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        for (ForeignCallDescriptor stub : AMD64CalcStringAttributesForeignCalls.STUBS) {
+            link(new AMD64CalcStringAttributesStub(options, providers, registerPureFunctionStubCall(stub)));
         }
-        for (HotSpotForeignCallDescriptor stub : AMD64ArrayCopyWithConversionsStub.STUBS) {
-            link(new AMD64ArrayCopyWithConversionsStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        for (ForeignCallDescriptor stub : ArrayEqualsForeignCalls.STUBS) {
+            link(new AMD64ArrayEqualsStub(options, providers, registerPureFunctionStubCall(stub)));
         }
-        for (HotSpotForeignCallDescriptor stub : AMD64ArrayEqualsStub.STUBS) {
-            link(new AMD64ArrayEqualsStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        for (ForeignCallDescriptor stub : AMD64ArrayEqualsWithMaskForeignCalls.STUBS) {
+            link(new AMD64ArrayEqualsWithMaskStub(options, providers, registerPureFunctionStubCall(stub)));
         }
-        for (HotSpotForeignCallDescriptor stub : AMD64ArrayEqualsWithMaskStub.STUBS) {
-            link(new AMD64ArrayEqualsWithMaskStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        for (ForeignCallDescriptor stub : ArrayRegionCompareToForeignCalls.STUBS) {
+            link(new AMD64ArrayRegionCompareToStub(options, providers, registerPureFunctionStubCall(stub)));
         }
-        for (HotSpotForeignCallDescriptor stub : AMD64ArrayRegionCompareToStub.STUBS) {
-            link(new AMD64ArrayRegionCompareToStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        for (ForeignCallDescriptor stub : ArrayCompareToForeignCalls.STUBS) {
+            link(new AMD64ArrayCompareToStub(options, providers, registerPureFunctionStubCall(stub)));
         }
-
-        link(new AMD64ArrayCompareToStub(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_BYTE_ARRAY, options, providers,
-                        registerStubCall(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_BYTE_ARRAY, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayCompareToStub(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_CHAR_ARRAY, options, providers,
-                        registerStubCall(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_CHAR_ARRAY, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayCompareToStub(AMD64ArrayCompareToStub.STUB_CHAR_ARRAY_COMPARE_TO_BYTE_ARRAY, options, providers,
-                        registerStubCall(AMD64ArrayCompareToStub.STUB_CHAR_ARRAY_COMPARE_TO_BYTE_ARRAY, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayCompareToStub(AMD64ArrayCompareToStub.STUB_CHAR_ARRAY_COMPARE_TO_CHAR_ARRAY, options, providers,
-                        registerStubCall(AMD64ArrayCompareToStub.STUB_CHAR_ARRAY_COMPARE_TO_CHAR_ARRAY, COMPUTES_REGISTERS_KILLED)));
-
+        for (ForeignCallDescriptor stub : ArrayCopyWithConversionsForeignCalls.STUBS) {
+            link(new AMD64ArrayCopyWithConversionsStub(options, providers, registerStubCall(stub.getSignature(), LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
+        }
+        link(new AMD64VectorizedMismatchStub(options, providers, registerPureFunctionStubCall(VectorizedMismatchForeignCalls.STUB)));
         super.initialize(providers, options);
     }
 

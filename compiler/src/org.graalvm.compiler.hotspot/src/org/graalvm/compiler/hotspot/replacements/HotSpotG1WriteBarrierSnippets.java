@@ -244,7 +244,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
         @Override
         public ValueNode uncompress(ValueNode expected) {
             assert oopEncoding != null;
-            return HotSpotCompressionNode.uncompress(expected, oopEncoding);
+            return HotSpotCompressionNode.uncompress(expected.graph(), expected, oopEncoding);
         }
     }
 }

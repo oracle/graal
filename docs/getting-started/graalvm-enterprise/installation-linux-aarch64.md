@@ -8,6 +8,8 @@ permalink: /getting-started/installation-linux-aarch64/
 As of version 21.0, Oracle provides GraalVM Enterprise distributions based on Oracle JDK11 and Oracle JDK17 for AArch64 architecture.
 This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux(RHEL) systems for AArch64 CPU architecture.
 
+Note: The core GraalVM Enterprise distribution including all components is **experimental** on Linux ARM 64-bit systems.
+
 You can install the GraalVM distribution for Linux ARM64 systems from an archive file (_.tar.gz_).
 This allows you to install GraalVM for the current user into any location, without affecting other JDK installations.
 
@@ -35,6 +37,6 @@ Optionally, you can specify GraalVM Enterprise as the default JRE or JDK install
 
 ## Supported Functionalities
 
-The 64-bit GraalVM Enterprise distribution for Linux platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater, `gu`](../../reference-manual/graalvm-updater.md) tool, the JavaScript runtime, and some developer tools (e.g., Chrome inspector based debugger, Visual VM).
-Support for [Native Image](../../reference-manual/native-image/README.md), Node.js, LLVM and WebAssembly runtimes can be installed with `gu`.
+The 64-bit GraalVM Enterprise distribution for Linux platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater, `gu`](../../reference-manual/graalvm-updater.md) utility and some developer tools (e.g., Chrome inspector based debugger, Profiler).
+Support for [Native Image](../../reference-manual/native-image/README.md), JavaScript, Node.js, LLVM, and WebAssembly runtimes can be installed with `gu`.
 Runtimes for Python, FastR, and Ruby languages are not available in this distribution yet.

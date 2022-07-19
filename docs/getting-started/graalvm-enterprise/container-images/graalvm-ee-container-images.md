@@ -1,11 +1,11 @@
 ---
 layout: docs
 toc_group: container-images
-link_title: Container Images
+link_title: Get Started with GraalVM Enterprise Container Images
 permalink: /getting-started/container-images/
 ---
 
-## GraalVM Enterprise Images
+## Get Started with GraalVM Enterprise Container Images
 
 Oracle GraalVM Enterprise container images are published in the [Oracle Container Registry](https://container-registry.oracle.com).
 
@@ -14,7 +14,7 @@ The following images are available:
 | Image Name      | Description                                        
 ------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | **jdk-ee**          | A compact image containing the GraalVM Enterprise JDK. |
-| **native-image-ee** | A compact image which includes the GraalVM Enterprise `native-image` utility and JDK |
+| **native-image-ee** | A compact image containing the GraalVM Enterprise `native-image` utility and JDK |
 | **enterprise**      | Provides the GraalVM Enterprise JDK along with the `gu` (Graal Updater) utility to enable installation of additional features. |
 | **nodejs-ee**       | Includes the Node.js runtime and the GraalVM Enterprise JDK. |
 
@@ -32,7 +32,8 @@ Image tag structure is:
 {OS_VERSION}-java{JAVA_VERSION}-{MAJOR_RELEASE}.{MINOR_RELEASE}.{PATCH_RELEASE}-b{BUILD_NUMBER}
 ```
 
-The structure is designed to allow references with different levels of specificity.  The minimum valid tag is `java{JAVA_VERSION}-{MAJOR_RELEASE}`. For example, the following are all valid tags:
+The structure is designed to allow references with different levels of specificity. 
+The minimum valid tag is `java{JAVA_VERSION}-{MAJOR_RELEASE}`. For example, the following are all valid tags:
 
 ```
 java17-21
@@ -137,3 +138,7 @@ native-image --version
 ```shell
 java -version
 ```
+
+### Learn More
+
+- [GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68): Learn how GraalVM Native Image ahead-of-time compilation generates native executables ideal for containerization. 

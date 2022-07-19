@@ -500,6 +500,17 @@ public final class VM extends NativeEnv {
          * On SVM + Windows, the System.identityHashCode substitution calls methods blocked for PE
          * (System.currentTimeMillis?).
          */
+        if (object.isForeignObject()) {
+            InteropLibrary library = InteropLibrary.getUncached(object);
+            if (library.hasIdentity(object.rawForeignObject(object.getKlass().getLanguage()))) {
+                try {
+                    return library.identityHashCode(object);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
+                }
+            }
+        }
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));
     }
 

@@ -29,8 +29,11 @@ import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,12 +64,10 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -110,10 +111,13 @@ import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -376,10 +380,11 @@ public class SVMHost extends HostVM {
         /* Class names must be interned strings according to the Java specification. */
         String className = type.toClassName().intern();
         /*
-         * There is no need to have file names as interned strings. So we perform our own
-         * de-duplication.
+         * There is no need to have file names and simple binary names as interned strings. So we
+         * perform our own de-duplication.
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
+        String simpleBinaryName = stringTable.deduplicate(getSimpleBinaryName(javaClass), true);
 
         Class<?> nestHost = javaClass.getNestHost();
         boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
@@ -390,10 +395,8 @@ public class SVMHost extends HostVM {
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
                         isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
                         modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
-                        type.declaresDefaultMethods(), isSealed);
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
-        }
+                        type.declaresDefaultMethods(), isSealed, simpleBinaryName);
+        ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }
 
@@ -433,6 +436,16 @@ public class SVMHost extends HostVM {
         String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
                         linkAtBuildTimeSupport.errorMessageFor(javaClass);
         throw new UnsupportedFeatureException(message);
+    }
+
+    private final Method getSimpleBinaryName0 = ReflectionUtil.lookupMethod(Class.class, "getSimpleBinaryName0");
+
+    private String getSimpleBinaryName(Class<?> javaClass) {
+        try {
+            return (String) getSimpleBinaryName0.invoke(javaClass);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
@@ -745,5 +758,12 @@ public class SVMHost extends HostVM {
             }
         }
         return false;
+    }
+
+    @Override
+    public Comparator<? super ResolvedJavaType> getTypeComparator() {
+        return (Comparator<ResolvedJavaType>) (o1, o2) -> {
+            return HostedUniverse.TYPE_COMPARATOR.compare((HostedType) o1, (HostedType) o2);
+        };
     }
 }

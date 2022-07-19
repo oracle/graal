@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 import sun.misc.Unsafe;
 
@@ -728,7 +729,7 @@ final class TStringOps {
         return runCalcStringAttributesBMP(location, stubArray, stubOffset, length, isNative);
     }
 
-    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid, boolean isAtEnd) {
+    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid, boolean isAtEnd, ConditionProfile brokenProfile) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 0, isNative);
@@ -737,9 +738,9 @@ final class TStringOps {
             return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
         } else {
             long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
-            if (TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs))) {
+            if (brokenProfile.profile(TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
                 int codePointLength = 0;
-                for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i)) {
+                for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, TruffleString.ErrorHandling.BEST_EFFORT)) {
                     codePointLength++;
                     TStringConstants.truffleSafePointPoll(location, codePointLength);
                 }
@@ -1409,28 +1410,31 @@ final class TStringOps {
         return Byte.toUnsignedInt(value);
     }
 
-    private static void validateRegion(byte[] array, int offset, int length, int stride) {
-        validateRegion(array, offset, length, stride, false);
-    }
-
-    private static void validateRegion(Object stubArray, int offset, int length, int stride, boolean isNative) {
-        if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative)) {
+    static void validateRegion(byte[] array, int offset, int length, int stride) {
+        if ((Integer.toUnsignedLong(offset) + (Integer.toUnsignedLong(length) << stride)) > array.length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegion(char[] array, int offset, int length) {
-        long charOffset = offset >> 1;
-        if (length < 0 || charOffset < 0 || charOffset + length > array.length) {
+        int charOffset = offset >> 1;
+        if ((Integer.toUnsignedLong(charOffset) + (Integer.toUnsignedLong(length))) > array.length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegion(int[] array, int offset, int length) {
-        long intOffset = offset >> 2;
-        if (length < 0 || intOffset < 0 || intOffset + length > array.length) {
+        int intOffset = offset >> 2;
+        if ((Integer.toUnsignedLong(intOffset) + (Integer.toUnsignedLong(length))) > array.length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private static void validateRegion(Object stubArray, int offset, int length, int stride, boolean isNative) {
+        if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
@@ -1447,11 +1451,11 @@ final class TStringOps {
         if (isNative) {
             return stubArray != null || offset < 0 || length < 0;
         } else {
-            return offset < 0 || length < 0 || offset + ((long) length << stride) > ((byte[]) stubArray).length;
+            return (Integer.toUnsignedLong(offset) + (Integer.toUnsignedLong(length) << stride)) > ((byte[]) stubArray).length;
         }
     }
 
     private static boolean invalidIndex(int length, int i) {
-        return i < 0 || i >= length;
+        return Integer.compareUnsigned(i, length) >= 0;
     }
 }

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -42,7 +40,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class HostedType implements SharedType, WrappedJavaType, Comparable<HostedType>, OriginalClassProvider {
+public abstract class HostedType implements SharedType, WrappedJavaType, OriginalClassProvider {
 
     protected final HostedUniverse universe;
     protected final AnalysisType wrapped;
@@ -429,37 +427,5 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     @Override
     public Class<?> getJavaClass() {
         return OriginalClassProvider.getJavaClass(universe.getSnippetReflection(), wrapped);
-    }
-
-    @Override
-    public int compareTo(HostedType other) {
-        if (this.equals(other)) {
-            return 0;
-        }
-        if (this.getClass().equals(other.getClass())) {
-            return compareToEqualClass(other);
-        }
-        int result = this.ordinal() - other.ordinal();
-        assert result != 0 : "Types not distinguishable: " + this + ", " + other;
-        return result;
-    }
-
-    int compareToEqualClass(HostedType other) {
-        assert getClass().equals(other.getClass());
-        return getName().compareTo(other.getName());
-    }
-
-    private int ordinal() {
-        if (isInterface()) {
-            return 4;
-        } else if (isArray()) {
-            return 3;
-        } else if (isInstanceClass()) {
-            return 2;
-        } else if (getJavaKind() != JavaKind.Object) {
-            return 1;
-        } else {
-            throw shouldNotReachHere();
-        }
     }
 }

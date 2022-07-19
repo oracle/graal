@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -47,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugThreadLocalGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
@@ -245,18 +243,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         LLVMThreadLocalSymbol symbol = value.getDescriptor();
         Object target = LLVMLanguage.getContext().getSymbol(symbol, exception);
         LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(target).getObject();
-        int offset = pointer.getOffset();
-        BitcodeID bitcodeID = symbol.getBitcodeID(exception);
-        if (offset < 0) {
-            LLVMGlobalContainer container = LLVMLanguage.get(null).contextThreadLocal.get().getGlobalContainer(Math.abs(offset), bitcodeID);
-            return new LLDBMemoryValue(LLVMManagedPointer.create(container));
-        } else {
-            LLVMPointer base = LLVMLanguage.get(null).contextThreadLocal.get().getSection(bitcodeID);
-            if (base == null) {
-                throw new LLVMIllegalSymbolIndexException("Section base for thread local global is null");
-            }
-            return new LLDBMemoryValue(base.increment(offset));
-        }
+        return new LLDBMemoryValue(pointer.resolve(getLanguage(), exception));
     }
 
     @Fallback

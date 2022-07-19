@@ -39,6 +39,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
+import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -56,14 +57,17 @@ import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -117,6 +121,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -127,6 +132,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.cpufeature.Stubs;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
@@ -157,8 +164,10 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -195,6 +204,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * Returns {@code true} if a call from run-time compiled code to AOT compiled code is an AVX-SSE
      * transition. For AOT compilations, this always returns {@code false}.
      */
+    @SuppressWarnings("unlikely-arg-type")
     public static boolean runtimeToAOTIsAvxSseTransition(TargetDescription target) {
         if (SubstrateUtil.HOSTED) {
             // hosted does not need to care about this
@@ -333,7 +343,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                          * an optional shift that is known to be a valid addressing mode.
                          */
                         memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                        computeRegister, AMD64Address.Scale.fromShift(compressEncoding.getShift()),
+                                        computeRegister, Stride.fromLog2(compressEncoding.getShift()),
                                         field.getOffset());
                     } else {
                         memoryAddress = new AMD64Address(computeRegister, field.getOffset());
@@ -352,7 +362,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                      * the heap base is a constant.
                      */
                     memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                    Register.None, AMD64Address.Scale.Times1,
+                                    Register.None, Stride.S1,
                                     field.getOffset() + addressDisplacement(object, constantReflection),
                                     addressDisplacementAnnotation(object));
 
@@ -981,6 +991,33 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public Variable emitReadReturnAddress() {
             assert FrameAccess.returnAddressSize() > 0;
             return getLIRGeneratorTool().emitMove(StackSlot.get(getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), -FrameAccess.returnAddressSize(), true));
+        }
+
+        @Override
+        public ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
+            ResolvedJavaMethod method = valueNode.graph().method();
+            if (method != null && GuardedAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class) != null) {
+                // Emit assembly for snippet stubs
+                return null;
+            }
+            if (AMD64IntrinsicStubs.shouldInlineIntrinsic(valueNode, gen)) {
+                // intrinsic can emit specialized code that is small enough to warrant being inlined
+                return null;
+            }
+            // Assume the SVM ForeignCallSignature are identical to the Graal ones.
+            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target()));
+        }
+
+    }
+
+    private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target) {
+        EnumSet<?> buildtimeCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
+        if (buildtimeCPUFeatures.containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64) || !((AMD64) target.arch).getFeatures().containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64)) {
+            return descriptor;
+        } else {
+            GraalError.guarantee(DeoptimizationSupport.enabled(), "should be reached in JIT mode only");
+            return new ForeignCallDescriptor(descriptor.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, descriptor.getResultType(), descriptor.getArgumentTypes(),
+                            descriptor.isReexecutable(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
         }
     }
 

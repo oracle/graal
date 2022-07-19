@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
-import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
+import com.oracle.svm.jni.hosted.JNIJavaCallVariantWrapperMethod.CallVariant;
 
 /** Holder class for generated {@link JNICallTrampolineMethod} code. */
 public final class JNIJavaCallTrampolines {

@@ -28,5 +28,6 @@
 
   native_image:: {
     vm_suite:: "vm",
+    extra_deps:: {},
   }
 }
