@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.strings;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 
 final class InternalErrors {
@@ -100,8 +99,8 @@ final class InternalErrors {
         return new UnsupportedOperationException("this operation requires native access!");
     }
 
-    @TruffleBoundary
     static OutOfMemoryError outOfMemory() {
+        CompilerDirectives.transferToInterpreter();
         return new OutOfMemoryError();
     }
 }
