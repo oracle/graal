@@ -1878,6 +1878,10 @@ public class FlatNodeGenFactory {
 
         CodeTreeBuilder builder = method.createBuilder();
 
+        if (plugs != null) {
+            plugs.initializeFrameState(frameState, builder);
+        }
+
         int effectiveEvaluatedCount = forType.getEvaluatedCount();
         while (effectiveEvaluatedCount < node.getExecutionCount()) {
             NodeExecutionData childExecution = node.getChildExecutions().get(effectiveEvaluatedCount);

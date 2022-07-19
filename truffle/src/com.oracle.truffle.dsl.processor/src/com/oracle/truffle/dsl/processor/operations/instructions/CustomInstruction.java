@@ -49,6 +49,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
@@ -97,6 +98,8 @@ public class CustomInstruction extends Instruction {
     public static final String MARKER_LOCAL_REFS = "LocalSetterRange";
     public static final String MARKER_LOCAL_REF_PREFIX = "LocalSetter_";
 
+    private int[] localRefs = null;
+
     protected void initializePops() {
         MethodProperties props = data.getMainProperties();
 
@@ -112,10 +115,12 @@ public class CustomInstruction extends Instruction {
         }
 
         if (props.numLocalReferences == -1) {
-            addConstant(MARKER_LOCAL_REFS, new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal));
+            localRefs = new int[0];
+            localRefs[0] = addConstant(MARKER_LOCAL_REFS, new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal));
         } else {
+            localRefs = new int[props.numLocalReferences];
             for (int i = 0; i < props.numLocalReferences; i++) {
-                addConstant(MARKER_LOCAL_REF_PREFIX + i, types.OperationLocal);
+                localRefs[i] = addConstant(MARKER_LOCAL_REF_PREFIX + i, types.OperationLocal);
             }
         }
     }
@@ -133,6 +138,16 @@ public class CustomInstruction extends Instruction {
     @Override
     public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
         return createExecuteImpl(vars, true);
+    }
+
+    private void addLocalRefs(CodeTreeBuilder b, ExecutionVariables vars) {
+        if (data.getMainProperties().numLocalReferences == -1) {
+            b.startGroup().cast(types.LocalSetterRange).variable(vars.consts).string("[").tree(createConstantIndex(vars, localRefs[0])).string("]").end();
+        } else {
+            for (int i = 0; i < data.getMainProperties().numLocalReferences; i++) {
+                b.startGroup().cast(types.LocalSetter).variable(vars.consts).string("[").tree(createConstantIndex(vars, localRefs[i])).string("]").end();
+            }
+        }
     }
 
     private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
@@ -186,6 +201,11 @@ public class CustomInstruction extends Instruction {
             b.variable(vars.consts);
             b.variable(vars.children);
             b.trees(inputTrees);
+
+            if (uncached) {
+                addLocalRefs(b, vars);
+            }
+
             b.end(2);
 
             b.startAssign(vars.sp).variable(vars.sp).string(" - " + additionalInputs + " - numVariadics + " + numPushedValues).end();
@@ -212,6 +232,8 @@ public class CustomInstruction extends Instruction {
                 for (int i = numPopStatic(); i > 0; i--) {
                     b.string("$frame.getObject($sp - " + i + ")");
                 }
+
+                addLocalRefs(b, vars);
             }
 
             b.end(2);

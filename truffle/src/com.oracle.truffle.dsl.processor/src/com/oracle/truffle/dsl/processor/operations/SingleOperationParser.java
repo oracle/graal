@@ -68,6 +68,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
+import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
@@ -260,7 +261,14 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return data;
         }
 
-        nodeData.redirectMessagesOnGeneratedElements(data);
+        if (proxyMirror != null && nodeData.hasErrors()) {
+            for (Message m : nodeData.collectMessages()) {
+                Message nm = new Message(proxyMirror, null, null, m.getOriginalContainer(), m.getText(), m.getKind());
+                data.getMessages().add(nm);
+            }
+        } else {
+            nodeData.redirectMessagesOnGeneratedElements(data);
+        }
         data.setNodeData(nodeData);
 
         // replace the default node type system with Operations one if we have it
@@ -355,6 +363,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         metExecute.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
 
         int i = 0;
+        int lr = 0;
         for (ParameterKind param : props.parameters) {
             switch (param) {
                 case STACK_VALUE:
@@ -364,7 +373,11 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                     metExecute.addParameter(new CodeVariableElement(context.getType(Object[].class), "arg" + i));
                     break;
                 case LOCAL_SETTER:
+                    metExecute.addParameter(new CodeVariableElement(types.LocalSetter, "localRef" + (lr++)));
+                    break;
                 case LOCAL_SETTER_ARRAY:
+                    metExecute.addParameter(new CodeVariableElement(types.LocalSetterRange, "localRefs"));
+                    break;
                 case VIRTUAL_FRAME:
                     break;
                 default:

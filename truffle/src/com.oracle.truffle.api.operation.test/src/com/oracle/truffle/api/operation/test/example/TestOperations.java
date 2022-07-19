@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -55,8 +56,9 @@ import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.Variadic;
 
-@GenerateAOT
 @GenerateOperations
+@GenerateUncached
+@GenerateAOT
 public final class TestOperations {
 
     @Metadata public static final MetadataKey<String> TestData = new MetadataKey<>("default value");

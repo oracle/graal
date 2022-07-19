@@ -248,7 +248,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         }
 
     }
-
     @GeneratedBy(SLOperations.class)
     private static class BuilderImpl extends SLOperationsBuilder {
 
@@ -510,60 +509,20 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         static final int C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET = 4;
         static final int C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH = 6;
         private static final short[][] BOXING_DESCRIPTORS = {
-                        // OBJECT
-                        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT,
-                                        INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT,
-                                        INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
-                        // LONG
-                        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG,
-                                        INSTR_LOAD_ARGUMENT_BOOLEAN, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_LONG, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0,
-                                        (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0,
-                                        (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
-                        // INT
-                        null,
-                        // DOUBLE
-                        null,
-                        // FLOAT
-                        null,
-                        // BOOLEAN
-                        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG,
-                                        INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_BOOLEAN, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0,
-                                        (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0,
-                                        (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1),
-                                        (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
-                        // BYTE
-                        null};
+        // OBJECT
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
+        // LONG
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_LONG, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
+        // INT
+        null,
+        // DOUBLE
+        null,
+        // FLOAT
+        null,
+        // BOOLEAN
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_BOOLEAN, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
+        // BYTE
+        null};
 
         private final OperationNodesImpl nodes;
         private final boolean isReparse;
@@ -661,8 +620,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             for (LabelFill fill : context.handlerLabelFills) {
                 labelFills.add(fill.offset(bci));
             }
-            if (maxStack < curStack + context.handlerMaxStack)
-                maxStack = curStack + context.handlerMaxStack;
+            if (maxStack < curStack + context.handlerMaxStack) maxStack = curStack + context.handlerMaxStack;
             bci += context.handlerBc.length;
         }
 
@@ -691,11 +649,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 cur = cur.parent;
                 if (toData == null && cur == null) {
                     break;
-                } else if (toData != null && cur.depth <= toData.depth)
-                    break;
+                } else if (toData != null && cur.depth <= toData.depth) break;
             }
-            if (cur != toData)
-                throw new UnsupportedOperationException("illegal jump to non-parent operation");
+            if (cur != toData) throw new UnsupportedOperationException("illegal jump to non-parent operation");
         }
 
         private void calculateLeaves(BuilderOperationData fromData) {
@@ -794,15 +750,18 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
         private void doLeaveOperation(BuilderOperationData data) {
             switch (data.operationId) {
-                case OP_FINALLY_TRY: {
+                case OP_FINALLY_TRY :
+                {
                     doLeaveFinallyTry(data);
                     break;
                 }
-                case OP_FINALLY_TRY_NO_EXCEPT: {
+                case OP_FINALLY_TRY_NO_EXCEPT :
+                {
                     doLeaveFinallyTry(data);
                     break;
                 }
-                case OP_TAG: {
+                case OP_TAG :
+                {
                     break;
                 }
             }
@@ -812,7 +771,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         void doBeforeChild() {
             int childIndex = operationData.numChildren;
             switch (operationData.operationId) {
-                case OP_BLOCK: {
+                case OP_BLOCK :
+                {
                     if (childIndex != 0) {
                         for (int i = 0; i < lastChildPush; i++) {
                             doBeforeEmitInstruction(1, false);
@@ -822,14 +782,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_TRY_CATCH: {
+                case OP_TRY_CATCH :
+                {
                     if (childIndex == 1) {
                         curStack = ((ExceptionHandler) operationData.aux[0]).startStack;
                         ((ExceptionHandler) operationData.aux[0]).handlerBci = bci;
                     }
                     break;
                 }
-                case OP_SOURCE: {
+                case OP_SOURCE :
+                {
                     if (childIndex != 0) {
                         for (int i = 0; i < lastChildPush; i++) {
                             doBeforeEmitInstruction(1, false);
@@ -839,7 +801,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_SOURCE_SECTION: {
+                case OP_SOURCE_SECTION :
+                {
                     if (childIndex != 0) {
                         for (int i = 0; i < lastChildPush; i++) {
                             doBeforeEmitInstruction(1, false);
@@ -849,7 +812,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_TAG: {
+                case OP_TAG :
+                {
                     if (childIndex != 0) {
                         for (int i = 0; i < lastChildPush; i++) {
                             doBeforeEmitInstruction(1, false);
@@ -859,7 +823,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_SL_AND: {
+                case OP_SL_AND :
+                {
                     if (childIndex > 0) {
                         int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_SC_SL_AND);
@@ -876,7 +841,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_SL_OR: {
+                case OP_SL_OR :
+                {
                     if (childIndex > 0) {
                         int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_SC_SL_OR);
@@ -900,7 +866,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         void doAfterChild() {
             int childIndex = operationData.numChildren++;
             switch (operationData.operationId) {
-                case OP_IF_THEN: {
+                case OP_IF_THEN :
+                {
                     if (childIndex == 0) {
                         assert lastChildPush == 1;
                         OperationLabelImpl endLabel = (OperationLabelImpl) createLabel();
@@ -921,7 +888,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_IF_THEN_ELSE: {
+                case OP_IF_THEN_ELSE :
+                {
                     if (childIndex == 0) {
                         assert lastChildPush == 1;
                         OperationLabelImpl elseLabel = (OperationLabelImpl) createLabel();
@@ -956,7 +924,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_CONDITIONAL: {
+                case OP_CONDITIONAL :
+                {
                     if (childIndex == 0) {
                         assert lastChildPush == 1;
                         OperationLabelImpl elseLabel = (OperationLabelImpl) createLabel();
@@ -983,7 +952,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_WHILE: {
+                case OP_WHILE :
+                {
                     if (childIndex == 0) {
                         assert lastChildPush == 1;
                         OperationLabelImpl endLabel = (OperationLabelImpl) createLabel();
@@ -1009,7 +979,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_TRY_CATCH: {
+                case OP_TRY_CATCH :
+                {
                     for (int i = 0; i < lastChildPush; i++) {
                         doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_POP);
@@ -1026,7 +997,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_FINALLY_TRY: {
+                case OP_FINALLY_TRY :
+                {
                     for (int i = 0; i < lastChildPush; i++) {
                         doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_POP);
@@ -1054,7 +1026,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     break;
                 }
-                case OP_FINALLY_TRY_NO_EXCEPT: {
+                case OP_FINALLY_TRY_NO_EXCEPT :
+                {
                     for (int i = 0; i < lastChildPush; i++) {
                         doBeforeEmitInstruction(1, false);
                         bc[bci] = (short) (INSTR_POP);
@@ -2110,7 +2083,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             final Object[] aux;
             int numChildren;
 
-            private BuilderOperationData(BuilderOperationData parent, int operationId, int stackDepth, int numAux, boolean needsLeave, Object... arguments) {
+            private BuilderOperationData(BuilderOperationData parent, int operationId, int stackDepth, int numAux, boolean needsLeave, Object ...arguments) {
                 this.parent = parent;
                 this.operationId = operationId;
                 this.stackDepth = stackDepth;
@@ -2121,7 +2094,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class OperationLabelImpl extends OperationLabel {
 
@@ -2147,7 +2119,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class OperationLocalImpl extends OperationLocal {
 
@@ -2160,7 +2131,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class LabelFill {
 
@@ -2177,7 +2147,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class ExceptionHandler {
 
@@ -2208,7 +2177,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class SourceInfoBuilder {
 
@@ -2311,7 +2279,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             }
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class BuilderFinallyTryContext {
 
@@ -2328,8 +2295,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             ArrayList<Integer> relocationOffsets = new ArrayList<>();
             int handlerMaxStack;
 
-            BuilderFinallyTryContext(BuilderFinallyTryContext prev, short[] bc, ArrayList<ExceptionHandler> exceptionHandlers, ArrayList<LabelFill> labelFills, ArrayList<OperationLabelImpl> labels,
-                            int curStack, int maxStack) {
+            BuilderFinallyTryContext(BuilderFinallyTryContext prev, short[] bc, ArrayList<ExceptionHandler> exceptionHandlers, ArrayList<LabelFill> labelFills, ArrayList<OperationLabelImpl> labels, int curStack, int maxStack) {
                 this.prev = prev;
                 this.bc = bc;
                 this.exceptionHandlers = exceptionHandlers;
@@ -2340,7 +2306,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class OperationNodeImpl extends OperationNode implements BytecodeOSRNode {
 
@@ -2365,7 +2330,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 super(nodes);
             }
 
-            static {
+            static  {
                 setMetadataAccessor(SLOperations.MethodName, n -> ((OperationNodeImpl) n)._metadata_MethodName);
             }
 
@@ -2376,7 +2341,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             private Object executeAt(VirtualFrame frame, int storedLocation) {
                 int result = storedLocation;
                 while (true) {
-                    System.err.printf("[running] %08x%n", result);
                     result = switchImpl.continueAt(this, frame, _bc, result & 0xffff, (result >> 16) & 0xffff, _consts, _children, _handlers, _conditionProfiles, _maxLocals);
                     if ((result & 0xffff) == 0xffff) {
                         break;
@@ -2463,12 +2427,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private abstract static class BytecodeLoopBase {
 
-            abstract int continueAt(OperationNodeImpl $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, ExceptionHandler[] $handlers,
-                            int[] $conditionProfiles, int maxLocals);
+            abstract int continueAt(OperationNodeImpl $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, ExceptionHandler[] $handlers, int[] $conditionProfiles, int maxLocals);
 
             abstract String dump(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts);
 
@@ -2572,7 +2534,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class BytecodeNode extends BytecodeLoopBase {
 
@@ -2582,8 +2543,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
             @BytecodeInterpreterSwitch
             @Override
-            int continueAt(OperationNodeImpl $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, ExceptionHandler[] $handlers,
-                            int[] $conditionProfiles, int maxLocals) {
+            int continueAt(OperationNodeImpl $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, ExceptionHandler[] $handlers, int[] $conditionProfiles, int maxLocals) {
                 int $sp = $startSp;
                 int $bci = $startBci;
                 Counter loopCounter = new Counter();
@@ -2598,22 +2558,24 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                         switch (curOpcode) {
                             // pop
-                            // Simple Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_POP: {
+                            //   Simple Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_POP :
+                            {
                                 $sp = $sp - 1;
                                 $frame.clear($sp);
                                 $bci = $bci + POP_LENGTH;
                                 continue loop;
                             }
                             // branch
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] target
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_BRANCH: {
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] target
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_BRANCH :
+                            {
                                 int targetBci = $bc[$bci + BRANCH_BRANCH_TARGET_OFFSET + 0];
                                 if (targetBci <= $bci) {
                                     TruffleSafepoint.poll($this);
@@ -2626,15 +2588,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // branch.false
-                            // Simple Pops:
-                            // [ 0] condition
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] target
-                            // Branch Profiles:
-                            // [ 0] profile
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_BRANCH_FALSE: {
+                            //   Simple Pops:
+                            //     [ 0] condition
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] target
+                            //   Branch Profiles:
+                            //     [ 0] profile
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_BRANCH_FALSE :
+                            {
                                 boolean cond = $frame.getObject($sp - 1) == Boolean.TRUE;
                                 $sp = $sp - 1;
                                 if (do_profileCondition(cond, $conditionProfiles, $bc[$bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0])) {
@@ -2646,71 +2609,76 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                             }
                             // throw
-                            // Locals:
-                            // [ 0] exception
-                            // Pushed Values: 0
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_THROW: {
+                            //   Locals:
+                            //     [ 0] exception
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_THROW :
+                            {
                                 int slot = $bc[$bci + THROW_LOCALS_OFFSET + 0];
                                 throw (AbstractTruffleException) $frame.getObject(slot);
                             }
                             // load.constant.object
-                            // Constants:
-                            // [ 0] constant
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
-                            // LONG -> INSTR_LOAD_CONSTANT_LONG
-                            // BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            case INSTR_LOAD_CONSTANT_OBJECT: {
+                            //   Constants:
+                            //     [ 0] constant
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
+                            //     LONG -> INSTR_LOAD_CONSTANT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            case INSTR_LOAD_CONSTANT_OBJECT :
+                            {
                                 $frame.setObject($sp, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_OBJECT_CONSTANT_OFFSET) + 0]);
                                 $sp = $sp + 1;
                                 $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                                 continue loop;
                             }
                             // load.constant.long
-                            // Constants:
-                            // [ 0] constant
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
-                            // LONG -> INSTR_LOAD_CONSTANT_LONG
-                            // INT -> INSTR_LOAD_CONSTANT_LONG
-                            // DOUBLE -> INSTR_LOAD_CONSTANT_LONG
-                            // FLOAT -> INSTR_LOAD_CONSTANT_LONG
-                            // BOOLEAN -> INSTR_LOAD_CONSTANT_LONG
-                            // BYTE -> INSTR_LOAD_CONSTANT_LONG
-                            case INSTR_LOAD_CONSTANT_LONG: {
+                            //   Constants:
+                            //     [ 0] constant
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
+                            //     LONG -> INSTR_LOAD_CONSTANT_LONG
+                            //     INT -> INSTR_LOAD_CONSTANT_LONG
+                            //     DOUBLE -> INSTR_LOAD_CONSTANT_LONG
+                            //     FLOAT -> INSTR_LOAD_CONSTANT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_LONG
+                            //     BYTE -> INSTR_LOAD_CONSTANT_LONG
+                            case INSTR_LOAD_CONSTANT_LONG :
+                            {
                                 $frame.setLong($sp, (long) $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_LONG_CONSTANT_OFFSET) + 0]);
                                 $sp = $sp + 1;
                                 $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                                 continue loop;
                             }
                             // load.constant.boolean
-                            // Constants:
-                            // [ 0] constant
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
-                            // LONG -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            // INT -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            // DOUBLE -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            // FLOAT -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            // BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            // BYTE -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            case INSTR_LOAD_CONSTANT_BOOLEAN: {
+                            //   Constants:
+                            //     [ 0] constant
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
+                            //     LONG -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     INT -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     DOUBLE -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     FLOAT -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     BYTE -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            case INSTR_LOAD_CONSTANT_BOOLEAN :
+                            {
                                 $frame.setBoolean($sp, (boolean) $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET) + 0]);
                                 $sp = $sp + 1;
                                 $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // load.argument.object
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            // LONG -> INSTR_LOAD_ARGUMENT_LONG
-                            // BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            case INSTR_LOAD_ARGUMENT_OBJECT: {
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            case INSTR_LOAD_ARGUMENT_OBJECT :
+                            {
                                 Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_OBJECT_ARGUMENT_OFFSET + 0]];
                                 $frame.setObject($sp, value);
                                 $sp = $sp + 1;
@@ -2718,16 +2686,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.argument.long
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            // LONG -> INSTR_LOAD_ARGUMENT_LONG
-                            // INT -> INSTR_LOAD_ARGUMENT_LONG
-                            // DOUBLE -> INSTR_LOAD_ARGUMENT_LONG
-                            // FLOAT -> INSTR_LOAD_ARGUMENT_LONG
-                            // BOOLEAN -> INSTR_LOAD_ARGUMENT_LONG
-                            // BYTE -> INSTR_LOAD_ARGUMENT_LONG
-                            case INSTR_LOAD_ARGUMENT_LONG: {
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_LONG
+                            //     INT -> INSTR_LOAD_ARGUMENT_LONG
+                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_LONG
+                            //     FLOAT -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BYTE -> INSTR_LOAD_ARGUMENT_LONG
+                            case INSTR_LOAD_ARGUMENT_LONG :
+                            {
                                 Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]];
                                 if (value instanceof Long) {
                                     $frame.setLong($sp, (long) value);
@@ -2739,16 +2708,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.argument.boolean
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            // LONG -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // INT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // DOUBLE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // FLOAT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // BYTE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            case INSTR_LOAD_ARGUMENT_BOOLEAN: {
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     INT -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     FLOAT -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     BYTE -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                            {
                                 Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]];
                                 if (value instanceof Boolean) {
                                     $frame.setBoolean($sp, (boolean) value);
@@ -2760,13 +2730,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // store.local.object
-                            // Locals:
-                            // [ 0] target
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_STORE_LOCAL_OBJECT: {
+                            //   Locals:
+                            //     [ 0] target
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_STORE_LOCAL_OBJECT :
+                            {
                                 int localIdx = $bc[$bci + STORE_LOCAL_OBJECT_LOCALS_OFFSET + 0];
                                 int sourceSlot = $sp - 1;
                                 $frame.setObject(localIdx, expectObject($frame, sourceSlot));
@@ -2775,70 +2746,69 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // store.local.long
-                            // Locals:
-                            // [ 0] target
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_STORE_LOCAL_OBJECT
-                            // LONG -> 0
-                            // INT -> INSTR_STORE_LOCAL_OBJECT
-                            // DOUBLE -> INSTR_STORE_LOCAL_OBJECT
-                            // FLOAT -> INSTR_STORE_LOCAL_OBJECT
-                            // BOOLEAN -> INSTR_STORE_LOCAL_OBJECT
-                            // BYTE -> INSTR_STORE_LOCAL_OBJECT
-                            case INSTR_STORE_LOCAL_LONG: {
+                            //   Locals:
+                            //     [ 0] target
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
+                            //     LONG -> 0
+                            //     INT -> INSTR_STORE_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_STORE_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_STORE_LOCAL_OBJECT
+                            //     BOOLEAN -> INSTR_STORE_LOCAL_OBJECT
+                            //     BYTE -> INSTR_STORE_LOCAL_OBJECT
+                            case INSTR_STORE_LOCAL_LONG :
+                            {
                                 int localIdx = $bc[$bci + STORE_LOCAL_LONG_LOCALS_OFFSET + 0];
                                 int sourceSlot = $sp - 1;
                                 if (!storeLocalLongCheck($frame, localIdx, sourceSlot)) {
                                     $bc[$bci] = (short) (INSTR_STORE_LOCAL_OBJECT);
-                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff), 0 /*
-                                                                                                                                 * OBJECT
-                                                                                                                                 */);
+                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff), 0 /* OBJECT */);
                                 }
                                 $sp--;
                                 $bci = $bci + STORE_LOCAL_LONG_LENGTH;
                                 continue loop;
                             }
                             // store.local.boolean
-                            // Locals:
-                            // [ 0] target
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_STORE_LOCAL_OBJECT
-                            // LONG -> INSTR_STORE_LOCAL_OBJECT
-                            // INT -> INSTR_STORE_LOCAL_OBJECT
-                            // DOUBLE -> INSTR_STORE_LOCAL_OBJECT
-                            // FLOAT -> INSTR_STORE_LOCAL_OBJECT
-                            // BOOLEAN -> 0
-                            // BYTE -> INSTR_STORE_LOCAL_OBJECT
-                            case INSTR_STORE_LOCAL_BOOLEAN: {
+                            //   Locals:
+                            //     [ 0] target
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
+                            //     LONG -> INSTR_STORE_LOCAL_OBJECT
+                            //     INT -> INSTR_STORE_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_STORE_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_STORE_LOCAL_OBJECT
+                            //     BOOLEAN -> 0
+                            //     BYTE -> INSTR_STORE_LOCAL_OBJECT
+                            case INSTR_STORE_LOCAL_BOOLEAN :
+                            {
                                 int localIdx = $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0];
                                 int sourceSlot = $sp - 1;
                                 if (!storeLocalBooleanCheck($frame, localIdx, sourceSlot)) {
                                     $bc[$bci] = (short) (INSTR_STORE_LOCAL_OBJECT);
-                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff), 0 /*
-                                                                                                                                    * OBJECT
-                                                                                                                                    */);
+                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff), 0 /* OBJECT */);
                                 }
                                 $sp--;
                                 $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // store.local.uninit
-                            // Locals:
-                            // [ 0] target
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_STORE_LOCAL_OBJECT
-                            // LONG -> INSTR_STORE_LOCAL_LONG
-                            // BOOLEAN -> INSTR_STORE_LOCAL_BOOLEAN
-                            case INSTR_STORE_LOCAL_UNINIT: {
+                            //   Locals:
+                            //     [ 0] target
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
+                            //     LONG -> INSTR_STORE_LOCAL_LONG
+                            //     BOOLEAN -> INSTR_STORE_LOCAL_BOOLEAN
+                            case INSTR_STORE_LOCAL_UNINIT :
+                            {
                                 int localIdx = $bc[$bci + STORE_LOCAL_UNINIT_LOCALS_OFFSET + 0];
                                 int sourceSlot = $sp - 1;
                                 FrameSlotKind localTag = $frame.getFrameDescriptor().getSlotKind(localIdx);
@@ -2856,11 +2826,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.local.object
-                            // Locals:
-                            // [ 0] local
-                            // Pushed Values: 1
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_LOAD_LOCAL_OBJECT: {
+                            //   Locals:
+                            //     [ 0] local
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_LOAD_LOCAL_OBJECT :
+                            {
                                 int localIdx = $bc[$bci + LOAD_LOCAL_OBJECT_LOCALS_OFFSET + 0];
                                 if ($frame.getFrameDescriptor().getSlotKind(localIdx) != FrameSlotKind.Object) {
                                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -2873,18 +2844,19 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.local.long
-                            // Locals:
-                            // [ 0] local
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_LOCAL_OBJECT
-                            // LONG -> 0
-                            // INT -> INSTR_LOAD_LOCAL_OBJECT
-                            // DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
-                            // FLOAT -> INSTR_LOAD_LOCAL_OBJECT
-                            // BOOLEAN -> INSTR_LOAD_LOCAL_OBJECT
-                            // BYTE -> INSTR_LOAD_LOCAL_OBJECT
-                            case INSTR_LOAD_LOCAL_LONG: {
+                            //   Locals:
+                            //     [ 0] local
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     LONG -> 0
+                            //     INT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     BOOLEAN -> INSTR_LOAD_LOCAL_OBJECT
+                            //     BYTE -> INSTR_LOAD_LOCAL_OBJECT
+                            case INSTR_LOAD_LOCAL_LONG :
+                            {
                                 int localIdx = $bc[$bci + LOAD_LOCAL_LONG_LOCALS_OFFSET + 0];
                                 FrameSlotKind localType = $frame.getFrameDescriptor().getSlotKind(localIdx);
                                 if (localType != FrameSlotKind.Long) {
@@ -2907,18 +2879,19 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.local.boolean
-                            // Locals:
-                            // [ 0] local
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_LOCAL_OBJECT
-                            // LONG -> INSTR_LOAD_LOCAL_OBJECT
-                            // INT -> INSTR_LOAD_LOCAL_OBJECT
-                            // DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
-                            // FLOAT -> INSTR_LOAD_LOCAL_OBJECT
-                            // BOOLEAN -> 0
-                            // BYTE -> INSTR_LOAD_LOCAL_OBJECT
-                            case INSTR_LOAD_LOCAL_BOOLEAN: {
+                            //   Locals:
+                            //     [ 0] local
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     LONG -> INSTR_LOAD_LOCAL_OBJECT
+                            //     INT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     BOOLEAN -> 0
+                            //     BYTE -> INSTR_LOAD_LOCAL_OBJECT
+                            case INSTR_LOAD_LOCAL_BOOLEAN :
+                            {
                                 int localIdx = $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0];
                                 FrameSlotKind localType = $frame.getFrameDescriptor().getSlotKind(localIdx);
                                 if (localType != FrameSlotKind.Boolean) {
@@ -2941,14 +2914,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.local.uninit
-                            // Locals:
-                            // [ 0] local
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_LOCAL_OBJECT
-                            // LONG -> INSTR_LOAD_LOCAL_LONG
-                            // BOOLEAN -> INSTR_LOAD_LOCAL_BOOLEAN
-                            case INSTR_LOAD_LOCAL_UNINIT: {
+                            //   Locals:
+                            //     [ 0] local
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     LONG -> INSTR_LOAD_LOCAL_LONG
+                            //     BOOLEAN -> INSTR_LOAD_LOCAL_BOOLEAN
+                            case INSTR_LOAD_LOCAL_UNINIT :
+                            {
                                 int localIdx = $bc[$bci + LOAD_LOCAL_UNINIT_LOCALS_OFFSET + 0];
                                 $frame.setObject($sp, expectObject($frame, localIdx));
                                 $sp++;
@@ -2956,383 +2930,310 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // return
-                            // Simple Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_RETURN: {
+                            //   Simple Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_RETURN :
+                            {
                                 return (($sp - 1) << 16) | 0xffff;
                             }
                             // c.SLAdd
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = Add1, method = public static
-                            // com.oracle.truffle.api.strings.TruffleString add(java.lang.Object,
-                            // java.lang.Object,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,
-                            // com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards =
-                            // [Guard[(SLAddNode.isString(left, right))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3f1a38a
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@375dedc
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_ADD: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3b0e5992
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@41791417
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_ADD :
+                            {
                                 BytecodeNode.SLAdd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_ADD_LENGTH;
                                 continue loop;
                             }
                             // c.SLDiv
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5119e3c8
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@16b0a9c1
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_DIV: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7c48e45c
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@567d16d3
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_DIV :
+                            {
                                 BytecodeNode.SLDiv_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_DIV_LENGTH;
                                 continue loop;
                             }
                             // c.SLEqual
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = equalNode]
-                            // [ 1] SpecializationData [id = Generic0, method = public static
-                            // boolean doGeneric(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(leftInterop.accepts(left))],
-                            // Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object,
-                            // java.lang.Object]]
-                            // [ 2] CacheExpression [sourceParameter = leftInterop]
-                            // [ 3] CacheExpression [sourceParameter = rightInterop]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@18d3b56e
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@357d1b96
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_EQUAL: {
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = equalNode]
+                            //     [ 1] SpecializationData [id = Generic0, method = public static boolean doGeneric(java.lang.Object, java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 2] CacheExpression [sourceParameter = leftInterop]
+                            //     [ 3] CacheExpression [sourceParameter = rightInterop]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1f760747
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@16267112
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_EQUAL :
+                            {
                                 BytecodeNode.SLEqual_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_EQUAL_LENGTH;
                                 continue loop;
                             }
                             // c.SLLessOrEqual
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2b64a952
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LESS_OR_EQUAL: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2d770d8e
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LESS_OR_EQUAL :
+                            {
                                 BytecodeNode.SLLessOrEqual_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
                                 continue loop;
                             }
                             // c.SLLessThan
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3809e35e
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LESS_THAN: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@13825d7d
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LESS_THAN :
+                            {
                                 BytecodeNode.SLLessThan_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_LESS_THAN_LENGTH;
                                 continue loop;
                             }
                             // c.SLLogicalNot
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3d7459f4
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LOGICAL_NOT: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3c613c75
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LOGICAL_NOT :
+                            {
                                 BytecodeNode.SLLogicalNot_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
                                 continue loop;
                             }
                             // c.SLMul
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@60885467
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6e284f1d
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_MUL: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@196a740a
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@c6401d4
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_MUL :
+                            {
                                 BytecodeNode.SLMul_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_MUL_LENGTH;
                                 continue loop;
                             }
                             // c.SLReadProperty
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // [ 1] CacheExpression [sourceParameter = bci]
-                            // [ 2] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = ReadArray0, method = public static
-                            // java.lang.Object readArray(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))],
-                            // Guard[(arrays.hasArrayElements(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // [ 2] CacheExpression [sourceParameter = arrays]
-                            // [ 3] CacheExpression [sourceParameter = numbers]
-                            // [ 4] SpecializationData [id = ReadSLObject0, method = public static
-                            // java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.object.DynamicObjectLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
-                            // [ 5] CacheExpression [sourceParameter = node]
-                            // [ 6] CacheExpression [sourceParameter = objectLibrary]
-                            // [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            // [ 8] SpecializationData [id = ReadObject0, method = public static
-                            // java.lang.Object readObject(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards =
-                            // [Guard[(objects.accepts(receiver))],
-                            // Guard[(!(SLReadPropertyNode.isSLObject(receiver)))],
-                            // Guard[(objects.hasMembers(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 9] CacheExpression [sourceParameter = node]
-                            // [10] CacheExpression [sourceParameter = objects]
-                            // [11] CacheExpression [sourceParameter = asMember]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@194c5295
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@66803b1
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_READ_PROPERTY: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //     [ 1] CacheExpression [sourceParameter = bci]
+                            //     [ 2] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //     [ 2] CacheExpression [sourceParameter = arrays]
+                            //     [ 3] CacheExpression [sourceParameter = numbers]
+                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 5] CacheExpression [sourceParameter = node]
+                            //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                            //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 9] CacheExpression [sourceParameter = node]
+                            //     [10] CacheExpression [sourceParameter = objects]
+                            //     [11] CacheExpression [sourceParameter = asMember]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@d8ccc90
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@383bdbc0
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_READ_PROPERTY :
+                            {
                                 BytecodeNode.SLReadProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
                                 continue loop;
                             }
                             // c.SLSub
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@24614477
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@89db741
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_SUB: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@723b32e9
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5efde7db
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_SUB :
+                            {
                                 BytecodeNode.SLSub_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_SUB_LENGTH;
                                 continue loop;
                             }
                             // c.SLWriteProperty
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // [ 1] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = WriteArray0, method = public static
-                            // java.lang.Object writeArray(java.lang.Object, java.lang.Object,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))],
-                            // Guard[(arrays.hasArrayElements(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // [ 2] CacheExpression [sourceParameter = arrays]
-                            // [ 3] CacheExpression [sourceParameter = numbers]
-                            // [ 4] SpecializationData [id = WriteSLObject0, method = public static
-                            // java.lang.Object
-                            // writeSLObject(com.oracle.truffle.sl.runtime.SLObject,
-                            // java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.object.DynamicObjectLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object,
-                            // java.lang.Object]]
-                            // [ 5] CacheExpression [sourceParameter = objectLibrary]
-                            // [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            // [ 7] SpecializationData [id = WriteObject0, method = public static
-                            // java.lang.Object writeObject(java.lang.Object, java.lang.Object,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))],
-                            // Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature =
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]]
-                            // [ 8] CacheExpression [sourceParameter = node]
-                            // [ 9] CacheExpression [sourceParameter = objectLibrary]
-                            // [10] CacheExpression [sourceParameter = asMember]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // [ 2] arg2
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@73be843d
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@358d7470
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_WRITE_PROPERTY: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //     [ 1] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //     [ 2] CacheExpression [sourceParameter = arrays]
+                            //     [ 3] CacheExpression [sourceParameter = numbers]
+                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 5] CacheExpression [sourceParameter = objectLibrary]
+                            //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
+                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 8] CacheExpression [sourceParameter = node]
+                            //     [ 9] CacheExpression [sourceParameter = objectLibrary]
+                            //     [10] CacheExpression [sourceParameter = asMember]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //     [ 2] arg2
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@357e48d8
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@537d706c
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_WRITE_PROPERTY :
+                            {
                                 BytecodeNode.SLWriteProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 3 + 1;
                                 $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
                                 continue loop;
                             }
                             // c.SLUnbox
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            // [ 1] SpecializationData [id = FromForeign0, method = public static
-                            // java.lang.Object fromForeign(java.lang.Object,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
-                            // [ 2] CacheExpression [sourceParameter = interop]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1be1cc4a
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@7ea357c8
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_UNBOX: {
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 2] CacheExpression [sourceParameter = interop]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@78fabc90
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@49885f6b
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_UNBOX :
+                            {
                                 BytecodeNode.SLUnbox_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_UNBOX_LENGTH;
                                 continue loop;
                             }
                             // c.SLFunctionLiteral
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = result]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@79bbab4d
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_FUNCTION_LITERAL: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = result]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@e77e60a
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_FUNCTION_LITERAL :
+                            {
                                 BytecodeNode.SLFunctionLiteral_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
                                 continue loop;
                             }
                             // c.SLToBoolean
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@27cb6efe
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_TO_BOOLEAN: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@36b119b8
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_TO_BOOLEAN :
+                            {
                                 BytecodeNode.SLToBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // c.SLInvoke
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = Direct, method = protected static
-                            // java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction,
-                            // java.lang.Object[], com.oracle.truffle.api.Assumption,
-                            // com.oracle.truffle.api.RootCallTarget,
-                            // com.oracle.truffle.api.nodes.DirectCallNode) , guards =
-                            // [Guard[(function.getCallTarget() == cachedTarget)]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
-                            // [ 1] CacheExpression [sourceParameter = callNode]
-                            // [ 2] CacheExpression [sourceParameter = library]
-                            // [ 3] CacheExpression [sourceParameter = node]
-                            // Simple Pops:
-                            // [ 0] arg0
-                            // Variadic
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@325d65d1
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@56247945
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_INVOKE: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 1] CacheExpression [sourceParameter = callNode]
+                            //     [ 2] CacheExpression [sourceParameter = library]
+                            //     [ 3] CacheExpression [sourceParameter = node]
+                            //   Simple Pops:
+                            //     [ 0] arg0
+                            //   Variadic
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1b822dc2
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@10fa4ade
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_INVOKE :
+                            {
                                 int numVariadics = $bc[$bci + C_SL_INVOKE_VARIADIC_OFFSET + 0];
                                 Object input_0 = $frame.getObject($sp - numVariadics - 1);
                                 Object[] input_1 = new Object[numVariadics];
@@ -3346,20 +3247,20 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // sc.SLAnd
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] end
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@72e1410f
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_SC_SL_AND: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] end
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@218ca97d
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_SC_SL_AND :
+                            {
                                 if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
                                     $sp = $sp - 1;
                                     $bci = $bci + SC_SL_AND_LENGTH;
@@ -3370,20 +3271,20 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                             }
                             // sc.SLOr
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] end
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@ea17d33
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_SC_SL_OR: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] end
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1fce182d
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_SC_SL_OR :
+                            {
                                 if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
                                     $sp = $sp - 1;
                                     $bci = $bci + SC_SL_OR_LENGTH;
@@ -3394,197 +3295,152 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                             }
                             // c.SLUnbox.q.FromLong
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            // [ 1] SpecializationData [id = FromForeign0, method = public static
-                            // java.lang.Object fromForeign(java.lang.Object,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
-                            // [ 2] CacheExpression [sourceParameter = interop]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@578be2db
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@2290573e
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_UNBOX_Q_FROM_LONG: {
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 2] CacheExpression [sourceParameter = interop]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@15a8da2b
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5746cefa
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_UNBOX_Q_FROM_LONG :
+                            {
                                 BytecodeNode.SLUnbox_q_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
                                 continue loop;
                             }
                             // c.SLAdd.q.AddLong
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = Add1, method = public static
-                            // com.oracle.truffle.api.strings.TruffleString add(java.lang.Object,
-                            // java.lang.Object,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,
-                            // com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards =
-                            // [Guard[(SLAddNode.isString(left, right))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5a81935a
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5fcc35dc
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_ADD_Q_ADD_LONG: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1345422e
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@7ca52f1b
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_ADD_Q_ADD_LONG :
+                            {
                                 BytecodeNode.SLAdd_q_AddLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
                                 continue loop;
                             }
                             // c.SLReadProperty.q.ReadSLObject0
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // [ 1] CacheExpression [sourceParameter = bci]
-                            // [ 2] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = ReadArray0, method = public static
-                            // java.lang.Object readArray(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))],
-                            // Guard[(arrays.hasArrayElements(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // [ 2] CacheExpression [sourceParameter = arrays]
-                            // [ 3] CacheExpression [sourceParameter = numbers]
-                            // [ 4] SpecializationData [id = ReadSLObject0, method = public static
-                            // java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.object.DynamicObjectLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
-                            // [ 5] CacheExpression [sourceParameter = node]
-                            // [ 6] CacheExpression [sourceParameter = objectLibrary]
-                            // [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            // [ 8] SpecializationData [id = ReadObject0, method = public static
-                            // java.lang.Object readObject(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards =
-                            // [Guard[(objects.accepts(receiver))],
-                            // Guard[(!(SLReadPropertyNode.isSLObject(receiver)))],
-                            // Guard[(objects.hasMembers(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 9] CacheExpression [sourceParameter = node]
-                            // [10] CacheExpression [sourceParameter = objects]
-                            // [11] CacheExpression [sourceParameter = asMember]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@575999c4
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@77501db6
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //     [ 1] CacheExpression [sourceParameter = bci]
+                            //     [ 2] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //     [ 2] CacheExpression [sourceParameter = arrays]
+                            //     [ 3] CacheExpression [sourceParameter = numbers]
+                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 5] CacheExpression [sourceParameter = node]
+                            //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                            //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 9] CacheExpression [sourceParameter = node]
+                            //     [10] CacheExpression [sourceParameter = objects]
+                            //     [11] CacheExpression [sourceParameter = asMember]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2f8fdb26
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@4edff133
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
+                            {
                                 BytecodeNode.SLReadProperty_q_ReadSLObject0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
                                 continue loop;
                             }
                             // c.SLUnbox.q.FromBoolean
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            // [ 1] SpecializationData [id = FromForeign0, method = public static
-                            // java.lang.Object fromForeign(java.lang.Object,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
-                            // [ 2] CacheExpression [sourceParameter = interop]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@211d4b45
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1f41f86f
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN: {
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 2] CacheExpression [sourceParameter = interop]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@77329ef4
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@22baaafe
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
+                            {
                                 BytecodeNode.SLUnbox_q_FromBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // c.SLToBoolean.q.Boolean
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@44dd5fa
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@73bd0364
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
+                            {
                                 BytecodeNode.SLToBoolean_q_Boolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // c.SLLessOrEqual.q.LessOrEqual0
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7307d568
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@425a2249
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                            {
                                 BytecodeNode.SLLessOrEqual_q_LessOrEqual0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH;
                                 continue loop;
                             }
                             // c.SLInvoke.q.Direct
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = Direct, method = protected static
-                            // java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction,
-                            // java.lang.Object[], com.oracle.truffle.api.Assumption,
-                            // com.oracle.truffle.api.RootCallTarget,
-                            // com.oracle.truffle.api.nodes.DirectCallNode) , guards =
-                            // [Guard[(function.getCallTarget() == cachedTarget)]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
-                            // [ 1] CacheExpression [sourceParameter = callNode]
-                            // [ 2] CacheExpression [sourceParameter = library]
-                            // [ 3] CacheExpression [sourceParameter = node]
-                            // Simple Pops:
-                            // [ 0] arg0
-                            // Variadic
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@388bff2e
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@2819ead0
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_INVOKE_Q_DIRECT: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 1] CacheExpression [sourceParameter = callNode]
+                            //     [ 2] CacheExpression [sourceParameter = library]
+                            //     [ 3] CacheExpression [sourceParameter = node]
+                            //   Simple Pops:
+                            //     [ 0] arg0
+                            //   Variadic
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@21fcd1c8
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@56666253
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_INVOKE_Q_DIRECT :
+                            {
                                 int numVariadics = $bc[$bci + C_SL_INVOKE_Q_DIRECT_VARIADIC_OFFSET + 0];
                                 Object input_0 = $frame.getObject($sp - numVariadics - 1);
                                 Object[] input_1 = new Object[numVariadics];
@@ -3598,98 +3454,75 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // c.SLFunctionLiteral.q.Perform
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = result]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4211182c
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = result]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4ddbedd8
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
+                            {
                                 BytecodeNode.SLFunctionLiteral_q_Perform_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH;
                                 continue loop;
                             }
                             // c.SLWriteProperty.q.WriteSLObject0
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // [ 1] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = WriteArray0, method = public static
-                            // java.lang.Object writeArray(java.lang.Object, java.lang.Object,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))],
-                            // Guard[(arrays.hasArrayElements(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // [ 2] CacheExpression [sourceParameter = arrays]
-                            // [ 3] CacheExpression [sourceParameter = numbers]
-                            // [ 4] SpecializationData [id = WriteSLObject0, method = public static
-                            // java.lang.Object
-                            // writeSLObject(com.oracle.truffle.sl.runtime.SLObject,
-                            // java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.object.DynamicObjectLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object,
-                            // java.lang.Object]]
-                            // [ 5] CacheExpression [sourceParameter = objectLibrary]
-                            // [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            // [ 7] SpecializationData [id = WriteObject0, method = public static
-                            // java.lang.Object writeObject(java.lang.Object, java.lang.Object,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))],
-                            // Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature =
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]]
-                            // [ 8] CacheExpression [sourceParameter = node]
-                            // [ 9] CacheExpression [sourceParameter = objectLibrary]
-                            // [10] CacheExpression [sourceParameter = asMember]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // [ 2] arg2
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@ff02993
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6865d5cc
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //     [ 1] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //     [ 2] CacheExpression [sourceParameter = arrays]
+                            //     [ 3] CacheExpression [sourceParameter = numbers]
+                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 5] CacheExpression [sourceParameter = objectLibrary]
+                            //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
+                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 8] CacheExpression [sourceParameter = node]
+                            //     [ 9] CacheExpression [sourceParameter = objectLibrary]
+                            //     [10] CacheExpression [sourceParameter = asMember]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //     [ 2] arg2
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5e00c640
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@19b53ed9
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
+                            {
                                 BytecodeNode.SLWriteProperty_q_WriteSLObject0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 3 + 1;
                                 $bci = $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH;
                                 continue loop;
                             }
                             // c.SLLessThan.q.LessThan0
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@f4ded7a
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7ca4b346
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
+                            {
                                 BytecodeNode.SLLessThan_q_LessThan0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children);
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH;
                                 continue loop;
                             }
-                            default:
+                            default :
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered: " + curOpcode + "");
                         }
@@ -3698,8 +3531,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         for (int handlerIndex = $handlers.length - 1; handlerIndex >= 0; handlerIndex--) {
                             CompilerAsserts.partialEvaluationConstant(handlerIndex);
                             ExceptionHandler handler = $handlers[handlerIndex];
-                            if (handler.startBci > $bci || handler.endBci <= $bci)
-                                continue;
+                            if (handler.startBci > $bci || handler.endBci <= $bci) continue;
                             $sp = handler.startStack + maxLocals;
                             $frame.setObject(handler.exceptionIndex, ex);
                             $bci = handler.handlerBci;
@@ -3715,185 +3547,230 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 int $bci = 0;
                 while ($bci < $bc.length) {
                     switch (unsafeFromBytecode($bc, $bci)) {
-                        case INSTR_POP: {
+                        case INSTR_POP :
+                        {
                             $bci = $bci + POP_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH: {
+                        case INSTR_BRANCH :
+                        {
                             $bci = $bci + BRANCH_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH_FALSE: {
+                        case INSTR_BRANCH_FALSE :
+                        {
                             $bci = $bci + BRANCH_FALSE_LENGTH;
                             break;
                         }
-                        case INSTR_THROW: {
+                        case INSTR_THROW :
+                        {
                             $bci = $bci + THROW_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_OBJECT: {
+                        case INSTR_LOAD_CONSTANT_OBJECT :
+                        {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG: {
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
                             $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN: {
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
                             $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
                             $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_OBJECT: {
+                        case INSTR_LOAD_ARGUMENT_OBJECT :
+                        {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG: {
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN: {
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
                             $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_OBJECT: {
+                        case INSTR_STORE_LOCAL_OBJECT :
+                        {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_LONG: {
+                        case INSTR_STORE_LOCAL_LONG :
+                        {
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN: {
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
                             $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_UNINIT: {
+                        case INSTR_STORE_LOCAL_UNINIT :
+                        {
                             $bci = $bci + STORE_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_OBJECT: {
+                        case INSTR_LOAD_LOCAL_OBJECT :
+                        {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG: {
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN: {
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
                             $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_UNINIT: {
+                        case INSTR_LOAD_LOCAL_UNINIT :
+                        {
                             $bci = $bci + LOAD_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_RETURN: {
+                        case INSTR_RETURN :
+                        {
                             $bci = $bci + RETURN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD: {
+                        case INSTR_C_SL_ADD :
+                        {
                             $bci = $bci + C_SL_ADD_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_DIV: {
+                        case INSTR_C_SL_DIV :
+                        {
                             $bci = $bci + C_SL_DIV_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_EQUAL: {
+                        case INSTR_C_SL_EQUAL :
+                        {
                             $bci = $bci + C_SL_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL: {
+                        case INSTR_C_SL_LESS_OR_EQUAL :
+                        {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN: {
+                        case INSTR_C_SL_LESS_THAN :
+                        {
                             $bci = $bci + C_SL_LESS_THAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LOGICAL_NOT: {
+                        case INSTR_C_SL_LOGICAL_NOT :
+                        {
                             $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_MUL: {
+                        case INSTR_C_SL_MUL :
+                        {
                             $bci = $bci + C_SL_MUL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY: {
+                        case INSTR_C_SL_READ_PROPERTY :
+                        {
                             $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_SUB: {
+                        case INSTR_C_SL_SUB :
+                        {
                             $bci = $bci + C_SL_SUB_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY: {
+                        case INSTR_C_SL_WRITE_PROPERTY :
+                        {
                             $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX: {
+                        case INSTR_C_SL_UNBOX :
+                        {
                             $bci = $bci + C_SL_UNBOX_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL: {
+                        case INSTR_C_SL_FUNCTION_LITERAL :
+                        {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN :
+                        {
                             $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE: {
+                        case INSTR_C_SL_INVOKE :
+                        {
                             $bci = $bci + C_SL_INVOKE_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_AND: {
+                        case INSTR_SC_SL_AND :
+                        {
                             $bci = $bci + SC_SL_AND_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_OR: {
+                        case INSTR_SC_SL_OR :
+                        {
                             $bci = $bci + SC_SL_OR_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_LONG: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_LONG :
+                        {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD_Q_ADD_LONG: {
+                        case INSTR_C_SL_ADD_Q_ADD_LONG :
+                        {
                             $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0: {
+                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
+                        {
                             $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
+                        {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
+                        {
                             $bci = $bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0: {
+                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                        {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE_Q_DIRECT: {
+                        case INSTR_C_SL_INVOKE_Q_DIRECT :
+                        {
                             $bci = $bci + C_SL_INVOKE_Q_DIRECT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM: {
+                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
+                        {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0: {
+                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
+                        {
                             $bci = $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0: {
+                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
+                        {
                             $bci = $bci + C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH;
                             break;
                         }
@@ -3908,11 +3785,13 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 while ($bci < $bc.length) {
                     sb.append(String.format(" [%04x]", $bci));
                     switch (unsafeFromBytecode($bc, $bci)) {
-                        default: {
+                        default :
+                        {
                             sb.append(String.format(" unknown 0x%02x", $bc[$bci++]));
                             break;
                         }
-                        case INSTR_POP: {
+                        case INSTR_POP :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append("     ");
                             sb.append("     ");
@@ -3925,7 +3804,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + POP_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH: {
+                        case INSTR_BRANCH :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -3939,7 +3819,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + BRANCH_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH_FALSE: {
+                        case INSTR_BRANCH_FALSE :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -3953,7 +3834,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + BRANCH_FALSE_LENGTH;
                             break;
                         }
-                        case INSTR_THROW: {
+                        case INSTR_THROW :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -3967,7 +3849,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + THROW_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_OBJECT: {
+                        case INSTR_LOAD_CONSTANT_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -3981,7 +3864,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG: {
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -3995,7 +3879,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN: {
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4009,7 +3894,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_OBJECT: {
+                        case INSTR_LOAD_ARGUMENT_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4023,7 +3909,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG: {
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4037,7 +3924,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN: {
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4051,7 +3939,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_OBJECT: {
+                        case INSTR_STORE_LOCAL_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4066,7 +3955,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_LONG: {
+                        case INSTR_STORE_LOCAL_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4081,7 +3971,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN: {
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4096,7 +3987,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_UNINIT: {
+                        case INSTR_STORE_LOCAL_UNINIT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4111,7 +4003,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_OBJECT: {
+                        case INSTR_LOAD_LOCAL_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4125,7 +4018,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG: {
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4139,7 +4033,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN: {
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4153,7 +4048,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_UNINIT: {
+                        case INSTR_LOAD_LOCAL_UNINIT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -4167,7 +4063,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_RETURN: {
+                        case INSTR_RETURN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append("     ");
                             sb.append("     ");
@@ -4180,7 +4077,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + RETURN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD: {
+                        case INSTR_C_SL_ADD :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4196,7 +4094,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_ADD_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_DIV: {
+                        case INSTR_C_SL_DIV :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4212,7 +4111,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_DIV_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_EQUAL: {
+                        case INSTR_C_SL_EQUAL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4227,7 +4127,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL: {
+                        case INSTR_C_SL_LESS_OR_EQUAL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4243,7 +4144,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN: {
+                        case INSTR_C_SL_LESS_THAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4259,7 +4161,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LESS_THAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LOGICAL_NOT: {
+                        case INSTR_C_SL_LOGICAL_NOT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4274,7 +4177,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_MUL: {
+                        case INSTR_C_SL_MUL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4290,7 +4194,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_MUL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY: {
+                        case INSTR_C_SL_READ_PROPERTY :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4308,7 +4213,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_SUB: {
+                        case INSTR_C_SL_SUB :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4324,7 +4230,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_SUB_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY: {
+                        case INSTR_C_SL_WRITE_PROPERTY :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4342,7 +4249,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX: {
+                        case INSTR_C_SL_UNBOX :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4356,7 +4264,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_UNBOX_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL: {
+                        case INSTR_C_SL_FUNCTION_LITERAL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4371,7 +4280,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4386,7 +4296,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE: {
+                        case INSTR_C_SL_INVOKE :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4401,7 +4312,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_INVOKE_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_AND: {
+                        case INSTR_SC_SL_AND :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4417,7 +4329,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + SC_SL_AND_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_OR: {
+                        case INSTR_SC_SL_OR :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4433,7 +4346,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + SC_SL_OR_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_LONG: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4447,7 +4361,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD_Q_ADD_LONG: {
+                        case INSTR_C_SL_ADD_Q_ADD_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4463,7 +4378,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0: {
+                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4481,7 +4397,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4495,7 +4412,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4510,7 +4428,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0: {
+                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4526,7 +4445,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE_Q_DIRECT: {
+                        case INSTR_C_SL_INVOKE_Q_DIRECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4541,7 +4461,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_INVOKE_Q_DIRECT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM: {
+                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4556,7 +4477,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0: {
+                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4574,7 +4496,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0: {
+                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -4599,16 +4522,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return sb.toString();
             }
 
-            private static boolean SLAdd_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            Object $child0Value, Object $child1Value) {
+            private static boolean SLAdd_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
-                if (((state_0 & 0b1000)) == 0 /*
-                                               * is-not-state_0 add(Object, Object,
-                                               * SLToTruffleStringNode, SLToTruffleStringNode,
-                                               * ConcatNode)
-                                               */ && (SLAddNode.isString($child0Value, $child1Value))) {
+                if (((state_0 & 0b1000)) == 0 /* is-not-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */ && (SLAddNode.isString($child0Value, $child1Value))) {
                     return false;
                 }
                 return true;
@@ -4616,35 +4534,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLAdd_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b11100) == 0 /* only-active addLong(long, long) */ && ((state_0 & 0b11110) != 0 /*
-                                                                                                                 * is
-                                                                                                                 * -
-                                                                                                                 * not
-                                                                                                                 * addLong
-                                                                                                                 * (
-                                                                                                                 * long,
-                                                                                                                 * long)
-                                                                                                                 * &&
-                                                                                                                 * add
-                                                                                                                 * (
-                                                                                                                 * SLBigNumber,
-                                                                                                                 * SLBigNumber)
-                                                                                                                 * &&
-                                                                                                                 * add
-                                                                                                                 * (
-                                                                                                                 * Object,
-                                                                                                                 * Object,
-                                                                                                                 * SLToTruffleStringNode,
-                                                                                                                 * SLToTruffleStringNode,
-                                                                                                                 * ConcatNode)
-                                                                                                                 * &&
-                                                                                                                 * typeError
-                                                                                                                 * (
-                                                                                                                 * Object,
-                                                                                                                 * Object,
-                                                                                                                 * Node,
-                                                                                                                 * int)
-                                                                                                                 */)) {
+                if ((state_0 & 0b11100) == 0 /* only-active addLong(long, long) */ && ((state_0 & 0b11110) != 0  /* is-not addLong(long, long) && add(SLBigNumber, SLBigNumber) && add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) && typeError(Object, Object, Node, int) */)) {
                     SLAdd_SLAdd_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -4687,24 +4577,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     Lock lock = $this.getLockAccessor();
                     lock.lock();
                     try {
-                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                * add
-                                                                                                                                * -
-                                                                                                                                * exclude
-                                                                                                                                * addLong
-                                                                                                                                * (
-                                                                                                                                * long,
-                                                                                                                                * long)
-                                                                                                                                */);
-                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                       * remove
-                                                                                                                                       * -
-                                                                                                                                       * state_0
-                                                                                                                                       * addLong
-                                                                                                                                       * (
-                                                                                                                                       * long,
-                                                                                                                                       * long)
-                                                                                                                                       */);
+                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 addLong(long, long) */);
                     } finally {
                         lock.unlock();
                     }
@@ -4735,24 +4609,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             Lock lock = $this.getLockAccessor();
                             lock.lock();
                             try {
-                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                        * add
-                                                                                                                                        * -
-                                                                                                                                        * exclude
-                                                                                                                                        * addLong
-                                                                                                                                        * (
-                                                                                                                                        * long,
-                                                                                                                                        * long)
-                                                                                                                                        */);
-                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                               * remove
-                                                                                                                                               * -
-                                                                                                                                               * state_0
-                                                                                                                                               * addLong
-                                                                                                                                               * (
-                                                                                                                                               * long,
-                                                                                                                                               * long)
-                                                                                                                                               */);
+                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 addLong(long, long) */);
                             } finally {
                                 lock.unlock();
                             }
@@ -4761,56 +4619,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                     }
                 }
-                if ((state_0 & 0b100) != 0 /* is-state_0 add(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /*
-                                                                                                                                                           * extract
-                                                                                                                                                           * -
-                                                                                                                                                           * implicit
-                                                                                                                                                           * -
-                                                                                                                                                           * state_0
-                                                                                                                                                           * 0
-                                                                                                                                                           * :
-                                                                                                                                                           * SLBigNumber
-                                                                                                                                                           */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /*
-                                                                                                               * extract
-                                                                                                               * -
-                                                                                                               * implicit
-                                                                                                               * -
-                                                                                                               * state_0
-                                                                                                               * 0
-                                                                                                               * :
-                                                                                                               * SLBigNumber
-                                                                                                               */, $child0Value_);
-                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000000) >>> 7 /*
-                                                                                        * extract-
-                                                                                        * implicit-
-                                                                                        * state_0 1:
-                                                                                        * SLBigNumber
-                                                                                        */, $child1Value_)) {
-                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000000) >>> 7 /*
-                                                                                                                     * extract
-                                                                                                                     * -
-                                                                                                                     * implicit
-                                                                                                                     * -
-                                                                                                                     * state_0
-                                                                                                                     * 1
-                                                                                                                     * :
-                                                                                                                     * SLBigNumber
-                                                                                                                     */, $child1Value_);
+                if ((state_0 & 0b100) != 0 /* is-state_0 add(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000000) >>> 7 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000000) >>> 7 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
                         $frame.setObject($sp - 2, SLAddNode.add($child0Value__, $child1Value__));
                         return;
                     }
                 }
-                if ((state_0 & 0b11000) != 0 /*
-                                              * is-state_0 add(Object, Object,
-                                              * SLToTruffleStringNode, SLToTruffleStringNode,
-                                              * ConcatNode) || typeError(Object, Object, Node, int)
-                                              */) {
-                    if ((state_0 & 0b1000) != 0 /*
-                                                 * is-state_0 add(Object, Object,
-                                                 * SLToTruffleStringNode, SLToTruffleStringNode,
-                                                 * ConcatNode)
-                                                 */) {
+                if ((state_0 & 0b11000) != 0 /* is-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) || typeError(Object, Object, Node, int) */) {
+                    if ((state_0 & 0b1000) != 0 /* is-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */) {
                         SLAdd_Add1Data s2_ = ((SLAdd_Add1Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_ADD_CHILDREN_OFFSET) + 0) + 0]);
                         if (s2_ != null) {
                             if ((SLAddNode.isString($child0Value_, $child1Value_))) {
@@ -4819,9 +4637,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             }
                         }
                     }
-                    if ((state_0 & 0b10000) != 0 /*
-                                                  * is-state_0 typeError(Object, Object, Node, int)
-                                                  */) {
+                    if ((state_0 & 0b10000) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
                         {
                             Node fallback_node__ = ($this);
                             int fallback_bci__ = ($bci);
@@ -4837,8 +4653,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLAdd_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLAdd_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -4851,18 +4666,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
-                            $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                            * add
-                                                                                                            * -
-                                                                                                            * state_0
-                                                                                                            * addLong
-                                                                                                            * (
-                                                                                                            * long,
-                                                                                                            * long)
-                                                                                                            */);
-                            if ((state_0 & 0b11110) == 0b10/*
-                                                            * is-exact-state_0 addLong(long, long)
-                                                            */) {
+                            $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 addLong(long, long) */);
+                            if ((state_0 & 0b11110) == 0b10/* is-exact-state_0 addLong(long, long) */) {
                                 $bc[$bci] = (short) (INSTR_C_SL_ADD_Q_ADD_LONG);
                             } else {
                                 $bc[$bci] = (short) (INSTR_C_SL_ADD);
@@ -4892,24 +4697,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 lock.lock();
                                 try {
-                                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                            * add
-                                                                                                                                            * -
-                                                                                                                                            * exclude
-                                                                                                                                            * addLong
-                                                                                                                                            * (
-                                                                                                                                            * long,
-                                                                                                                                            * long)
-                                                                                                                                            */);
-                                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                                   * remove
-                                                                                                                                                   * -
-                                                                                                                                                   * state_0
-                                                                                                                                                   * addLong
-                                                                                                                                                   * (
-                                                                                                                                                   * long,
-                                                                                                                                                   * long)
-                                                                                                                                                   */);
+                                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 addLong(long, long) */);
                                 } finally {
                                     lock.unlock();
                                 }
@@ -4925,38 +4714,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             int sLBigNumberCast1;
                             if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
                                 SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
-                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                               * add
-                                                                                                               * -
-                                                                                                               * exclude
-                                                                                                               * addLong
-                                                                                                               * (
-                                                                                                               * long,
-                                                                                                               * long)
-                                                                                                               */);
-                                state_0 = (short) (state_0 & 0xfffffffd /*
-                                                                         * remove-state_0
-                                                                         * addLong(long, long)
-                                                                         */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 5) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 0:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 7) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 1:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * state_0
-                                                                                                                 * add
-                                                                                                                 * (
-                                                                                                                 * SLBigNumber,
-                                                                                                                 * SLBigNumber)
-                                                                                                                 */);
+                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude addLong(long, long) */);
+                                state_0 = (short) (state_0 & 0xfffffffd /* remove-state_0 addLong(long, long) */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 5) /* set-implicit-state_0 0:SLBigNumber */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 7) /* set-implicit-state_0 1:SLBigNumber */);
+                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 add(SLBigNumber, SLBigNumber) */);
                                 $bc[$bci] = (short) (INSTR_C_SL_ADD);
                                 int type0;
                                 int type1;
@@ -4978,18 +4740,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         s2_.concatNode_ = s2_.insertAccessor((ConcatNode.create()));
                         VarHandle.storeStoreFence();
                         $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_ADD_CHILDREN_OFFSET) + 0) + 0] = s2_;
-                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                          * add
-                                                                                                          * -
-                                                                                                          * state_0
-                                                                                                          * add
-                                                                                                          * (
-                                                                                                          * Object,
-                                                                                                          * Object,
-                                                                                                          * SLToTruffleStringNode,
-                                                                                                          * SLToTruffleStringNode,
-                                                                                                          * ConcatNode)
-                                                                                                          */);
+                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */);
                         $bc[$bci] = (short) (INSTR_C_SL_ADD);
                         int type0;
                         int type1;
@@ -5007,17 +4758,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /*
-                                                                                                           * add
-                                                                                                           * -
-                                                                                                           * state_0
-                                                                                                           * typeError
-                                                                                                           * (
-                                                                                                           * Object,
-                                                                                                           * Object,
-                                                                                                           * Node,
-                                                                                                           * int)
-                                                                                                           */);
+                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 typeError(Object, Object, Node, int) */);
                         $bc[$bci] = (short) (INSTR_C_SL_ADD);
                         int type0;
                         int type1;
@@ -5037,8 +4778,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLDiv_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static boolean SLDiv_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
@@ -5047,27 +4787,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLDiv_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b1100) == 0 /* only-active divLong(long, long) */ && ((state_0 & 0b1110) != 0 /*
-                                                                                                               * is
-                                                                                                               * -
-                                                                                                               * not
-                                                                                                               * divLong
-                                                                                                               * (
-                                                                                                               * long,
-                                                                                                               * long)
-                                                                                                               * &&
-                                                                                                               * div
-                                                                                                               * (
-                                                                                                               * SLBigNumber,
-                                                                                                               * SLBigNumber)
-                                                                                                               * &&
-                                                                                                               * typeError
-                                                                                                               * (
-                                                                                                               * Object,
-                                                                                                               * Object,
-                                                                                                               * Node,
-                                                                                                               * int)
-                                                                                                               */)) {
+                if ((state_0 & 0b1100) == 0 /* only-active divLong(long, long) */ && ((state_0 & 0b1110) != 0  /* is-not divLong(long, long) && div(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
                     SLDiv_SLDiv_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -5110,24 +4830,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     Lock lock = $this.getLockAccessor();
                     lock.lock();
                     try {
-                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                * add
-                                                                                                                                * -
-                                                                                                                                * exclude
-                                                                                                                                * divLong
-                                                                                                                                * (
-                                                                                                                                * long,
-                                                                                                                                * long)
-                                                                                                                                */);
-                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                       * remove
-                                                                                                                                       * -
-                                                                                                                                       * state_0
-                                                                                                                                       * divLong
-                                                                                                                                       * (
-                                                                                                                                       * long,
-                                                                                                                                       * long)
-                                                                                                                                       */);
+                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude divLong(long, long) */);
+                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 divLong(long, long) */);
                     } finally {
                         lock.unlock();
                     }
@@ -5158,24 +4862,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             Lock lock = $this.getLockAccessor();
                             lock.lock();
                             try {
-                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                        * add
-                                                                                                                                        * -
-                                                                                                                                        * exclude
-                                                                                                                                        * divLong
-                                                                                                                                        * (
-                                                                                                                                        * long,
-                                                                                                                                        * long)
-                                                                                                                                        */);
-                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                               * remove
-                                                                                                                                               * -
-                                                                                                                                               * state_0
-                                                                                                                                               * divLong
-                                                                                                                                               * (
-                                                                                                                                               * long,
-                                                                                                                                               * long)
-                                                                                                                                               */);
+                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude divLong(long, long) */);
+                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 divLong(long, long) */);
                             } finally {
                                 lock.unlock();
                             }
@@ -5184,42 +4872,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                     }
                 }
-                if ((state_0 & 0b100) != 0 /* is-state_0 div(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                                                                          * extract
-                                                                                                                                                          * -
-                                                                                                                                                          * implicit
-                                                                                                                                                          * -
-                                                                                                                                                          * state_0
-                                                                                                                                                          * 0
-                                                                                                                                                          * :
-                                                                                                                                                          * SLBigNumber
-                                                                                                                                                          */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                              * extract
-                                                                                                              * -
-                                                                                                              * implicit
-                                                                                                              * -
-                                                                                                              * state_0
-                                                                                                              * 0
-                                                                                                              * :
-                                                                                                              * SLBigNumber
-                                                                                                              */, $child0Value_);
-                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                       * extract-
-                                                                                       * implicit-
-                                                                                       * state_0 1:
-                                                                                       * SLBigNumber
-                                                                                       */, $child1Value_)) {
-                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                                                    * extract
-                                                                                                                    * -
-                                                                                                                    * implicit
-                                                                                                                    * -
-                                                                                                                    * state_0
-                                                                                                                    * 1
-                                                                                                                    * :
-                                                                                                                    * SLBigNumber
-                                                                                                                    */, $child1Value_);
+                if ((state_0 & 0b100) != 0 /* is-state_0 div(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
                         $frame.setObject($sp - 2, SLDivNode.div($child0Value__, $child1Value__));
                         return;
                     }
@@ -5239,8 +4895,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLDiv_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLDiv_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -5253,15 +4908,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
-                            $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                            * add
-                                                                                                            * -
-                                                                                                            * state_0
-                                                                                                            * divLong
-                                                                                                            * (
-                                                                                                            * long,
-                                                                                                            * long)
-                                                                                                            */);
+                            $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 divLong(long, long) */);
                             int type0;
                             int type1;
                             if ((state_0 & 0b1100) == 0 /* only-active divLong(long, long) */) {
@@ -5287,24 +4934,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 lock.lock();
                                 try {
-                                    $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                            * add
-                                                                                                                                            * -
-                                                                                                                                            * exclude
-                                                                                                                                            * divLong
-                                                                                                                                            * (
-                                                                                                                                            * long,
-                                                                                                                                            * long)
-                                                                                                                                            */);
-                                    $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                                   * remove
-                                                                                                                                                   * -
-                                                                                                                                                   * state_0
-                                                                                                                                                   * divLong
-                                                                                                                                                   * (
-                                                                                                                                                   * long,
-                                                                                                                                                   * long)
-                                                                                                                                                   */);
+                                    $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude divLong(long, long) */);
+                                    $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 divLong(long, long) */);
                                 } finally {
                                     lock.unlock();
                                 }
@@ -5320,38 +4951,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             int sLBigNumberCast1;
                             if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
                                 SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
-                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                               * add
-                                                                                                               * -
-                                                                                                               * exclude
-                                                                                                               * divLong
-                                                                                                               * (
-                                                                                                               * long,
-                                                                                                               * long)
-                                                                                                               */);
-                                state_0 = (short) (state_0 & 0xfffffffd /*
-                                                                         * remove-state_0
-                                                                         * divLong(long, long)
-                                                                         */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 0:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 1:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * state_0
-                                                                                                                 * div
-                                                                                                                 * (
-                                                                                                                 * SLBigNumber,
-                                                                                                                 * SLBigNumber)
-                                                                                                                 */);
+                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude divLong(long, long) */);
+                                state_0 = (short) (state_0 & 0xfffffffd /* remove-state_0 divLong(long, long) */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
+                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 div(SLBigNumber, SLBigNumber) */);
                                 int type0;
                                 int type1;
                                 type0 = 0 /* OBJECT */;
@@ -5370,17 +4974,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                          * add
-                                                                                                          * -
-                                                                                                          * state_0
-                                                                                                          * typeError
-                                                                                                          * (
-                                                                                                          * Object,
-                                                                                                          * Object,
-                                                                                                          * Node,
-                                                                                                          * int)
-                                                                                                          */);
+                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
                         int type0;
                         int type1;
                         type0 = 0 /* OBJECT */;
@@ -5401,8 +4995,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             @SuppressWarnings("static-method")
             @TruffleBoundary
-            private static Object SLEqual_generic1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value,
-                            Object $child1Value) {
+            private static Object SLEqual_generic1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
@@ -5420,118 +5013,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLEqual_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b1111111100) == 0 /* only-active doLong(long, long) */ && ((state_0 & 0b1111111110) != 0 /*
-                                                                                                                          * is
-                                                                                                                          * -
-                                                                                                                          * not
-                                                                                                                          * doLong
-                                                                                                                          * (
-                                                                                                                          * long,
-                                                                                                                          * long)
-                                                                                                                          * &&
-                                                                                                                          * doBigNumber
-                                                                                                                          * (
-                                                                                                                          * SLBigNumber,
-                                                                                                                          * SLBigNumber)
-                                                                                                                          * &&
-                                                                                                                          * doBoolean
-                                                                                                                          * (
-                                                                                                                          * boolean,
-                                                                                                                          * boolean)
-                                                                                                                          * &&
-                                                                                                                          * doString
-                                                                                                                          * (
-                                                                                                                          * String,
-                                                                                                                          * String)
-                                                                                                                          * &&
-                                                                                                                          * doTruffleString
-                                                                                                                          * (
-                                                                                                                          * TruffleString,
-                                                                                                                          * TruffleString,
-                                                                                                                          * EqualNode)
-                                                                                                                          * &&
-                                                                                                                          * doNull
-                                                                                                                          * (
-                                                                                                                          * SLNull,
-                                                                                                                          * SLNull)
-                                                                                                                          * &&
-                                                                                                                          * doFunction
-                                                                                                                          * (
-                                                                                                                          * SLFunction,
-                                                                                                                          * Object)
-                                                                                                                          * &&
-                                                                                                                          * doGeneric
-                                                                                                                          * (
-                                                                                                                          * Object,
-                                                                                                                          * Object,
-                                                                                                                          * InteropLibrary,
-                                                                                                                          * InteropLibrary)
-                                                                                                                          * &&
-                                                                                                                          * doGeneric
-                                                                                                                          * (
-                                                                                                                          * Object,
-                                                                                                                          * Object,
-                                                                                                                          * InteropLibrary,
-                                                                                                                          * InteropLibrary)
-                                                                                                                          */)) {
+                if ((state_0 & 0b1111111100) == 0 /* only-active doLong(long, long) */ && ((state_0 & 0b1111111110) != 0  /* is-not doLong(long, long) && doBigNumber(SLBigNumber, SLBigNumber) && doBoolean(boolean, boolean) && doString(String, String) && doTruffleString(TruffleString, TruffleString, EqualNode) && doNull(SLNull, SLNull) && doFunction(SLFunction, Object) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) */)) {
                     SLEqual_SLEqual_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
-                } else if ((state_0 & 0b1111110110) == 0 /*
-                                                          * only-active doBoolean(boolean, boolean)
-                                                          */ && ((state_0 & 0b1111111110) != 0 /*
-                                                                                                * is
-                                                                                                * -
-                                                                                                * not
-                                                                                                * doLong
-                                                                                                * (
-                                                                                                * long,
-                                                                                                * long)
-                                                                                                * &&
-                                                                                                * doBigNumber
-                                                                                                * (
-                                                                                                * SLBigNumber,
-                                                                                                * SLBigNumber)
-                                                                                                * &&
-                                                                                                * doBoolean
-                                                                                                * (
-                                                                                                * boolean,
-                                                                                                * boolean)
-                                                                                                * &&
-                                                                                                * doString
-                                                                                                * (
-                                                                                                * String,
-                                                                                                * String)
-                                                                                                * &&
-                                                                                                * doTruffleString
-                                                                                                * (
-                                                                                                * TruffleString,
-                                                                                                * TruffleString,
-                                                                                                * EqualNode)
-                                                                                                * &&
-                                                                                                * doNull
-                                                                                                * (
-                                                                                                * SLNull,
-                                                                                                * SLNull)
-                                                                                                * &&
-                                                                                                * doFunction
-                                                                                                * (
-                                                                                                * SLFunction,
-                                                                                                * Object)
-                                                                                                * &&
-                                                                                                * doGeneric
-                                                                                                * (
-                                                                                                * Object,
-                                                                                                * Object,
-                                                                                                * InteropLibrary,
-                                                                                                * InteropLibrary)
-                                                                                                * &&
-                                                                                                * doGeneric
-                                                                                                * (
-                                                                                                * Object,
-                                                                                                * Object,
-                                                                                                * InteropLibrary,
-                                                                                                * InteropLibrary)
-                                                                                                */)) {
+                } else if ((state_0 & 0b1111110110) == 0 /* only-active doBoolean(boolean, boolean) */ && ((state_0 & 0b1111111110) != 0  /* is-not doLong(long, long) && doBigNumber(SLBigNumber, SLBigNumber) && doBoolean(boolean, boolean) && doString(String, String) && doTruffleString(TruffleString, TruffleString, EqualNode) && doNull(SLNull, SLNull) && doFunction(SLFunction, Object) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) */)) {
                     SLEqual_SLEqual_execute__boolean_boolean1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -5570,8 +5055,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLEqual_SLEqual_execute__boolean_boolean1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLEqual_SLEqual_execute__boolean_boolean1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 boolean $child0Value_;
@@ -5620,45 +5104,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         return;
                     }
                 }
-                if ((state_0 & 0b100) != 0 /* is-state_0 doBigNumber(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /*
-                                                                                                                                                                         * extract
-                                                                                                                                                                         * -
-                                                                                                                                                                         * implicit
-                                                                                                                                                                         * -
-                                                                                                                                                                         * state_0
-                                                                                                                                                                         * 0
-                                                                                                                                                                         * :
-                                                                                                                                                                         * SLBigNumber
-                                                                                                                                                                         */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /*
-                                                                                                                     * extract
-                                                                                                                     * -
-                                                                                                                     * implicit
-                                                                                                                     * -
-                                                                                                                     * state_0
-                                                                                                                     * 0
-                                                                                                                     * :
-                                                                                                                     * SLBigNumber
-                                                                                                                     */, $child0Value_);
-                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000000) >>> 12 /*
-                                                                                              * extract
-                                                                                              * -
-                                                                                              * implicit
-                                                                                              * -
-                                                                                              * state_0
-                                                                                              * 1:
-                                                                                              * SLBigNumber
-                                                                                              */, $child1Value_)) {
-                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000000) >>> 12 /*
-                                                                                                                           * extract
-                                                                                                                           * -
-                                                                                                                           * implicit
-                                                                                                                           * -
-                                                                                                                           * state_0
-                                                                                                                           * 1
-                                                                                                                           * :
-                                                                                                                           * SLBigNumber
-                                                                                                                           */, $child1Value_);
+                if ((state_0 & 0b100) != 0 /* is-state_0 doBigNumber(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000000) >>> 12 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000000) >>> 12 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
                         boolean value = SLEqualNode.doBigNumber($child0Value__, $child1Value__);
                         if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
@@ -5694,10 +5143,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         return;
                     }
                 }
-                if ((state_0 & 0b100000) != 0 /*
-                                               * is-state_0 doTruffleString(TruffleString,
-                                               * TruffleString, EqualNode)
-                                               */ && $child0Value_ instanceof TruffleString) {
+                if ((state_0 & 0b100000) != 0 /* is-state_0 doTruffleString(TruffleString, TruffleString, EqualNode) */ && $child0Value_ instanceof TruffleString) {
                     TruffleString $child0Value__ = (TruffleString) $child0Value_;
                     if ($child1Value_ instanceof TruffleString) {
                         TruffleString $child1Value__ = (TruffleString) $child1Value_;
@@ -5726,12 +5172,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         return;
                     }
                 }
-                if ((state_0 & 0b1110000000) != 0 /*
-                                                   * is-state_0 doFunction(SLFunction, Object) ||
-                                                   * doGeneric(Object, Object, InteropLibrary,
-                                                   * InteropLibrary) || doGeneric(Object, Object,
-                                                   * InteropLibrary, InteropLibrary)
-                                                   */) {
+                if ((state_0 & 0b1110000000) != 0 /* is-state_0 doFunction(SLFunction, Object) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
                     if ((state_0 & 0b10000000) != 0 /* is-state_0 doFunction(SLFunction, Object) */ && $child0Value_ instanceof SLFunction) {
                         SLFunction $child0Value__ = (SLFunction) $child0Value_;
                         boolean value = SLEqualNode.doFunction($child0Value__, $child1Value_);
@@ -5742,16 +5183,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                         return;
                     }
-                    if ((state_0 & 0b1100000000) != 0 /*
-                                                       * is-state_0 doGeneric(Object, Object,
-                                                       * InteropLibrary, InteropLibrary) ||
-                                                       * doGeneric(Object, Object, InteropLibrary,
-                                                       * InteropLibrary)
-                                                       */) {
-                        if ((state_0 & 0b100000000) != 0 /*
-                                                          * is-state_0 doGeneric(Object, Object,
-                                                          * InteropLibrary, InteropLibrary)
-                                                          */) {
+                    if ((state_0 & 0b1100000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                        if ((state_0 & 0b100000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
                             SLEqual_Generic0Data s7_ = ((SLEqual_Generic0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 1]);
                             while (s7_ != null) {
                                 if ((s7_.leftInterop_.accepts($child0Value_)) && (s7_.rightInterop_.accepts($child1Value_))) {
@@ -5766,10 +5199,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s7_ = s7_.next_;
                             }
                         }
-                        if ((state_0 & 0b1000000000) != 0 /*
-                                                           * is-state_0 doGeneric(Object, Object,
-                                                           * InteropLibrary, InteropLibrary)
-                                                           */) {
+                        if ((state_0 & 0b1000000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
                             $frame.setObject($sp - 2, SLEqual_generic1Boundary_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_));
                             return;
                         }
@@ -5780,8 +5210,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLEqual_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLEqual_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -5794,15 +5223,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
-                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                              * add
-                                                                                                              * -
-                                                                                                              * state_0
-                                                                                                              * doLong
-                                                                                                              * (
-                                                                                                              * long,
-                                                                                                              * long)
-                                                                                                              */);
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doLong(long, long) */);
                             int type0;
                             int type1;
                             if ((state_0 & 0b1111111100) == 0 /* only-active doLong(long, long) */) {
@@ -5832,27 +5253,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             int sLBigNumberCast1;
                             if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
                                 SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
-                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 10) /*
-                                                                                       * set-
-                                                                                       * implicit-
-                                                                                       * state_0 0:
-                                                                                       * SLBigNumber
-                                                                                       */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 12) /*
-                                                                                       * set-
-                                                                                       * implicit-
-                                                                                       * state_0 1:
-                                                                                       * SLBigNumber
-                                                                                       */);
-                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                   * add
-                                                                                                                   * -
-                                                                                                                   * state_0
-                                                                                                                   * doBigNumber
-                                                                                                                   * (
-                                                                                                                   * SLBigNumber,
-                                                                                                                   * SLBigNumber)
-                                                                                                                   */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 10) /* set-implicit-state_0 0:SLBigNumber */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 12) /* set-implicit-state_0 1:SLBigNumber */);
+                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 doBigNumber(SLBigNumber, SLBigNumber) */);
                                 int type0;
                                 int type1;
                                 type0 = 0 /* OBJECT */;
@@ -5875,21 +5278,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         boolean $child0Value_ = (boolean) $child0Value;
                         if ($child1Value instanceof Boolean) {
                             boolean $child1Value_ = (boolean) $child1Value;
-                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                                * add
-                                                                                                                * -
-                                                                                                                * state_0
-                                                                                                                * doBoolean
-                                                                                                                * (
-                                                                                                                * boolean,
-                                                                                                                * boolean)
-                                                                                                                */);
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 doBoolean(boolean, boolean) */);
                             int type0;
                             int type1;
-                            if ((state_0 & 0b1111110110) == 0 /*
-                                                               * only-active doBoolean(boolean,
-                                                               * boolean)
-                                                               */) {
+                            if ((state_0 & 0b1111110110) == 0 /* only-active doBoolean(boolean, boolean) */) {
                                 type0 = 5 /* BOOLEAN */;
                                 type1 = 5 /* BOOLEAN */;
                             } else {
@@ -5913,15 +5305,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         String $child0Value_ = (String) $child0Value;
                         if ($child1Value instanceof String) {
                             String $child1Value_ = (String) $child1Value;
-                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * state_0
-                                                                                                                 * doString
-                                                                                                                 * (
-                                                                                                                 * String,
-                                                                                                                 * String)
-                                                                                                                 */);
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 doString(String, String) */);
                             int type0;
                             int type1;
                             type0 = 0 /* OBJECT */;
@@ -5944,16 +5328,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         if ($child1Value instanceof TruffleString) {
                             TruffleString $child1Value_ = (TruffleString) $child1Value;
                             $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 0] = $this.insertAccessor((EqualNode.create()));
-                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /*
-                                                                                                                  * add
-                                                                                                                  * -
-                                                                                                                  * state_0
-                                                                                                                  * doTruffleString
-                                                                                                                  * (
-                                                                                                                  * TruffleString,
-                                                                                                                  * TruffleString,
-                                                                                                                  * EqualNode)
-                                                                                                                  */);
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 doTruffleString(TruffleString, TruffleString, EqualNode) */);
                             int type0;
                             int type1;
                             type0 = 0 /* OBJECT */;
@@ -5975,15 +5350,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         SLNull $child0Value_ = SLTypes.asSLNull($child0Value);
                         if (SLTypes.isSLNull($child1Value)) {
                             SLNull $child1Value_ = SLTypes.asSLNull($child1Value);
-                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /*
-                                                                                                                   * add
-                                                                                                                   * -
-                                                                                                                   * state_0
-                                                                                                                   * doNull
-                                                                                                                   * (
-                                                                                                                   * SLNull,
-                                                                                                                   * SLNull)
-                                                                                                                   */);
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /* add-state_0 doNull(SLNull, SLNull) */);
                             int type0;
                             int type1;
                             type0 = 0 /* OBJECT */;
@@ -6003,15 +5370,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     if ($child0Value instanceof SLFunction) {
                         SLFunction $child0Value_ = (SLFunction) $child0Value;
-                        $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000000 /*
-                                                                                                                * add
-                                                                                                                * -
-                                                                                                                * state_0
-                                                                                                                * doFunction
-                                                                                                                * (
-                                                                                                                * SLFunction,
-                                                                                                                * Object)
-                                                                                                                */);
+                        $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000000 /* add-state_0 doFunction(SLFunction, Object) */);
                         int type0;
                         int type1;
                         type0 = 0 /* OBJECT */;
@@ -6028,16 +5387,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                         return;
                     }
-                    if ((exclude) == 0 /*
-                                        * is-not-exclude doGeneric(Object, Object, InteropLibrary,
-                                        * InteropLibrary)
-                                        */) {
+                    if ((exclude) == 0 /* is-not-exclude doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
                         int count7_ = 0;
                         SLEqual_Generic0Data s7_ = ((SLEqual_Generic0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 1]);
-                        if ((state_0 & 0b100000000) != 0 /*
-                                                          * is-state_0 doGeneric(Object, Object,
-                                                          * InteropLibrary, InteropLibrary)
-                                                          */) {
+                        if ((state_0 & 0b100000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
                             while (s7_ != null) {
                                 if ((s7_.leftInterop_.accepts($child0Value)) && (s7_.rightInterop_.accepts($child1Value))) {
                                     break;
@@ -6055,17 +5408,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s7_.rightInterop_ = s7_.insertAccessor((INTEROP_LIBRARY_.create($child1Value)));
                                 VarHandle.storeStoreFence();
                                 $children[childArrayOffset_ + 1] = s7_;
-                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000000 /*
-                                                                                                                         * add
-                                                                                                                         * -
-                                                                                                                         * state_0
-                                                                                                                         * doGeneric
-                                                                                                                         * (
-                                                                                                                         * Object,
-                                                                                                                         * Object,
-                                                                                                                         * InteropLibrary,
-                                                                                                                         * InteropLibrary)
-                                                                                                                         */);
+                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000000 /* add-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
                                 int type0;
                                 int type1;
                                 type0 = 0 /* OBJECT */;
@@ -6095,35 +5438,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             try {
                                 generic1_leftInterop__ = (INTEROP_LIBRARY_.getUncached($child0Value));
                                 generic1_rightInterop__ = (INTEROP_LIBRARY_.getUncached($child1Value));
-                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * exclude
-                                                                                                                 * doGeneric
-                                                                                                                 * (
-                                                                                                                 * Object,
-                                                                                                                 * Object,
-                                                                                                                 * InteropLibrary,
-                                                                                                                 * InteropLibrary)
-                                                                                                                 */);
+                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
                                 $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 1] = null;
-                                state_0 = (short) (state_0 & 0xfffffeff /*
-                                                                         * remove-state_0
-                                                                         * doGeneric(Object, Object,
-                                                                         * InteropLibrary,
-                                                                         * InteropLibrary)
-                                                                         */);
-                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000000 /*
-                                                                                                                          * add
-                                                                                                                          * -
-                                                                                                                          * state_0
-                                                                                                                          * doGeneric
-                                                                                                                          * (
-                                                                                                                          * Object,
-                                                                                                                          * Object,
-                                                                                                                          * InteropLibrary,
-                                                                                                                          * InteropLibrary)
-                                                                                                                          */);
+                                state_0 = (short) (state_0 & 0xfffffeff /* remove-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
+                                $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000000 /* add-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
                                 int type0;
                                 int type1;
                                 type0 = 0 /* OBJECT */;
@@ -6151,8 +5469,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLLessOrEqual_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static boolean SLLessOrEqual_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
@@ -6161,27 +5478,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLLessOrEqual_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b1100) == 0 /* only-active lessOrEqual(long, long) */ && ((state_0 & 0b1110) != 0 /*
-                                                                                                                   * is
-                                                                                                                   * -
-                                                                                                                   * not
-                                                                                                                   * lessOrEqual
-                                                                                                                   * (
-                                                                                                                   * long,
-                                                                                                                   * long)
-                                                                                                                   * &&
-                                                                                                                   * lessOrEqual
-                                                                                                                   * (
-                                                                                                                   * SLBigNumber,
-                                                                                                                   * SLBigNumber)
-                                                                                                                   * &&
-                                                                                                                   * typeError
-                                                                                                                   * (
-                                                                                                                   * Object,
-                                                                                                                   * Object,
-                                                                                                                   * Node,
-                                                                                                                   * int)
-                                                                                                                   */)) {
+                if ((state_0 & 0b1100) == 0 /* only-active lessOrEqual(long, long) */ && ((state_0 & 0b1110) != 0  /* is-not lessOrEqual(long, long) && lessOrEqual(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
                     SLLessOrEqual_SLLessOrEqual_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -6190,8 +5487,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static void SLLessOrEqual_SLLessOrEqual_execute__long_long0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLLessOrEqual_SLLessOrEqual_execute__long_long0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 long $child0Value_;
@@ -6221,8 +5517,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLessOrEqual_SLLessOrEqual_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLLessOrEqual_SLLessOrEqual_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Object $child0Value_ = expectObject($frame, $sp - 2);
@@ -6240,42 +5535,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         return;
                     }
                 }
-                if ((state_0 & 0b100) != 0 /* is-state_0 lessOrEqual(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                                                                                  * extract
-                                                                                                                                                                  * -
-                                                                                                                                                                  * implicit
-                                                                                                                                                                  * -
-                                                                                                                                                                  * state_0
-                                                                                                                                                                  * 0
-                                                                                                                                                                  * :
-                                                                                                                                                                  * SLBigNumber
-                                                                                                                                                                  */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                              * extract
-                                                                                                              * -
-                                                                                                              * implicit
-                                                                                                              * -
-                                                                                                              * state_0
-                                                                                                              * 0
-                                                                                                              * :
-                                                                                                              * SLBigNumber
-                                                                                                              */, $child0Value_);
-                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                       * extract-
-                                                                                       * implicit-
-                                                                                       * state_0 1:
-                                                                                       * SLBigNumber
-                                                                                       */, $child1Value_)) {
-                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                                                    * extract
-                                                                                                                    * -
-                                                                                                                    * implicit
-                                                                                                                    * -
-                                                                                                                    * state_0
-                                                                                                                    * 1
-                                                                                                                    * :
-                                                                                                                    * SLBigNumber
-                                                                                                                    */, $child1Value_);
+                if ((state_0 & 0b100) != 0 /* is-state_0 lessOrEqual(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
                         boolean value = SLLessOrEqualNode.lessOrEqual($child0Value__, $child1Value__);
                         if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
@@ -6300,8 +5563,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLessOrEqual_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value) {
+            private static void SLLessOrEqual_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -6313,19 +5575,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
-                            $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                                      * add
-                                                                                                                      * -
-                                                                                                                      * state_0
-                                                                                                                      * lessOrEqual
-                                                                                                                      * (
-                                                                                                                      * long,
-                                                                                                                      * long)
-                                                                                                                      */);
-                            if ((state_0 & 0b1110) == 0b10/*
-                                                           * is-exact-state_0 lessOrEqual(long,
-                                                           * long)
-                                                           */) {
+                            $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 lessOrEqual(long, long) */);
+                            if ((state_0 & 0b1110) == 0b10/* is-exact-state_0 lessOrEqual(long, long) */) {
                                 $bc[$bci] = (short) (INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0);
                             } else {
                                 $bc[$bci] = (short) (INSTR_C_SL_LESS_OR_EQUAL);
@@ -6359,25 +5610,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             int sLBigNumberCast1;
                             if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
                                 SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
-                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 0:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 1:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                           * add
-                                                                                                                           * -
-                                                                                                                           * state_0
-                                                                                                                           * lessOrEqual
-                                                                                                                           * (
-                                                                                                                           * SLBigNumber,
-                                                                                                                           * SLBigNumber)
-                                                                                                                           */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
+                                $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 lessOrEqual(SLBigNumber, SLBigNumber) */);
                                 $bc[$bci] = (short) (INSTR_C_SL_LESS_OR_EQUAL);
                                 int type0;
                                 int type1;
@@ -6402,17 +5637,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                                    * add
-                                                                                                                    * -
-                                                                                                                    * state_0
-                                                                                                                    * typeError
-                                                                                                                    * (
-                                                                                                                    * Object,
-                                                                                                                    * Object,
-                                                                                                                    * Node,
-                                                                                                                    * int)
-                                                                                                                    */);
+                        $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
                         $bc[$bci] = (short) (INSTR_C_SL_LESS_OR_EQUAL);
                         int type0;
                         int type1;
@@ -6432,8 +5657,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLLessThan_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static boolean SLLessThan_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
@@ -6442,27 +5666,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLLessThan_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b1100) == 0 /* only-active lessThan(long, long) */ && ((state_0 & 0b1110) != 0 /*
-                                                                                                                * is
-                                                                                                                * -
-                                                                                                                * not
-                                                                                                                * lessThan
-                                                                                                                * (
-                                                                                                                * long,
-                                                                                                                * long)
-                                                                                                                * &&
-                                                                                                                * lessThan
-                                                                                                                * (
-                                                                                                                * SLBigNumber,
-                                                                                                                * SLBigNumber)
-                                                                                                                * &&
-                                                                                                                * typeError
-                                                                                                                * (
-                                                                                                                * Object,
-                                                                                                                * Object,
-                                                                                                                * Node,
-                                                                                                                * int)
-                                                                                                                */)) {
+                if ((state_0 & 0b1100) == 0 /* only-active lessThan(long, long) */ && ((state_0 & 0b1110) != 0  /* is-not lessThan(long, long) && lessThan(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
                     SLLessThan_SLLessThan_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -6471,8 +5675,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static void SLLessThan_SLLessThan_execute__long_long0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLLessThan_SLLessThan_execute__long_long0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 long $child0Value_;
@@ -6502,8 +5705,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLessThan_SLLessThan_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLLessThan_SLLessThan_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Object $child0Value_ = expectObject($frame, $sp - 2);
@@ -6521,42 +5723,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         return;
                     }
                 }
-                if ((state_0 & 0b100) != 0 /* is-state_0 lessThan(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                                                                               * extract
-                                                                                                                                                               * -
-                                                                                                                                                               * implicit
-                                                                                                                                                               * -
-                                                                                                                                                               * state_0
-                                                                                                                                                               * 0
-                                                                                                                                                               * :
-                                                                                                                                                               * SLBigNumber
-                                                                                                                                                               */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                              * extract
-                                                                                                              * -
-                                                                                                              * implicit
-                                                                                                              * -
-                                                                                                              * state_0
-                                                                                                              * 0
-                                                                                                              * :
-                                                                                                              * SLBigNumber
-                                                                                                              */, $child0Value_);
-                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                       * extract-
-                                                                                       * implicit-
-                                                                                       * state_0 1:
-                                                                                       * SLBigNumber
-                                                                                       */, $child1Value_)) {
-                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                                                    * extract
-                                                                                                                    * -
-                                                                                                                    * implicit
-                                                                                                                    * -
-                                                                                                                    * state_0
-                                                                                                                    * 1
-                                                                                                                    * :
-                                                                                                                    * SLBigNumber
-                                                                                                                    */, $child1Value_);
+                if ((state_0 & 0b100) != 0 /* is-state_0 lessThan(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
                         boolean value = SLLessThanNode.lessThan($child0Value__, $child1Value__);
                         if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
@@ -6581,8 +5751,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLessThan_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLLessThan_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -6594,18 +5763,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
-                            $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                                  * add
-                                                                                                                  * -
-                                                                                                                  * state_0
-                                                                                                                  * lessThan
-                                                                                                                  * (
-                                                                                                                  * long,
-                                                                                                                  * long)
-                                                                                                                  */);
-                            if ((state_0 & 0b1110) == 0b10/*
-                                                           * is-exact-state_0 lessThan(long, long)
-                                                           */) {
+                            $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 lessThan(long, long) */);
+                            if ((state_0 & 0b1110) == 0b10/* is-exact-state_0 lessThan(long, long) */) {
                                 $bc[$bci] = (short) (INSTR_C_SL_LESS_THAN_Q_LESS_THAN0);
                             } else {
                                 $bc[$bci] = (short) (INSTR_C_SL_LESS_THAN);
@@ -6639,25 +5798,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             int sLBigNumberCast1;
                             if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
                                 SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
-                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 0:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 1:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                       * add
-                                                                                                                       * -
-                                                                                                                       * state_0
-                                                                                                                       * lessThan
-                                                                                                                       * (
-                                                                                                                       * SLBigNumber,
-                                                                                                                       * SLBigNumber)
-                                                                                                                       */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
+                                $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 lessThan(SLBigNumber, SLBigNumber) */);
                                 $bc[$bci] = (short) (INSTR_C_SL_LESS_THAN);
                                 int type0;
                                 int type1;
@@ -6682,17 +5825,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                                * add
-                                                                                                                * -
-                                                                                                                * state_0
-                                                                                                                * typeError
-                                                                                                                * (
-                                                                                                                * Object,
-                                                                                                                * Object,
-                                                                                                                * Node,
-                                                                                                                * int)
-                                                                                                                */);
+                        $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
                         $bc[$bci] = (short) (INSTR_C_SL_LESS_THAN);
                         int type0;
                         int type1;
@@ -6712,8 +5845,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLLogicalNot_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            Object $child0Value) {
+            private static boolean SLLogicalNot_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
                 if (((state_0 & 0b10)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
                     return false;
                 }
@@ -6722,20 +5854,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLLogicalNot_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b100) == 0 /* only-active doBoolean(boolean) */ && ((state_0 & 0b110) != 0 /*
-                                                                                                            * is
-                                                                                                            * -
-                                                                                                            * not
-                                                                                                            * doBoolean
-                                                                                                            * (
-                                                                                                            * boolean)
-                                                                                                            * &&
-                                                                                                            * typeError
-                                                                                                            * (
-                                                                                                            * Object,
-                                                                                                            * Node,
-                                                                                                            * int)
-                                                                                                            */)) {
+                if ((state_0 & 0b100) == 0 /* only-active doBoolean(boolean) */ && ((state_0 & 0b110) != 0  /* is-not doBoolean(boolean) && typeError(Object, Node, int) */)) {
                     SLLogicalNot_SLLogicalNot_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -6744,8 +5863,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static void SLLogicalNot_SLLogicalNot_execute__boolean0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLLogicalNot_SLLogicalNot_execute__boolean0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 boolean $child0Value_;
@@ -6766,8 +5884,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLogicalNot_SLLogicalNot_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLLogicalNot_SLLogicalNot_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Object $child0Value_ = expectObject($frame, $sp - 1);
@@ -6796,8 +5913,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLogicalNot_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLLogicalNot_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -6807,14 +5923,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     short state_0 = $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0];
                     if ($child0Value instanceof Boolean) {
                         boolean $child0Value_ = (boolean) $child0Value;
-                        $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                                * add
-                                                                                                                * -
-                                                                                                                * state_0
-                                                                                                                * doBoolean
-                                                                                                                * (
-                                                                                                                * boolean)
-                                                                                                                */);
+                        $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doBoolean(boolean) */);
                         int type0;
                         if ((state_0 & 0b100) == 0 /* only-active doBoolean(boolean) */) {
                             type0 = 5 /* BOOLEAN */;
@@ -6837,16 +5946,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * state_0
-                                                                                                                 * typeError
-                                                                                                                 * (
-                                                                                                                 * Object,
-                                                                                                                 * Node,
-                                                                                                                 * int)
-                                                                                                                 */);
+                        $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 typeError(Object, Node, int) */);
                         int type0;
                         type0 = 0 /* OBJECT */;
                         doSetResultBoxed($bc, $bci, ($bc[$bci + C_SL_LOGICAL_NOT_POP_INDEXED_OFFSET + 0] & 0xff), type0);
@@ -6862,8 +5962,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLMul_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static boolean SLMul_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
@@ -6872,27 +5971,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLMul_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b1100) == 0 /* only-active mulLong(long, long) */ && ((state_0 & 0b1110) != 0 /*
-                                                                                                               * is
-                                                                                                               * -
-                                                                                                               * not
-                                                                                                               * mulLong
-                                                                                                               * (
-                                                                                                               * long,
-                                                                                                               * long)
-                                                                                                               * &&
-                                                                                                               * mul
-                                                                                                               * (
-                                                                                                               * SLBigNumber,
-                                                                                                               * SLBigNumber)
-                                                                                                               * &&
-                                                                                                               * typeError
-                                                                                                               * (
-                                                                                                               * Object,
-                                                                                                               * Object,
-                                                                                                               * Node,
-                                                                                                               * int)
-                                                                                                               */)) {
+                if ((state_0 & 0b1100) == 0 /* only-active mulLong(long, long) */ && ((state_0 & 0b1110) != 0  /* is-not mulLong(long, long) && mul(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
                     SLMul_SLMul_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -6935,24 +6014,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     Lock lock = $this.getLockAccessor();
                     lock.lock();
                     try {
-                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                * add
-                                                                                                                                * -
-                                                                                                                                * exclude
-                                                                                                                                * mulLong
-                                                                                                                                * (
-                                                                                                                                * long,
-                                                                                                                                * long)
-                                                                                                                                */);
-                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                       * remove
-                                                                                                                                       * -
-                                                                                                                                       * state_0
-                                                                                                                                       * mulLong
-                                                                                                                                       * (
-                                                                                                                                       * long,
-                                                                                                                                       * long)
-                                                                                                                                       */);
+                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude mulLong(long, long) */);
+                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 mulLong(long, long) */);
                     } finally {
                         lock.unlock();
                     }
@@ -6983,24 +6046,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             Lock lock = $this.getLockAccessor();
                             lock.lock();
                             try {
-                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                        * add
-                                                                                                                                        * -
-                                                                                                                                        * exclude
-                                                                                                                                        * mulLong
-                                                                                                                                        * (
-                                                                                                                                        * long,
-                                                                                                                                        * long)
-                                                                                                                                        */);
-                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                               * remove
-                                                                                                                                               * -
-                                                                                                                                               * state_0
-                                                                                                                                               * mulLong
-                                                                                                                                               * (
-                                                                                                                                               * long,
-                                                                                                                                               * long)
-                                                                                                                                               */);
+                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude mulLong(long, long) */);
+                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 mulLong(long, long) */);
                             } finally {
                                 lock.unlock();
                             }
@@ -7009,42 +6056,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                     }
                 }
-                if ((state_0 & 0b100) != 0 /* is-state_0 mul(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                                                                          * extract
-                                                                                                                                                          * -
-                                                                                                                                                          * implicit
-                                                                                                                                                          * -
-                                                                                                                                                          * state_0
-                                                                                                                                                          * 0
-                                                                                                                                                          * :
-                                                                                                                                                          * SLBigNumber
-                                                                                                                                                          */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                              * extract
-                                                                                                              * -
-                                                                                                              * implicit
-                                                                                                              * -
-                                                                                                              * state_0
-                                                                                                              * 0
-                                                                                                              * :
-                                                                                                              * SLBigNumber
-                                                                                                              */, $child0Value_);
-                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                       * extract-
-                                                                                       * implicit-
-                                                                                       * state_0 1:
-                                                                                       * SLBigNumber
-                                                                                       */, $child1Value_)) {
-                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                                                    * extract
-                                                                                                                    * -
-                                                                                                                    * implicit
-                                                                                                                    * -
-                                                                                                                    * state_0
-                                                                                                                    * 1
-                                                                                                                    * :
-                                                                                                                    * SLBigNumber
-                                                                                                                    */, $child1Value_);
+                if ((state_0 & 0b100) != 0 /* is-state_0 mul(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
                         $frame.setObject($sp - 2, SLMulNode.mul($child0Value__, $child1Value__));
                         return;
                     }
@@ -7064,8 +6079,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLMul_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLMul_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -7078,15 +6092,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
-                            $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                            * add
-                                                                                                            * -
-                                                                                                            * state_0
-                                                                                                            * mulLong
-                                                                                                            * (
-                                                                                                            * long,
-                                                                                                            * long)
-                                                                                                            */);
+                            $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 mulLong(long, long) */);
                             int type0;
                             int type1;
                             if ((state_0 & 0b1100) == 0 /* only-active mulLong(long, long) */) {
@@ -7112,24 +6118,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 lock.lock();
                                 try {
-                                    $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                            * add
-                                                                                                                                            * -
-                                                                                                                                            * exclude
-                                                                                                                                            * mulLong
-                                                                                                                                            * (
-                                                                                                                                            * long,
-                                                                                                                                            * long)
-                                                                                                                                            */);
-                                    $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                                   * remove
-                                                                                                                                                   * -
-                                                                                                                                                   * state_0
-                                                                                                                                                   * mulLong
-                                                                                                                                                   * (
-                                                                                                                                                   * long,
-                                                                                                                                                   * long)
-                                                                                                                                                   */);
+                                    $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude mulLong(long, long) */);
+                                    $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 mulLong(long, long) */);
                                 } finally {
                                     lock.unlock();
                                 }
@@ -7145,38 +6135,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             int sLBigNumberCast1;
                             if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
                                 SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
-                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                               * add
-                                                                                                               * -
-                                                                                                               * exclude
-                                                                                                               * mulLong
-                                                                                                               * (
-                                                                                                               * long,
-                                                                                                               * long)
-                                                                                                               */);
-                                state_0 = (short) (state_0 & 0xfffffffd /*
-                                                                         * remove-state_0
-                                                                         * mulLong(long, long)
-                                                                         */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 0:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 1:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * state_0
-                                                                                                                 * mul
-                                                                                                                 * (
-                                                                                                                 * SLBigNumber,
-                                                                                                                 * SLBigNumber)
-                                                                                                                 */);
+                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude mulLong(long, long) */);
+                                state_0 = (short) (state_0 & 0xfffffffd /* remove-state_0 mulLong(long, long) */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
+                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 mul(SLBigNumber, SLBigNumber) */);
                                 int type0;
                                 int type1;
                                 type0 = 0 /* OBJECT */;
@@ -7195,17 +6158,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                          * add
-                                                                                                          * -
-                                                                                                          * state_0
-                                                                                                          * typeError
-                                                                                                          * (
-                                                                                                          * Object,
-                                                                                                          * Object,
-                                                                                                          * Node,
-                                                                                                          * int)
-                                                                                                          */);
+                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
                         int type0;
                         int type1;
                         type0 = 0 /* OBJECT */;
@@ -7226,8 +6179,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             @SuppressWarnings("static-method")
             @TruffleBoundary
-            private static Object SLReadProperty_readArray1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value,
-                            Object $child1Value) {
+            private static Object SLReadProperty_readArray1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 {
@@ -7241,19 +6193,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             @SuppressWarnings("static-method")
             @TruffleBoundary
-            private static Object SLReadProperty_readSLObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            SLObject $child0Value_, Object $child1Value) {
+            private static Object SLReadProperty_readSLObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, SLObject $child0Value_, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 {
                     Node readSLObject1_node__ = ($this);
                     int readSLObject1_bci__ = ($bci);
                     DynamicObjectLibrary readSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
-                    SLToTruffleStringNode readSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                    $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 7]);
+                    SLToTruffleStringNode readSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 7]);
                     if (readSLObject1_toTruffleStringNode__ != null) {
-                        return SLReadPropertyNode.readSLObject($child0Value_, $child1Value, readSLObject1_node__, readSLObject1_bci__, readSLObject1_objectLibrary__,
-                                        readSLObject1_toTruffleStringNode__);
+                        return SLReadPropertyNode.readSLObject($child0Value_, $child1Value, readSLObject1_node__, readSLObject1_bci__, readSLObject1_objectLibrary__, readSLObject1_toTruffleStringNode__);
                     }
                     throw BoundaryCallFailedException.INSTANCE;
                 }
@@ -7261,8 +6210,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             @SuppressWarnings("static-method")
             @TruffleBoundary
-            private static Object SLReadProperty_readObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value,
-                            Object $child1Value) {
+            private static Object SLReadProperty_readObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 {
@@ -7284,32 +6232,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 int constArrayOffset_;
                 Object $child0Value_ = expectObject($frame, $sp - 2);
                 Object $child1Value_ = expectObject($frame, $sp - 1);
-                if ((state_0 & 0b1111110) != 0 /*
-                                                * is-state_0 readArray(Object, Object, Node, int,
-                                                * InteropLibrary, InteropLibrary) ||
-                                                * readArray(Object, Object, Node, int,
-                                                * InteropLibrary, InteropLibrary) ||
-                                                * readSLObject(SLObject, Object, Node, int,
-                                                * DynamicObjectLibrary, SLToTruffleStringNode) ||
-                                                * readSLObject(SLObject, Object, Node, int,
-                                                * DynamicObjectLibrary, SLToTruffleStringNode) ||
-                                                * readObject(Object, Object, Node, int,
-                                                * InteropLibrary, SLToMemberNode) ||
-                                                * readObject(Object, Object, Node, int,
-                                                * InteropLibrary, SLToMemberNode)
-                                                */) {
-                    if ((state_0 & 0b110) != 0 /*
-                                                * is-state_0 readArray(Object, Object, Node, int,
-                                                * InteropLibrary, InteropLibrary) ||
-                                                * readArray(Object, Object, Node, int,
-                                                * InteropLibrary, InteropLibrary)
-                                                */) {
-                        if ((state_0 & 0b10) != 0 /*
-                                                   * is-state_0 readArray(Object, Object, Node, int,
-                                                   * InteropLibrary, InteropLibrary)
-                                                   */) {
-                            SLReadProperty_ReadArray0Data s0_ = ((SLReadProperty_ReadArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) +
-                                            0) + 0]);
+                if ((state_0 & 0b1111110) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) || readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) || readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) || readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) || readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) || readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                    if ((state_0 & 0b110) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) || readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        if ((state_0 & 0b10) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                            SLReadProperty_ReadArray0Data s0_ = ((SLReadProperty_ReadArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 0]);
                             while (s0_ != null) {
                                 if ((s0_.arrays_.accepts($child0Value_)) && (s0_.numbers_.accepts($child1Value_)) && (s0_.arrays_.hasArrayElements($child0Value_))) {
                                     Node node__ = ($this);
@@ -7320,10 +6246,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s0_ = s0_.next_;
                             }
                         }
-                        if ((state_0 & 0b100) != 0 /*
-                                                    * is-state_0 readArray(Object, Object, Node,
-                                                    * int, InteropLibrary, InteropLibrary)
-                                                    */) {
+                        if ((state_0 & 0b100) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
                             EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
                             Node prev_ = encapsulating_.set($this);
                             try {
@@ -7339,21 +6262,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             }
                         }
                     }
-                    if ((state_0 & 0b11000) != 0 /*
-                                                  * is-state_0 readSLObject(SLObject, Object, Node,
-                                                  * int, DynamicObjectLibrary,
-                                                  * SLToTruffleStringNode) || readSLObject(SLObject,
-                                                  * Object, Node, int, DynamicObjectLibrary,
-                                                  * SLToTruffleStringNode)
-                                                  */ && $child0Value_ instanceof SLObject) {
+                    if ((state_0 & 0b11000) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) || readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */ && $child0Value_ instanceof SLObject) {
                         SLObject $child0Value__ = (SLObject) $child0Value_;
-                        if ((state_0 & 0b1000) != 0 /*
-                                                     * is-state_0 readSLObject(SLObject, Object,
-                                                     * Node, int, DynamicObjectLibrary,
-                                                     * SLToTruffleStringNode)
-                                                     */) {
-                            SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                            $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
+                        if ((state_0 & 0b1000) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                            SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
                             while (s2_ != null) {
                                 if ((s2_.objectLibrary_.accepts($child0Value__))) {
                                     Node node__1 = ($this);
@@ -7364,27 +6276,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s2_ = s2_.next_;
                             }
                         }
-                        if ((state_0 & 0b10000) != 0 /*
-                                                      * is-state_0 readSLObject(SLObject, Object,
-                                                      * Node, int, DynamicObjectLibrary,
-                                                      * SLToTruffleStringNode)
-                                                      */) {
+                        if ((state_0 & 0b10000) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                             $frame.setObject($sp - 2, SLReadProperty_readSLObject1Boundary_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value__, $child1Value_));
                             return;
                         }
                     }
-                    if ((state_0 & 0b1100000) != 0 /*
-                                                    * is-state_0 readObject(Object, Object, Node,
-                                                    * int, InteropLibrary, SLToMemberNode) ||
-                                                    * readObject(Object, Object, Node, int,
-                                                    * InteropLibrary, SLToMemberNode)
-                                                    */) {
-                        if ((state_0 & 0b100000) != 0 /*
-                                                       * is-state_0 readObject(Object, Object, Node,
-                                                       * int, InteropLibrary, SLToMemberNode)
-                                                       */) {
-                            SLReadProperty_ReadObject0Data s4_ = ((SLReadProperty_ReadObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) +
-                                            0) + 8]);
+                    if ((state_0 & 0b1100000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) || readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        if ((state_0 & 0b100000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                            SLReadProperty_ReadObject0Data s4_ = ((SLReadProperty_ReadObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 8]);
                             while (s4_ != null) {
                                 if ((s4_.objects_.accepts($child0Value_)) && (!(SLReadPropertyNode.isSLObject($child0Value_))) && (s4_.objects_.hasMembers($child0Value_))) {
                                     Node node__2 = ($this);
@@ -7395,10 +6294,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s4_ = s4_.next_;
                             }
                         }
-                        if ((state_0 & 0b1000000) != 0 /*
-                                                        * is-state_0 readObject(Object, Object,
-                                                        * Node, int, InteropLibrary, SLToMemberNode)
-                                                        */) {
+                        if ((state_0 & 0b1000000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
                             EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
                             Node prev_ = encapsulating_.set($this);
                             try {
@@ -7420,8 +6316,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLReadProperty_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value) {
+            private static void SLReadProperty_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -7433,17 +6328,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     {
                         int bci__ = 0;
                         Node node__ = null;
-                        if (((exclude & 0b1)) == 0 /*
-                                                    * is-not-exclude readArray(Object, Object, Node,
-                                                    * int, InteropLibrary, InteropLibrary)
-                                                    */) {
+                        if (((exclude & 0b1)) == 0 /* is-not-exclude readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
                             int count0_ = 0;
-                            SLReadProperty_ReadArray0Data s0_ = ((SLReadProperty_ReadArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) +
-                                            0) + 0]);
-                            if ((state_0 & 0b10) != 0 /*
-                                                       * is-state_0 readArray(Object, Object, Node,
-                                                       * int, InteropLibrary, InteropLibrary)
-                                                       */) {
+                            SLReadProperty_ReadArray0Data s0_ = ((SLReadProperty_ReadArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 0]);
+                            if ((state_0 & 0b10) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
                                 while (s0_ != null) {
                                     if ((s0_.arrays_.accepts($child0Value)) && (s0_.numbers_.accepts($child1Value)) && (s0_.arrays_.hasArrayElements($child0Value))) {
                                         node__ = ($this);
@@ -7467,19 +6355,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         s0_.numbers_ = s0_.insertAccessor((INTEROP_LIBRARY_.create($child1Value)));
                                         VarHandle.storeStoreFence();
                                         $children[childArrayOffset_ + 0] = s0_;
-                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                                                  * add
-                                                                                                                                  * -
-                                                                                                                                  * state_0
-                                                                                                                                  * readArray
-                                                                                                                                  * (
-                                                                                                                                  * Object,
-                                                                                                                                  * Object,
-                                                                                                                                  * Node,
-                                                                                                                                  * int,
-                                                                                                                                  * InteropLibrary,
-                                                                                                                                  * InteropLibrary)
-                                                                                                                                  */);
+                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         $bc[$bci] = (short) (INSTR_C_SL_READ_PROPERTY);
                                         int type0;
                                         int type1;
@@ -7513,41 +6389,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         readArray1_node__ = ($this);
                                         readArray1_bci__ = ($bci);
                                         readArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
-                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                                                 * add
-                                                                                                                                 * -
-                                                                                                                                 * exclude
-                                                                                                                                 * readArray
-                                                                                                                                 * (
-                                                                                                                                 * Object,
-                                                                                                                                 * Object,
-                                                                                                                                 * Node,
-                                                                                                                                 * int,
-                                                                                                                                 * InteropLibrary,
-                                                                                                                                 * InteropLibrary)
-                                                                                                                                 */);
+                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 0] = null;
-                                        state_0 = (short) (state_0 & 0xfffffffd /*
-                                                                                 * remove-state_0
-                                                                                 * readArray(Object,
-                                                                                 * Object, Node,
-                                                                                 * int,
-                                                                                 * InteropLibrary,
-                                                                                 * InteropLibrary)
-                                                                                 */);
-                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                                   * add
-                                                                                                                                   * -
-                                                                                                                                   * state_0
-                                                                                                                                   * readArray
-                                                                                                                                   * (
-                                                                                                                                   * Object,
-                                                                                                                                   * Object,
-                                                                                                                                   * Node,
-                                                                                                                                   * int,
-                                                                                                                                   * InteropLibrary,
-                                                                                                                                   * InteropLibrary)
-                                                                                                                                   */);
+                                        state_0 = (short) (state_0 & 0xfffffffd /* remove-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         $bc[$bci] = (short) (INSTR_C_SL_READ_PROPERTY);
                                         int type0;
                                         int type1;
@@ -7557,8 +6402,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         doSetResultBoxed($bc, $bci, (($bc[$bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0] >> 8) & 0xff), type1);
                                         lock.unlock();
                                         hasLock = false;
-                                        $frame.setObject($sp - 2,
-                                                        SLReadPropertyNode.readArray($child0Value, $child1Value, readArray1_node__, readArray1_bci__, readArray1_arrays__, readArray1_numbers__));
+                                        $frame.setObject($sp - 2, SLReadPropertyNode.readArray($child0Value, $child1Value, readArray1_node__, readArray1_bci__, readArray1_arrays__, readArray1_numbers__));
                                         return;
                                     }
                                 }
@@ -7572,20 +6416,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         {
                             int bci__1 = 0;
                             Node node__1 = null;
-                            if (((exclude & 0b10)) == 0 /*
-                                                         * is-not-exclude readSLObject(SLObject,
-                                                         * Object, Node, int, DynamicObjectLibrary,
-                                                         * SLToTruffleStringNode)
-                                                         */) {
+                            if (((exclude & 0b10)) == 0 /* is-not-exclude readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                                 int count2_ = 0;
-                                SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                                $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
-                                if ((state_0 & 0b1000) != 0 /*
-                                                             * is-state_0 readSLObject(SLObject,
-                                                             * Object, Node, int,
-                                                             * DynamicObjectLibrary,
-                                                             * SLToTruffleStringNode)
-                                                             */) {
+                                SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
+                                if ((state_0 & 0b1000) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                                     while (s2_ != null) {
                                         if ((s2_.objectLibrary_.accepts($child0Value_))) {
                                             node__1 = ($this);
@@ -7606,26 +6440,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         s2_.toTruffleStringNode_ = s2_.insertAccessor((SLToTruffleStringNodeGen.create()));
                                         VarHandle.storeStoreFence();
                                         $children[childArrayOffset_ + 4] = s2_;
-                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                                                    * add
-                                                                                                                                    * -
-                                                                                                                                    * state_0
-                                                                                                                                    * readSLObject
-                                                                                                                                    * (
-                                                                                                                                    * SLObject,
-                                                                                                                                    * Object,
-                                                                                                                                    * Node,
-                                                                                                                                    * int,
-                                                                                                                                    * DynamicObjectLibrary,
-                                                                                                                                    * SLToTruffleStringNode)
-                                                                                                                                    */);
-                                        if ((state_0 & 0b1111110) == 0b1000/*
-                                                                            * is-exact-state_0
-                                                                            * readSLObject(SLObject,
-                                                                            * Object, Node, int,
-                                                                            * DynamicObjectLibrary,
-                                                                            * SLToTruffleStringNode)
-                                                                            */) {
+                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                                        if ((state_0 & 0b1111110) == 0b1000/* is-exact-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                                             $bc[$bci] = (short) (INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0);
                                         } else {
                                             $bc[$bci] = (short) (INSTR_C_SL_READ_PROPERTY);
@@ -7654,40 +6470,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             readSLObject1_bci__ = ($bci);
                             readSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
                             $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 7] = $this.insertAccessor((SLToTruffleStringNodeGen.create()));
-                            $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b10 /*
-                                                                                                                      * add
-                                                                                                                      * -
-                                                                                                                      * exclude
-                                                                                                                      * readSLObject
-                                                                                                                      * (
-                                                                                                                      * SLObject,
-                                                                                                                      * Object,
-                                                                                                                      * Node,
-                                                                                                                      * int,
-                                                                                                                      * DynamicObjectLibrary,
-                                                                                                                      * SLToTruffleStringNode)
-                                                                                                                      */);
+                            $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b10 /* add-exclude readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
                             $children[childArrayOffset_ + 4] = null;
-                            state_0 = (short) (state_0 & 0xfffffff7 /*
-                                                                     * remove-state_0
-                                                                     * readSLObject(SLObject,
-                                                                     * Object, Node, int,
-                                                                     * DynamicObjectLibrary,
-                                                                     * SLToTruffleStringNode)
-                                                                     */);
-                            $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /*
-                                                                                                                         * add
-                                                                                                                         * -
-                                                                                                                         * state_0
-                                                                                                                         * readSLObject
-                                                                                                                         * (
-                                                                                                                         * SLObject,
-                                                                                                                         * Object,
-                                                                                                                         * Node,
-                                                                                                                         * int,
-                                                                                                                         * DynamicObjectLibrary,
-                                                                                                                         * SLToTruffleStringNode)
-                                                                                                                         */);
+                            state_0 = (short) (state_0 & 0xfffffff7 /* remove-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                            $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
                             $bc[$bci] = (short) (INSTR_C_SL_READ_PROPERTY);
                             int type0;
                             int type1;
@@ -7697,26 +6483,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             doSetResultBoxed($bc, $bci, (($bc[$bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0] >> 8) & 0xff), type1);
                             lock.unlock();
                             hasLock = false;
-                            $frame.setObject($sp - 2, SLReadPropertyNode.readSLObject($child0Value_, $child1Value, readSLObject1_node__, readSLObject1_bci__, readSLObject1_objectLibrary__,
-                                            ((SLToTruffleStringNode) $children[childArrayOffset_ + 7])));
+                            $frame.setObject($sp - 2, SLReadPropertyNode.readSLObject($child0Value_, $child1Value, readSLObject1_node__, readSLObject1_bci__, readSLObject1_objectLibrary__, ((SLToTruffleStringNode) $children[childArrayOffset_ + 7])));
                             return;
                         }
                     }
                     {
                         int bci__2 = 0;
                         Node node__2 = null;
-                        if (((exclude & 0b100)) == 0 /*
-                                                      * is-not-exclude readObject(Object, Object,
-                                                      * Node, int, InteropLibrary, SLToMemberNode)
-                                                      */) {
+                        if (((exclude & 0b100)) == 0 /* is-not-exclude readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
                             int count4_ = 0;
-                            SLReadProperty_ReadObject0Data s4_ = ((SLReadProperty_ReadObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) +
-                                            0) + 8]);
-                            if ((state_0 & 0b100000) != 0 /*
-                                                           * is-state_0 readObject(Object, Object,
-                                                           * Node, int, InteropLibrary,
-                                                           * SLToMemberNode)
-                                                           */) {
+                            SLReadProperty_ReadObject0Data s4_ = ((SLReadProperty_ReadObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 8]);
+                            if ((state_0 & 0b100000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
                                 while (s4_ != null) {
                                     if ((s4_.objects_.accepts($child0Value)) && (!(SLReadPropertyNode.isSLObject($child0Value))) && (s4_.objects_.hasMembers($child0Value))) {
                                         node__2 = ($this);
@@ -7739,19 +6516,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         s4_.asMember_ = s4_.insertAccessor((SLToMemberNodeGen.create()));
                                         VarHandle.storeStoreFence();
                                         $children[childArrayOffset_ + 8] = s4_;
-                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /*
-                                                                                                                                      * add
-                                                                                                                                      * -
-                                                                                                                                      * state_0
-                                                                                                                                      * readObject
-                                                                                                                                      * (
-                                                                                                                                      * Object,
-                                                                                                                                      * Object,
-                                                                                                                                      * Node,
-                                                                                                                                      * int,
-                                                                                                                                      * InteropLibrary,
-                                                                                                                                      * SLToMemberNode)
-                                                                                                                                      */);
+                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                         $bc[$bci] = (short) (INSTR_C_SL_READ_PROPERTY);
                                         int type0;
                                         int type1;
@@ -7783,43 +6548,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     if ((readObject1_objects__.hasMembers($child0Value))) {
                                         readObject1_node__ = ($this);
                                         readObject1_bci__ = ($bci);
-                                        $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 11] = $this.insertAccessor(
-                                                        (SLToMemberNodeGen.create()));
-                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b100 /*
-                                                                                                                                   * add
-                                                                                                                                   * -
-                                                                                                                                   * exclude
-                                                                                                                                   * readObject
-                                                                                                                                   * (
-                                                                                                                                   * Object,
-                                                                                                                                   * Object,
-                                                                                                                                   * Node,
-                                                                                                                                   * int,
-                                                                                                                                   * InteropLibrary,
-                                                                                                                                   * SLToMemberNode)
-                                                                                                                                   */);
+                                        $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 11] = $this.insertAccessor((SLToMemberNodeGen.create()));
+                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b100 /* add-exclude readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                         $children[childArrayOffset_ + 8] = null;
-                                        state_0 = (short) (state_0 & 0xffffffdf /*
-                                                                                 * remove-state_0
-                                                                                 * readObject(
-                                                                                 * Object, Object,
-                                                                                 * Node, int,
-                                                                                 * InteropLibrary,
-                                                                                 * SLToMemberNode)
-                                                                                 */);
-                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /*
-                                                                                                                                       * add
-                                                                                                                                       * -
-                                                                                                                                       * state_0
-                                                                                                                                       * readObject
-                                                                                                                                       * (
-                                                                                                                                       * Object,
-                                                                                                                                       * Object,
-                                                                                                                                       * Node,
-                                                                                                                                       * int,
-                                                                                                                                       * InteropLibrary,
-                                                                                                                                       * SLToMemberNode)
-                                                                                                                                       */);
+                                        state_0 = (short) (state_0 & 0xffffffdf /* remove-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /* add-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                         $bc[$bci] = (short) (INSTR_C_SL_READ_PROPERTY);
                                         int type0;
                                         int type1;
@@ -7829,8 +6562,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         doSetResultBoxed($bc, $bci, (($bc[$bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0] >> 8) & 0xff), type1);
                                         lock.unlock();
                                         hasLock = false;
-                                        $frame.setObject($sp - 2, SLReadPropertyNode.readObject($child0Value, $child1Value, readObject1_node__, readObject1_bci__, readObject1_objects__,
-                                                        ((SLToMemberNode) $children[childArrayOffset_ + 11])));
+                                        $frame.setObject($sp - 2, SLReadPropertyNode.readObject($child0Value, $child1Value, readObject1_node__, readObject1_bci__, readObject1_objects__, ((SLToMemberNode) $children[childArrayOffset_ + 11])));
                                         return;
                                     }
                                 }
@@ -7839,7 +6571,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             }
                         }
                     }
-                    throw new UnsupportedSpecializationException($this, new Node[]{null, null}, $frame.getValue($sp - 2), $frame.getValue($sp - 1));
+                    throw new UnsupportedSpecializationException($this, new Node[] {null, null}, $frame.getValue($sp - 2), $frame.getValue($sp - 1));
                 } finally {
                     if (hasLock) {
                         lock.unlock();
@@ -7847,8 +6579,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLSub_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static boolean SLSub_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
@@ -7857,27 +6588,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLSub_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b1100) == 0 /* only-active subLong(long, long) */ && ((state_0 & 0b1110) != 0 /*
-                                                                                                               * is
-                                                                                                               * -
-                                                                                                               * not
-                                                                                                               * subLong
-                                                                                                               * (
-                                                                                                               * long,
-                                                                                                               * long)
-                                                                                                               * &&
-                                                                                                               * sub
-                                                                                                               * (
-                                                                                                               * SLBigNumber,
-                                                                                                               * SLBigNumber)
-                                                                                                               * &&
-                                                                                                               * typeError
-                                                                                                               * (
-                                                                                                               * Object,
-                                                                                                               * Object,
-                                                                                                               * Node,
-                                                                                                               * int)
-                                                                                                               */)) {
+                if ((state_0 & 0b1100) == 0 /* only-active subLong(long, long) */ && ((state_0 & 0b1110) != 0  /* is-not subLong(long, long) && sub(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
                     SLSub_SLSub_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -7920,24 +6631,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     Lock lock = $this.getLockAccessor();
                     lock.lock();
                     try {
-                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                * add
-                                                                                                                                * -
-                                                                                                                                * exclude
-                                                                                                                                * subLong
-                                                                                                                                * (
-                                                                                                                                * long,
-                                                                                                                                * long)
-                                                                                                                                */);
-                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                       * remove
-                                                                                                                                       * -
-                                                                                                                                       * state_0
-                                                                                                                                       * subLong
-                                                                                                                                       * (
-                                                                                                                                       * long,
-                                                                                                                                       * long)
-                                                                                                                                       */);
+                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude subLong(long, long) */);
+                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 subLong(long, long) */);
                     } finally {
                         lock.unlock();
                     }
@@ -7968,24 +6663,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             Lock lock = $this.getLockAccessor();
                             lock.lock();
                             try {
-                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                        * add
-                                                                                                                                        * -
-                                                                                                                                        * exclude
-                                                                                                                                        * subLong
-                                                                                                                                        * (
-                                                                                                                                        * long,
-                                                                                                                                        * long)
-                                                                                                                                        */);
-                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                               * remove
-                                                                                                                                               * -
-                                                                                                                                               * state_0
-                                                                                                                                               * subLong
-                                                                                                                                               * (
-                                                                                                                                               * long,
-                                                                                                                                               * long)
-                                                                                                                                               */);
+                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude subLong(long, long) */);
+                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 subLong(long, long) */);
                             } finally {
                                 lock.unlock();
                             }
@@ -7994,42 +6673,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                     }
                 }
-                if ((state_0 & 0b100) != 0 /* is-state_0 sub(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                                                                          * extract
-                                                                                                                                                          * -
-                                                                                                                                                          * implicit
-                                                                                                                                                          * -
-                                                                                                                                                          * state_0
-                                                                                                                                                          * 0
-                                                                                                                                                          * :
-                                                                                                                                                          * SLBigNumber
-                                                                                                                                                          */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /*
-                                                                                                              * extract
-                                                                                                              * -
-                                                                                                              * implicit
-                                                                                                              * -
-                                                                                                              * state_0
-                                                                                                              * 0
-                                                                                                              * :
-                                                                                                              * SLBigNumber
-                                                                                                              */, $child0Value_);
-                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                       * extract-
-                                                                                       * implicit-
-                                                                                       * state_0 1:
-                                                                                       * SLBigNumber
-                                                                                       */, $child1Value_)) {
-                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /*
-                                                                                                                    * extract
-                                                                                                                    * -
-                                                                                                                    * implicit
-                                                                                                                    * -
-                                                                                                                    * state_0
-                                                                                                                    * 1
-                                                                                                                    * :
-                                                                                                                    * SLBigNumber
-                                                                                                                    */, $child1Value_);
+                if ((state_0 & 0b100) != 0 /* is-state_0 sub(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                    if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                        SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
                         $frame.setObject($sp - 2, SLSubNode.sub($child0Value__, $child1Value__));
                         return;
                     }
@@ -8049,8 +6696,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLSub_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLSub_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -8063,15 +6709,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
-                            $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                            * add
-                                                                                                            * -
-                                                                                                            * state_0
-                                                                                                            * subLong
-                                                                                                            * (
-                                                                                                            * long,
-                                                                                                            * long)
-                                                                                                            */);
+                            $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 subLong(long, long) */);
                             int type0;
                             int type1;
                             if ((state_0 & 0b1100) == 0 /* only-active subLong(long, long) */) {
@@ -8097,24 +6735,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 lock.lock();
                                 try {
-                                    $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                            * add
-                                                                                                                                            * -
-                                                                                                                                            * exclude
-                                                                                                                                            * subLong
-                                                                                                                                            * (
-                                                                                                                                            * long,
-                                                                                                                                            * long)
-                                                                                                                                            */);
-                                    $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                                   * remove
-                                                                                                                                                   * -
-                                                                                                                                                   * state_0
-                                                                                                                                                   * subLong
-                                                                                                                                                   * (
-                                                                                                                                                   * long,
-                                                                                                                                                   * long)
-                                                                                                                                                   */);
+                                    $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude subLong(long, long) */);
+                                    $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 subLong(long, long) */);
                                 } finally {
                                     lock.unlock();
                                 }
@@ -8130,38 +6752,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             int sLBigNumberCast1;
                             if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
                                 SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
-                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                               * add
-                                                                                                               * -
-                                                                                                               * exclude
-                                                                                                               * subLong
-                                                                                                               * (
-                                                                                                               * long,
-                                                                                                               * long)
-                                                                                                               */);
-                                state_0 = (short) (state_0 & 0xfffffffd /*
-                                                                         * remove-state_0
-                                                                         * subLong(long, long)
-                                                                         */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 0:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /*
-                                                                                      * set-implicit
-                                                                                      * -state_0 1:
-                                                                                      * SLBigNumber
-                                                                                      */);
-                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * state_0
-                                                                                                                 * sub
-                                                                                                                 * (
-                                                                                                                 * SLBigNumber,
-                                                                                                                 * SLBigNumber)
-                                                                                                                 */);
+                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude subLong(long, long) */);
+                                state_0 = (short) (state_0 & 0xfffffffd /* remove-state_0 subLong(long, long) */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
+                                state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
+                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 sub(SLBigNumber, SLBigNumber) */);
                                 int type0;
                                 int type1;
                                 type0 = 0 /* OBJECT */;
@@ -8180,17 +6775,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                          * add
-                                                                                                          * -
-                                                                                                          * state_0
-                                                                                                          * typeError
-                                                                                                          * (
-                                                                                                          * Object,
-                                                                                                          * Object,
-                                                                                                          * Node,
-                                                                                                          * int)
-                                                                                                          */);
+                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
                         int type0;
                         int type1;
                         type0 = 0 /* OBJECT */;
@@ -8211,8 +6796,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             @SuppressWarnings("static-method")
             @TruffleBoundary
-            private static Object SLWriteProperty_writeArray1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value,
-                            Object $child1Value, Object $child2Value) {
+            private static Object SLWriteProperty_writeArray1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value, Object $child2Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 {
@@ -8226,14 +6810,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             @SuppressWarnings("static-method")
             @TruffleBoundary
-            private static Object SLWriteProperty_writeSLObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            SLObject $child0Value_, Object $child1Value, Object $child2Value) {
+            private static Object SLWriteProperty_writeSLObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, SLObject $child0Value_, Object $child1Value, Object $child2Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 {
                     DynamicObjectLibrary writeSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
-                    SLToTruffleStringNode writeSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                    $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 6]);
+                    SLToTruffleStringNode writeSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 6]);
                     if (writeSLObject1_toTruffleStringNode__ != null) {
                         return SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, writeSLObject1_objectLibrary__, writeSLObject1_toTruffleStringNode__);
                     }
@@ -8243,8 +6825,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             @SuppressWarnings("static-method")
             @TruffleBoundary
-            private static Object SLWriteProperty_writeObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value,
-                            Object $child1Value, Object $child2Value) {
+            private static Object SLWriteProperty_writeObject1Boundary_(OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value, Object $child2Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
@@ -8256,8 +6837,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         InteropLibrary writeObject1_objectLibrary__ = (INTEROP_LIBRARY_.getUncached($child0Value));
                         SLToMemberNode writeObject1_asMember__ = ((SLToMemberNode) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 10]);
                         if (writeObject1_asMember__ != null) {
-                            return SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, writeObject1_node__, writeObject1_bci__, writeObject1_objectLibrary__,
-                                            writeObject1_asMember__);
+                            return SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, writeObject1_node__, writeObject1_bci__, writeObject1_objectLibrary__, writeObject1_asMember__);
                         }
                         throw BoundaryCallFailedException.INSTANCE;
                     }
@@ -8274,32 +6854,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 Object $child0Value_ = expectObject($frame, $sp - 3);
                 Object $child1Value_ = expectObject($frame, $sp - 2);
                 Object $child2Value_ = expectObject($frame, $sp - 1);
-                if ((state_0 & 0b1111110) != 0 /*
-                                                * is-state_0 writeArray(Object, Object, Object,
-                                                * Node, int, InteropLibrary, InteropLibrary) ||
-                                                * writeArray(Object, Object, Object, Node, int,
-                                                * InteropLibrary, InteropLibrary) ||
-                                                * writeSLObject(SLObject, Object, Object,
-                                                * DynamicObjectLibrary, SLToTruffleStringNode) ||
-                                                * writeSLObject(SLObject, Object, Object,
-                                                * DynamicObjectLibrary, SLToTruffleStringNode) ||
-                                                * writeObject(Object, Object, Object, Node, int,
-                                                * InteropLibrary, SLToMemberNode) ||
-                                                * writeObject(Object, Object, Object, Node, int,
-                                                * InteropLibrary, SLToMemberNode)
-                                                */) {
-                    if ((state_0 & 0b110) != 0 /*
-                                                * is-state_0 writeArray(Object, Object, Object,
-                                                * Node, int, InteropLibrary, InteropLibrary) ||
-                                                * writeArray(Object, Object, Object, Node, int,
-                                                * InteropLibrary, InteropLibrary)
-                                                */) {
-                        if ((state_0 & 0b10) != 0 /*
-                                                   * is-state_0 writeArray(Object, Object, Object,
-                                                   * Node, int, InteropLibrary, InteropLibrary)
-                                                   */) {
-                            SLWriteProperty_WriteArray0Data s0_ = ((SLWriteProperty_WriteArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                            $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0]);
+                if ((state_0 & 0b1111110) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) || writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) || writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) || writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) || writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) || writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                    if ((state_0 & 0b110) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) || writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        if ((state_0 & 0b10) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                            SLWriteProperty_WriteArray0Data s0_ = ((SLWriteProperty_WriteArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0]);
                             while (s0_ != null) {
                                 if ((s0_.arrays_.accepts($child0Value_)) && (s0_.numbers_.accepts($child1Value_)) && (s0_.arrays_.hasArrayElements($child0Value_))) {
                                     Node node__ = ($this);
@@ -8310,18 +6868,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s0_ = s0_.next_;
                             }
                         }
-                        if ((state_0 & 0b100) != 0 /*
-                                                    * is-state_0 writeArray(Object, Object, Object,
-                                                    * Node, int, InteropLibrary, InteropLibrary)
-                                                    */) {
+                        if ((state_0 & 0b100) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
                             EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
                             Node prev_ = encapsulating_.set($this);
                             try {
                                 {
                                     InteropLibrary writeArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
                                     if ((writeArray1_arrays__.hasArrayElements($child0Value_))) {
-                                        $frame.setObject($sp - 3,
-                                                        SLWriteProperty_writeArray1Boundary_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_, $child2Value_));
+                                        $frame.setObject($sp - 3, SLWriteProperty_writeArray1Boundary_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_, $child2Value_));
                                         return;
                                     }
                                 }
@@ -8330,21 +6884,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             }
                         }
                     }
-                    if ((state_0 & 0b11000) != 0 /*
-                                                  * is-state_0 writeSLObject(SLObject, Object,
-                                                  * Object, DynamicObjectLibrary,
-                                                  * SLToTruffleStringNode) ||
-                                                  * writeSLObject(SLObject, Object, Object,
-                                                  * DynamicObjectLibrary, SLToTruffleStringNode)
-                                                  */ && $child0Value_ instanceof SLObject) {
+                    if ((state_0 & 0b11000) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) || writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */ && $child0Value_ instanceof SLObject) {
                         SLObject $child0Value__ = (SLObject) $child0Value_;
-                        if ((state_0 & 0b1000) != 0 /*
-                                                     * is-state_0 writeSLObject(SLObject, Object,
-                                                     * Object, DynamicObjectLibrary,
-                                                     * SLToTruffleStringNode)
-                                                     */) {
-                            SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                            $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
+                        if ((state_0 & 0b1000) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                            SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
                             while (s2_ != null) {
                                 if ((s2_.objectLibrary_.accepts($child0Value__))) {
                                     $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value__, $child1Value_, $child2Value_, s2_.objectLibrary_, s2_.toTruffleStringNode_));
@@ -8353,28 +6896,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s2_ = s2_.next_;
                             }
                         }
-                        if ((state_0 & 0b10000) != 0 /*
-                                                      * is-state_0 writeSLObject(SLObject, Object,
-                                                      * Object, DynamicObjectLibrary,
-                                                      * SLToTruffleStringNode)
-                                                      */) {
+                        if ((state_0 & 0b10000) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                             $frame.setObject($sp - 3, SLWriteProperty_writeSLObject1Boundary_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value__, $child1Value_, $child2Value_));
                             return;
                         }
                     }
-                    if ((state_0 & 0b1100000) != 0 /*
-                                                    * is-state_0 writeObject(Object, Object, Object,
-                                                    * Node, int, InteropLibrary, SLToMemberNode) ||
-                                                    * writeObject(Object, Object, Object, Node, int,
-                                                    * InteropLibrary, SLToMemberNode)
-                                                    */) {
-                        if ((state_0 & 0b100000) != 0 /*
-                                                       * is-state_0 writeObject(Object, Object,
-                                                       * Object, Node, int, InteropLibrary,
-                                                       * SLToMemberNode)
-                                                       */) {
-                            SLWriteProperty_WriteObject0Data s4_ = ((SLWriteProperty_WriteObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                            $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 7]);
+                    if ((state_0 & 0b1100000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) || writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        if ((state_0 & 0b100000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                            SLWriteProperty_WriteObject0Data s4_ = ((SLWriteProperty_WriteObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 7]);
                             while (s4_ != null) {
                                 if ((s4_.objectLibrary_.accepts($child0Value_)) && (!(SLWritePropertyNode.isSLObject($child0Value_)))) {
                                     Node node__1 = ($this);
@@ -8385,11 +6914,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s4_ = s4_.next_;
                             }
                         }
-                        if ((state_0 & 0b1000000) != 0 /*
-                                                        * is-state_0 writeObject(Object, Object,
-                                                        * Object, Node, int, InteropLibrary,
-                                                        * SLToMemberNode)
-                                                        */) {
+                        if ((state_0 & 0b1000000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
                             if ((!(SLWritePropertyNode.isSLObject($child0Value_)))) {
                                 $frame.setObject($sp - 3, SLWriteProperty_writeObject1Boundary_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_, $child2Value_));
                                 return;
@@ -8402,8 +6927,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLWriteProperty_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value, Object $child2Value) {
+            private static void SLWriteProperty_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value, Object $child2Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -8415,19 +6939,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     {
                         int bci__ = 0;
                         Node node__ = null;
-                        if (((exclude & 0b1)) == 0 /*
-                                                    * is-not-exclude writeArray(Object, Object,
-                                                    * Object, Node, int, InteropLibrary,
-                                                    * InteropLibrary)
-                                                    */) {
+                        if (((exclude & 0b1)) == 0 /* is-not-exclude writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
                             int count0_ = 0;
-                            SLWriteProperty_WriteArray0Data s0_ = ((SLWriteProperty_WriteArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                            $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0]);
-                            if ((state_0 & 0b10) != 0 /*
-                                                       * is-state_0 writeArray(Object, Object,
-                                                       * Object, Node, int, InteropLibrary,
-                                                       * InteropLibrary)
-                                                       */) {
+                            SLWriteProperty_WriteArray0Data s0_ = ((SLWriteProperty_WriteArray0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0]);
+                            if ((state_0 & 0b10) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
                                 while (s0_ != null) {
                                     if ((s0_.arrays_.accepts($child0Value)) && (s0_.numbers_.accepts($child1Value)) && (s0_.arrays_.hasArrayElements($child0Value))) {
                                         node__ = ($this);
@@ -8451,20 +6966,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         s0_.numbers_ = s0_.insertAccessor((INTEROP_LIBRARY_.create($child1Value)));
                                         VarHandle.storeStoreFence();
                                         $children[childArrayOffset_ + 0] = s0_;
-                                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                                                   * add
-                                                                                                                                   * -
-                                                                                                                                   * state_0
-                                                                                                                                   * writeArray
-                                                                                                                                   * (
-                                                                                                                                   * Object,
-                                                                                                                                   * Object,
-                                                                                                                                   * Object,
-                                                                                                                                   * Node,
-                                                                                                                                   * int,
-                                                                                                                                   * InteropLibrary,
-                                                                                                                                   * InteropLibrary)
-                                                                                                                                   */);
+                                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         $bc[$bci] = (short) (INSTR_C_SL_WRITE_PROPERTY);
                                         int type0;
                                         int type1;
@@ -8501,44 +7003,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         writeArray1_node__ = ($this);
                                         writeArray1_bci__ = ($bci);
                                         writeArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
-                                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                                                  * add
-                                                                                                                                  * -
-                                                                                                                                  * exclude
-                                                                                                                                  * writeArray
-                                                                                                                                  * (
-                                                                                                                                  * Object,
-                                                                                                                                  * Object,
-                                                                                                                                  * Object,
-                                                                                                                                  * Node,
-                                                                                                                                  * int,
-                                                                                                                                  * InteropLibrary,
-                                                                                                                                  * InteropLibrary)
-                                                                                                                                  */);
+                                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0] = null;
-                                        state_0 = (short) (state_0 & 0xfffffffd /*
-                                                                                 * remove-state_0
-                                                                                 * writeArray(
-                                                                                 * Object, Object,
-                                                                                 * Object, Node,
-                                                                                 * int,
-                                                                                 * InteropLibrary,
-                                                                                 * InteropLibrary)
-                                                                                 */);
-                                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                                    * add
-                                                                                                                                    * -
-                                                                                                                                    * state_0
-                                                                                                                                    * writeArray
-                                                                                                                                    * (
-                                                                                                                                    * Object,
-                                                                                                                                    * Object,
-                                                                                                                                    * Object,
-                                                                                                                                    * Node,
-                                                                                                                                    * int,
-                                                                                                                                    * InteropLibrary,
-                                                                                                                                    * InteropLibrary)
-                                                                                                                                    */);
+                                        state_0 = (short) (state_0 & 0xfffffffd /* remove-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         $bc[$bci] = (short) (INSTR_C_SL_WRITE_PROPERTY);
                                         int type0;
                                         int type1;
@@ -8551,8 +7019,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         doSetResultBoxed($bc, $bci, ($bc[$bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 1] & 0xff), type2);
                                         lock.unlock();
                                         hasLock = false;
-                                        $frame.setObject($sp - 3, SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, writeArray1_node__, writeArray1_bci__, writeArray1_arrays__,
-                                                        writeArray1_numbers__));
+                                        $frame.setObject($sp - 3, SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, writeArray1_node__, writeArray1_bci__, writeArray1_arrays__, writeArray1_numbers__));
                                         return;
                                     }
                                 }
@@ -8563,19 +7030,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     if ($child0Value instanceof SLObject) {
                         SLObject $child0Value_ = (SLObject) $child0Value;
-                        if (((exclude & 0b10)) == 0 /*
-                                                     * is-not-exclude writeSLObject(SLObject,
-                                                     * Object, Object, DynamicObjectLibrary,
-                                                     * SLToTruffleStringNode)
-                                                     */) {
+                        if (((exclude & 0b10)) == 0 /* is-not-exclude writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                             int count2_ = 0;
-                            SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                            $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
-                            if ((state_0 & 0b1000) != 0 /*
-                                                         * is-state_0 writeSLObject(SLObject,
-                                                         * Object, Object, DynamicObjectLibrary,
-                                                         * SLToTruffleStringNode)
-                                                         */) {
+                            SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 4]);
+                            if ((state_0 & 0b1000) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                                 while (s2_ != null) {
                                     if ((s2_.objectLibrary_.accepts($child0Value_))) {
                                         break;
@@ -8592,25 +7050,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     s2_.toTruffleStringNode_ = s2_.insertAccessor((SLToTruffleStringNodeGen.create()));
                                     VarHandle.storeStoreFence();
                                     $children[childArrayOffset_ + 4] = s2_;
-                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                                                 * add
-                                                                                                                                 * -
-                                                                                                                                 * state_0
-                                                                                                                                 * writeSLObject
-                                                                                                                                 * (
-                                                                                                                                 * SLObject,
-                                                                                                                                 * Object,
-                                                                                                                                 * Object,
-                                                                                                                                 * DynamicObjectLibrary,
-                                                                                                                                 * SLToTruffleStringNode)
-                                                                                                                                 */);
-                                    if ((state_0 & 0b1111110) == 0b1000/*
-                                                                        * is-exact-state_0
-                                                                        * writeSLObject(SLObject,
-                                                                        * Object, Object,
-                                                                        * DynamicObjectLibrary,
-                                                                        * SLToTruffleStringNode)
-                                                                        */) {
+                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                                    if ((state_0 & 0b1111110) == 0b1000/* is-exact-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
                                         $bc[$bci] = (short) (INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0);
                                     } else {
                                         $bc[$bci] = (short) (INSTR_C_SL_WRITE_PROPERTY);
@@ -8637,38 +7078,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             DynamicObjectLibrary writeSLObject1_objectLibrary__ = null;
                             writeSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
                             $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 6] = $this.insertAccessor((SLToTruffleStringNodeGen.create()));
-                            $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b10 /*
-                                                                                                                       * add
-                                                                                                                       * -
-                                                                                                                       * exclude
-                                                                                                                       * writeSLObject
-                                                                                                                       * (
-                                                                                                                       * SLObject,
-                                                                                                                       * Object,
-                                                                                                                       * Object,
-                                                                                                                       * DynamicObjectLibrary,
-                                                                                                                       * SLToTruffleStringNode)
-                                                                                                                       */);
+                            $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b10 /* add-exclude writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
                             $children[childArrayOffset_ + 4] = null;
-                            state_0 = (short) (state_0 & 0xfffffff7 /*
-                                                                     * remove-state_0
-                                                                     * writeSLObject(SLObject,
-                                                                     * Object, Object,
-                                                                     * DynamicObjectLibrary,
-                                                                     * SLToTruffleStringNode)
-                                                                     */);
-                            $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /*
-                                                                                                                          * add
-                                                                                                                          * -
-                                                                                                                          * state_0
-                                                                                                                          * writeSLObject
-                                                                                                                          * (
-                                                                                                                          * SLObject,
-                                                                                                                          * Object,
-                                                                                                                          * Object,
-                                                                                                                          * DynamicObjectLibrary,
-                                                                                                                          * SLToTruffleStringNode)
-                                                                                                                          */);
+                            state_0 = (short) (state_0 & 0xfffffff7 /* remove-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                            $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
                             $bc[$bci] = (short) (INSTR_C_SL_WRITE_PROPERTY);
                             int type0;
                             int type1;
@@ -8681,27 +7094,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             doSetResultBoxed($bc, $bci, ($bc[$bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 1] & 0xff), type2);
                             lock.unlock();
                             hasLock = false;
-                            $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, writeSLObject1_objectLibrary__,
-                                            ((SLToTruffleStringNode) $children[childArrayOffset_ + 6])));
+                            $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, writeSLObject1_objectLibrary__, ((SLToTruffleStringNode) $children[childArrayOffset_ + 6])));
                             return;
                         }
                     }
                     {
                         int bci__1 = 0;
                         Node node__1 = null;
-                        if (((exclude & 0b100)) == 0 /*
-                                                      * is-not-exclude writeObject(Object, Object,
-                                                      * Object, Node, int, InteropLibrary,
-                                                      * SLToMemberNode)
-                                                      */) {
+                        if (((exclude & 0b100)) == 0 /* is-not-exclude writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
                             int count4_ = 0;
-                            SLWriteProperty_WriteObject0Data s4_ = ((SLWriteProperty_WriteObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                            $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 7]);
-                            if ((state_0 & 0b100000) != 0 /*
-                                                           * is-state_0 writeObject(Object, Object,
-                                                           * Object, Node, int, InteropLibrary,
-                                                           * SLToMemberNode)
-                                                           */) {
+                            SLWriteProperty_WriteObject0Data s4_ = ((SLWriteProperty_WriteObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 7]);
+                            if ((state_0 & 0b100000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
                                 while (s4_ != null) {
                                     if ((s4_.objectLibrary_.accepts($child0Value)) && (!(SLWritePropertyNode.isSLObject($child0Value)))) {
                                         node__1 = ($this);
@@ -8722,20 +7125,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     s4_.asMember_ = s4_.insertAccessor((SLToMemberNodeGen.create()));
                                     VarHandle.storeStoreFence();
                                     $children[childArrayOffset_ + 7] = s4_;
-                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /*
-                                                                                                                                   * add
-                                                                                                                                   * -
-                                                                                                                                   * state_0
-                                                                                                                                   * writeObject
-                                                                                                                                   * (
-                                                                                                                                   * Object,
-                                                                                                                                   * Object,
-                                                                                                                                   * Object,
-                                                                                                                                   * Node,
-                                                                                                                                   * int,
-                                                                                                                                   * InteropLibrary,
-                                                                                                                                   * SLToMemberNode)
-                                                                                                                                   */);
+                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                     $bc[$bci] = (short) (INSTR_C_SL_WRITE_PROPERTY);
                                     int type0;
                                     int type1;
@@ -8769,42 +7159,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     writeObject1_bci__ = ($bci);
                                     writeObject1_objectLibrary__ = (INTEROP_LIBRARY_.getUncached($child0Value));
                                     $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 10] = $this.insertAccessor((SLToMemberNodeGen.create()));
-                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b100 /*
-                                                                                                                                * add
-                                                                                                                                * -
-                                                                                                                                * exclude
-                                                                                                                                * writeObject
-                                                                                                                                * (
-                                                                                                                                * Object,
-                                                                                                                                * Object,
-                                                                                                                                * Object,
-                                                                                                                                * Node,
-                                                                                                                                * int,
-                                                                                                                                * InteropLibrary,
-                                                                                                                                * SLToMemberNode)
-                                                                                                                                */);
+                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b100 /* add-exclude writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                     $children[childArrayOffset_ + 7] = null;
-                                    state_0 = (short) (state_0 & 0xffffffdf /*
-                                                                             * remove-state_0
-                                                                             * writeObject(Object,
-                                                                             * Object, Object, Node,
-                                                                             * int, InteropLibrary,
-                                                                             * SLToMemberNode)
-                                                                             */);
-                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /*
-                                                                                                                                    * add
-                                                                                                                                    * -
-                                                                                                                                    * state_0
-                                                                                                                                    * writeObject
-                                                                                                                                    * (
-                                                                                                                                    * Object,
-                                                                                                                                    * Object,
-                                                                                                                                    * Object,
-                                                                                                                                    * Node,
-                                                                                                                                    * int,
-                                                                                                                                    * InteropLibrary,
-                                                                                                                                    * SLToMemberNode)
-                                                                                                                                    */);
+                                    state_0 = (short) (state_0 & 0xffffffdf /* remove-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /* add-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                     $bc[$bci] = (short) (INSTR_C_SL_WRITE_PROPERTY);
                                     int type0;
                                     int type1;
@@ -8817,8 +7175,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     doSetResultBoxed($bc, $bci, ($bc[$bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 1] & 0xff), type2);
                                     lock.unlock();
                                     hasLock = false;
-                                    $frame.setObject($sp - 3, SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, writeObject1_node__, writeObject1_bci__,
-                                                    writeObject1_objectLibrary__, ((SLToMemberNode) $children[childArrayOffset_ + 10])));
+                                    $frame.setObject($sp - 3, SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, writeObject1_node__, writeObject1_bci__, writeObject1_objectLibrary__, ((SLToMemberNode) $children[childArrayOffset_ + 10])));
                                     return;
                                 }
                             } finally {
@@ -8826,7 +7183,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             }
                         }
                     }
-                    throw new UnsupportedSpecializationException($this, new Node[]{null, null, null}, $frame.getValue($sp - 3), $frame.getValue($sp - 2), $frame.getValue($sp - 1));
+                    throw new UnsupportedSpecializationException($this, new Node[] {null, null, null}, $frame.getValue($sp - 3), $frame.getValue($sp - 2), $frame.getValue($sp - 1));
                 } finally {
                     if (hasLock) {
                         lock.unlock();
@@ -8853,94 +7210,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLUnbox_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b1111110110) == 0 /* only-active fromBoolean(boolean) */ && ((state_0 & 0b1111111110) != 0 /*
-                                                                                                                            * is
-                                                                                                                            * -
-                                                                                                                            * not
-                                                                                                                            * fromString
-                                                                                                                            * (
-                                                                                                                            * String,
-                                                                                                                            * FromJavaStringNode)
-                                                                                                                            * &&
-                                                                                                                            * fromTruffleString
-                                                                                                                            * (
-                                                                                                                            * TruffleString)
-                                                                                                                            * &&
-                                                                                                                            * fromBoolean
-                                                                                                                            * (
-                                                                                                                            * boolean)
-                                                                                                                            * &&
-                                                                                                                            * fromLong
-                                                                                                                            * (
-                                                                                                                            * long)
-                                                                                                                            * &&
-                                                                                                                            * fromBigNumber
-                                                                                                                            * (
-                                                                                                                            * SLBigNumber)
-                                                                                                                            * &&
-                                                                                                                            * fromFunction
-                                                                                                                            * (
-                                                                                                                            * SLFunction)
-                                                                                                                            * &&
-                                                                                                                            * fromFunction
-                                                                                                                            * (
-                                                                                                                            * SLNull)
-                                                                                                                            * &&
-                                                                                                                            * fromForeign
-                                                                                                                            * (
-                                                                                                                            * Object,
-                                                                                                                            * InteropLibrary)
-                                                                                                                            * &&
-                                                                                                                            * fromForeign
-                                                                                                                            * (
-                                                                                                                            * Object,
-                                                                                                                            * InteropLibrary)
-                                                                                                                            */)) {
+                if ((state_0 & 0b1111110110) == 0 /* only-active fromBoolean(boolean) */ && ((state_0 & 0b1111111110) != 0  /* is-not fromString(String, FromJavaStringNode) && fromTruffleString(TruffleString) && fromBoolean(boolean) && fromLong(long) && fromBigNumber(SLBigNumber) && fromFunction(SLFunction) && fromFunction(SLNull) && fromForeign(Object, InteropLibrary) && fromForeign(Object, InteropLibrary) */)) {
                     SLUnbox_SLUnbox_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
-                } else if ((state_0 & 0b1111101110) == 0 /* only-active fromLong(long) */ && ((state_0 & 0b1111111110) != 0 /*
-                                                                                                                             * is
-                                                                                                                             * -
-                                                                                                                             * not
-                                                                                                                             * fromString
-                                                                                                                             * (
-                                                                                                                             * String,
-                                                                                                                             * FromJavaStringNode)
-                                                                                                                             * &&
-                                                                                                                             * fromTruffleString
-                                                                                                                             * (
-                                                                                                                             * TruffleString)
-                                                                                                                             * &&
-                                                                                                                             * fromBoolean
-                                                                                                                             * (
-                                                                                                                             * boolean)
-                                                                                                                             * &&
-                                                                                                                             * fromLong
-                                                                                                                             * (
-                                                                                                                             * long)
-                                                                                                                             * &&
-                                                                                                                             * fromBigNumber
-                                                                                                                             * (
-                                                                                                                             * SLBigNumber)
-                                                                                                                             * &&
-                                                                                                                             * fromFunction
-                                                                                                                             * (
-                                                                                                                             * SLFunction)
-                                                                                                                             * &&
-                                                                                                                             * fromFunction
-                                                                                                                             * (
-                                                                                                                             * SLNull)
-                                                                                                                             * &&
-                                                                                                                             * fromForeign
-                                                                                                                             * (
-                                                                                                                             * Object,
-                                                                                                                             * InteropLibrary)
-                                                                                                                             * &&
-                                                                                                                             * fromForeign
-                                                                                                                             * (
-                                                                                                                             * Object,
-                                                                                                                             * InteropLibrary)
-                                                                                                                             */)) {
+                } else if ((state_0 & 0b1111101110) == 0 /* only-active fromLong(long) */ && ((state_0 & 0b1111111110) != 0  /* is-not fromString(String, FromJavaStringNode) && fromTruffleString(TruffleString) && fromBoolean(boolean) && fromLong(long) && fromBigNumber(SLBigNumber) && fromFunction(SLFunction) && fromFunction(SLNull) && fromForeign(Object, InteropLibrary) && fromForeign(Object, InteropLibrary) */)) {
                     SLUnbox_SLUnbox_execute__long1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -9029,26 +7302,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     return;
                 }
-                if ((state_0 & 0b100000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /*
-                                                                                                                                                                 * extract
-                                                                                                                                                                 * -
-                                                                                                                                                                 * implicit
-                                                                                                                                                                 * -
-                                                                                                                                                                 * state_0
-                                                                                                                                                                 * 0
-                                                                                                                                                                 * :
-                                                                                                                                                                 * SLBigNumber
-                                                                                                                                                                 */, $child0Value_)) {
-                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /*
-                                                                                                                     * extract
-                                                                                                                     * -
-                                                                                                                     * implicit
-                                                                                                                     * -
-                                                                                                                     * state_0
-                                                                                                                     * 0
-                                                                                                                     * :
-                                                                                                                     * SLBigNumber
-                                                                                                                     */, $child0Value_);
+                if ((state_0 & 0b100000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                    SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000000000) >>> 10 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
                     $frame.setObject($sp - 1, SLUnboxNode.fromBigNumber($child0Value__));
                     return;
                 }
@@ -9062,14 +7317,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     $frame.setObject($sp - 1, SLUnboxNode.fromFunction($child0Value__));
                     return;
                 }
-                if ((state_0 & 0b1100000000) != 0 /*
-                                                   * is-state_0 fromForeign(Object, InteropLibrary)
-                                                   * || fromForeign(Object, InteropLibrary)
-                                                   */) {
-                    if ((state_0 & 0b100000000) != 0 /*
-                                                      * is-state_0 fromForeign(Object,
-                                                      * InteropLibrary)
-                                                      */) {
+                if ((state_0 & 0b1100000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                    if ((state_0 & 0b100000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) */) {
                         SLUnbox_FromForeign0Data s7_ = ((SLUnbox_FromForeign0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 1]);
                         while (s7_ != null) {
                             if ((s7_.interop_.accepts($child0Value_))) {
@@ -9079,10 +7328,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             s7_ = s7_.next_;
                         }
                     }
-                    if ((state_0 & 0b1000000000) != 0 /*
-                                                       * is-state_0 fromForeign(Object,
-                                                       * InteropLibrary)
-                                                       */) {
+                    if ((state_0 & 0b1000000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) */) {
                         $frame.setObject($sp - 1, SLUnbox_fromForeign1Boundary_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_));
                         return;
                     }
@@ -9104,15 +7350,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if ($child0Value instanceof String) {
                         String $child0Value_ = (String) $child0Value;
                         $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 0] = $this.insertAccessor((FromJavaStringNode.create()));
-                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                          * add
-                                                                                                          * -
-                                                                                                          * state_0
-                                                                                                          * fromString
-                                                                                                          * (
-                                                                                                          * String,
-                                                                                                          * FromJavaStringNode)
-                                                                                                          */);
+                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 fromString(String, FromJavaStringNode) */);
                         $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
                         int type0;
                         type0 = 0 /* OBJECT */;
@@ -9124,14 +7362,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     if ($child0Value instanceof TruffleString) {
                         TruffleString $child0Value_ = (TruffleString) $child0Value;
-                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                           * add
-                                                                                                           * -
-                                                                                                           * state_0
-                                                                                                           * fromTruffleString
-                                                                                                           * (
-                                                                                                           * TruffleString)
-                                                                                                           */);
+                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 fromTruffleString(TruffleString) */);
                         $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
                         int type0;
                         type0 = 0 /* OBJECT */;
@@ -9143,18 +7374,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     if ($child0Value instanceof Boolean) {
                         boolean $child0Value_ = (boolean) $child0Value;
-                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                            * add
-                                                                                                            * -
-                                                                                                            * state_0
-                                                                                                            * fromBoolean
-                                                                                                            * (
-                                                                                                            * boolean)
-                                                                                                            */);
-                        if ((state_0 & 0b1111111110) == 0b1000/*
-                                                               * is-exact-state_0
-                                                               * fromBoolean(boolean)
-                                                               */) {
+                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 fromBoolean(boolean) */);
+                        if ((state_0 & 0b1111111110) == 0b1000/* is-exact-state_0 fromBoolean(boolean) */) {
                             $bc[$bci] = (short) (INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN);
                         } else {
                             $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
@@ -9178,14 +7399,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     if ($child0Value instanceof Long) {
                         long $child0Value_ = (long) $child0Value;
-                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /*
-                                                                                                             * add
-                                                                                                             * -
-                                                                                                             * state_0
-                                                                                                             * fromLong
-                                                                                                             * (
-                                                                                                             * long)
-                                                                                                             */);
+                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 fromLong(long) */);
                         if ((state_0 & 0b1111111110) == 0b10000/* is-exact-state_0 fromLong(long) */) {
                             $bc[$bci] = (short) (INSTR_C_SL_UNBOX_Q_FROM_LONG);
                         } else {
@@ -9212,19 +7426,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         int sLBigNumberCast0;
                         if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
                             SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
-                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 10) /*
-                                                                                   * set-implicit-
-                                                                                   * state_0
-                                                                                   * 0:SLBigNumber
-                                                                                   */);
-                            $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /*
-                                                                                                                  * add
-                                                                                                                  * -
-                                                                                                                  * state_0
-                                                                                                                  * fromBigNumber
-                                                                                                                  * (
-                                                                                                                  * SLBigNumber)
-                                                                                                                  */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 10) /* set-implicit-state_0 0:SLBigNumber */);
+                            $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 fromBigNumber(SLBigNumber) */);
                             $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
                             int type0;
                             type0 = 0 /* OBJECT */;
@@ -9237,14 +7440,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     if ($child0Value instanceof SLFunction) {
                         SLFunction $child0Value_ = (SLFunction) $child0Value;
-                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /*
-                                                                                                               * add
-                                                                                                               * -
-                                                                                                               * state_0
-                                                                                                               * fromFunction
-                                                                                                               * (
-                                                                                                               * SLFunction)
-                                                                                                               */);
+                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /* add-state_0 fromFunction(SLFunction) */);
                         $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
                         int type0;
                         type0 = 0 /* OBJECT */;
@@ -9256,14 +7452,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                     if (SLTypes.isSLNull($child0Value)) {
                         SLNull $child0Value_ = SLTypes.asSLNull($child0Value);
-                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000000 /*
-                                                                                                                * add
-                                                                                                                * -
-                                                                                                                * state_0
-                                                                                                                * fromFunction
-                                                                                                                * (
-                                                                                                                * SLNull)
-                                                                                                                */);
+                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000000 /* add-state_0 fromFunction(SLNull) */);
                         $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
                         int type0;
                         type0 = 0 /* OBJECT */;
@@ -9276,10 +7465,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if ((exclude) == 0 /* is-not-exclude fromForeign(Object, InteropLibrary) */) {
                         int count7_ = 0;
                         SLUnbox_FromForeign0Data s7_ = ((SLUnbox_FromForeign0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 1]);
-                        if ((state_0 & 0b100000000) != 0 /*
-                                                          * is-state_0 fromForeign(Object,
-                                                          * InteropLibrary)
-                                                          */) {
+                        if ((state_0 & 0b100000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) */) {
                             while (s7_ != null) {
                                 if ((s7_.interop_.accepts($child0Value))) {
                                     break;
@@ -9295,15 +7481,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s7_.interop_ = s7_.insertAccessor((INTEROP_LIBRARY_.create($child0Value)));
                                 VarHandle.storeStoreFence();
                                 $children[childArrayOffset_ + 1] = s7_;
-                                $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000000 /*
-                                                                                                                         * add
-                                                                                                                         * -
-                                                                                                                         * state_0
-                                                                                                                         * fromForeign
-                                                                                                                         * (
-                                                                                                                         * Object,
-                                                                                                                         * InteropLibrary)
-                                                                                                                         */);
+                                $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000000 /* add-state_0 fromForeign(Object, InteropLibrary) */);
                                 $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
                                 int type0;
                                 type0 = 0 /* OBJECT */;
@@ -9324,30 +7502,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             Node prev_ = encapsulating_.set($this);
                             try {
                                 fromForeign1_interop__ = (INTEROP_LIBRARY_.getUncached($child0Value));
-                                $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                                 * add
-                                                                                                                 * -
-                                                                                                                 * exclude
-                                                                                                                 * fromForeign
-                                                                                                                 * (
-                                                                                                                 * Object,
-                                                                                                                 * InteropLibrary)
-                                                                                                                 */);
+                                $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude fromForeign(Object, InteropLibrary) */);
                                 $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 1] = null;
-                                state_0 = (short) (state_0 & 0xfffffeff /*
-                                                                         * remove-state_0
-                                                                         * fromForeign(Object,
-                                                                         * InteropLibrary)
-                                                                         */);
-                                $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000000 /*
-                                                                                                                          * add
-                                                                                                                          * -
-                                                                                                                          * state_0
-                                                                                                                          * fromForeign
-                                                                                                                          * (
-                                                                                                                          * Object,
-                                                                                                                          * InteropLibrary)
-                                                                                                                          */);
+                                state_0 = (short) (state_0 & 0xfffffeff /* remove-state_0 fromForeign(Object, InteropLibrary) */);
+                                $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000000 /* add-state_0 fromForeign(Object, InteropLibrary) */);
                                 $bc[$bci] = (short) (INSTR_C_SL_UNBOX);
                                 int type0;
                                 type0 = 0 /* OBJECT */;
@@ -9389,8 +7547,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLFunctionLiteral_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLFunctionLiteral_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -9402,23 +7559,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node node__ = null;
                         if ($child0Value instanceof TruffleString) {
                             TruffleString $child0Value_ = (TruffleString) $child0Value;
-                            $consts[(constArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET) + 0) + 0] = (SLFunctionLiteralNode.lookupFunctionCached($child0Value_,
-                                            $this));
+                            $consts[(constArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET) + 0) + 0] = (SLFunctionLiteralNode.lookupFunctionCached($child0Value_, $this));
                             node__ = ($this);
-                            $bc[$bci + C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                                         * add
-                                                                                                                         * -
-                                                                                                                         * state_0
-                                                                                                                         * perform
-                                                                                                                         * (
-                                                                                                                         * TruffleString,
-                                                                                                                         * SLFunction,
-                                                                                                                         * Node)
-                                                                                                                         */);
-                            if ((state_0 & 0b10) == 0b10/*
-                                                         * is-exact-state_0 perform(TruffleString,
-                                                         * SLFunction, Node)
-                                                         */) {
+                            $bc[$bci + C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 perform(TruffleString, SLFunction, Node) */);
+                            if ((state_0 & 0b10) == 0b10/* is-exact-state_0 perform(TruffleString, SLFunction, Node) */) {
                                 $bc[$bci] = (short) (INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM);
                             } else {
                                 $bc[$bci] = (short) (INSTR_C_SL_FUNCTION_LITERAL);
@@ -9432,7 +7576,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             return;
                         }
                     }
-                    throw new UnsupportedSpecializationException($this, new Node[]{null}, $frame.getValue($sp - 1));
+                    throw new UnsupportedSpecializationException($this, new Node[] {null}, $frame.getValue($sp - 1));
                 } finally {
                     if (hasLock) {
                         lock.unlock();
@@ -9440,8 +7584,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLToBoolean_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            Object $child0Value) {
+            private static boolean SLToBoolean_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
                 if (((state_0 & 0b10)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
                     return false;
                 }
@@ -9450,20 +7593,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static void SLToBoolean_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b100) == 0 /* only-active doBoolean(boolean) */ && ((state_0 & 0b110) != 0 /*
-                                                                                                            * is
-                                                                                                            * -
-                                                                                                            * not
-                                                                                                            * doBoolean
-                                                                                                            * (
-                                                                                                            * boolean)
-                                                                                                            * &&
-                                                                                                            * doFallback
-                                                                                                            * (
-                                                                                                            * Object,
-                                                                                                            * Node,
-                                                                                                            * int)
-                                                                                                            */)) {
+                if ((state_0 & 0b100) == 0 /* only-active doBoolean(boolean) */ && ((state_0 & 0b110) != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
                     SLToBoolean_SLToBoolean_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                     return;
                 } else {
@@ -9472,8 +7602,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static void SLToBoolean_SLToBoolean_execute__boolean0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLToBoolean_SLToBoolean_execute__boolean0_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 boolean $child0Value_;
@@ -9494,8 +7623,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLToBoolean_SLToBoolean_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0) {
+            private static void SLToBoolean_SLToBoolean_execute__generic1_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Object $child0Value_ = expectObject($frame, $sp - 1);
@@ -9529,8 +7657,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLToBoolean_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLToBoolean_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -9540,14 +7667,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     short state_0 = $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0];
                     if ($child0Value instanceof Boolean) {
                         boolean $child0Value_ = (boolean) $child0Value;
-                        $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                               * add
-                                                                                                               * -
-                                                                                                               * state_0
-                                                                                                               * doBoolean
-                                                                                                               * (
-                                                                                                               * boolean)
-                                                                                                               */);
+                        $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doBoolean(boolean) */);
                         if ((state_0 & 0b110) == 0b10/* is-exact-state_0 doBoolean(boolean) */) {
                             $bc[$bci] = (short) (INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN);
                         } else {
@@ -9575,16 +7695,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                                * add
-                                                                                                                * -
-                                                                                                                * state_0
-                                                                                                                * doFallback
-                                                                                                                * (
-                                                                                                                * Object,
-                                                                                                                * Node,
-                                                                                                                * int)
-                                                                                                                */);
+                        $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 doFallback(Object, Node, int) */);
                         $bc[$bci] = (short) (INSTR_C_SL_TO_BOOLEAN);
                         int type0;
                         type0 = 0 /* OBJECT */;
@@ -9607,28 +7718,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
             @ExplodeLoop
-            private static Object SLInvoke_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value,
-                            Object[] arg1Value) {
+            private static Object SLInvoke_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value, Object[] arg1Value) {
                 short state_0 = $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0];
                 int childArrayOffset_;
                 int constArrayOffset_;
-                if ((state_0 & 0b1110) != 0 /*
-                                             * is-state_0 doDirect(SLFunction, Object[], Assumption,
-                                             * RootCallTarget, DirectCallNode) ||
-                                             * doIndirect(SLFunction, Object[], IndirectCallNode) ||
-                                             * doInterop(Object, Object[], InteropLibrary, Node,
-                                             * int)
-                                             */) {
-                    if ((state_0 & 0b110) != 0 /*
-                                                * is-state_0 doDirect(SLFunction, Object[],
-                                                * Assumption, RootCallTarget, DirectCallNode) ||
-                                                * doIndirect(SLFunction, Object[], IndirectCallNode)
-                                                */ && arg0Value instanceof SLFunction) {
+                if ((state_0 & 0b1110) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) || doIndirect(SLFunction, Object[], IndirectCallNode) || doInterop(Object, Object[], InteropLibrary, Node, int) */) {
+                    if ((state_0 & 0b110) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) || doIndirect(SLFunction, Object[], IndirectCallNode) */ && arg0Value instanceof SLFunction) {
                         SLFunction arg0Value_ = (SLFunction) arg0Value;
-                        if ((state_0 & 0b10) != 0 /*
-                                                   * is-state_0 doDirect(SLFunction, Object[],
-                                                   * Assumption, RootCallTarget, DirectCallNode)
-                                                   */) {
+                        if ((state_0 & 0b10) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
                             SLInvoke_DirectData s0_ = ((SLInvoke_DirectData) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 0]);
                             while (s0_ != null) {
                                 if (!Assumption.isValidAssumption((s0_.callTargetStable_))) {
@@ -9642,20 +7739,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 s0_ = s0_.next_;
                             }
                         }
-                        if ((state_0 & 0b100) != 0 /*
-                                                    * is-state_0 doIndirect(SLFunction, Object[],
-                                                    * IndirectCallNode)
-                                                    */) {
+                        if ((state_0 & 0b100) != 0 /* is-state_0 doIndirect(SLFunction, Object[], IndirectCallNode) */) {
                             IndirectCallNode indirect_callNode__ = ((IndirectCallNode) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 1]);
                             if (indirect_callNode__ != null) {
                                 return SLInvoke.doIndirect(arg0Value_, arg1Value, indirect_callNode__);
                             }
                         }
                     }
-                    if ((state_0 & 0b1000) != 0 /*
-                                                 * is-state_0 doInterop(Object, Object[],
-                                                 * InteropLibrary, Node, int)
-                                                 */) {
+                    if ((state_0 & 0b1000) != 0 /* is-state_0 doInterop(Object, Object[], InteropLibrary, Node, int) */) {
                         {
                             Node interop_node__ = ($this);
                             int interop_bci__ = ($bci);
@@ -9670,8 +7761,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return SLInvoke_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, arg0Value, arg1Value);
             }
 
-            private static Object SLInvoke_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value,
-                            Object[] arg1Value) {
+            private static Object SLInvoke_executeAndSpecialize_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value, Object[] arg1Value) {
                 int childArrayOffset_;
                 int constArrayOffset_;
                 Lock lock = $this.getLockAccessor();
@@ -9682,16 +7772,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     short exclude = $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 1];
                     if (arg0Value instanceof SLFunction) {
                         SLFunction arg0Value_ = (SLFunction) arg0Value;
-                        if ((exclude) == 0 /*
-                                            * is-not-exclude doDirect(SLFunction, Object[],
-                                            * Assumption, RootCallTarget, DirectCallNode)
-                                            */) {
+                        if ((exclude) == 0 /* is-not-exclude doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
                             int count0_ = 0;
                             SLInvoke_DirectData s0_ = ((SLInvoke_DirectData) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 0]);
-                            if ((state_0 & 0b10) != 0 /*
-                                                       * is-state_0 doDirect(SLFunction, Object[],
-                                                       * Assumption, RootCallTarget, DirectCallNode)
-                                                       */) {
+                            if ((state_0 & 0b10) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
                                 while (s0_ != null) {
                                     if ((arg0Value_.getCallTarget() == s0_.cachedTarget_) && Assumption.isValidAssumption((s0_.callTargetStable_))) {
                                         break;
@@ -9714,30 +7798,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                                 s0_.callNode_ = s0_.insertAccessor((DirectCallNode.create(cachedTarget__)));
                                                 VarHandle.storeStoreFence();
                                                 $children[childArrayOffset_ + 0] = s0_;
-                                                $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                                                   * add
-                                                                                                                                   * -
-                                                                                                                                   * state_0
-                                                                                                                                   * doDirect
-                                                                                                                                   * (
-                                                                                                                                   * SLFunction,
-                                                                                                                                   * Object
-                                                                                                                                   * [
-                                                                                                                                   * ]
-                                                                                                                                   * ,
-                                                                                                                                   * Assumption,
-                                                                                                                                   * RootCallTarget,
-                                                                                                                                   * DirectCallNode)
-                                                                                                                                   */);
-                                                if ((state_0 & 0b1110) == 0b10/*
-                                                                               * is-exact-state_0
-                                                                               * doDirect(
-                                                                               * SLFunction,
-                                                                               * Object[],
-                                                                               * Assumption,
-                                                                               * RootCallTarget,
-                                                                               * DirectCallNode)
-                                                                               */) {
+                                                $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                                                if ((state_0 & 0b1110) == 0b10/* is-exact-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
                                                     $bc[$bci] = (short) (INSTR_C_SL_INVOKE_Q_DIRECT);
                                                 } else {
                                                     $bc[$bci] = (short) (INSTR_C_SL_INVOKE);
@@ -9754,41 +7816,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             }
                         }
                         $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 1] = $this.insertAccessor((IndirectCallNode.create()));
-                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /*
-                                                                                                          * add
-                                                                                                          * -
-                                                                                                          * exclude
-                                                                                                          * doDirect
-                                                                                                          * (
-                                                                                                          * SLFunction,
-                                                                                                          * Object
-                                                                                                          * [
-                                                                                                          * ]
-                                                                                                          * ,
-                                                                                                          * Assumption,
-                                                                                                          * RootCallTarget,
-                                                                                                          * DirectCallNode)
-                                                                                                          */);
+                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
                         $children[childArrayOffset_ + 0] = null;
-                        state_0 = (short) (state_0 & 0xfffffffd /*
-                                                                 * remove-state_0
-                                                                 * doDirect(SLFunction, Object[],
-                                                                 * Assumption, RootCallTarget,
-                                                                 * DirectCallNode)
-                                                                 */);
-                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /*
-                                                                                                            * add
-                                                                                                            * -
-                                                                                                            * state_0
-                                                                                                            * doIndirect
-                                                                                                            * (
-                                                                                                            * SLFunction,
-                                                                                                            * Object
-                                                                                                            * [
-                                                                                                            * ]
-                                                                                                            * ,
-                                                                                                            * IndirectCallNode)
-                                                                                                            */);
+                        state_0 = (short) (state_0 & 0xfffffffd /* remove-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 doIndirect(SLFunction, Object[], IndirectCallNode) */);
                         $bc[$bci] = (short) (INSTR_C_SL_INVOKE);
                         lock.unlock();
                         hasLock = false;
@@ -9800,21 +7831,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 2] = $this.insertAccessor((INTEROP_LIBRARY_.createDispatched(3)));
                         interop_node__ = ($this);
                         interop_bci__ = ($bci);
-                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /*
-                                                                                                             * add
-                                                                                                             * -
-                                                                                                             * state_0
-                                                                                                             * doInterop
-                                                                                                             * (
-                                                                                                             * Object,
-                                                                                                             * Object
-                                                                                                             * [
-                                                                                                             * ]
-                                                                                                             * ,
-                                                                                                             * InteropLibrary,
-                                                                                                             * Node,
-                                                                                                             * int)
-                                                                                                             */);
+                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 doInterop(Object, Object[], InteropLibrary, Node, int) */);
                         $bc[$bci] = (short) (INSTR_C_SL_INVOKE);
                         lock.unlock();
                         hasLock = false;
@@ -9848,29 +7865,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         cur = cur.next_;
                     }
                     if ($children[childArrayOffset_ + 0] == null) {
-                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                             * remove
-                                                                                                                                             * -
-                                                                                                                                             * state_0
-                                                                                                                                             * doDirect
-                                                                                                                                             * (
-                                                                                                                                             * SLFunction,
-                                                                                                                                             * Object
-                                                                                                                                             * [
-                                                                                                                                             * ]
-                                                                                                                                             * ,
-                                                                                                                                             * Assumption,
-                                                                                                                                             * RootCallTarget,
-                                                                                                                                             * DirectCallNode)
-                                                                                                                                             */);
+                        $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
                     }
                 } finally {
                     lock.unlock();
                 }
             }
 
-            private static boolean SLAnd_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            Object $child0Value) {
+            private static boolean SLAnd_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
                 if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
                     return false;
                 }
@@ -9879,20 +7881,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static boolean SLAnd_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0 /*
-                                                                                                 * is
-                                                                                                 * -
-                                                                                                 * not
-                                                                                                 * doBoolean
-                                                                                                 * (
-                                                                                                 * boolean)
-                                                                                                 * &&
-                                                                                                 * doFallback
-                                                                                                 * (
-                                                                                                 * Object,
-                                                                                                 * Node,
-                                                                                                 * int)
-                                                                                                 */)) {
+                if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
                     return SLAnd_SLAnd_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                 } else {
                     return SLAnd_SLAnd_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
@@ -9944,14 +7933,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     short state_0 = $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0];
                     if ($child0Value instanceof Boolean) {
                         boolean $child0Value_ = (boolean) $child0Value;
-                        $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /*
-                                                                                                        * add
-                                                                                                        * -
-                                                                                                        * state_0
-                                                                                                        * doBoolean
-                                                                                                        * (
-                                                                                                        * boolean)
-                                                                                                        */);
+                        $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
                         lock.unlock();
                         hasLock = false;
                         return SLToBooleanNode.doBoolean($child0Value_);
@@ -9961,16 +7943,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                         * add
-                                                                                                         * -
-                                                                                                         * state_0
-                                                                                                         * doFallback
-                                                                                                         * (
-                                                                                                         * Object,
-                                                                                                         * Node,
-                                                                                                         * int)
-                                                                                                         */);
+                        $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doFallback(Object, Node, int) */);
                         lock.unlock();
                         hasLock = false;
                         return SLToBooleanNode.doFallback($child0Value, fallback_node__, fallback_bci__);
@@ -9982,8 +7955,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            private static boolean SLOr_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            Object $child0Value) {
+            private static boolean SLOr_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
                 if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
                     return false;
                 }
@@ -9992,20 +7964,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static boolean SLOr_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
                 short state_0 = $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0];
-                if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0 /*
-                                                                                                 * is
-                                                                                                 * -
-                                                                                                 * not
-                                                                                                 * doBoolean
-                                                                                                 * (
-                                                                                                 * boolean)
-                                                                                                 * &&
-                                                                                                 * doFallback
-                                                                                                 * (
-                                                                                                 * Object,
-                                                                                                 * Node,
-                                                                                                 * int)
-                                                                                                 */)) {
+                if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
                     return SLOr_SLOr_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
                 } else {
                     return SLOr_SLOr_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
@@ -10057,14 +8016,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     short state_0 = $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0];
                     if ($child0Value instanceof Boolean) {
                         boolean $child0Value_ = (boolean) $child0Value;
-                        $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /*
-                                                                                                       * add
-                                                                                                       * -
-                                                                                                       * state_0
-                                                                                                       * doBoolean
-                                                                                                       * (
-                                                                                                       * boolean)
-                                                                                                       */);
+                        $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
                         lock.unlock();
                         hasLock = false;
                         return SLToBooleanNode.doBoolean($child0Value_);
@@ -10074,16 +8026,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         Node fallback_node__ = null;
                         fallback_node__ = ($this);
                         fallback_bci__ = ($bci);
-                        $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /*
-                                                                                                        * add
-                                                                                                        * -
-                                                                                                        * state_0
-                                                                                                        * doFallback
-                                                                                                        * (
-                                                                                                        * Object,
-                                                                                                        * Node,
-                                                                                                        * int)
-                                                                                                        */);
+                        $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doFallback(Object, Node, int) */);
                         lock.unlock();
                         hasLock = false;
                         return SLToBooleanNode.doFallback($child0Value, fallback_node__, fallback_bci__);
@@ -10118,16 +8061,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static boolean SLAdd_q_AddLong_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0,
-                            Object $child0Value, Object $child1Value) {
+            private static boolean SLAdd_q_AddLong_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
-                if (((state_0 & 0b1000)) == 0 /*
-                                               * is-not-state_0 add(Object, Object,
-                                               * SLToTruffleStringNode, SLToTruffleStringNode,
-                                               * ConcatNode)
-                                               */ && (SLAddNode.isString($child0Value, $child1Value))) {
+                if (((state_0 & 0b1000)) == 0 /* is-not-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */ && (SLAddNode.isString($child0Value, $child1Value))) {
                     return false;
                 }
                 return true;
@@ -10170,24 +8108,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     Lock lock = $this.getLockAccessor();
                     lock.lock();
                     try {
-                        $bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 1] | 0b1 /*
-                                                                                                                                                      * add
-                                                                                                                                                      * -
-                                                                                                                                                      * exclude
-                                                                                                                                                      * addLong
-                                                                                                                                                      * (
-                                                                                                                                                      * long,
-                                                                                                                                                      * long)
-                                                                                                                                                      */);
-                        $bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                                             * remove
-                                                                                                                                                             * -
-                                                                                                                                                             * state_0
-                                                                                                                                                             * addLong
-                                                                                                                                                             * (
-                                                                                                                                                             * long,
-                                                                                                                                                             * long)
-                                                                                                                                                             */);
+                        $bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                        $bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 addLong(long, long) */);
                     } finally {
                         lock.unlock();
                     }
@@ -10204,14 +8126,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 Object $child1Value_ = expectObject($frame, $sp - 1);
                 int childArrayOffset_;
                 int constArrayOffset_;
-                assert (state_0 & 0b1000) != 0 /*
-                                                * is-state_0 readSLObject(SLObject, Object, Node,
-                                                * int, DynamicObjectLibrary, SLToTruffleStringNode)
-                                                */;
+                assert (state_0 & 0b1000) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */;
                 if ($child0Value_ instanceof SLObject) {
                     SLObject $child0Value__ = (SLObject) $child0Value_;
-                    SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                    $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CHILDREN_OFFSET) + 0) + 4]);
+                    SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CHILDREN_OFFSET) + 0) + 4]);
                     while (s2_ != null) {
                         if ((s2_.objectLibrary_.accepts($child0Value__))) {
                             Node node__ = ($this);
@@ -10251,8 +8169,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static boolean SLToBoolean_q_Boolean_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            short state_0, Object $child0Value) {
+            private static boolean SLToBoolean_q_Boolean_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
                 if (((state_0 & 0b10)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
                     return false;
                 }
@@ -10282,8 +8199,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static boolean SLLessOrEqual_q_LessOrEqual0_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value) {
+            private static boolean SLLessOrEqual_q_LessOrEqual0_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
@@ -10324,15 +8240,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
             @ExplodeLoop
-            private static Object SLInvoke_q_Direct_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value,
-                            Object[] arg1Value) {
+            private static Object SLInvoke_q_Direct_execute_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value, Object[] arg1Value) {
                 short state_0 = $bc[$bci + C_SL_INVOKE_Q_DIRECT_STATE_BITS_OFFSET + 0];
                 int childArrayOffset_;
                 int constArrayOffset_;
-                assert (state_0 & 0b10) != 0 /*
-                                              * is-state_0 doDirect(SLFunction, Object[],
-                                              * Assumption, RootCallTarget, DirectCallNode)
-                                              */;
+                assert (state_0 & 0b10) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */;
                 if (arg0Value instanceof SLFunction) {
                     SLFunction arg0Value_ = (SLFunction) arg0Value;
                     SLInvoke_DirectData s0_ = ((SLInvoke_DirectData) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_Q_DIRECT_CHILDREN_OFFSET) + 0) + 0]);
@@ -10375,21 +8287,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         cur = cur.next_;
                     }
                     if ($children[childArrayOffset_ + 0] == null) {
-                        $bc[$bci + C_SL_INVOKE_Q_DIRECT_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_INVOKE_Q_DIRECT_STATE_BITS_OFFSET + 0] & 0xfffffffd /*
-                                                                                                                                                               * remove
-                                                                                                                                                               * -
-                                                                                                                                                               * state_0
-                                                                                                                                                               * doDirect
-                                                                                                                                                               * (
-                                                                                                                                                               * SLFunction,
-                                                                                                                                                               * Object
-                                                                                                                                                               * [
-                                                                                                                                                               * ]
-                                                                                                                                                               * ,
-                                                                                                                                                               * Assumption,
-                                                                                                                                                               * RootCallTarget,
-                                                                                                                                                               * DirectCallNode)
-                                                                                                                                                               */);
+                        $bc[$bci + C_SL_INVOKE_Q_DIRECT_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_INVOKE_Q_DIRECT_STATE_BITS_OFFSET + 0] & 0xfffffffd /* remove-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
                     }
                 } finally {
                     lock.unlock();
@@ -10401,9 +8299,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 Object $child0Value_ = expectObject($frame, $sp - 1);
                 int childArrayOffset_;
                 int constArrayOffset_;
-                assert (state_0 & 0b10) != 0 /*
-                                              * is-state_0 perform(TruffleString, SLFunction, Node)
-                                              */;
+                assert (state_0 & 0b10) != 0 /* is-state_0 perform(TruffleString, SLFunction, Node) */;
                 if ($child0Value_ instanceof TruffleString) {
                     TruffleString $child0Value__ = (TruffleString) $child0Value_;
                     {
@@ -10429,14 +8325,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 Object $child2Value_ = expectObject($frame, $sp - 1);
                 int childArrayOffset_;
                 int constArrayOffset_;
-                assert (state_0 & 0b1000) != 0 /*
-                                                * is-state_0 writeSLObject(SLObject, Object, Object,
-                                                * DynamicObjectLibrary, SLToTruffleStringNode)
-                                                */;
+                assert (state_0 & 0b1000) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */;
                 if ($child0Value_ instanceof SLObject) {
                     SLObject $child0Value__ = (SLObject) $child0Value_;
-                    SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc,
-                                    $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_CHILDREN_OFFSET) + 0) + 4]);
+                    SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_CHILDREN_OFFSET) + 0) + 4]);
                     while (s2_ != null) {
                         if ((s2_.objectLibrary_.accepts($child0Value__))) {
                             $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value__, $child1Value_, $child2Value_, s2_.objectLibrary_, s2_.toTruffleStringNode_));
@@ -10451,8 +8343,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static boolean SLLessThan_q_LessThan0_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value) {
+            private static boolean SLLessThan_q_LessThan0_fallbackGuard__(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
@@ -10535,7 +8426,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLEqual_Generic0Data extends Node {
 
                 @Child SLEqual_Generic0Data next_;
@@ -10556,7 +8446,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLReadProperty_ReadArray0Data extends Node {
 
                 @Child SLReadProperty_ReadArray0Data next_;
@@ -10577,7 +8466,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLReadProperty_ReadSLObject0Data extends Node {
 
                 @Child SLReadProperty_ReadSLObject0Data next_;
@@ -10598,7 +8486,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLReadProperty_ReadObject0Data extends Node {
 
                 @Child SLReadProperty_ReadObject0Data next_;
@@ -10619,7 +8506,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLWriteProperty_WriteArray0Data extends Node {
 
                 @Child SLWriteProperty_WriteArray0Data next_;
@@ -10640,7 +8526,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLWriteProperty_WriteSLObject0Data extends Node {
 
                 @Child SLWriteProperty_WriteSLObject0Data next_;
@@ -10661,7 +8546,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLWriteProperty_WriteObject0Data extends Node {
 
                 @Child SLWriteProperty_WriteObject0Data next_;
@@ -10682,7 +8566,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLUnbox_FromForeign0Data extends Node {
 
                 @Child SLUnbox_FromForeign0Data next_;
@@ -10702,7 +8585,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             @GeneratedBy(SLOperations.class)
             private static final class SLInvoke_DirectData extends Node {
 
@@ -10726,7 +8608,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             }
         }
-
         @GeneratedBy(SLOperations.class)
         private static final class UncachedBytecodeNode extends BytecodeLoopBase {
 
@@ -10736,8 +8617,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
             @BytecodeInterpreterSwitch
             @Override
-            int continueAt(OperationNodeImpl $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, ExceptionHandler[] $handlers,
-                            int[] $conditionProfiles, int maxLocals) {
+            int continueAt(OperationNodeImpl $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, ExceptionHandler[] $handlers, int[] $conditionProfiles, int maxLocals) {
                 int $sp = $startSp;
                 int $bci = $startBci;
                 Counter loopCounter = new Counter();
@@ -10753,22 +8633,24 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         }
                         switch (curOpcode) {
                             // pop
-                            // Simple Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_POP: {
+                            //   Simple Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_POP :
+                            {
                                 $sp = $sp - 1;
                                 $frame.clear($sp);
                                 $bci = $bci + POP_LENGTH;
                                 continue loop;
                             }
                             // branch
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] target
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_BRANCH: {
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] target
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_BRANCH :
+                            {
                                 int targetBci = $bc[$bci + BRANCH_BRANCH_TARGET_OFFSET + 0];
                                 if (targetBci <= $bci) {
                                     TruffleSafepoint.poll($this);
@@ -10786,15 +8668,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // branch.false
-                            // Simple Pops:
-                            // [ 0] condition
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] target
-                            // Branch Profiles:
-                            // [ 0] profile
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_BRANCH_FALSE: {
+                            //   Simple Pops:
+                            //     [ 0] condition
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] target
+                            //   Branch Profiles:
+                            //     [ 0] profile
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_BRANCH_FALSE :
+                            {
                                 boolean cond = $frame.getObject($sp - 1) == Boolean.TRUE;
                                 $sp = $sp - 1;
                                 if (do_profileCondition(cond, $conditionProfiles, $bc[$bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0])) {
@@ -10806,35 +8689,38 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                             }
                             // throw
-                            // Locals:
-                            // [ 0] exception
-                            // Pushed Values: 0
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_THROW: {
+                            //   Locals:
+                            //     [ 0] exception
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_THROW :
+                            {
                                 int slot = $bc[$bci + THROW_LOCALS_OFFSET + 0];
                                 throw (AbstractTruffleException) $frame.getObject(slot);
                             }
                             // load.constant.object
-                            // Constants:
-                            // [ 0] constant
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
-                            // LONG -> INSTR_LOAD_CONSTANT_LONG
-                            // BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            case INSTR_LOAD_CONSTANT_OBJECT: {
+                            //   Constants:
+                            //     [ 0] constant
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
+                            //     LONG -> INSTR_LOAD_CONSTANT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            case INSTR_LOAD_CONSTANT_OBJECT :
+                            {
                                 $frame.setObject($sp, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_OBJECT_CONSTANT_OFFSET) + 0]);
                                 $sp = $sp + 1;
                                 $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                                 continue loop;
                             }
                             // load.argument.object
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            // LONG -> INSTR_LOAD_ARGUMENT_LONG
-                            // BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            case INSTR_LOAD_ARGUMENT_OBJECT: {
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            case INSTR_LOAD_ARGUMENT_OBJECT :
+                            {
                                 Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_OBJECT_ARGUMENT_OFFSET + 0]];
                                 $frame.setObject($sp, value);
                                 $sp = $sp + 1;
@@ -10842,16 +8728,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.argument.long
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            // LONG -> INSTR_LOAD_ARGUMENT_LONG
-                            // INT -> INSTR_LOAD_ARGUMENT_LONG
-                            // DOUBLE -> INSTR_LOAD_ARGUMENT_LONG
-                            // FLOAT -> INSTR_LOAD_ARGUMENT_LONG
-                            // BOOLEAN -> INSTR_LOAD_ARGUMENT_LONG
-                            // BYTE -> INSTR_LOAD_ARGUMENT_LONG
-                            case INSTR_LOAD_ARGUMENT_LONG: {
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_LONG
+                            //     INT -> INSTR_LOAD_ARGUMENT_LONG
+                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_LONG
+                            //     FLOAT -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_LONG
+                            //     BYTE -> INSTR_LOAD_ARGUMENT_LONG
+                            case INSTR_LOAD_ARGUMENT_LONG :
+                            {
                                 Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]];
                                 if (value instanceof Long) {
                                     $frame.setLong($sp, (long) value);
@@ -10863,16 +8750,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.argument.boolean
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            // LONG -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // INT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // DOUBLE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // FLOAT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            // BYTE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            case INSTR_LOAD_ARGUMENT_BOOLEAN: {
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     INT -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     FLOAT -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     BYTE -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                            {
                                 Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]];
                                 if (value instanceof Boolean) {
                                     $frame.setBoolean($sp, (boolean) value);
@@ -10884,16 +8772,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // store.local.uninit
-                            // Locals:
-                            // [ 0] target
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_STORE_LOCAL_OBJECT
-                            // LONG -> INSTR_STORE_LOCAL_LONG
-                            // BOOLEAN -> INSTR_STORE_LOCAL_BOOLEAN
-                            case INSTR_STORE_LOCAL_UNINIT: {
+                            //   Locals:
+                            //     [ 0] target
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
+                            //     LONG -> INSTR_STORE_LOCAL_LONG
+                            //     BOOLEAN -> INSTR_STORE_LOCAL_BOOLEAN
+                            case INSTR_STORE_LOCAL_UNINIT :
+                            {
                                 int localIdx = $bc[$bci + STORE_LOCAL_UNINIT_LOCALS_OFFSET + 0];
                                 int sourceSlot = $sp - 1;
                                 $frame.copyObject(sourceSlot, localIdx);
@@ -10902,14 +8791,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // load.local.uninit
-                            // Locals:
-                            // [ 0] local
-                            // Pushed Values: 1
-                            // Boxing Elimination: Replace
-                            // OBJECT -> INSTR_LOAD_LOCAL_OBJECT
-                            // LONG -> INSTR_LOAD_LOCAL_LONG
-                            // BOOLEAN -> INSTR_LOAD_LOCAL_BOOLEAN
-                            case INSTR_LOAD_LOCAL_UNINIT: {
+                            //   Locals:
+                            //     [ 0] local
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     LONG -> INSTR_LOAD_LOCAL_LONG
+                            //     BOOLEAN -> INSTR_LOAD_LOCAL_BOOLEAN
+                            case INSTR_LOAD_LOCAL_UNINIT :
+                            {
                                 int localIdx = $bc[$bci + LOAD_LOCAL_UNINIT_LOCALS_OFFSET + 0];
                                 $frame.setObject($sp, expectObject($frame, localIdx));
                                 $sp++;
@@ -10917,11 +8807,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // return
-                            // Simple Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_RETURN: {
+                            //   Simple Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_RETURN :
+                            {
                                 uncachedExecuteCount++;
                                 if (uncachedExecuteCount > 16) {
                                     $this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE);
@@ -10929,422 +8820,324 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 return (($sp - 1) << 16) | 0xffff;
                             }
                             // c.SLAdd
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = Add1, method = public static
-                            // com.oracle.truffle.api.strings.TruffleString add(java.lang.Object,
-                            // java.lang.Object,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,
-                            // com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards =
-                            // [Guard[(SLAddNode.isString(left, right))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3f1a38a
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@375dedc
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@35cc264b
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1d4a35d2
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_ADD: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3b0e5992
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@41791417
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4a2aea20
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@8bb9c4b
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_ADD :
+                            {
                                 UncachedBytecodeNode.SLAdd_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_ADD_LENGTH;
                                 continue loop;
                             }
                             // c.SLDiv
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5119e3c8
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@16b0a9c1
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@72e2d136
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@24dc4ee8
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_DIV: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7c48e45c
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@567d16d3
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3e590fd4
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@119e11b8
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_DIV :
+                            {
                                 UncachedBytecodeNode.SLDiv_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_DIV_LENGTH;
                                 continue loop;
                             }
                             // c.SLEqual
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = equalNode]
-                            // [ 1] SpecializationData [id = Generic0, method = public static
-                            // boolean doGeneric(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(leftInterop.accepts(left))],
-                            // Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object,
-                            // java.lang.Object]]
-                            // [ 2] CacheExpression [sourceParameter = leftInterop]
-                            // [ 3] CacheExpression [sourceParameter = rightInterop]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@18d3b56e
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@357d1b96
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7076da46
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@3c5e853f
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_EQUAL: {
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = equalNode]
+                            //     [ 1] SpecializationData [id = Generic0, method = public static boolean doGeneric(java.lang.Object, java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 2] CacheExpression [sourceParameter = leftInterop]
+                            //     [ 3] CacheExpression [sourceParameter = rightInterop]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1f760747
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@16267112
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@cf88241
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@58f51e51
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_EQUAL :
+                            {
                                 UncachedBytecodeNode.SLEqual_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_EQUAL_LENGTH;
                                 continue loop;
                             }
                             // c.SLLessOrEqual
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2b64a952
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@58d188e3
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LESS_OR_EQUAL: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2d770d8e
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2ea49d34
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LESS_OR_EQUAL :
+                            {
                                 UncachedBytecodeNode.SLLessOrEqual_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
                                 continue loop;
                             }
                             // c.SLLessThan
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3809e35e
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1e3c361f
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LESS_THAN: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@13825d7d
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4f565a89
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LESS_THAN :
+                            {
                                 UncachedBytecodeNode.SLLessThan_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_LESS_THAN_LENGTH;
                                 continue loop;
                             }
                             // c.SLLogicalNot
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3d7459f4
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@58de6b74
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_LOGICAL_NOT: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3c613c75
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@77423a8
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_LOGICAL_NOT :
+                            {
                                 UncachedBytecodeNode.SLLogicalNot_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 1));
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
                                 continue loop;
                             }
                             // c.SLMul
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@60885467
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6e284f1d
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@10617a2d
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@44a37e52
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_MUL: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@196a740a
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@c6401d4
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7783b281
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@7dc4dc78
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_MUL :
+                            {
                                 UncachedBytecodeNode.SLMul_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_MUL_LENGTH;
                                 continue loop;
                             }
                             // c.SLReadProperty
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // [ 1] CacheExpression [sourceParameter = bci]
-                            // [ 2] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = ReadArray0, method = public static
-                            // java.lang.Object readArray(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))],
-                            // Guard[(arrays.hasArrayElements(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // [ 2] CacheExpression [sourceParameter = arrays]
-                            // [ 3] CacheExpression [sourceParameter = numbers]
-                            // [ 4] SpecializationData [id = ReadSLObject0, method = public static
-                            // java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.object.DynamicObjectLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
-                            // [ 5] CacheExpression [sourceParameter = node]
-                            // [ 6] CacheExpression [sourceParameter = objectLibrary]
-                            // [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            // [ 8] SpecializationData [id = ReadObject0, method = public static
-                            // java.lang.Object readObject(java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards =
-                            // [Guard[(objects.accepts(receiver))],
-                            // Guard[(!(SLReadPropertyNode.isSLObject(receiver)))],
-                            // Guard[(objects.hasMembers(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object]]
-                            // [ 9] CacheExpression [sourceParameter = node]
-                            // [10] CacheExpression [sourceParameter = objects]
-                            // [11] CacheExpression [sourceParameter = asMember]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@194c5295
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@66803b1
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3b503417
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@10fe7dc2
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_READ_PROPERTY: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //     [ 1] CacheExpression [sourceParameter = bci]
+                            //     [ 2] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //     [ 2] CacheExpression [sourceParameter = arrays]
+                            //     [ 3] CacheExpression [sourceParameter = numbers]
+                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 5] CacheExpression [sourceParameter = node]
+                            //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                            //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 9] CacheExpression [sourceParameter = node]
+                            //     [10] CacheExpression [sourceParameter = objects]
+                            //     [11] CacheExpression [sourceParameter = asMember]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@d8ccc90
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@383bdbc0
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3b535b
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@26f44997
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_READ_PROPERTY :
+                            {
                                 UncachedBytecodeNode.SLReadProperty_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
                                 continue loop;
                             }
                             // c.SLSub
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@24614477
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@89db741
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@b55dde2
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@545b6334
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_SUB: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@723b32e9
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5efde7db
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4c09e072
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@17f5c297
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_SUB :
+                            {
                                 UncachedBytecodeNode.SLSub_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 2 + 1;
                                 $bci = $bci + C_SL_SUB_LENGTH;
                                 continue loop;
                             }
                             // c.SLWriteProperty
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // [ 1] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = WriteArray0, method = public static
-                            // java.lang.Object writeArray(java.lang.Object, java.lang.Object,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))],
-                            // Guard[(arrays.hasArrayElements(receiver))]], signature =
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]]
-                            // [ 1] CacheExpression [sourceParameter = node]
-                            // [ 2] CacheExpression [sourceParameter = arrays]
-                            // [ 3] CacheExpression [sourceParameter = numbers]
-                            // [ 4] SpecializationData [id = WriteSLObject0, method = public static
-                            // java.lang.Object
-                            // writeSLObject(com.oracle.truffle.sl.runtime.SLObject,
-                            // java.lang.Object, java.lang.Object,
-                            // com.oracle.truffle.api.object.DynamicObjectLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object,
-                            // java.lang.Object]]
-                            // [ 5] CacheExpression [sourceParameter = objectLibrary]
-                            // [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            // [ 7] SpecializationData [id = WriteObject0, method = public static
-                            // java.lang.Object writeObject(java.lang.Object, java.lang.Object,
-                            // java.lang.Object, com.oracle.truffle.api.nodes.Node, int,
-                            // com.oracle.truffle.api.interop.InteropLibrary,
-                            // com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards =
-                            // [Guard[(objectLibrary.accepts(receiver))],
-                            // Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature =
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]]
-                            // [ 8] CacheExpression [sourceParameter = node]
-                            // [ 9] CacheExpression [sourceParameter = objectLibrary]
-                            // [10] CacheExpression [sourceParameter = asMember]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // [ 1] arg1
-                            // [ 2] arg2
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@73be843d
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@358d7470
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6e111524
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@de27549
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_WRITE_PROPERTY: {
-                                UncachedBytecodeNode.SLWriteProperty_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 3), $frame.getObject($sp - 2),
-                                                $frame.getObject($sp - 1));
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //     [ 1] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 1] CacheExpression [sourceParameter = node]
+                            //     [ 2] CacheExpression [sourceParameter = arrays]
+                            //     [ 3] CacheExpression [sourceParameter = numbers]
+                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 5] CacheExpression [sourceParameter = objectLibrary]
+                            //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
+                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 8] CacheExpression [sourceParameter = node]
+                            //     [ 9] CacheExpression [sourceParameter = objectLibrary]
+                            //     [10] CacheExpression [sourceParameter = asMember]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //     [ 1] arg1
+                            //     [ 2] arg2
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@357e48d8
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@537d706c
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4d0eeab9
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@4932aa7e
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_WRITE_PROPERTY :
+                            {
+                                UncachedBytecodeNode.SLWriteProperty_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 3), $frame.getObject($sp - 2), $frame.getObject($sp - 1));
                                 $sp = $sp - 3 + 1;
                                 $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
                                 continue loop;
                             }
                             // c.SLUnbox
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            // [ 1] SpecializationData [id = FromForeign0, method = public static
-                            // java.lang.Object fromForeign(java.lang.Object,
-                            // com.oracle.truffle.api.interop.InteropLibrary) , guards =
-                            // [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
-                            // [ 2] CacheExpression [sourceParameter = interop]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1be1cc4a
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@7ea357c8
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@28fd03da
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@27309732
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_UNBOX: {
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 2] CacheExpression [sourceParameter = interop]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@78fabc90
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@49885f6b
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4abbc95a
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@73e35be0
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_UNBOX :
+                            {
                                 UncachedBytecodeNode.SLUnbox_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 1));
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_UNBOX_LENGTH;
                                 continue loop;
                             }
                             // c.SLFunctionLiteral
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = result]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@79bbab4d
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@41ee1ec5
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_FUNCTION_LITERAL: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = result]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@e77e60a
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@49823c07
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_FUNCTION_LITERAL :
+                            {
                                 UncachedBytecodeNode.SLFunctionLiteral_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 1));
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
                                 continue loop;
                             }
                             // c.SLToBoolean
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] arg0
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@27cb6efe
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5fb8638c
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_TO_BOOLEAN: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] arg0
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@36b119b8
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@15bf1e13
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_TO_BOOLEAN :
+                            {
                                 UncachedBytecodeNode.SLToBoolean_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $frame.getObject($sp - 1));
                                 $sp = $sp - 1 + 1;
                                 $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // c.SLInvoke
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] SpecializationData [id = Direct, method = protected static
-                            // java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction,
-                            // java.lang.Object[], com.oracle.truffle.api.Assumption,
-                            // com.oracle.truffle.api.RootCallTarget,
-                            // com.oracle.truffle.api.nodes.DirectCallNode) , guards =
-                            // [Guard[(function.getCallTarget() == cachedTarget)]], signature =
-                            // [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
-                            // [ 1] CacheExpression [sourceParameter = callNode]
-                            // [ 2] CacheExpression [sourceParameter = library]
-                            // [ 3] CacheExpression [sourceParameter = node]
-                            // Simple Pops:
-                            // [ 0] arg0
-                            // Variadic
-                            // Pushed Values: 1
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@325d65d1
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@56247945
-                            // [ 2]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1f1b5872
-                            // [ 3]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@3c31d5a4
-                            // Boxing Elimination: Bit Mask
-                            case INSTR_C_SL_INVOKE: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 1] CacheExpression [sourceParameter = callNode]
+                            //     [ 2] CacheExpression [sourceParameter = library]
+                            //     [ 3] CacheExpression [sourceParameter = node]
+                            //   Simple Pops:
+                            //     [ 0] arg0
+                            //   Variadic
+                            //   Pushed Values: 1
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1b822dc2
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@10fa4ade
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1dae4e7
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@680f8367
+                            //   Boxing Elimination: Bit Mask
+                            case INSTR_C_SL_INVOKE :
+                            {
                                 int numVariadics = $bc[$bci + C_SL_INVOKE_VARIADIC_OFFSET + 0];
                                 Object input_0 = $frame.getObject($sp - numVariadics - 1);
                                 Object[] input_1 = new Object[numVariadics];
@@ -11358,22 +9151,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 continue loop;
                             }
                             // sc.SLAnd
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] end
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@72e1410f
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@d18ecd1
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_SC_SL_AND: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] end
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@218ca97d
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@30b5f865
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_SC_SL_AND :
+                            {
                                 if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
                                     $sp = $sp - 1;
                                     $bci = $bci + SC_SL_AND_LENGTH;
@@ -11384,22 +9176,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                             }
                             // sc.SLOr
-                            // Constants:
-                            // [ 0] CacheExpression [sourceParameter = bci]
-                            // Children:
-                            // [ 0] CacheExpression [sourceParameter = node]
-                            // Indexed Pops:
-                            // [ 0] value
-                            // Pushed Values: 0
-                            // Branch Targets:
-                            // [ 0] end
-                            // State Bitsets:
-                            // [ 0]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@ea17d33
-                            // [ 1]
-                            // com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@11205afd
-                            // Boxing Elimination: Do Nothing
-                            case INSTR_SC_SL_OR: {
+                            //   Constants:
+                            //     [ 0] CacheExpression [sourceParameter = bci]
+                            //   Children:
+                            //     [ 0] CacheExpression [sourceParameter = node]
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Branch Targets:
+                            //     [ 0] end
+                            //   State Bitsets:
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1fce182d
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5d9737e6
+                            //   Boxing Elimination: Do Nothing
+                            case INSTR_SC_SL_OR :
+                            {
                                 if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
                                     $sp = $sp - 1;
                                     $bci = $bci + SC_SL_OR_LENGTH;
@@ -11409,7 +9200,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     continue loop;
                                 }
                             }
-                            default:
+                            default :
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered: " + curOpcode + "");
                         }
@@ -11418,8 +9209,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         for (int handlerIndex = $handlers.length - 1; handlerIndex >= 0; handlerIndex--) {
                             CompilerAsserts.partialEvaluationConstant(handlerIndex);
                             ExceptionHandler handler = $handlers[handlerIndex];
-                            if (handler.startBci > $bci || handler.endBci <= $bci)
-                                continue;
+                            if (handler.startBci > $bci || handler.endBci <= $bci) continue;
                             $sp = handler.startStack + maxLocals;
                             $frame.setObject(handler.exceptionIndex, ex);
                             $bci = handler.handlerBci;
@@ -11435,185 +9225,230 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 int $bci = 0;
                 while ($bci < $bc.length) {
                     switch (unsafeFromBytecode($bc, $bci)) {
-                        case INSTR_POP: {
+                        case INSTR_POP :
+                        {
                             $bci = $bci + POP_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH: {
+                        case INSTR_BRANCH :
+                        {
                             $bci = $bci + BRANCH_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH_FALSE: {
+                        case INSTR_BRANCH_FALSE :
+                        {
                             $bci = $bci + BRANCH_FALSE_LENGTH;
                             break;
                         }
-                        case INSTR_THROW: {
+                        case INSTR_THROW :
+                        {
                             $bci = $bci + THROW_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_OBJECT: {
+                        case INSTR_LOAD_CONSTANT_OBJECT :
+                        {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG: {
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
                             $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN: {
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
                             $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
                             $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_OBJECT: {
+                        case INSTR_LOAD_ARGUMENT_OBJECT :
+                        {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG: {
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN: {
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
                             $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_OBJECT: {
+                        case INSTR_STORE_LOCAL_OBJECT :
+                        {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_LONG: {
+                        case INSTR_STORE_LOCAL_LONG :
+                        {
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN: {
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
                             $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_UNINIT: {
+                        case INSTR_STORE_LOCAL_UNINIT :
+                        {
                             $bci = $bci + STORE_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_OBJECT: {
+                        case INSTR_LOAD_LOCAL_OBJECT :
+                        {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG: {
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN: {
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
                             $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_UNINIT: {
+                        case INSTR_LOAD_LOCAL_UNINIT :
+                        {
                             $bci = $bci + LOAD_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_RETURN: {
+                        case INSTR_RETURN :
+                        {
                             $bci = $bci + RETURN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD: {
+                        case INSTR_C_SL_ADD :
+                        {
                             $bci = $bci + C_SL_ADD_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_DIV: {
+                        case INSTR_C_SL_DIV :
+                        {
                             $bci = $bci + C_SL_DIV_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_EQUAL: {
+                        case INSTR_C_SL_EQUAL :
+                        {
                             $bci = $bci + C_SL_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL: {
+                        case INSTR_C_SL_LESS_OR_EQUAL :
+                        {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN: {
+                        case INSTR_C_SL_LESS_THAN :
+                        {
                             $bci = $bci + C_SL_LESS_THAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LOGICAL_NOT: {
+                        case INSTR_C_SL_LOGICAL_NOT :
+                        {
                             $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_MUL: {
+                        case INSTR_C_SL_MUL :
+                        {
                             $bci = $bci + C_SL_MUL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY: {
+                        case INSTR_C_SL_READ_PROPERTY :
+                        {
                             $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_SUB: {
+                        case INSTR_C_SL_SUB :
+                        {
                             $bci = $bci + C_SL_SUB_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY: {
+                        case INSTR_C_SL_WRITE_PROPERTY :
+                        {
                             $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX: {
+                        case INSTR_C_SL_UNBOX :
+                        {
                             $bci = $bci + C_SL_UNBOX_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL: {
+                        case INSTR_C_SL_FUNCTION_LITERAL :
+                        {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN :
+                        {
                             $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE: {
+                        case INSTR_C_SL_INVOKE :
+                        {
                             $bci = $bci + C_SL_INVOKE_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_AND: {
+                        case INSTR_SC_SL_AND :
+                        {
                             $bci = $bci + SC_SL_AND_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_OR: {
+                        case INSTR_SC_SL_OR :
+                        {
                             $bci = $bci + SC_SL_OR_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_LONG: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_LONG :
+                        {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD_Q_ADD_LONG: {
+                        case INSTR_C_SL_ADD_Q_ADD_LONG :
+                        {
                             $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0: {
+                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
+                        {
                             $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
+                        {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
+                        {
                             $bci = $bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0: {
+                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                        {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE_Q_DIRECT: {
+                        case INSTR_C_SL_INVOKE_Q_DIRECT :
+                        {
                             $bci = $bci + C_SL_INVOKE_Q_DIRECT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM: {
+                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
+                        {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0: {
+                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
+                        {
                             $bci = $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0: {
+                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
+                        {
                             $bci = $bci + C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH;
                             break;
                         }
@@ -11628,11 +9463,13 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 while ($bci < $bc.length) {
                     sb.append(String.format(" [%04x]", $bci));
                     switch (unsafeFromBytecode($bc, $bci)) {
-                        default: {
+                        default :
+                        {
                             sb.append(String.format(" unknown 0x%02x", $bc[$bci++]));
                             break;
                         }
-                        case INSTR_POP: {
+                        case INSTR_POP :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append("     ");
                             sb.append("     ");
@@ -11645,7 +9482,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + POP_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH: {
+                        case INSTR_BRANCH :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11659,7 +9497,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + BRANCH_LENGTH;
                             break;
                         }
-                        case INSTR_BRANCH_FALSE: {
+                        case INSTR_BRANCH_FALSE :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11673,7 +9512,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + BRANCH_FALSE_LENGTH;
                             break;
                         }
-                        case INSTR_THROW: {
+                        case INSTR_THROW :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11687,7 +9527,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + THROW_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_OBJECT: {
+                        case INSTR_LOAD_CONSTANT_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11701,7 +9542,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG: {
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11715,7 +9557,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN: {
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11729,7 +9572,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_OBJECT: {
+                        case INSTR_LOAD_ARGUMENT_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11743,7 +9587,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG: {
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11757,7 +9602,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN: {
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11771,7 +9617,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_OBJECT: {
+                        case INSTR_STORE_LOCAL_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11786,7 +9633,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_LONG: {
+                        case INSTR_STORE_LOCAL_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11801,7 +9649,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN: {
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11816,7 +9665,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_UNINIT: {
+                        case INSTR_STORE_LOCAL_UNINIT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11831,7 +9681,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_OBJECT: {
+                        case INSTR_LOAD_LOCAL_OBJECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11845,7 +9696,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG: {
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11859,7 +9711,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN: {
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11873,7 +9726,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_UNINIT: {
+                        case INSTR_LOAD_LOCAL_UNINIT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append("     ");
@@ -11887,7 +9741,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_UNINIT_LENGTH;
                             break;
                         }
-                        case INSTR_RETURN: {
+                        case INSTR_RETURN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append("     ");
                             sb.append("     ");
@@ -11900,7 +9755,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + RETURN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD: {
+                        case INSTR_C_SL_ADD :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11916,7 +9772,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_ADD_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_DIV: {
+                        case INSTR_C_SL_DIV :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11932,7 +9789,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_DIV_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_EQUAL: {
+                        case INSTR_C_SL_EQUAL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11947,7 +9805,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL: {
+                        case INSTR_C_SL_LESS_OR_EQUAL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11963,7 +9822,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN: {
+                        case INSTR_C_SL_LESS_THAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11979,7 +9839,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LESS_THAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LOGICAL_NOT: {
+                        case INSTR_C_SL_LOGICAL_NOT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -11994,7 +9855,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_MUL: {
+                        case INSTR_C_SL_MUL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12010,7 +9872,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_MUL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY: {
+                        case INSTR_C_SL_READ_PROPERTY :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12028,7 +9891,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_SUB: {
+                        case INSTR_C_SL_SUB :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12044,7 +9908,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_SUB_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY: {
+                        case INSTR_C_SL_WRITE_PROPERTY :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12063,7 +9928,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX: {
+                        case INSTR_C_SL_UNBOX :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12077,7 +9943,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_UNBOX_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL: {
+                        case INSTR_C_SL_FUNCTION_LITERAL :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12092,7 +9959,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12107,7 +9975,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE: {
+                        case INSTR_C_SL_INVOKE :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12122,7 +9991,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_INVOKE_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_AND: {
+                        case INSTR_SC_SL_AND :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12138,7 +10008,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + SC_SL_AND_LENGTH;
                             break;
                         }
-                        case INSTR_SC_SL_OR: {
+                        case INSTR_SC_SL_OR :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12154,7 +10025,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + SC_SL_OR_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_LONG: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12168,7 +10040,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_ADD_Q_ADD_LONG: {
+                        case INSTR_C_SL_ADD_Q_ADD_LONG :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12184,7 +10057,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0: {
+                        case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12202,7 +10076,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN: {
+                        case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12216,7 +10091,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN: {
+                        case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12231,7 +10107,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0: {
+                        case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12247,7 +10124,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_INVOKE_Q_DIRECT: {
+                        case INSTR_C_SL_INVOKE_Q_DIRECT :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12262,7 +10140,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_INVOKE_Q_DIRECT_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM: {
+                        case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12277,7 +10156,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0: {
+                        case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12296,7 +10176,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH;
                             break;
                         }
-                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0: {
+                        case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
+                        {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
                             sb.append(String.format(" %04x", $bc[$bci + 1]));
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
@@ -12321,8 +10202,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return sb.toString();
             }
 
-            private static void SLAdd_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLAdd_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
@@ -12332,16 +10214,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                 }
                 if ((SLAddNode.isString($child0Value, $child1Value))) {
-                    $frame.setObject($sp - 2,
-                                    SLAddNode.add($child0Value, $child1Value, (SLToTruffleStringNodeGen.getUncached()), (SLToTruffleStringNodeGen.getUncached()), (ConcatNode.getUncached())));
+                    $frame.setObject($sp - 2, SLAddNode.add($child0Value, $child1Value, (SLToTruffleStringNodeGen.getUncached()), (SLToTruffleStringNodeGen.getUncached()), (ConcatNode.getUncached())));
                     return;
                 }
                 $frame.setObject($sp - 2, SLAddNode.typeError($child0Value, $child1Value, ($this), ($bci)));
                 return;
             }
 
-            private static void SLDiv_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLDiv_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
@@ -12354,19 +10236,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLEqual_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLEqual_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
                         boolean value = SLEqualNode.doLong($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                         * is-not-
-                                                                                         * state_0
-                                                                                         * RESULT-
-                                                                                         * UNBOXED
-                                                                                         */) {
+                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12379,12 +10257,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
                         boolean value = SLEqualNode.doBigNumber($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                         * is-not-
-                                                                                         * state_0
-                                                                                         * RESULT-
-                                                                                         * UNBOXED
-                                                                                         */) {
+                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12397,12 +10270,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if ($child1Value instanceof Boolean) {
                         boolean $child1Value_ = (boolean) $child1Value;
                         boolean value = SLEqualNode.doBoolean($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                         * is-not-
-                                                                                         * state_0
-                                                                                         * RESULT-
-                                                                                         * UNBOXED
-                                                                                         */) {
+                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12415,12 +10283,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if ($child1Value instanceof String) {
                         String $child1Value_ = (String) $child1Value;
                         boolean value = SLEqualNode.doString($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                         * is-not-
-                                                                                         * state_0
-                                                                                         * RESULT-
-                                                                                         * UNBOXED
-                                                                                         */) {
+                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12433,12 +10296,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if ($child1Value instanceof TruffleString) {
                         TruffleString $child1Value_ = (TruffleString) $child1Value;
                         boolean value = SLEqualNode.doTruffleString($child0Value_, $child1Value_, (EqualNode.getUncached()));
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                         * is-not-
-                                                                                         * state_0
-                                                                                         * RESULT-
-                                                                                         * UNBOXED
-                                                                                         */) {
+                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12451,12 +10309,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if (SLTypes.isSLNull($child1Value)) {
                         SLNull $child1Value_ = SLTypes.asSLNull($child1Value);
                         boolean value = SLEqualNode.doNull($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                         * is-not-
-                                                                                         * state_0
-                                                                                         * RESULT-
-                                                                                         * UNBOXED
-                                                                                         */) {
+                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12467,12 +10320,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if ($child0Value instanceof SLFunction) {
                     SLFunction $child0Value_ = (SLFunction) $child0Value;
                     boolean value = SLEqualNode.doFunction($child0Value_, $child1Value);
-                    if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                     * is-not-
-                                                                                     * state_0
-                                                                                     * RESULT-
-                                                                                     * UNBOXED
-                                                                                     */) {
+                    if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 2, value);
                     } else {
                         $frame.setBoolean($sp - 2, value);
@@ -12480,10 +10328,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     return;
                 }
                 boolean value = SLEqualNode.doGeneric($child0Value, $child1Value, (INTEROP_LIBRARY_.getUncached($child0Value)), (INTEROP_LIBRARY_.getUncached($child1Value)));
-                if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                 * is-not-state_0
-                                                                                 * RESULT-UNBOXED
-                                                                                 */) {
+                if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                     $frame.setObject($sp - 2, value);
                 } else {
                     $frame.setBoolean($sp - 2, value);
@@ -12491,23 +10336,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLessOrEqual_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLLessOrEqual_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
                         boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                 * is
-                                                                                                 * -
-                                                                                                 * not
-                                                                                                 * -
-                                                                                                 * state_0
-                                                                                                 * RESULT
-                                                                                                 * -
-                                                                                                 * UNBOXED
-                                                                                                 */) {
+                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12520,16 +10357,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
                         boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                 * is
-                                                                                                 * -
-                                                                                                 * not
-                                                                                                 * -
-                                                                                                 * state_0
-                                                                                                 * RESULT
-                                                                                                 * -
-                                                                                                 * UNBOXED
-                                                                                                 */) {
+                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12541,21 +10369,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLessThan_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLLessThan_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
                         boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                             * is-
-                                                                                             * not-
-                                                                                             * state_0
-                                                                                             * RESULT
-                                                                                             * -
-                                                                                             * UNBOXED
-                                                                                             */) {
+                        if ((($bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12568,14 +10390,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
                         boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                             * is-
-                                                                                             * not-
-                                                                                             * state_0
-                                                                                             * RESULT
-                                                                                             * -
-                                                                                             * UNBOXED
-                                                                                             */) {
+                        if ((($bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -12588,15 +10403,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
             private static void SLLogicalNot_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     boolean value = SLLogicalNotNode.doBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                           * is-not-
-                                                                                           * state_0
-                                                                                           * RESULT-
-                                                                                           * UNBOXED
-                                                                                           */) {
+                    if ((($bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setBoolean($sp - 1, value);
@@ -12607,8 +10419,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLMul_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLMul_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
@@ -12621,29 +10434,28 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLReadProperty_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLReadProperty_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (((INTEROP_LIBRARY_.getUncached($child0Value)).hasArrayElements($child0Value))) {
-                    $frame.setObject($sp - 2, SLReadPropertyNode.readArray($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)),
-                                    (INTEROP_LIBRARY_.getUncached($child1Value))));
+                    $frame.setObject($sp - 2, SLReadPropertyNode.readArray($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (INTEROP_LIBRARY_.getUncached($child1Value))));
                     return;
                 }
                 if ($child0Value instanceof SLObject) {
                     SLObject $child0Value_ = (SLObject) $child0Value;
-                    $frame.setObject($sp - 2, SLReadPropertyNode.readSLObject($child0Value_, $child1Value, ($this), ($bci), (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)),
-                                    (SLToTruffleStringNodeGen.getUncached())));
+                    $frame.setObject($sp - 2, SLReadPropertyNode.readSLObject($child0Value_, $child1Value, ($this), ($bci), (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)), (SLToTruffleStringNodeGen.getUncached())));
                     return;
                 }
                 if ((!(SLReadPropertyNode.isSLObject($child0Value))) && ((INTEROP_LIBRARY_.getUncached($child0Value)).hasMembers($child0Value))) {
-                    $frame.setObject($sp - 2,
-                                    SLReadPropertyNode.readObject($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (SLToMemberNodeGen.getUncached())));
+                    $frame.setObject($sp - 2, SLReadPropertyNode.readObject($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (SLToMemberNodeGen.getUncached())));
                     return;
                 }
-                throw new UnsupportedSpecializationException($this, new Node[]{null, null}, $frame.getValue($sp - 2), $frame.getValue($sp - 1));
+                throw new UnsupportedSpecializationException($this, new Node[] {null, null}, $frame.getValue($sp - 2), $frame.getValue($sp - 1));
             }
 
-            private static void SLSub_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLSub_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
@@ -12656,28 +10468,28 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLWriteProperty_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value, Object $child2Value) {
+            private static void SLWriteProperty_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value, Object $child2Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (((INTEROP_LIBRARY_.getUncached($child0Value)).hasArrayElements($child0Value))) {
-                    $frame.setObject($sp - 3, SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)),
-                                    (INTEROP_LIBRARY_.getUncached($child1Value))));
+                    $frame.setObject($sp - 3, SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (INTEROP_LIBRARY_.getUncached($child1Value))));
                     return;
                 }
                 if ($child0Value instanceof SLObject) {
                     SLObject $child0Value_ = (SLObject) $child0Value;
-                    $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)),
-                                    (SLToTruffleStringNodeGen.getUncached())));
+                    $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)), (SLToTruffleStringNodeGen.getUncached())));
                     return;
                 }
                 if ((!(SLWritePropertyNode.isSLObject($child0Value)))) {
-                    $frame.setObject($sp - 3, SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)),
-                                    (SLToMemberNodeGen.getUncached())));
+                    $frame.setObject($sp - 3, SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (SLToMemberNodeGen.getUncached())));
                     return;
                 }
-                throw new UnsupportedSpecializationException($this, new Node[]{null, null, null}, $frame.getValue($sp - 3), $frame.getValue($sp - 2), $frame.getValue($sp - 1));
+                throw new UnsupportedSpecializationException($this, new Node[] {null, null, null}, $frame.getValue($sp - 3), $frame.getValue($sp - 2), $frame.getValue($sp - 1));
             }
 
             private static void SLUnbox_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof String) {
                     String $child0Value_ = (String) $child0Value;
                     $frame.setObject($sp - 1, SLUnboxNode.fromString($child0Value_, (FromJavaStringNode.getUncached())));
@@ -12691,12 +10503,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     boolean value = SLUnboxNode.fromBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                     * is-not-
-                                                                                     * state_0
-                                                                                     * RESULT-
-                                                                                     * UNBOXED
-                                                                                     */) {
+                    if ((($bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setBoolean($sp - 1, value);
@@ -12706,12 +10513,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     long value = SLUnboxNode.fromLong($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                     * is-not-
-                                                                                     * state_0
-                                                                                     * RESULT-
-                                                                                     * UNBOXED
-                                                                                     */) {
+                    if ((($bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setLong($sp - 1, value);
@@ -12737,26 +10539,24 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLFunctionLiteral_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLFunctionLiteral_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof TruffleString) {
                     TruffleString $child0Value_ = (TruffleString) $child0Value;
                     $frame.setObject($sp - 1, SLFunctionLiteralNode.perform($child0Value_, (SLFunctionLiteralNode.lookupFunction($child0Value_, $this)), ($this)));
                     return;
                 }
-                throw new UnsupportedSpecializationException($this, new Node[]{null}, $frame.getValue($sp - 1));
+                throw new UnsupportedSpecializationException($this, new Node[] {null}, $frame.getValue($sp - 1));
             }
 
             private static void SLToBoolean_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     boolean value = SLToBooleanNode.doBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                          * is-not-
-                                                                                          * state_0
-                                                                                          * RESULT-
-                                                                                          * UNBOXED
-                                                                                          */) {
+                    if ((($bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setBoolean($sp - 1, value);
@@ -12764,12 +10564,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     return;
                 }
                 boolean value = SLToBooleanNode.doFallback($child0Value, ($this), ($bci));
-                if ((($bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                      * is-not-
-                                                                                      * state_0
-                                                                                      * RESULT-
-                                                                                      * UNBOXED
-                                                                                      */) {
+                if ((($bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                     $frame.setObject($sp - 1, value);
                 } else {
                     $frame.setBoolean($sp - 1, value);
@@ -12777,8 +10572,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static Object SLInvoke_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value,
-                            Object[] arg1Value) {
+            private static Object SLInvoke_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value, Object[] arg1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (arg0Value instanceof SLFunction) {
                     SLFunction arg0Value_ = (SLFunction) arg0Value;
                     return SLInvoke.doIndirect(arg0Value_, arg1Value, (IndirectCallNode.getUncached()));
@@ -12787,6 +10583,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
             private static boolean SLAnd_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     return SLToBooleanNode.doBoolean($child0Value_);
@@ -12795,6 +10593,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
 
             private static boolean SLOr_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     return SLToBooleanNode.doBoolean($child0Value_);
@@ -12802,8 +10602,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return SLToBooleanNode.doFallback($child0Value, ($this), ($bci));
             }
 
-            private static void SLUnbox_q_FromLong_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLUnbox_q_FromLong_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof String) {
                     String $child0Value_ = (String) $child0Value;
                     $frame.setObject($sp - 1, SLUnboxNode.fromString($child0Value_, (FromJavaStringNode.getUncached())));
@@ -12817,16 +10618,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     boolean value = SLUnboxNode.fromBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                                 * is
-                                                                                                 * -
-                                                                                                 * not
-                                                                                                 * -
-                                                                                                 * state_0
-                                                                                                 * RESULT
-                                                                                                 * -
-                                                                                                 * UNBOXED
-                                                                                                 */) {
+                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setBoolean($sp - 1, value);
@@ -12836,16 +10628,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     long value = SLUnboxNode.fromLong($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                                 * is
-                                                                                                 * -
-                                                                                                 * not
-                                                                                                 * -
-                                                                                                 * state_0
-                                                                                                 * RESULT
-                                                                                                 * -
-                                                                                                 * UNBOXED
-                                                                                                 */) {
+                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setLong($sp - 1, value);
@@ -12871,8 +10654,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLAdd_q_AddLong_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value,
-                            Object $child1Value) {
+            private static void SLAdd_q_AddLong_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
@@ -12882,37 +10666,35 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     }
                 }
                 if ((SLAddNode.isString($child0Value, $child1Value))) {
-                    $frame.setObject($sp - 2,
-                                    SLAddNode.add($child0Value, $child1Value, (SLToTruffleStringNodeGen.getUncached()), (SLToTruffleStringNodeGen.getUncached()), (ConcatNode.getUncached())));
+                    $frame.setObject($sp - 2, SLAddNode.add($child0Value, $child1Value, (SLToTruffleStringNodeGen.getUncached()), (SLToTruffleStringNodeGen.getUncached()), (ConcatNode.getUncached())));
                     return;
                 }
                 $frame.setObject($sp - 2, SLAddNode.typeError($child0Value, $child1Value, ($this), ($bci)));
                 return;
             }
 
-            private static void SLReadProperty_q_ReadSLObject0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value) {
+            private static void SLReadProperty_q_ReadSLObject0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (((INTEROP_LIBRARY_.getUncached($child0Value)).hasArrayElements($child0Value))) {
-                    $frame.setObject($sp - 2, SLReadPropertyNode.readArray($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)),
-                                    (INTEROP_LIBRARY_.getUncached($child1Value))));
+                    $frame.setObject($sp - 2, SLReadPropertyNode.readArray($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (INTEROP_LIBRARY_.getUncached($child1Value))));
                     return;
                 }
                 if ($child0Value instanceof SLObject) {
                     SLObject $child0Value_ = (SLObject) $child0Value;
-                    $frame.setObject($sp - 2, SLReadPropertyNode.readSLObject($child0Value_, $child1Value, ($this), ($bci), (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)),
-                                    (SLToTruffleStringNodeGen.getUncached())));
+                    $frame.setObject($sp - 2, SLReadPropertyNode.readSLObject($child0Value_, $child1Value, ($this), ($bci), (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)), (SLToTruffleStringNodeGen.getUncached())));
                     return;
                 }
                 if ((!(SLReadPropertyNode.isSLObject($child0Value))) && ((INTEROP_LIBRARY_.getUncached($child0Value)).hasMembers($child0Value))) {
-                    $frame.setObject($sp - 2,
-                                    SLReadPropertyNode.readObject($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (SLToMemberNodeGen.getUncached())));
+                    $frame.setObject($sp - 2, SLReadPropertyNode.readObject($child0Value, $child1Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (SLToMemberNodeGen.getUncached())));
                     return;
                 }
-                throw new UnsupportedSpecializationException($this, new Node[]{null, null}, $frame.getValue($sp - 2), $frame.getValue($sp - 1));
+                throw new UnsupportedSpecializationException($this, new Node[] {null, null}, $frame.getValue($sp - 2), $frame.getValue($sp - 1));
             }
 
-            private static void SLUnbox_q_FromBoolean_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLUnbox_q_FromBoolean_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof String) {
                     String $child0Value_ = (String) $child0Value;
                     $frame.setObject($sp - 1, SLUnboxNode.fromString($child0Value_, (FromJavaStringNode.getUncached())));
@@ -12926,16 +10708,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     boolean value = SLUnboxNode.fromBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                                    * is
-                                                                                                    * -
-                                                                                                    * not
-                                                                                                    * -
-                                                                                                    * state_0
-                                                                                                    * RESULT
-                                                                                                    * -
-                                                                                                    * UNBOXED
-                                                                                                    */) {
+                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setBoolean($sp - 1, value);
@@ -12945,16 +10718,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     long value = SLUnboxNode.fromLong($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /*
-                                                                                                    * is
-                                                                                                    * -
-                                                                                                    * not
-                                                                                                    * -
-                                                                                                    * state_0
-                                                                                                    * RESULT
-                                                                                                    * -
-                                                                                                    * UNBOXED
-                                                                                                    */) {
+                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setLong($sp - 1, value);
@@ -12980,21 +10744,13 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLToBoolean_q_Boolean_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLToBoolean_q_Boolean_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
                     boolean value = SLToBooleanNode.doBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                    * is
-                                                                                                    * -
-                                                                                                    * not
-                                                                                                    * -
-                                                                                                    * state_0
-                                                                                                    * RESULT
-                                                                                                    * -
-                                                                                                    * UNBOXED
-                                                                                                    */) {
+                    if ((($bc[$bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                         $frame.setObject($sp - 1, value);
                     } else {
                         $frame.setBoolean($sp - 1, value);
@@ -13002,16 +10758,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     return;
                 }
                 boolean value = SLToBooleanNode.doFallback($child0Value, ($this), ($bci));
-                if ((($bc[$bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                * is
-                                                                                                * -
-                                                                                                * not
-                                                                                                * -
-                                                                                                * state_0
-                                                                                                * RESULT
-                                                                                                * -
-                                                                                                * UNBOXED
-                                                                                                */) {
+                if ((($bc[$bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                     $frame.setObject($sp - 1, value);
                 } else {
                     $frame.setBoolean($sp - 1, value);
@@ -13019,23 +10766,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static void SLLessOrEqual_q_LessOrEqual0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value) {
+            private static void SLLessOrEqual_q_LessOrEqual0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
                         boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                                  * is
-                                                                                                                  * -
-                                                                                                                  * not
-                                                                                                                  * -
-                                                                                                                  * state_0
-                                                                                                                  * RESULT
-                                                                                                                  * -
-                                                                                                                  * UNBOXED
-                                                                                                                  */) {
+                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -13048,16 +10787,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
                         boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                                  * is
-                                                                                                                  * -
-                                                                                                                  * not
-                                                                                                                  * -
-                                                                                                                  * state_0
-                                                                                                                  * RESULT
-                                                                                                                  * -
-                                                                                                                  * UNBOXED
-                                                                                                                  */) {
+                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -13069,8 +10799,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return;
             }
 
-            private static Object SLInvoke_q_Direct_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value,
-                            Object[] arg1Value) {
+            private static Object SLInvoke_q_Direct_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object arg0Value, Object[] arg1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (arg0Value instanceof SLFunction) {
                     SLFunction arg0Value_ = (SLFunction) arg0Value;
                     return SLInvoke.doIndirect(arg0Value_, arg1Value, (IndirectCallNode.getUncached()));
@@ -13078,54 +10809,45 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 return SLInvoke.doInterop(arg0Value, arg1Value, (INTEROP_LIBRARY_.getUncached()), ($this), ($bci));
             }
 
-            private static void SLFunctionLiteral_q_Perform_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value) {
+            private static void SLFunctionLiteral_q_Perform_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof TruffleString) {
                     TruffleString $child0Value_ = (TruffleString) $child0Value;
                     $frame.setObject($sp - 1, SLFunctionLiteralNode.perform($child0Value_, (SLFunctionLiteralNode.lookupFunction($child0Value_, $this)), ($this)));
                     return;
                 }
-                throw new UnsupportedSpecializationException($this, new Node[]{null}, $frame.getValue($sp - 1));
+                throw new UnsupportedSpecializationException($this, new Node[] {null}, $frame.getValue($sp - 1));
             }
 
-            private static void SLWriteProperty_q_WriteSLObject0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value, Object $child2Value) {
+            private static void SLWriteProperty_q_WriteSLObject0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value, Object $child2Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if (((INTEROP_LIBRARY_.getUncached($child0Value)).hasArrayElements($child0Value))) {
-                    $frame.setObject($sp - 3, SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)),
-                                    (INTEROP_LIBRARY_.getUncached($child1Value))));
+                    $frame.setObject($sp - 3, SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (INTEROP_LIBRARY_.getUncached($child1Value))));
                     return;
                 }
                 if ($child0Value instanceof SLObject) {
                     SLObject $child0Value_ = (SLObject) $child0Value;
-                    $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)),
-                                    (SLToTruffleStringNodeGen.getUncached())));
+                    $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_)), (SLToTruffleStringNodeGen.getUncached())));
                     return;
                 }
                 if ((!(SLWritePropertyNode.isSLObject($child0Value)))) {
-                    $frame.setObject($sp - 3, SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)),
-                                    (SLToMemberNodeGen.getUncached())));
+                    $frame.setObject($sp - 3, SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, ($this), ($bci), (INTEROP_LIBRARY_.getUncached($child0Value)), (SLToMemberNodeGen.getUncached())));
                     return;
                 }
-                throw new UnsupportedSpecializationException($this, new Node[]{null, null, null}, $frame.getValue($sp - 3), $frame.getValue($sp - 2), $frame.getValue($sp - 1));
+                throw new UnsupportedSpecializationException($this, new Node[] {null, null, null}, $frame.getValue($sp - 3), $frame.getValue($sp - 2), $frame.getValue($sp - 1));
             }
 
-            private static void SLLessThan_q_LessThan0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children,
-                            Object $child0Value, Object $child1Value) {
+            private static void SLLessThan_q_LessThan0_executeUncached_(VirtualFrame $frame, OperationNodeImpl $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+                int childArrayOffset_;
+                int constArrayOffset_;
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
                         boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                          * is
-                                                                                                          * -
-                                                                                                          * not
-                                                                                                          * -
-                                                                                                          * state_0
-                                                                                                          * RESULT
-                                                                                                          * -
-                                                                                                          * UNBOXED
-                                                                                                          */) {
+                        if ((($bc[$bci + C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -13138,16 +10860,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
                         boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /*
-                                                                                                          * is
-                                                                                                          * -
-                                                                                                          * not
-                                                                                                          * -
-                                                                                                          * state_0
-                                                                                                          * RESULT
-                                                                                                          * -
-                                                                                                          * UNBOXED
-                                                                                                          */) {
+                        if ((($bc[$bci + C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
                             $frame.setObject($sp - 2, value);
                         } else {
                             $frame.setBoolean($sp - 2, value);
@@ -13196,7 +10909,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLEqual_Generic0Data extends Node {
 
                 @Child SLEqual_Generic0Data next_;
@@ -13217,7 +10929,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLReadProperty_ReadArray0Data extends Node {
 
                 @Child SLReadProperty_ReadArray0Data next_;
@@ -13238,7 +10949,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLReadProperty_ReadSLObject0Data extends Node {
 
                 @Child SLReadProperty_ReadSLObject0Data next_;
@@ -13259,7 +10969,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLReadProperty_ReadObject0Data extends Node {
 
                 @Child SLReadProperty_ReadObject0Data next_;
@@ -13280,7 +10989,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLWriteProperty_WriteArray0Data extends Node {
 
                 @Child SLWriteProperty_WriteArray0Data next_;
@@ -13301,7 +11009,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLWriteProperty_WriteSLObject0Data extends Node {
 
                 @Child SLWriteProperty_WriteSLObject0Data next_;
@@ -13322,7 +11029,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLWriteProperty_WriteObject0Data extends Node {
 
                 @Child SLWriteProperty_WriteObject0Data next_;
@@ -13343,7 +11049,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             private static final class SLUnbox_FromForeign0Data extends Node {
 
                 @Child SLUnbox_FromForeign0Data next_;
@@ -13363,7 +11068,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
 
             }
-
             @GeneratedBy(SLOperations.class)
             private static final class SLInvoke_DirectData extends Node {
 
@@ -13388,7 +11092,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             }
         }
     }
-
     private static final class Counter {
 
         public int count;
