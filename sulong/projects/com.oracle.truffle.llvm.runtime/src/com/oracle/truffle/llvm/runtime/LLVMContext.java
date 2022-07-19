@@ -184,6 +184,7 @@ public final class LLVMContext {
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
+    protected boolean finalized;
     private State contextState;
     private final LLVMLanguage language;
 
@@ -209,6 +210,7 @@ public final class LLVMContext {
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
+        this.finalized = false;
         // this.destructorFunctions = new ArrayList<>();
         this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
@@ -434,6 +436,10 @@ public final class LLVMContext {
         return threadingStack != null;
     }
 
+    public boolean isFinalized() {
+        return finalized;
+    }
+
     public Toolchain getToolchain() {
         return toolchain;
     }
@@ -588,6 +594,8 @@ public final class LLVMContext {
         } finally {
             sp.setAllowActions(prev);
         }
+
+        finalized = true;
     }
 
     void dispose() {

@@ -32,8 +32,10 @@ package com.oracle.truffle.llvm.runtime.pthread;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -237,16 +239,20 @@ public final class LLVMPThreadContext {
         return pthreadCallTarget;
     }
 
-    public void callDestructors() {
-        callDestructors(Thread.currentThread().getId());
+    public void callDestructors(LLVMContext context) {
+        callDestructors(context, Thread.currentThread().getId());
     }
 
-    public void callDestructors(long threadId) {
+    public void callDestructors(LLVMContext context, long threadId) {
         for (int key = 1; key <= getNumberOfPthreadKeys(); key++) {
             final LLVMPointer destructor = getDestructor(key);
             if (destructor != null && !destructor.isNull()) {
                 final LLVMPointer keyMapping = getAndRemoveSpecificUnlessNull(key, threadId);
                 if (keyMapping != null) {
+                    if (context.isFinalized()) {
+                        throw new LLVMPolyglotException(null,
+                                        "Tried to call a pthread destructor, but the LLVMContext has already been finalized. Ensure that the context is still alive and that the thread was created using the Truffle API.");
+                    }
                     assert !keyMapping.isNull();
                     getPthreadCallTarget().call(destructor, keyMapping);
                 }
