@@ -25,7 +25,7 @@ You can get Oracle GraalVM Enterprise Edition by:
 Choose your operating system and proceed to the installation steps for your specific platform:
 
 * Oracle Cloud 
-  * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-yum.md)
+  * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-with-OL.md)
   * [OCI DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
 * [Linux](installation-linux.md)
 * [Linux ARM64](installation-linux-aarch64.md)
@@ -335,7 +335,7 @@ who are familiar with GraalVM Enterprise but may have little experience using it
 
 ### Oracle Cloud Users
 Oracle Cloud users considering GraalVM Enterprise for their cloud workloads are
-invited to read [GraalVM Enterprise on OCI](oci/compute-instances.md).
+invited to read [GraalVM Enterprise on OCI](oci/installation-compute-instance-with-OL.md).
 This page focuses on using GraalVM Enterprise with the Oracle Cloud Infrastructure Virtual Machine compute instance.
 
 ### Advanced Users
