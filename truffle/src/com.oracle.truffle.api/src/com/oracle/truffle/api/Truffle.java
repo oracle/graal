@@ -108,7 +108,10 @@ public final class Truffle {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
                 String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
-                if (runtimeClassName != null && runtimeClassName.length() > 0) {
+                if (runtimeClassName != null && !runtimeClassName.isEmpty()) {
+                    if (runtimeClassName.equals(DefaultTruffleRuntime.class.getName())) {
+                        return new DefaultTruffleRuntime();
+                    }
                     try {
                         ClassLoader cl = Thread.currentThread().getContextClassLoader();
                         Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);
