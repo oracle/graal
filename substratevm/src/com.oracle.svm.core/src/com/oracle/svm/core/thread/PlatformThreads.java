@@ -198,6 +198,31 @@ public abstract class PlatformThreads {
     }
 
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+    public static IsolateThread findIsolateThreadByJavaThreadId(long javaThreadId) {
+        // Accessing the value for the current thread is fast.
+        Thread curThread = PlatformThreads.currentThread.get();
+        if (curThread != null && JavaThreads.getThreadId(curThread) == javaThreadId) {
+            return CurrentIsolate.getCurrentThread();
+        }
+
+        // If the value of another thread is accessed, then we need to do a slow lookup.
+        VMThreads.lockThreadMutexInNativeCode();
+        try {
+            IsolateThread isolateThread = VMThreads.firstThread();
+            while (isolateThread.isNonNull()) {
+                Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
+                if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
+                    return isolateThread;
+                }
+                isolateThread = VMThreads.nextThread(isolateThread);
+            }
+            return WordFactory.nullPointer();
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
         VMThreads.lockThreadMutexInNativeCode();
         try {

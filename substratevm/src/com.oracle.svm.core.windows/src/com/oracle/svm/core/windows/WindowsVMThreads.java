@@ -51,7 +51,8 @@ public final class WindowsVMThreads extends VMThreads {
 
         // convert the thread pseudo handle to a real handle using DuplicateHandle
         WinBase.LPHANDLE pointerToResult = StackValue.get(WinBase.LPHANDLE.class);
-        int status = WinBase.DuplicateHandle(pseudoProcessHandle, pseudoThreadHandle, pseudoProcessHandle, pointerToResult, Process.SYNCHRONIZE(), false, 0);
+        int desiredAccess = Process.SYNCHRONIZE() | Process.THREAD_QUERY_LIMITED_INFORMATION();
+        int status = WinBase.DuplicateHandle(pseudoProcessHandle, pseudoThreadHandle, pseudoProcessHandle, pointerToResult, desiredAccess, false, 0);
         VMError.guarantee(status != 0, "Duplicating thread handle failed.");
 
         // no need to cleanup anything as we only used pseudo-handles and stack values

@@ -570,6 +570,10 @@ public abstract class VMThreads {
         }
     }
 
+    public static OSThreadHandle findOSThreadHandleForIsolateThread(IsolateThread isolateThread) {
+        return OSThreadHandleTL.get(isolateThread);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guaranteeOwnsThreadMutex(String message) {
         THREAD_MUTEX.guaranteeIsOwner(message);

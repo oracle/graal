@@ -31,7 +31,9 @@ import java.util.Objects;
 
 import javax.management.ObjectName;
 
+import com.oracle.svm.core.thread.VMThreads;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -107,7 +109,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public boolean isThreadCpuTimeSupported() {
-        return false;
+        return ImageSingletons.contains(ThreadCpuTimeSupport.class);
     }
 
     @Override
@@ -184,30 +186,42 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public long getCurrentThreadCpuTime() {
-        if (ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
-            return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getCurrentThreadCpuTime(true);
-        } else {
-            throw new UnsupportedOperationException("CurrentThreadCpuTime is not supported.");
-        }
+        return getCurrentThreadUserTimeImpl(true, "GetCurrentThreadCpuTime");
     }
 
     @Override
     public long getCurrentThreadUserTime() {
-        if (ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
-            return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getCurrentThreadCpuTime(false);
-        } else {
-            throw new UnsupportedOperationException("CurrentThreadUserTime is not supported.");
+        return getCurrentThreadUserTimeImpl(false, "GetCurrentThreadUserTime");
+    }
+
+    private static long getCurrentThreadUserTimeImpl(boolean includeSystemTime, String operation) {
+        if (!ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
+            throw new UnsupportedOperationException(operation + " is not supported.");
         }
+        return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getCurrentThreadCpuTime(includeSystemTime);
     }
 
     @Override
     public long getThreadCpuTime(long id) {
-        throw VMError.unsupportedFeature(MSG);
+        return getThreadCpuTimeImpl(id, true, "GetThreadCpuTime");
     }
 
     @Override
     public long getThreadUserTime(long id) {
-        throw VMError.unsupportedFeature(MSG);
+        return getThreadCpuTimeImpl(id, false, "GetThreadUserTime");
+    }
+
+    private static long getThreadCpuTimeImpl(long id, boolean includeSystemTime, String operation) {
+        verifyThreadId(id);
+        if (!ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
+            throw new UnsupportedOperationException(operation + " is not supported.");
+        }
+        IsolateThread isolateThread = PlatformThreads.findIsolateThreadByJavaThreadId(id);
+        if (isolateThread.isNull()) {
+            return -1;
+        }
+        VMThreads.OSThreadHandle osThread = VMThreads.findOSThreadHandleForIsolateThread(isolateThread);
+        return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getThreadCpuTime(osThread, includeSystemTime);
     }
 
     @Override

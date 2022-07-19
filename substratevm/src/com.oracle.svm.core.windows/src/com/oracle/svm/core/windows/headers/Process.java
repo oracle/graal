@@ -70,6 +70,9 @@ public class Process {
     @CConstant
     public static native int SYNCHRONIZE();
 
+    @CConstant
+    public static native int THREAD_QUERY_LIMITED_INFORMATION();
+
     @CStruct
     public interface PCRITICAL_SECTION extends PointerBase {
     }

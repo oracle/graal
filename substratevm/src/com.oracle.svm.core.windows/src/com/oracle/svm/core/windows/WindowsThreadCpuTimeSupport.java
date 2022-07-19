@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.windows;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
@@ -47,11 +47,16 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Override
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         HANDLE hThread = Process.NoTransitions.GetCurrentThread();
+        return getThreadCpuTime((OSThreadHandle) hThread, includeSystemTime);
+    }
+
+    @Override
+    public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         FILETIME create = StackValue.get(FILETIME.class);
         FILETIME exit = StackValue.get(FILETIME.class);
         FILETIME kernel = StackValue.get(FILETIME.class);
         FILETIME user = StackValue.get(FILETIME.class);
-        if (!Process.NoTransitions.GetThreadTimes(hThread, create, exit, kernel, user)) {
+        if (!Process.NoTransitions.GetThreadTimes((HANDLE) osThreadHandle, create, exit, kernel, user)) {
             return -1;
         }
         UnsignedWord total = WordFactory.unsigned(user.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(user.dwLowDateTime()));
@@ -67,7 +72,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 class WindowsThreadCpuTimeFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(ManagementFeature.class);
+        return List.of(ManagementFeature.class);
     }
 
     @Override

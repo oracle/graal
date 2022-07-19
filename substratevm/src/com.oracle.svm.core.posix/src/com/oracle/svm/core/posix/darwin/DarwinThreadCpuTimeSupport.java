@@ -32,6 +32,7 @@ import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo.thread_basic_info_data_t;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,7 +40,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -48,7 +48,12 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Override
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         pthread_t pthread = Pthread.pthread_self();
-        int threadsMachPort = DarwinPthread.pthread_mach_thread_np(pthread);
+        return getThreadCpuTime(pthread, includeSystemTime);
+    }
+
+    @Override
+    public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
+        int threadsMachPort = DarwinPthread.pthread_mach_thread_np((pthread_t) osThreadHandle);
         CIntPointer sizePointer = StackValue.get(Integer.BYTES);
         sizePointer.write(DarwinThreadInfo.THREAD_INFO_MAX());
         thread_basic_info_data_t basicThreadInfo = StackValue.get(thread_basic_info_data_t.class);
@@ -63,6 +68,7 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         }
         return TimeUnit.SECONDS.toNanos(seconds) + TimeUnit.MICROSECONDS.toNanos(micros);
     }
+
 }
 
 @Platforms({Platform.DARWIN.class})
@@ -70,7 +76,7 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 final class DarwinThreadCpuTimeFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(ManagementFeature.class);
+        return List.of(ManagementFeature.class);
     }
 
     @Override

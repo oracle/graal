@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk.management;
 
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+
 /**
  * Support for implementation of {@link SubstrateThreadMXBean} methods returning the thread
  * execution time.
@@ -39,4 +41,6 @@ public interface ThreadCpuTimeSupport {
      *             parameters.
      */
     long getCurrentThreadCpuTime(boolean includeSystemTime);
+
+    long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime);
 }

@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
+import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -44,11 +47,24 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
+        return getThreadCpuTimeImpl(LinuxTime.CLOCK_THREAD_CPUTIME_ID(), includeSystemTime);
+    }
+
+    @Override
+    public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
+        CIntPointer threadsClockId = StackValue.get(Integer.BYTES);
+        if (LinuxPthread.pthread_getcpuclockid((pthread_t) osThreadHandle, threadsClockId) != 0) {
+            return -1;
+        }
+        return getThreadCpuTimeImpl(threadsClockId.read(), includeSystemTime);
+    }
+
+    private static long getThreadCpuTimeImpl(int clockId, boolean includeSystemTime) {
         if (!includeSystemTime) {
             throw new UnsupportedOperationException("ThreadCpuTime is supported only for combined user-mode and kernel-mode time.");
         }
         timespec time = StackValue.get(timespec.class);
-        if (LinuxTime.clock_gettime(LinuxTime.CLOCK_THREAD_CPUTIME_ID(), time) != 0) {
+        if (LinuxTime.clock_gettime(clockId, time) != 0) {
             return -1;
         }
         return TimeUnit.SECONDS.toNanos(time.tv_sec()) + time.tv_nsec();
@@ -60,7 +76,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 final class LinuxThreadCpuTimeFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(ManagementFeature.class);
+        return List.of(ManagementFeature.class);
     }
 
     @Override
