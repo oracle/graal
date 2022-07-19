@@ -2,7 +2,7 @@
 layout: ni-docs
 toc_group: how-to-guides
 link_title: Build a Polyglot Native Executable
-permalink: /reference-manual/native-image/build-polyglot-native-executable/
+permalink: /reference-manual/native-image/guides/build-polyglot-native-executable/
 ---
 
 # Build a Polyglot Native Executable (Java and JavaScript)

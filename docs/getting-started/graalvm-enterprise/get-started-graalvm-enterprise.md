@@ -286,20 +286,12 @@ More details can be found in the [WebAssembly reference manual](../../reference-
 
 With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
 
-<<<<<<< HEAD
-With GraalVM Enterpise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and smaller footprint for your application.
-=======
->>>>>>> fe7bed95b0b (Revise docs for GraalVM Native Image and other components.)
 The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image
 ```
 
 The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
-<<<<<<< HEAD
-=======
-
->>>>>>> fe7bed95b0b (Revise docs for GraalVM Native Image and other components.)
 ```java
 // HelloWorld.java
 public class HelloWorld {
@@ -423,7 +415,7 @@ who are familiar with GraalVM Enterprise but may have little experience using it
 
 ### Oracle Cloud Users
 Oracle Cloud users considering GraalVM Enterprise for their cloud workloads are
-invited to read [GraalVM Enterprise on OCI](oci/compute-instances.md).
+invited to read [GraalVM Enterprise on OCI](oci/installation-compute-instance-with-OL.md).
 This page focuses on using GraalVM Enterprise with the Oracle Cloud Infrastructure Virtual Machine compute instance.
 
 ### Advanced Users

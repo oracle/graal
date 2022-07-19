@@ -28,6 +28,7 @@ Here you will learn how to:
 - [Use GraalVM Dashboard to Optimize the Size of a Native Executable](use-graalvm-dashboard.md)
 - [Use Gradle to Build a Native Executable from a Java Application](use-native-image-gradle-plugin.md)
 - [Use Maven to Build a Native Executable from a Java Application](use-native-image-maven-plugin.md)
+- [Use Shared Reachability Metadata with Native Image Gradle Plugin](use-reachability-metadata-repository-gradle.md)
 - [Use System Properties in a Native Executable](use-system-properties.md)
 
 > Note: To follow these guides, a user is expected to have [GraalVM installed with Native Image support](../README.md#install-native-image). 
