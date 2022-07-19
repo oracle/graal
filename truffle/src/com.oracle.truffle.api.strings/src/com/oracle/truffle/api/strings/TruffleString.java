@@ -4742,7 +4742,15 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public abstract TruffleString execute(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy);
 
-        @Specialization
+        @Specialization(guards = "byteLength == 0")
+        static TruffleString substringEmpty(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy) {
+            a.checkEncoding(expectedEncoding);
+            final int fromIndex = rawIndex(fromByteIndex, expectedEncoding);
+            a.boundsCheckRegionRaw(fromIndex, 0);
+            return expectedEncoding.getEmpty();
+        }
+
+        @Specialization(guards = "byteLength != 0")
         static TruffleString substringRaw(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
@@ -4752,9 +4760,6 @@ public final class TruffleString extends AbstractTruffleString {
             final int fromIndex = rawIndex(fromByteIndex, expectedEncoding);
             final int length = rawIndex(byteLength, expectedEncoding);
             a.boundsCheckRegionRaw(fromIndex, length);
-            if (length == 0) {
-                return expectedEncoding.getEmpty();
-            }
             return substringNode.execute(a, toIndexableNode.execute(a, a.data()), codeRangeA, expectedEncoding.id, fromIndex, length, lazy && a.isImmutable());
         }
 
