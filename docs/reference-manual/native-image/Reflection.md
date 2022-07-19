@@ -2,7 +2,7 @@
 layout: ni-docs
 toc_group: dynamic-features
 link_title: Reflection
-permalink: /reference-manual/dynamic-features/Reflection/
+permalink: /reference-manual/native-image/dynamic-features/Reflection/
 redirect_from: /$version/reference-manual/native-image/Reflection/
 ---
 
