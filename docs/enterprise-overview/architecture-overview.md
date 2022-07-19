@@ -67,7 +67,7 @@ The following are the certified platforms for GraalVM Enterprise 22.2:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/compute-instances.md) 	|
+| Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
 | Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/installation-linux.md) 	|
 | macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.2 (Monterey)	| x86 64-bit	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
 | Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/installation-windows.md) 	|

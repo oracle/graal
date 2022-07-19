@@ -335,7 +335,7 @@ who are familiar with GraalVM Enterprise but may have little experience using it
 
 ### Oracle Cloud Users
 Oracle Cloud users considering GraalVM Enterprise for their cloud workloads are
-invited to read [GraalVM Enterprise on OCI](oci/compute-instances.md).
+invited to read [GraalVM Enterprise on OCI](oci/installation-compute-instance-with-OL.md).
 This page focuses on using GraalVM Enterprise with the Oracle Cloud Infrastructure Virtual Machine compute instance.
 
 ### Advanced Users
