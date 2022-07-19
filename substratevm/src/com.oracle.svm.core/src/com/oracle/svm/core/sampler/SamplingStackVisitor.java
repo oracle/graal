@@ -32,7 +32,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 import com.oracle.svm.core.util.VMError;
 
-public class SamplingStackVisitor extends ParameterizedStackFrameVisitor<SamplingStackVisitor.StackTrace> {
+class SamplingStackVisitor extends ParameterizedStackFrameVisitor<SamplingStackVisitor.StackTrace> {
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, SamplingStackVisitor.StackTrace data) {

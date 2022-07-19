@@ -49,28 +49,6 @@ public class SafepointProfilingSampler implements ProfilingSampler {
         return collectingActive;
     }
 
-    public void sampleThreadStack() {
-        SamplingStackVisitor visitor = new SamplingStackVisitor();
-        SamplingStackVisitor.StackTrace data = new SamplingStackVisitor.StackTrace();
-        walkCurrentThread(data, visitor);
-        long[] result = data.data;
-        LockFreePrefixTree.Node node = prefixTree().root();
-        for (int i = data.num - 1; i >= 0; i--) {
-            node = node.at(result[i]);
-        }
-        incStackTraceCounter(node);
-    }
-
-    private static void incStackTraceCounter(LockFreePrefixTree.Node node) {
-        node.incValue();
-    }
-
-    @NeverInline("Starts a stack walk in the caller frame")
-    static void walkCurrentThread(SamplingStackVisitor.StackTrace data, SamplingStackVisitor visitor) {
-        Pointer sp = KnownIntrinsics.readStackPointer();
-        JavaStackWalker.walkCurrentThread(sp, visitor, data);
-    }
-
     @Override
     public void registerSampler() {
         if (collectingActive) {
@@ -87,5 +65,27 @@ public class SafepointProfilingSampler implements ProfilingSampler {
             prefixTree = new LockFreePrefixTree();
         }
         return prefixTree;
+    }
+
+    private void sampleThreadStack() {
+        SamplingStackVisitor visitor = new SamplingStackVisitor();
+        SamplingStackVisitor.StackTrace data = new SamplingStackVisitor.StackTrace();
+        walkCurrentThread(data, visitor);
+        long[] result = data.data;
+        LockFreePrefixTree.Node node = prefixTree().root();
+        for (int i = data.num - 1; i >= 0; i--) {
+            node = node.at(result[i]);
+        }
+        incStackTraceCounter(node);
+    }
+
+    private static void incStackTraceCounter(LockFreePrefixTree.Node node) {
+        node.incValue();
+    }
+
+    @NeverInline("Starts a stack walk in the caller frame")
+    private static void walkCurrentThread(SamplingStackVisitor.StackTrace data, SamplingStackVisitor visitor) {
+        Pointer sp = KnownIntrinsics.readStackPointer();
+        JavaStackWalker.walkCurrentThread(sp, visitor, data);
     }
 }
