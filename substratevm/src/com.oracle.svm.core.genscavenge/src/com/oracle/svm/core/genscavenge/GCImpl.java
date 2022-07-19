@@ -32,6 +32,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.genscavenge.parallel.Stats;
 import com.oracle.svm.core.genscavenge.parallel.TaskQueue;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -442,9 +443,7 @@ public final class GCImpl implements GC {
                 } else {
                     timers.logAfterCollection(verboseGCLog);
                 }
-                TaskQueue.Stats stats = ParallelGCImpl.getStats();
-                verboseGCLog.newline().string("  tasks: ").unsigned(stats.getCount())
-                        .string(", max size: ").unsigned(stats.getMaxSize()).newline();
+                ParallelGCImpl.getStats().print(Log.log());
                 verboseGCLog.string("]");
                 verboseGCLog.string("]").newline();
             }

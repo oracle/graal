@@ -33,6 +33,7 @@ public class ParallelGCImpl extends ParallelGC {
         Thread t = new Thread(() -> {
 //                VMThreads.ParallelGCSupport.setParallelGCThread();
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
+                getStats().install();
                 try {
                     while (!stopped) {
                         QUEUE.consume(PROMOTE_TASK);
@@ -72,10 +73,6 @@ public class ParallelGCImpl extends ParallelGC {
         ParallelGCImpl.enabled = enabled;
     }
 
-    public static TaskQueue.Stats getStats() {
-        return QUEUE.stats;
-    }
-
     public static void checkThrowable() {
         if (throwable != null) {
             Log.log().string("PGC error : ").string(throwable.getClass().getName())
@@ -83,6 +80,14 @@ public class ParallelGCImpl extends ParallelGC {
             throwable.printStackTrace();
             throw new Error(throwable);
         }
+    }
+
+    public static Stats getStats() {
+        return Stats.stats();
+    }
+
+    static Log log() {
+        return Log.noopLog();
     }
 }
 

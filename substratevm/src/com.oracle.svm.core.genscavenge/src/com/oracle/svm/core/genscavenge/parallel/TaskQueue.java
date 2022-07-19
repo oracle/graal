@@ -8,8 +8,6 @@ import org.graalvm.word.Pointer;
 public class TaskQueue {
     private static final int SIZE = 128 * 1024;
 
-    final Stats stats;
-
     private final VMMutex mutex;
     private final VMCondition cond;
     private final Pointer[] data;
@@ -21,7 +19,6 @@ public class TaskQueue {
         mutex = new VMMutex(name + "-queue");
         cond = new VMCondition(mutex);
         data = new Pointer[SIZE];
-        stats = new Stats();
     }
 
     private Log log() {
@@ -49,7 +46,6 @@ public class TaskQueue {
             }
             data[putIndex] = ptr;
             putIndex = next(putIndex);
-            stats.noteTask(putIndex, getIndex);
         } finally {
             mutex.unlock();
         }
@@ -105,33 +101,5 @@ public class TaskQueue {
 
     interface Consumer {
         void accept(Object object);
-    }
-
-    // Non MT safe, needs locking
-    public static class Stats {
-        private int count, maxSize;
-
-        void noteTask(int putIndex, int getIndex) {
-            int size = putIndex - getIndex;
-            if (size < 0) {
-                size += SIZE;
-            }
-            if (size > maxSize) {
-                maxSize = size;
-            }
-            count++;
-        }
-
-        public int getCount() {
-            return count;
-        }
-
-        public int getMaxSize() {
-            return maxSize;
-        }
-
-        public void reset() {
-            count = maxSize = 0;
-        }
     }
 }
