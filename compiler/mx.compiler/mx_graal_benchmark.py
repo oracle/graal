@@ -471,6 +471,20 @@ class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
         return self.name()
 
 
+class JMHJarBasedNativeImageBenchmarkMixin(JMHNativeImageBenchmarkMixin):
+    """Provides extra command line checking for JAR-based native image JMH suites."""
+
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        jmhOptions = self._extractJMHOptions(args)
+        for index, option in enumerate(jmhOptions):
+            argument = jmhOptions[index+1] if index + 1 < len(jmhOptions) else None
+            if option == '-f' and argument != '0':
+                mx.warn(f"JMH native images don't support -f with non-zero argument {argument}, ignoring it")
+            elif option.startswith('-jvmArgs'):
+                mx.warn(f"JMH native images don't support option {option}, ignoring it")
+        return super(JMHJarBasedNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args, image_run_args)
+
+
 class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMHNativeImageBenchmarkMixin):
 
     def alternative_suite(self):
@@ -498,7 +512,7 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMH
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 
 
-class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite, JMHNativeImageBenchmarkMixin):
+class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite, JMHJarBasedNativeImageBenchmarkMixin):
 
     def name(self):
         return "jmh-jar"
@@ -513,7 +527,7 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite, JMHNative
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 
 
-class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativeImageBenchmarkMixin):
+class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBasedNativeImageBenchmarkMixin):
 
     def name(self):
         return "jmh-dist"
@@ -533,7 +547,7 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNati
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
 
 
-class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativeImageBenchmarkMixin):
+class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBasedNativeImageBenchmarkMixin):
 
     def name(self):
         return "jmh-whitebox"
