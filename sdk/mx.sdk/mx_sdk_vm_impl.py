@@ -349,7 +349,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components or registered_graalvm_components(stage1)
         self.stage1 = stage1
-        self.skip_archive = stage1 or skip_graalvm_archive()  # *.tar archives for stage1 distributions are never built
+        self.skip_archive = stage1 or graalvm_skip_archive()  # *.tar archives for stage1 distributions are never built
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
@@ -3408,7 +3408,7 @@ mx.add_argument('--extra-image-builder-argument', action='append', help='Add ext
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
 mx.add_argument('--base-jdk-info', action='store', help='Colon-separated tuple of base JDK `NAME:VERSION`, to be added on deployment to the \'basejdk\' attribute of the \'suite-revisions.xml\' file on maven-deployment.')
-mx.add_argument('--skip-graalvm-archive', action='store_true', help='Do not archive GraalVM distributions.')
+mx.add_argument('--graalvm-skip-archive', action='store_true', help='Do not archive GraalVM distributions.')
 
 
 def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, default_value=None):
@@ -3520,8 +3520,8 @@ def _no_licenses():
     return mx.get_opts().no_licenses or _env_var_to_bool('NO_LICENSES')
 
 
-def skip_graalvm_archive():
-    return mx.get_opts().skip_graalvm_archive or _env_var_to_bool('SKIP_GRAALVM_ARCHIVE')
+def graalvm_skip_archive():
+    return mx.get_opts().graalvm_skip_archive or _env_var_to_bool('GRAALVM_SKIP_ARCHIVE')
 
 
 def _with_polyglot_lib_project():
