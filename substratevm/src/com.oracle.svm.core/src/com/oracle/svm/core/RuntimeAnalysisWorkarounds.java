@@ -34,7 +34,12 @@ public class RuntimeAnalysisWorkarounds {
     public static class Options {
         @Option(help = "Use the option to avoid the initial value of the enterSamplingCodeMethodId constant folding. " +
                         "The value of this option must never be set to true in order to keep the correct information in the variable.")//
-        static final RuntimeOptionKey<Boolean> ConstantFoldSamplingCodeStartId = new RuntimeOptionKey<>(false);
+        static final RuntimeOptionKey<Boolean> ConstantFoldSamplingCodeStartId = new RuntimeOptionKey<>(false) {
+            @Override
+            public void update(Boolean value) {
+                throw new IllegalStateException("This option must never be set.");
+            }
+        };
 
     }
 
