@@ -111,6 +111,7 @@ import org.graalvm.compiler.nodes.debug.BindToRegisterNode;
 import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
 import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
+import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
 import org.graalvm.compiler.nodes.debug.SideEffectNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -1630,6 +1631,13 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new NeverStripMineNode());
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("neverWriteSink") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new NeverWriteSinkNode());
                 return true;
             }
         });

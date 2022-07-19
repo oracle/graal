@@ -72,6 +72,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
+import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -569,6 +570,10 @@ public class LoopEx {
         return true;
     }
 
+    public static boolean canWriteSinkLoopNode(Node node) {
+        return !(node instanceof NeverWriteSinkNode);
+    }
+
     /**
      * @return true if all nodes in the loop can be duplicated.
      */
@@ -584,6 +589,15 @@ public class LoopEx {
     public boolean canStripMine() {
         for (Node node : inside().nodes()) {
             if (!canStripMineLoopNode(node)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean canWriteSink() {
+        for (Node node : inside().nodes()) {
+            if (!canWriteSinkLoopNode(node)) {
                 return false;
             }
         }
