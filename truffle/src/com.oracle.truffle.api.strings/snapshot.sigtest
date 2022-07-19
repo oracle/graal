@@ -306,6 +306,7 @@ innr public abstract static ToJavaStringNode
 innr public final static !enum CodeRange
 innr public final static !enum Encoding
 innr public final static !enum ErrorHandling
+innr public final static IllegalByteArrayLengthException
 innr public final static NumberFormatException
 innr public final static WithMask
 meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUncached(byte[],com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -715,6 +716,10 @@ meth public static com.oracle.truffle.api.strings.TruffleString$HashCodeNode cre
 meth public static com.oracle.truffle.api.strings.TruffleString$HashCodeNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
+CLSS public final static com.oracle.truffle.api.strings.TruffleString$IllegalByteArrayLengthException
+ outer com.oracle.truffle.api.strings.TruffleString
+supr java.lang.IllegalArgumentException
+
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$IndexOfCodePointNode
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -1082,6 +1087,14 @@ cons public init(java.lang.Throwable)
 supr java.lang.Throwable
 hfds serialVersionUID
 
+CLSS public java.lang.IllegalArgumentException
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.RuntimeException
+hfds serialVersionUID
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
@@ -1096,6 +1109,15 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public java.lang.RuntimeException
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Exception
+hfds serialVersionUID
 
 CLSS public java.lang.Throwable
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)

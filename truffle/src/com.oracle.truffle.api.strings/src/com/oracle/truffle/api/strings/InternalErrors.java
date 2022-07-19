@@ -75,6 +75,11 @@ final class InternalErrors {
         return new IllegalArgumentException(msg);
     }
 
+    static RuntimeException illegalByteArrayLength(String msg) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return new TruffleString.IllegalByteArrayLengthException(msg);
+    }
+
     static RuntimeException illegalState(String msg) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         return new IllegalStateException(msg);

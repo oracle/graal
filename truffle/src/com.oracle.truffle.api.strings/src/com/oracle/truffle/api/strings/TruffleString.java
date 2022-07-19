@@ -5016,6 +5016,22 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
+     * This exception is thrown when any operation tries to create a {@link Encoding#UTF_16 UTF-16}
+     * or {@link Encoding#UTF_32 UTF-32} string with an invalid byte length (not a multiple of 2/4
+     * bytes).
+     */
+    public static final class IllegalByteArrayLengthException extends IllegalArgumentException {
+
+        IllegalByteArrayLengthException() {
+
+        }
+
+        IllegalByteArrayLengthException(String msg) {
+            super(msg);
+        }
+    }
+
+    /**
      * Node to parse a given string as an int value.
      *
      * @since 22.1
