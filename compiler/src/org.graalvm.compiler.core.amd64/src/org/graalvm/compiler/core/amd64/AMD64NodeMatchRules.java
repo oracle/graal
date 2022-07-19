@@ -615,6 +615,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     @MatchRule("(Write=write object (Add Read=read value))")
+    @MatchRule("(SideEffectFreeWrite=write object (Add Read=read value))")
     public ComplexMatchResult addToMemory(WriteNode write, ReadNode read, ValueNode value) {
         return emitMemoryConsumer(write, ADD, read, value);
     }
