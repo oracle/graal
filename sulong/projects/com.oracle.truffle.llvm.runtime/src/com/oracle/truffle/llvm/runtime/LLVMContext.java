@@ -575,6 +575,12 @@ public final class LLVMContext {
     void finalizeContext() {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
+
+        // Ensure that thread destructors are run before global memory blocks
+        // have been deallocated by cleanUpNoGuestCode. Otherwise disposeThread
+        // will be called after finalizeContext when it is too late. [GR-39952]
+        language.disposeThread(this, Thread.currentThread());
+
         TruffleSafepoint sp = TruffleSafepoint.getCurrent();
         boolean prev = sp.setAllowActions(false);
         try {
