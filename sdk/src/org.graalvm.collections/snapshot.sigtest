@@ -180,22 +180,22 @@ meth public {org.graalvm.collections.Pair%1} getRight()
 supr java.lang.Object
 hfds EMPTY,left,right
 
-CLSS public org.graalvm.collections.PrefixTree
+CLSS public org.graalvm.collections.SeqLockPrefixTree
 cons public init()
 innr public final static Node
-meth public org.graalvm.collections.PrefixTree$Node root()
+meth public org.graalvm.collections.SeqLockPrefixTree$Node root()
 supr java.lang.Object
 hfds EMPTY_KEY,HASH_NODE_LOAD_FACTOR,INITIAL_HASH_NODE_SIZE,INITIAL_LINEAR_NODE_SIZE,MAX_LINEAR_NODE_SIZE,root
 hcls Visitor
 
-CLSS public final static org.graalvm.collections.PrefixTree$Node
- outer org.graalvm.collections.PrefixTree
+CLSS public final static org.graalvm.collections.SeqLockPrefixTree$Node
+ outer org.graalvm.collections.SeqLockPrefixTree
 meth public <%0 extends java.lang.Object> void topDown({%%0},java.util.function.BiFunction<{%%0},java.lang.Long,{%%0}>,java.util.function.BiConsumer<{%%0},java.lang.Long>)
 meth public java.lang.String toString()
 meth public long incValue()
 meth public long seqlockValue()
 meth public long value()
-meth public org.graalvm.collections.PrefixTree$Node at(long)
+meth public org.graalvm.collections.SeqLockPrefixTree$Node at(long)
 meth public void setValue(long)
 supr java.util.concurrent.atomic.AtomicLong
 hfds arity,children,keys,seqlock,serialVersionUID

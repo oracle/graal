@@ -86,7 +86,7 @@ import java.util.function.BiFunction;
  *
  * @since 22.3
  */
-public class PrefixTree {
+public class SeqLockPrefixTree {
     private static final int INITIAL_LINEAR_NODE_SIZE = 3;
     private static final int INITIAL_HASH_NODE_SIZE = 16;
     private static final int MAX_LINEAR_NODE_SIZE = 6;
@@ -391,11 +391,11 @@ public class PrefixTree {
     private final Node root;
 
     /**
-     * Create new {@link PrefixTree} with root being a Node with key 0.
+     * Create new {@link SeqLockPrefixTree} with root being a Node with key 0.
      *
      * @since 22.3
      */
-    public PrefixTree() {
+    public SeqLockPrefixTree() {
         this.root = new Node();
     }
 

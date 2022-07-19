@@ -40,16 +40,16 @@
  */
 package org.graalvm.collections.test;
 
-import org.graalvm.collections.PrefixTree;
+import org.graalvm.collections.SeqLockPrefixTree;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.function.Consumer;
 
-public class PrefixTreeTest {
+public class SeqLockPrefixTreeTest {
     @Test
     public void smallAlphabet() {
-        PrefixTree tree = new PrefixTree();
+        SeqLockPrefixTree tree = new SeqLockPrefixTree();
         tree.root().at(2L).at(12L).at(18L).setValue(42);
         tree.root().at(2L).at(12L).at(19L).setValue(43);
         tree.root().at(2L).at(12L).at(20L).setValue(44);
@@ -82,18 +82,18 @@ public class PrefixTreeTest {
 
     @Test
     public void largeAlphabet() {
-        PrefixTree tree = new PrefixTree();
+        SeqLockPrefixTree tree = new SeqLockPrefixTree();
         for (long i = 1L; i < 128L; i++) {
-            PrefixTree.Node first = tree.root().at(i);
+            SeqLockPrefixTree.Node first = tree.root().at(i);
             for (long j = 1L; j < 64L; j++) {
-                PrefixTree.Node second = first.at(j);
+                SeqLockPrefixTree.Node second = first.at(j);
                 second.setValue(i * j);
             }
         }
         for (long i = 1L; i < 128L; i++) {
-            PrefixTree.Node first = tree.root().at(i);
+            SeqLockPrefixTree.Node first = tree.root().at(i);
             for (long j = 1L; j < 64L; j++) {
-                PrefixTree.Node second = first.at(j);
+                SeqLockPrefixTree.Node second = first.at(j);
                 Assert.assertEquals(i * j, second.value());
             }
         }
@@ -124,14 +124,14 @@ public class PrefixTreeTest {
 
     @Test
     public void largeMultithreaded() {
-        final PrefixTree tree = new PrefixTree();
+        final SeqLockPrefixTree tree = new SeqLockPrefixTree();
 
         final int parallelism = 8;
         inParallel(parallelism, threadIndex -> {
             for (long i = 1L; i < 2048L; i++) {
-                PrefixTree.Node first = tree.root().at(threadIndex * 2048L + i);
+                SeqLockPrefixTree.Node first = tree.root().at(threadIndex * 2048L + i);
                 for (long j = 1L; j < 2048L; j++) {
-                    PrefixTree.Node second = first.at(j);
+                    SeqLockPrefixTree.Node second = first.at(j);
                     second.setValue(i * j);
                 }
             }
@@ -139,21 +139,21 @@ public class PrefixTreeTest {
 
         for (int t = 0; t < parallelism; t++) {
             for (long i = 1L; i < 2048L; i++) {
-                PrefixTree.Node first = tree.root().at(t * 2048L + i);
+                SeqLockPrefixTree.Node first = tree.root().at(t * 2048L + i);
                 for (long j = 1L; j < 2048L; j++) {
-                    PrefixTree.Node second = first.at(j);
+                    SeqLockPrefixTree.Node second = first.at(j);
                     Assert.assertEquals(i * j, second.value());
                 }
             }
         }
     }
 
-    private void verifyValue(PrefixTree.Node node, int depth, int parallelism) {
+    private void verifyValue(SeqLockPrefixTree.Node node, int depth, int parallelism) {
         if (depth == 0) {
             Assert.assertEquals(parallelism, node.value());
         } else {
             for (long i = 1L; i < 14L; i++) {
-                final PrefixTree.Node child = node.at(i);
+                final SeqLockPrefixTree.Node child = node.at(i);
                 verifyValue(child, depth - 1, parallelism);
             }
         }
@@ -161,7 +161,7 @@ public class PrefixTreeTest {
 
     @Test
     public void deepMultiThreaded() {
-        final PrefixTree tree = new PrefixTree();
+        final SeqLockPrefixTree tree = new SeqLockPrefixTree();
         final int depth = 6;
 
         final int parallelism = 8;
@@ -171,12 +171,12 @@ public class PrefixTreeTest {
                 insert(tree.root(), depth);
             }
 
-            private void insert(PrefixTree.Node node, int currentDepth) {
+            private void insert(SeqLockPrefixTree.Node node, int currentDepth) {
                 if (currentDepth == 0) {
                     node.incValue();
                 } else {
                     for (long i = 1L; i < 14L; i++) {
-                        final PrefixTree.Node child = node.at(i);
+                        final SeqLockPrefixTree.Node child = node.at(i);
                         insert(child, currentDepth - 1);
                     }
                 }
@@ -188,7 +188,7 @@ public class PrefixTreeTest {
 
     @Test
     public void manyMultiThreaded() {
-        final PrefixTree tree = new PrefixTree();
+        final SeqLockPrefixTree tree = new SeqLockPrefixTree();
 
         int parallelism = 8;
         int multiplier = 1024;
