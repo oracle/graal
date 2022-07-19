@@ -79,10 +79,10 @@ For that, we will use `ghcr.io/graalvm/jdk:ol8-java17` which is a size compact G
     The difference will be more visible if you build a Docker image of the same Spring Boot application containing a JAR file instead of a native executable, and compare images startup times and file sizes. 
     
 On Linux, you can shrink your container size even more.
-With GraalVM Native Image you have the ability to build a statically linked native executable by packaging the native executable directly into an empty Docker image, also known as a scratch container. Continue to [Build a Static or Mostly-Static Native Executable guide](build-static-executable.md) to learn more.
+With GraalVM Native Image you have the ability to build a statically linked native executable by packaging the native executable directly into an empty Docker image, also known as a scratch container. Continue to [Build a Static or Mostly-Static Native Executable guide](build-static-and-mostly-static-executable.md) to learn more.
 
 ### Related Documentation
 
 * [GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68)
 * [GraalVM Community Images](../../../getting-started/graalvm-community/container-images/graalvm-ce-container-images.md)
-* [Build a Static or Mostly-Static Native Executable](build-static-executable.md)
+* [Build a Static or Mostly-Static Native Executable](build-static-and-mostly-static-executable.md)
