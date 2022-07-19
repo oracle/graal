@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -192,5 +193,17 @@ public class CompilationInfo {
 
     public boolean hasDefaultParseFunction() {
         return customCompileFunction == null;
+    }
+
+    public HostedMethod getDeoptOrigin() {
+        return deoptOrigin;
+    }
+
+    public void setGraph(CompilationGraph compilationGraph) {
+        this.compilationGraph = compilationGraph;
+    }
+
+    public Graph getGraph() {
+        return null;
     }
 }

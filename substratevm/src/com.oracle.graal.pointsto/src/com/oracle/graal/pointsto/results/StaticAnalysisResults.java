@@ -105,11 +105,25 @@ public class StaticAnalysisResults implements ProfilingInfo {
     }
 
     /**
+     * Returns all type profiles.
+     */
+    public JavaTypeProfile[] getParameterTypeProfiles() {
+        return parameterTypeProfiles;
+    }
+
+    /**
      * Returns the type profile for values returned by the method, or {@code null} if no type
      * profile is available.
      */
     public JavaTypeProfile getResultTypeProfile() {
         return resultTypeProfile;
+    }
+
+    /**
+     * Returns the first bytecode entry of the method.
+     */
+    public BytecodeEntry firstBytecodeEntry() {
+        return first;
     }
 
     private BytecodeEntry lookup(int bci) {
