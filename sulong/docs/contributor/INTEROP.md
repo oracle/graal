@@ -4,7 +4,7 @@ The GraalVM LLVM runtime supports standard Polyglot interop messages. For a gene
 documentation of Polyglot interop, see
 [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
 This document explains what the various interop messages mean in the context of the
-GraalVM LLVM runtime.
+GraalVM LLVM runtime. The [last section](./INTEROP.md#interoperability-and-staticdynamic-binding-for-c-methods) shows how interop access/calls can be used in a more convenient way if the source language is e.g. C++. 
 
 Detailed reference documentation of Polyglot interop support in the GraalVM LLVM
 runtime can be found in [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h)
@@ -136,3 +136,43 @@ Reasons for transforming to native include complex arithmetic (anything that's
 more than simple addition, subtraction or bitmasks), or trying to store the pointer
 to native memory. Note that a simple conversion to i64 does not force a pointer
 to native.
+
+## Interoperability and static/dynamic binding for C++ methods
+
+For C++-compiled LLVM bitcode, macros and helper functions of the [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h) file do not have to be used explicitly. However, the option `llvm.C++Interop` has to be set!
+
+### Calling foreign methods from C++/LLVM
+The following C++ class serves an example:  
+```
+class A {
+public:
+          void foo_sta(); //static binding
+  virtual void foo_dyn(); //dynamic binding
+};
+
+void A::foo_sta() { ... }
+void A::foo_dyn() { ... } 
+``` 
+
+If a C++ method is invoked **on a foreign object**, the resulting behavior depends on how this method is resolved: 
+* For statically bound methods (e.g. `foo_sta()`), the C++ implementation is called, as the static type of the object is a C++ class. 
+* For dynamically bound methods (e.g. `foo_dyn()`), an `invokeMember` message is sent to the foreign object, as the dynamic type is no C++/LLVM type. If the foreign object does not implement the corresponding method (e.g. `foo_dyn()`), an [UnsupportedMessageException](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.interop/src/com/oracle/truffle/api/interop/UnsupportedMessageException.java) is thrown. 
+
+A way how to invoke a C++ method on a foreign object is shown below, where the (C++) `process` function can be called from a foreign language with a foreign object as the argument. 
+```
+void process(A *a) {
+  a->foo_sta(); //calls A::foo_sta
+  a->foo_dyn(); //sends an invokeMember("foo_dyn") message to a (might be foreign!)
+}
+```
+
+### Calling C++/LLVM methods from a foreign language
+When C++ objects receive an `invokeMember` message from a foreign language, it depends on whether the method to be invoked has been declared as `virtual` or not, which leads to the following behavior: 
+```
+class A {...};
+class B: public A {...};
+
+A* requestObject() { return new B(...); } 
+```
+If a foreign language sends an `invokeMember` message of a method `bar` to the result of the `requestObject()` call, `A::bar()` is called if `bar()` is statically bound. Otherwise, a lookup in the virtual method table of class B yields the resulting method implementation to be invoked (`A::bar()` or `B::bar()`). 
+Side note: The foreign language does not "see" the type B in this scenario, even if one of its methods is invoked. 
