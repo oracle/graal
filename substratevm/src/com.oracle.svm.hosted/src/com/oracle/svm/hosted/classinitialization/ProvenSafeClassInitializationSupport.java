@@ -37,6 +37,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -329,7 +331,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
         superResult = superResult.max(processInterfaces(clazz, memoize, earlyClassInitializerAnalyzedClasses));
 
         if (superResult == InitKind.BUILD_TIME && (Proxy.isProxyClass(clazz) || LambdaUtils.isLambdaType(metaAccess.lookupJavaType(clazz)))) {
-            if (!Proxy.isProxyClass(clazz) || areAllInterfaceMethodsSafeToInitializeAtBuildTime(clazz)) {
+            if (!Proxy.isProxyClass(clazz) || !implementsRunTimeInitializedInterface(clazz)) {
                 forceInitializeHosted(clazz, "proxy/lambda classes with interfaces initialized at build time are also initialized at build time", false);
                 return InitKind.BUILD_TIME;
             }
@@ -377,14 +379,29 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     }
 
     /**
-     * Interfaces are only safe to initialize at build time if no interface method references a type
-     * that {@linkplain #shouldInitializeAtRuntime should be initialized at run time}.
+     * Interfaces must be initialized at run time if any interface method references a type that
+     * {@linkplain #shouldInitializeAtRuntime should be initialized at run time}.
      */
-    private boolean areAllInterfaceMethodsSafeToInitializeAtBuildTime(Class<?> clazz) {
-        var interfaces = Arrays.stream(clazz.getInterfaces());
-        var methods = interfaces.flatMap(c -> Arrays.stream(c.getDeclaredMethods()));
+    private boolean implementsRunTimeInitializedInterface(Class<?> clazz) {
+        EconomicSet<Class<?>> visited = EconomicSet.create();
+        return Arrays.stream(clazz.getInterfaces()).anyMatch(c -> shouldInitializeInterfaceAtRunTime(c, visited));
+    }
+
+    private boolean shouldInitializeInterfaceAtRunTime(Class<?> clazz, EconomicSet<Class<?>> visited) {
+        if (visited.contains(clazz)) {
+            // already visited
+            return false;
+        }
+        GraalError.guarantee(clazz.isInterface(), "expected interface, got %s", clazz);
+        visited.add(clazz);
+        var methods = Arrays.stream(clazz.getDeclaredMethods());
         var types = methods.flatMap(m -> Stream.concat(Stream.of(m.getReturnType()), Arrays.stream(m.getParameterTypes())));
-        return types.noneMatch(this::shouldInitializeAtRuntime);
+        // check for initialize at run time
+        if (types.anyMatch(this::shouldInitializeAtRuntime)) {
+            return true;
+        }
+        // iterate super interfaces recursively
+        return Arrays.stream(clazz.getInterfaces()).anyMatch(c -> shouldInitializeInterfaceAtRunTime(c, visited));
     }
 
     private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager, Set<Class<?>> earlyClassInitializerAnalyzedClasses) {
