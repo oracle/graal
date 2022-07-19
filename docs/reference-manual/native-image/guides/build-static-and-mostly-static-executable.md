@@ -2,7 +2,7 @@
 layout: ni-docs
 toc_group: how-to-guides
 link_title: Build a Statically Linked or Mostly-Statically Linked Native Executable
-permalink: /reference-manual/native-image/build-static-executables/
+permalink: /reference-manual/native-image/guides/build-static-executables/
 ---
 
 # Build a Statically Linked or Mostly-Statically Linked Native Executable

@@ -269,6 +269,8 @@ Native Image for GraalVM Enterprise Edition is licensed under the [Oracle Techno
 This getting started guide is intended for new users or those with little experience of using GraalVM Native Image. 
 We strongly recommend these users to check the [Basics of Native Image](NativeImageBasics.md) page to better understand some key aspects before going deeper.
 
+Check [user guides](guides/guides.md) to become more experienced with GraalVM Native Image, find demo examples, and learn about potential usage scenarios.
+
 For a gradual learning process, check the Native Image [Build Overview](BuildOverview.md) and [Build Configuration](BuildConfiguration.md) documentation.
 
 Consider running interactive workshops to get some practical experience: go to [Luna Labs](https://luna.oracle.com/) and search for "Native Image".
