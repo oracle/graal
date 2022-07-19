@@ -31,7 +31,7 @@ import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.configure.config.conditional.MethodCallNode;
 import com.oracle.svm.configure.config.conditional.MethodInfo;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 
 /**
  * Processes trace events that carry origin information.

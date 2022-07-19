@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 
 public abstract class Tracer {
     /** Value to explicitly express {@code null} in a trace, instead of omitting the value. */

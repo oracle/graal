@@ -49,7 +49,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
+import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -62,7 +62,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Class<?> economicMapImpl;
     private final Field economicMapImplEntriesField;
     private final Field economicMapImplHashArrayField;
-    private final InternalRuntimeReflectionSupport reflectionSupport;
+    private final ReflectionHostedSupport reflectionSupport;
 
     public SVMImageHeapScanner(ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
                     SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
@@ -72,7 +72,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         ImageSingletons.add(ImageHeapScanner.class, this);
-        reflectionSupport = ImageSingletons.lookup(InternalRuntimeReflectionSupport.class);
+        reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
     }
 
     public static ImageHeapScanner instance() {
