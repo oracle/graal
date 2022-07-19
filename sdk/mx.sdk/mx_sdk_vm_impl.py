@@ -349,7 +349,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components or registered_graalvm_components(stage1)
         self.stage1 = stage1
-        self.skip_archive = stage1 or skip_graalvm_archive()  # *.tar archive for stage1 distributions are never built
+        self.skip_archive = stage1 or skip_graalvm_archive()  # *.tar archives for stage1 distributions are never built
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
@@ -807,8 +807,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
     def needsUpdate(self, newestInput):
         if self.skip_archive:
-            # For stage1 distributions we do not have an archive file, therefore we must compare against
-            # output directory
+            # When the distribution is not archived we cannot rely only on the archive file.
+            # Therefore, we must compare the contents of the output directory.
             output = self.get_output()
             if exists(output):
                 ts = mx.TimeStampFile(output)
