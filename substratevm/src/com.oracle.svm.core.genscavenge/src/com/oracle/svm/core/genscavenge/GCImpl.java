@@ -692,8 +692,6 @@ public final class GCImpl implements GC {
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
             }
-
-            greyToBlackObjectVisitor.reset();
         } finally {
             cheneyScanFromRootsTimer.close();
         }
@@ -785,7 +783,6 @@ public final class GCImpl implements GC {
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
             }
-            greyToBlackObjectVisitor.reset();
         } finally {
             cheneyScanFromDirtyRootsTimer.close();
         }
