@@ -2720,6 +2720,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
+        if mx.is_darwin():
+            _dynamic_cflags += ['-ObjC++']
 
         _graalvm_home = _get_graalvm_archive_path("")
 
@@ -2785,6 +2787,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_ldlibs = []
         if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
+        if mx.is_darwin():
+            _dynamic_ldlibs += ['-framework', 'Foundation']
         return super(NativeLibraryLauncherProject, self).ldlibs + _dynamic_ldlibs
 
     def default_language_home_relative_libpath(self):
