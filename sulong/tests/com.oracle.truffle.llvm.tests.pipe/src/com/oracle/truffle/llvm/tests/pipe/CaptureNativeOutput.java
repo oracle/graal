@@ -65,6 +65,9 @@ public final class CaptureNativeOutput implements CaptureOutput {
             stderrFile = File.createTempFile("stderr", ".log");
             stderrFile.deleteOnExit();
 
+            System.out.flush();
+            System.err.flush();
+
             oldStdout = startCapturing(STDOUT, stdoutFile.getAbsolutePath());
             oldStderr = startCapturing(STDERR, stderrFile.getAbsolutePath());
         } catch (IOException e) {
