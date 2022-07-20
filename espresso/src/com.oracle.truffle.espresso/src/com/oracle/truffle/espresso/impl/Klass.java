@@ -660,18 +660,21 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      */
     public final @JavaType(Class.class) StaticObject mirror() {
         StaticObject result = this.espressoClass;
-        if (result == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            result = createEspressoClass();
-        }
+        assert result != null;
+        assert getMeta().java_lang_Class != null;
         return result;
     }
 
-    private synchronized StaticObject createEspressoClass() {
+    public final StaticObject initializeEspressoClass() {
         CompilerAsserts.neverPartOfCompilation();
         StaticObject result = this.espressoClass;
         if (result == null) {
-            this.espressoClass = result = getAllocator().createClass(this);
+            synchronized (this) {
+                result = this.espressoClass;
+                if (result == null) {
+                    this.espressoClass = result = getAllocator().createClass(this);
+                }
+            }
         }
         return result;
     }
