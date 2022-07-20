@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -40,7 +42,9 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -74,6 +78,16 @@ final class Target_java_lang_ThreadGroup {
     private int ngroups;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class, disableCaching = true)//
     private ThreadGroup[] groups;
+
+    /*
+     * All ThreadGroups in the image heap are strong and will be stored in ThreadGroup.groups.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK19OrLater.class)//
+    private int nweaks;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK19OrLater.class)//
+    private WeakReference<ThreadGroup>[] weaks;
 
     @Inject @InjectAccessors(ThreadGroupIdAccessor.class) //
     public long id;
@@ -141,6 +155,32 @@ class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueC
         }
         assert thread.getState() == Thread.State.NEW : "All threads are in NEW state during image generation";
         if (thread == PlatformThreads.singleton().mainThread) {
+            /* The main thread is recomputed as running. */
+            return ThreadStatus.RUNNABLE;
+        } else {
+            /* All other threads remain unstarted. */
+            return ThreadStatus.NEW;
+        }
+    }
+
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadHolderRecomputation implements RecomputeFieldValue.CustomFieldValueTransformer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
+    public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+        assert JavaVersionUtil.JAVA_SPEC >= 19 : "ThreadHolder only exist on JDK 19+";
+        int threadStatus = ReflectionUtil.readField(ReflectionUtil.lookupClass(false, "java.lang.Thread$FieldHolder"), "threadStatus", receiver);
+        if (threadStatus == ThreadStatus.TERMINATED) {
+            return ThreadStatus.TERMINATED;
+        }
+        assert threadStatus == ThreadStatus.NEW : "All threads are in NEW state during image generation";
+        if (receiver == ReflectionUtil.readField(Thread.class, "holder", PlatformThreads.singleton().mainThread)) {
             /* The main thread is recomputed as running. */
             return ThreadStatus.RUNNABLE;
         } else {

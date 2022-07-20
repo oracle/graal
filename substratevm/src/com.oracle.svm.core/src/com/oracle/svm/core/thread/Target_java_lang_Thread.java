@@ -406,8 +406,21 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public static boolean interrupted() {
         return JavaThreads.getAndClearInterrupt(Thread.currentThread());
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    void clearInterrupt() {
+        getAndClearInterrupt();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    boolean getAndClearInterrupt() {
+        return JavaThreads.getAndClearInterrupt(SubstrateUtil.cast(this, Thread.class));
     }
 
     @Delete
@@ -618,6 +631,7 @@ final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     boolean daemon;
     @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadHolderRecomputation.class) //
     volatile int threadStatus;
 
     Target_java_lang_Thread_FieldHolder(

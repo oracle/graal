@@ -99,13 +99,13 @@ final class Target_java_lang_Object {
     }
 
     @Substitute
-    @TargetElement(name = "wait", onlyWith = NotLoomJDK.class)
+    @TargetElement(name = "wait", onlyWith = JDK17OrEarlier.class)
     private void waitSubst(long timeoutMillis) throws InterruptedException {
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
     @Substitute
-    @TargetElement(name = "wait0", onlyWith = LoomJDK.class)
+    @TargetElement(name = "wait0", onlyWith = JDK19OrLater.class)
     private void waitSubstLoom(long timeoutMillis) throws InterruptedException {
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
