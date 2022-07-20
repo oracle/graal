@@ -162,6 +162,10 @@ public class CompilationInfo {
         this.compileOptions = compileOptions;
     }
 
+    public OptionValues getCompileOptions() {
+        return compileOptions;
+    }
+
     public void clear() {
         compilationGraph = null;
         specializedArguments = null;

@@ -154,21 +154,28 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         this.specializationReason = SpecializationReason.create();
     }
 
-    public HostedMethod cloneSpecialized(HostedUniverse universe, List<Pair<HostedMethod, Integer>> context) {
-        StaticAnalysisResults profilingInfo = getProfilingInfo();
-        StaticAnalysisResults profilingInfoCopy = new StaticAnalysisResults(profilingInfo.getCodeSize(), profilingInfo.getParameterTypeProfiles(), profilingInfo.getResultTypeProfile(),
-                        profilingInfo.firstBytecodeEntry());
-        // TODO BS the new HostedMethod here is broken
-        HostedMethod copy = new HostedMethod(wrapped, getDeclaringClass(), signature, constantPool, getExceptionHandlers(), null, "name", "shortName", null);
-        copy.staticAnalysisResults = profilingInfoCopy;
+    private HostedMethod(HostedMethod original, List<Pair<HostedMethod, Integer>> context) {
+        /**
+         * TODO BS should probably integrate with
+         * com.oracle.svm.core.SubstrateUtil.uniqueShortName(jdk.vm.ci.meta.ResolvedJavaMethod)
+         * somehow
+         */
+        this(original.wrapped, original.holder, original.signature, original.constantPool, original.handlers, original.compilationInfo.getDeoptOrigin(), original.name,
+                        original.uniqueShortName + System.identityHashCode(context), original.localVariableTable);
         /*
          * TODO BS Do we need a copy of the graph here?
-         * 
+         *
          * In the original PR this was a StructuredGraph and we cloneSpecialized it. Now it's a
          * CompilationGraph (wrapper around EncodedGraph) so do we really need a copy?
          */
-        copy.compilationInfo.setGraph(this.compilationInfo.getCompilationGraph());
-        copy.specializationReason = SpecializationReason.create(context);
+        compilationInfo.setGraph(original.compilationInfo.getCompilationGraph());
+        compilationInfo.setCompileOptions(original.compilationInfo.getCompileOptions());
+        staticAnalysisResults = new StaticAnalysisResults(original.staticAnalysisResults);
+        specializationReason = SpecializationReason.create(context);
+    }
+
+    public HostedMethod cloneSpecialized(List<Pair<HostedMethod, Integer>> context) {
+        HostedMethod copy = new HostedMethod(this, context);
         assert copy.vtableIndex == -1;
         // isParsed will be set as false but doesnt seem to have any impact since we are already
         // past that point in the compilation pipeline
