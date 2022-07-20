@@ -272,6 +272,7 @@ public final class JavaThreads {
                     String name,
                     long stackSize,
                     AccessControlContext acc,
+                    boolean allowThreadLocals,
                     boolean inheritThreadLocals) {
         if (name == null) {
             throw new NullPointerException("name cannot be null");
@@ -296,17 +297,33 @@ public final class JavaThreads {
             JavaThreads.toTarget(group).addUnstarted();
         }
 
-        tjlt.contextClassLoader = parent.getContextClassLoader();
-
         tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
 
-        Target_java_lang_Thread targetParent = SubstrateUtil.cast(parent, Target_java_lang_Thread.class);
-        if (inheritThreadLocals && targetParent.inheritableThreadLocals != null) {
-            tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(targetParent.inheritableThreadLocals);
-        }
+        initializeNewThreadLocalsAndLoader(tjlt, allowThreadLocals, inheritThreadLocals, parent);
 
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();
+    }
+
+    static void initializeNewThreadLocalsAndLoader(Target_java_lang_Thread tjlt, boolean allowThreadLocals, boolean inheritThreadLocals, Thread parent) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && !allowThreadLocals) {
+            tjlt.threadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
+            tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
+            tjlt.contextClassLoader = Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER;
+        } else if (inheritThreadLocals) {
+            Target_java_lang_ThreadLocal_ThreadLocalMap parentMap = toTarget(parent).inheritableThreadLocals;
+            if (parentMap != null && (JavaVersionUtil.JAVA_SPEC < 19 || (parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED && parentMap.size() > 0))) {
+                tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
+            }
+            ClassLoader parentLoader = parent.getContextClassLoader();
+            if (JavaVersionUtil.JAVA_SPEC < 19 || parentLoader != Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER) {
+                tjlt.contextClassLoader = parentLoader;
+            } else {
+                tjlt.contextClassLoader = ClassLoader.getSystemClassLoader();
+            }
+        } else {
+            tjlt.contextClassLoader = ClassLoader.getSystemClassLoader();
+        }
     }
 
     static void sleep(long millis) throws InterruptedException {

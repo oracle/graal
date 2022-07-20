@@ -63,6 +63,10 @@ public final class Target_java_lang_Thread {
 
     @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class) //
+    static int NO_THREAD_LOCALS;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK19OrLater.class) //
     static int NO_INHERIT_THREAD_LOCALS;
     // Checkstyle: resume
 
@@ -114,6 +118,9 @@ public final class Target_java_lang_Thread {
     /* The group of this thread */
     @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
     ThreadGroup group;
+
+    @Alias//
+    Target_java_lang_ThreadLocal_ThreadLocalMap threadLocals = null;
 
     @Alias//
     Target_java_lang_ThreadLocal_ThreadLocalMap inheritableThreadLocals = null;
@@ -301,7 +308,7 @@ public final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
         /* Initialize the rest of the Thread object. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc, inheritThreadLocals);
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc, true, inheritThreadLocals);
     }
 
     @Substitute
@@ -319,13 +326,10 @@ public final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
 
-        boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
-        /*
-         * Initialize the rest of the Thread object, ignoring `characteristics` except for inherit
-         * thread locals.
-         */
         String nameLocal = (name != null) ? name : genThreadName();
-        JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, inheritThreadLocals);
+        boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
+        boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
+        JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, allowThreadLocals, inheritThreadLocals);
     }
 
     @Substitute
@@ -336,15 +340,18 @@ public final class Target_java_lang_Thread {
 
     /** This constructor is called only by {@code VirtualThread}. */
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
+    @TargetElement(onlyWith = JDK19OrLater.class)
     private Target_java_lang_Thread(String name, int characteristics, boolean bound) {
         /* Non-0 instance field initialization. */
         this.interruptLock = new Object();
 
-        // TODO: characteristics
         this.name = (name != null) ? name : "<unnamed>";
         this.tid = Target_java_lang_Thread_ThreadIdentifiers.next();
-        this.contextClassLoader = Thread.currentThread().getContextClassLoader();
+        this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
+
+        boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
+        boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
+        JavaThreads.initializeNewThreadLocalsAndLoader(this, allowThreadLocals, inheritThreadLocals, Thread.currentThread());
     }
 
     @SuppressWarnings("hiding")
@@ -597,6 +604,15 @@ public final class Target_java_lang_Thread {
 interface Target_java_lang_Thread_Builder {
     @Alias
     ThreadFactory factory();
+}
+
+@TargetClass(value = Thread.class, innerClass = "Constants", onlyWith = JDK19OrLater.class)
+final class Target_java_lang_Thread_Constants {
+    // Checkstyle: stop
+    @SuppressWarnings("removal") @Alias static AccessControlContext NO_PERMISSIONS_ACC;
+
+    @Alias static ClassLoader NOT_SUPPORTED_CLASSLOADER;
+    // Checkstyle: resume
 }
 
 @TargetClass(value = Thread.class, innerClass = "FieldHolder", onlyWith = JDK19OrLater.class)
