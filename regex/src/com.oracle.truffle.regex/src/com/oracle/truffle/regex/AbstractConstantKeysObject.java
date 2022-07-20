@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -53,6 +54,8 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
 
     public abstract TruffleReadOnlyKeysArray getKeys();
+
+    public abstract boolean isMemberReadableImpl(String symbol);
 
     public abstract Object readMemberImpl(String symbol) throws UnknownIdentifierException;
 
@@ -70,25 +73,32 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
     public abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "8")
+        @Specialization(guards = {"symbol == cachedSymbol", "isExact(receiver, cachedClass)", "result"}, limit = "8")
         public static boolean cacheIdentity(AbstractConstantKeysObject receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
+                        @Cached("receiver.getClass()") Class<?> cachedClass,
+                        @Cached("receiver.isMemberReadableImpl(cachedSymbol)") boolean result) {
             return result;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "8", replaces = "cacheIdentity")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "isExact(receiver, cachedClass)", "result"}, limit = "8", replaces = "cacheIdentity")
         public static boolean cacheEquals(AbstractConstantKeysObject receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
+                        @Cached("receiver.getClass()") Class<?> cachedClass,
+                        @Cached("receiver.isMemberReadableImpl(cachedSymbol)") boolean result) {
             return result;
         }
 
         @SuppressWarnings("unused")
         @Specialization(replaces = "cacheEquals")
-        public static boolean isReadable(AbstractConstantKeysObject receiver, String symbol) {
-            return receiver.getKeys().contains(symbol);
+        public static boolean isReadable(AbstractConstantKeysObject receiver, String symbol,
+                        @Cached("createClassProfile()") @Cached.Shared("classProfile") ValueProfile classProfile) {
+            return classProfile.profile(receiver).isMemberReadableImpl(symbol);
+        }
+
+        static boolean isExact(AbstractConstantKeysObject receiver, Class<?> cachedClass) {
+            return CompilerDirectives.isExact(receiver, cachedClass);
         }
     }
 
@@ -98,20 +108,20 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
         public static Object readIdentity(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached("createClassProfile()") ValueProfile classProfile) throws UnknownIdentifierException {
+                        @Cached("createClassProfile()") @Cached.Exclusive ValueProfile classProfile) throws UnknownIdentifierException {
             return read(receiver, cachedSymbol, classProfile);
         }
 
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "readIdentity")
         public static Object readEquals(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached("createClassProfile()") ValueProfile classProfile) throws UnknownIdentifierException {
+                        @Cached("createClassProfile()") @Cached.Exclusive ValueProfile classProfile) throws UnknownIdentifierException {
             return read(receiver, cachedSymbol, classProfile);
         }
 
         @Specialization(replaces = "readEquals")
         public static Object read(AbstractConstantKeysObject receiver, String symbol,
-                        @Cached("createClassProfile()") ValueProfile classProfile) throws UnknownIdentifierException {
+                        @Cached("createClassProfile()") @Cached.Shared("classProfile") ValueProfile classProfile) throws UnknownIdentifierException {
             return classProfile.profile(receiver).readMemberImpl(symbol);
         }
     }

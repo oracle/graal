@@ -298,6 +298,19 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_IS_MATCH:
+            case PROP_GET_START:
+            case PROP_GET_END:
+            case PROP_LAST_GROUP:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
             case PROP_IS_MATCH:
