@@ -38,24 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.dsl.processor.operations;
+package com.oracle.truffle.api.operation.serialization;
 
-public class OperationGeneratorFlags {
+import java.io.DataInputStream;
+import java.io.IOException;
 
-    public static final boolean LOG_LOCAL_STORES = false;
-    public static final boolean LOG_LOCAL_STORES_SPEC = false;
-    public static final boolean LOG_LOCAL_LOADS = LOG_LOCAL_STORES;
-    public static final boolean LOG_LOCAL_LOADS_SPEC = LOG_LOCAL_STORES_SPEC;
+import com.oracle.truffle.api.operation.OperationNode;
 
-    public static final boolean LOG_EXECUTE_AND_SPECIALIZE_CALLS = false;
-    public static final boolean LOG_STACK_READS = false;
+public interface OperationDeserializationCallback {
+    interface Context {
+        OperationNode deserializeOperationNode(DataInputStream buffer) throws IOException;
+    }
 
-    public static final boolean FLAG_NODE_AST_PRINTING = false;
-    public static final boolean ENABLE_INSTRUMENTATION = false;
-    public static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = false;
-
-    public static final boolean USE_UNSAFE = false;
-
-    public static final boolean ENABLE_SERIALIZATION = true;
-
+    Object deserialize(Context context, DataInputStream buffer) throws IOException;
 }

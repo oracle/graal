@@ -42,8 +42,6 @@ package com.oracle.truffle.api.operation;
 
 import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -149,46 +147,4 @@ public abstract class OperationNode extends Node {
     }
 
     public abstract String dump();
-
-    private static boolean conditionProfile(boolean value, long[] profiles, int index) {
-
-        long profile = profiles[index];
-        CompilerAsserts.compilationConstant(profile);
-
-        int t = (int) (profile >> 32);
-        int f = (int) profile;
-
-        boolean val = value;
-        if (val) {
-            if (t == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (f == 0) {
-                val = true;
-            }
-            if (CompilerDirectives.inInterpreter()) {
-                if (t < 0x3FFFFFFF) {
-                    profiles[index] = profile + (1 << 32);
-                }
-            }
-        } else {
-            if (f == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (t == 0) {
-                val = false;
-            }
-            if (CompilerDirectives.inInterpreter()) {
-                if (f < 0x3FFFFFFF) {
-                    profiles[index] = profile + 1;
-                }
-            }
-        }
-        if (CompilerDirectives.inInterpreter()) {
-            return val;
-        } else {
-            int sum = t + f;
-            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
-        }
-    }
 }

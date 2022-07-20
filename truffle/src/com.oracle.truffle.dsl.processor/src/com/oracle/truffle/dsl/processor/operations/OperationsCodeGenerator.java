@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -51,6 +56,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
@@ -58,6 +64,7 @@ import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -66,6 +73,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
@@ -98,18 +106,17 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private static final String OPERATION_BUILDER_IMPL_NAME = "BuilderImpl";
     private static final String BYTECODE_BASE_NAME = "BytecodeLoopBase";
 
+    private static final int SER_CODE_PUBLISH = -1;
+    private static final int SER_CODE_CREATE_LABEL = -2;
+    private static final int SER_CODE_CREATE_LOCAL = -3;
+    private static final int SER_CODE_CREATE_OBJECT = -4;
+    private static final int SER_CODE_END = -5;
+
     CodeTypeElement createOperationNodes() {
         CodeTypeElement typOperationNodes = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, OPERATION_NODES_IMPL_NAME, types.OperationNodes);
         typOperationNodes.add(GeneratorUtils.createConstructorUsingFields(Set.of(), typOperationNodes));
 
-        CodeExecutableElement metReparse = GeneratorUtils.overrideImplement(types.OperationNodes, "reparseImpl");
-        typOperationNodes.add(metReparse);
-
-        CodeTreeBuilder b = metReparse.createBuilder();
-
-        b.statement("BuilderImpl builder = new BuilderImpl(this, true, config)");
-        b.statement("((Consumer) parse).accept(builder)");
-        b.statement("builder.finish()");
+        typOperationNodes.add(createOperationNodedsReparse());
 
         CodeExecutableElement mSetSources = new CodeExecutableElement(context.getType(void.class), "setSources");
         mSetSources.addParameter(new CodeVariableElement(arrayOf(types.Source), "sources"));
@@ -121,7 +128,39 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         mSetNodes.createBuilder().statement("this.nodes = nodes");
         typOperationNodes.add(mSetNodes);
 
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            typOperationNodes.add(createOperationNodesSerialize());
+        }
+
         return typOperationNodes;
+    }
+
+    private CodeExecutableElement createOperationNodedsReparse() {
+        CodeExecutableElement metReparse = GeneratorUtils.overrideImplement(types.OperationNodes, "reparseImpl");
+
+        CodeTreeBuilder b = metReparse.createBuilder();
+
+        b.statement("BuilderImpl builder = new BuilderImpl(this, true, config)");
+        b.statement("((Consumer) parse).accept(builder)");
+        b.statement("builder.finish()");
+        return metReparse;
+    }
+
+    private CodeExecutableElement createOperationNodesSerialize() {
+        CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationNodes, "serialize");
+
+        CodeTreeBuilder b = met.createBuilder();
+
+        b.statement("BuilderImpl builder = new BuilderImpl(null, false, OperationConfig.COMPLETE)");
+        b.statement("builder.isSerializing = true");
+        b.statement("builder.serBuffer = buffer");
+        b.statement("builder.serCallback = callback");
+
+        b.statement("((Consumer) parse).accept(builder)");
+
+        b.statement("buffer.writeShort((short) " + SER_CODE_END + ")");
+
+        return met;
     }
 
     /**
@@ -138,7 +177,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilder.add(ctor);
 
         CodeTypeElement opNodesImpl = createOperationNodes();
-
         typBuilder.add(opNodesImpl);
 
         // begin/end or emit methods
@@ -173,6 +211,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         if (OperationGeneratorFlags.USE_UNSAFE) {
             typBuilder.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(Unsafe.class), "theUnsafe")).setInit(CodeTreeBuilder.singleString("Unsafe.getUnsafe()"));
         }
+
         CodeExecutableElement metUnsafeFromBytecode = typBuilder.add(new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(short.class), "unsafeFromBytecode"));
         metUnsafeFromBytecode.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
         metUnsafeFromBytecode.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
@@ -190,12 +229,43 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilder.add(createSetMetadata(metadata, true));
         }
 
+        CodeTypeElement typWrappedEx = typBuilderImpl.add(GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "WrappedIOException", context.getType(RuntimeException.class)));
+        typWrappedEx.add(new CodeExecutableElement(Set.of(), null, "WrappedIOException", new CodeVariableElement(context.getType(IOException.class), "ex"))).createBuilder().statement("super(ex)");
+        typBuilder.add(typWrappedEx);
+
         typBuilder.add(createCreateMethod(typBuilder, typBuilderImpl));
+        typBuilder.add(createDeserializeMethod());
 
         CodeTypeElement typCounter = typBuilder.add(new CodeTypeElement(MOD_PRIVATE_STATIC_FINAL, ElementKind.CLASS, null, "Counter"));
         typCounter.add(new CodeVariableElement(MOD_PUBLIC, context.getType(int.class), "count"));
 
         return typBuilder;
+    }
+
+    private CodeExecutableElement createDeserializeMethod() {
+        CodeVariableElement parConfig = new CodeVariableElement(types.OperationConfig, "config");
+        CodeVariableElement parBuffer = new CodeVariableElement(context.getType(DataInputStream.class), "input");
+        CodeVariableElement parCallback = new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializationCallback"), "callback");
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PUBLIC_STATIC, types.OperationNodes, "deserialize", parConfig, parBuffer, parCallback);
+
+        met.addThrownType(context.getType(IOException.class));
+
+        CodeTreeBuilder b = met.createBuilder();
+
+        b.startTryBlock();
+
+        b.startReturn().startCall("create");
+        b.variable(parConfig);
+        b.string("b -> BuilderImpl.deserializeParser(input, callback, b)");
+        b.end(2);
+
+        b.end().startCatchBlock(new GeneratedTypeMirror("", "WrappedIOException"), "ex");
+
+        b.startThrow().string("(IOException) ex.getCause()").end();
+
+        b.end();
+
+        return met;
     }
 
     private CodeExecutableElement createCreateMethod(CodeTypeElement typBuilder, CodeTypeElement typBuilderImpl) {
@@ -239,6 +309,39 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private static CodeVariableElement children(CodeVariableElement el) {
         el.addAnnotationMirror(new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().Node_Children));
         return el;
+    }
+
+    private CodeTypeElement createOperationSerNodeImpl() {
+        CodeTypeElement typOperationNodeImpl = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "OperationSerNodeImpl", types.OperationNode);
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "buildOrder")));
+        typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl));
+
+        for (String methodName : new String[]{"dump", "getSourceInfo", "execute", "createFrameDescriptor"}) {
+            CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationNode, methodName);
+            met.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end(2);
+            typOperationNodeImpl.add(met);
+        }
+
+        return typOperationNodeImpl;
+    }
+
+    private CodeVariableElement createSerializationContext() {
+        DeclaredType typeContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializationCallback.Context");
+        CodeVariableElement fld = new CodeVariableElement(typeContext, "SER_CONTEXT");
+        CodeTreeBuilder b = fld.createInitBuilder();
+
+        b.startNew(typeContext).end().string(" ").startBlock();
+
+        b.string("@Override").newLine();
+        b.string("public void serializeOperationNode(DataOutputStream buffer, OperationNode node) throws IOException ").startBlock();
+
+        b.statement("buffer.writeShort((short) ((OperationSerNodeImpl) node).buildOrder)");
+
+        b.end();
+
+        b.end();
+
+        return fld;
     }
 
     CodeTypeElement createOperationNodeImpl(CodeTypeElement typBytecodeBase, CodeTypeElement typExceptionHandler) {
@@ -487,7 +590,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.end();
 
             b.end(2);
-
         }
 
         CodeTypeElement opDataImpl = createOperationDataImpl();
@@ -497,6 +599,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTypeElement typLabelData = createOperationLabelImpl(opDataImpl, typFinallyTryContext);
         typBuilderImpl.add(typLabelData);
+
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            typBuilderImpl.add(createOperationSerLabelImpl());
+        }
 
         CodeTypeElement typLocalData = createOperationLocalImpl(opDataImpl);
         typBuilderImpl.add(typLocalData);
@@ -527,6 +633,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "curStack"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "maxStack"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numLocals"));
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numLabels"));
+        }
         CodeVariableElement fldConstPool = typBuilderImpl.add(
                         new CodeVariableElement(MOD_PRIVATE, new DeclaredCodeTypeMirror(context.getTypeElement(ArrayList.class), List.of(context.getType(Object.class))), "constPool"));
         fldConstPool.createInitBuilder().string("new ArrayList<>()");
@@ -540,6 +649,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, typFinallyTryContext.asType(), "currentFinallyTry"));
 
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "buildIndex"));
+
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(boolean.class), "isSerializing"));
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(DataOutputStream.class), "serBuffer"));
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializationCallback"), "serCallback"));
+        }
 
         typBuilderImpl.add(createBuilderImplFinish());
         typBuilderImpl.add(createBuilderImplReset());
@@ -572,6 +687,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTypeElement typOperationNodeImpl = createOperationNodeImpl(bytecodeBaseClass, typExceptionHandler);
         typBuilderImpl.add(typOperationNodeImpl);
+
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            typBuilderImpl.add(createOperationSerNodeImpl());
+            typBuilderImpl.add(createSerializationContext());
+        }
 
         createBytecodeBaseClass(bytecodeBaseClass, typOperationNodeImpl, typExceptionHandler);
         typBuilderImpl.add(bytecodeBaseClass);
@@ -666,8 +786,128 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         typBuilderImpl.add(createConditionProfile());
 
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            typBuilderImpl.add(createBuilderImplDeserializeParser(typBuilder));
+        }
+
         return typBuilderImpl;
 
+    }
+
+    private CodeExecutableElement createBuilderImplDeserializeParser(CodeTypeElement typBuilder) {
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "deserializeParser");
+        met.addParameter(new CodeVariableElement(context.getType(DataInputStream.class), "buffer"));
+        met.addParameter(new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializationCallback"), "callback"));
+        met.addParameter(new CodeVariableElement(typBuilder.asType(), "builder"));
+
+        CodeTreeBuilder b = met.createBuilder();
+        serializationWrapException(b, () -> {
+            b.statement("ArrayList<Object> consts = new ArrayList<>()");
+            b.statement("ArrayList<OperationLocal> locals = new ArrayList<>()");
+            b.statement("ArrayList<OperationLabel> labels = new ArrayList<>()");
+            b.statement("ArrayList<OperationNode> builtNodes = new ArrayList<>()");
+
+            TypeMirror deserContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializationCallback.Context");
+
+            b.startStatement();
+            b.type(deserContext);
+            b.string(" context = ").startNew(deserContext).end().startBlock();
+
+            b.string("@Override").newLine();
+            b.string("public OperationNode deserializeOperationNode(").type(context.getType(DataInputStream.class)).string(" buffer) throws IOException ").startBlock();
+            b.statement("return builtNodes.get(buffer.readInt())");
+            b.end();
+
+            b.end(2);
+
+            b.startWhile().string("true").end().startBlock();
+            b.startSwitch().string("buffer.readShort()").end().startBlock();
+
+            b.startCase().string("" + SER_CODE_PUBLISH).end().startBlock();
+            b.statement("builtNodes.add(builder.publish())");
+            b.statement("locals.clear()");
+            b.statement("labels.clear()");
+            b.statement("break");
+            b.end();
+
+            b.startCase().string("" + SER_CODE_CREATE_LABEL).end().startBlock();
+            b.statement("labels.add(builder.createLabel())");
+            b.statement("break");
+            b.end();
+
+            b.startCase().string("" + SER_CODE_CREATE_LOCAL).end().startBlock();
+            b.statement("locals.add(builder.createLocal())");
+            b.statement("break");
+            b.end();
+
+            b.startCase().string("" + SER_CODE_CREATE_OBJECT).end().startBlock();
+            b.statement("consts.add(callback.deserialize(context, buffer))");
+            b.statement("break");
+            b.end();
+
+            b.startCase().string("" + SER_CODE_END).end().startBlock();
+            b.returnStatement();
+            b.end();
+
+            for (Operation op : m.getOperations()) {
+
+                // create begin/emit code
+                b.startCase().variable(op.idConstantField).string(" << 1").end().startBlock();
+
+                int i = 0;
+                for (TypeMirror argType : op.getBuilderArgumentTypes()) {
+                    // ARGUMENT DESERIALIZATION
+                    if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
+                        b.statement("OperationLocal arg" + i + " = locals.get(buffer.readShort())");
+                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
+                        b.statement("OperationLocal[] arg" + i + " = new OperationLocal[buffer.readShort()]");
+                        b.startFor().string("int i = 0; i < locals.length; i++").end().startBlock();
+                        // this can be optimized since they are consecutive
+                        b.statement("arg" + i + "[i] = locals.get(buffer.readShort());");
+                        b.end();
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
+                        b.statement("OperationLabel arg" + i + " = labels.get(buffer.readShort())");
+                    } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
+                        b.statement("int arg" + i + " = buffer.readInt()");
+                    } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source) || ElementUtils.typeEquals(argType, context.getType(Class.class))) {
+                        b.startStatement().type(argType).string(" arg" + i + " = ").cast(argType).string("consts.get(buffer.readShort())").end();
+                    } else {
+                        throw new UnsupportedOperationException("cannot deserialize: " + argType);
+                    }
+                    i++;
+                }
+
+                b.startStatement();
+                if (op.children == 0) {
+                    b.startCall("builder.emit" + op.name);
+                } else {
+                    b.startCall("builder.begin" + op.name);
+                }
+
+                for (int j = 0; j < i; j++) {
+                    b.string("arg" + j);
+                }
+
+                b.end(2); // statement, call
+
+                b.statement("break");
+
+                b.end(); // case block
+
+                if (op.children != 0) {
+                    b.startCase().string("(").variable(op.idConstantField).string(" << 1) | 1").end().startBlock();
+                    b.statement("builder.end" + op.name + "()");
+                    b.statement("break");
+                    b.end();
+                }
+
+            }
+
+            b.end();
+            b.end();
+        });
+
+        return met;
     }
 
     private CodeExecutableElement createConditionProfile() {
@@ -855,6 +1095,16 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return typOperationLabel;
     }
 
+    private CodeTypeElement createOperationSerLabelImpl() {
+        CodeTypeElement typOperationLabel = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "OperationSerLabelImpl", types.OperationLabel);
+
+        typOperationLabel.add(new CodeVariableElement(context.getType(int.class), "id"));
+
+        typOperationLabel.add(GeneratorUtils.createConstructorUsingFields(Set.of(), typOperationLabel));
+
+        return typOperationLabel;
+    }
+
     private CodeTypeElement createOperationLocalImpl(CodeTypeElement opDataImpl) {
         CodeTypeElement typLocalData = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "OperationLocalImpl", types.OperationLocal);
 
@@ -866,10 +1116,29 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return typLocalData;
     }
 
+    private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
+        b.startTryBlock();
+        r.run();
+        b.end().startCatchBlock(context.getType(IOException.class), "ex");
+        b.startThrow().startNew("WrappedIOException").string("ex").end(2);
+        b.end();
+    }
+
     @SuppressWarnings("static-method")
     private CodeExecutableElement createBuilderImplCreateLocal(CodeTypeElement typBuilder, CodeTypeElement typLocalData) {
         CodeExecutableElement mCreateLocal = GeneratorUtils.overrideImplement(typBuilder, "createLocal");
-        mCreateLocal.createBuilder().startReturn().startNew(typLocalData.asType()).string("operationData").string("numLocals++").end(2);
+        CodeTreeBuilder b = mCreateLocal.createBuilder();
+
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            b.startIf().string("isSerializing").end().startBlock();
+            serializationWrapException(b, () -> {
+                b.statement("serBuffer.writeShort((short) " + SER_CODE_CREATE_LOCAL + ")");
+                b.statement("return new OperationLocalImpl(null, numLocals++)");
+            });
+            b.end();
+        }
+
+        b.startReturn().startNew(typLocalData.asType()).string("operationData").string("numLocals++").end(2);
         return mCreateLocal;
     }
 
@@ -885,6 +1154,16 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement mCreateLocal = GeneratorUtils.overrideImplement(typBuilder, "createLabel");
 
         CodeTreeBuilder b = mCreateLocal.createBuilder();
+
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            b.startIf().string("isSerializing").end().startBlock();
+            serializationWrapException(b, () -> {
+                b.statement("serBuffer.writeShort((short) " + SER_CODE_CREATE_LABEL + ")");
+                b.statement("return new OperationSerLabelImpl(numLabels++)");
+            });
+            b.end();
+        }
+
         b.startAssign("OperationLabelImpl label").startNew(typLabelData.asType()).string("operationData").string("currentFinallyTry").end(2);
         b.startStatement().startCall("labels", "add").string("label").end(2);
         b.startReturn().string("label").end();
@@ -1230,15 +1509,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return mDoLeaveFinallyTry;
     }
 
-    private CodeExecutableElement createMetadataSet(CodeTypeElement typOperationNodeImpl) {
-        CodeExecutableElement method = GeneratorUtils.overrideImplement(types.OperationBuilder, "assignMetadata");
-        CodeTreeBuilder b = method.createBuilder();
-
-        b.startAssign(typOperationNodeImpl.getSimpleName() + " nodeImpl").cast(typOperationNodeImpl.asType()).string("node").end();
-
-        return method;
-    }
-
     private CodeExecutableElement createSetMetadata(OperationMetadataData metadata, boolean isAbstract) {
         CodeVariableElement parValue = new CodeVariableElement(metadata.getType(), "value");
         CodeExecutableElement method = new CodeExecutableElement(
@@ -1260,6 +1530,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private CodeExecutableElement createEmitOperation(CodeTypeElement typBuilder, BuilderVariables vars, Operation op) {
         CodeExecutableElement metEmit = GeneratorUtils.overrideImplement(typBuilder, "emit" + op.name);
         CodeTreeBuilder b = metEmit.getBuilder();
+
+        createBeginOperationSerialize(vars, op, b);
 
         if (OperationGeneratorFlags.FLAG_NODE_AST_PRINTING) {
             b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + ")\")");
@@ -1328,6 +1600,15 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         // doAfterChild();
         CodeTreeBuilder b = metEnd.getBuilder();
 
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            b.startIf().string("isSerializing").end().startBlock();
+            serializationWrapException(b, () -> {
+                b.startStatement().string("serBuffer.writeShort((short) ((").variable(op.idConstantField).string(" << 1) | 1))").end();
+            });
+            b.returnStatement();
+            b.end();
+        }
+
         String condition = op.conditionedOn();
         if (condition != null) {
             b.startIf().string(condition).end().startBlock();
@@ -1395,6 +1676,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTreeBuilder b = metBegin.getBuilder();
 
+        createBeginOperationSerialize(vars, op, b);
+
         String condition = op.conditionedOn();
         if (condition != null) {
             b.startIf().string(condition).end().startBlock();
@@ -1434,6 +1717,50 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return metBegin;
     }
 
+    private void createBeginOperationSerialize(BuilderVariables vars, Operation op, CodeTreeBuilder b) {
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            b.startIf().string("isSerializing").end().startBlock();
+
+            serializationWrapException(b, () -> {
+                ArrayList<String> after = new ArrayList<>();
+
+                int i = 0;
+                for (TypeMirror argType : op.getBuilderArgumentTypes()) {
+                    // ARGUMENT SERIALIZATION
+                    if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
+                        after.add("serBuffer.writeShort((short) ((OperationLocalImpl) arg" + i + ").id)");
+                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
+                        after.add("serBuffer.writeShort((short) arg" + i + ".length)");
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
+                        after.add("serBuffer.writeShort((short) ((OperationSerLabelImpl) arg" + i + ").id)");
+                    } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
+                        after.add("serBuffer.writeInt(arg" + i + ")");
+                    } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source) || ElementUtils.typeEquals(argType, context.getType(Class.class))) {
+                        String index = "arg" + i + "_index";
+                        b.startAssign("int " + index).variable(vars.consts).startCall(".indexOf").string("arg" + i).end(2);
+                        b.startIf().string(index + " == -1").end().startBlock();
+                        b.startAssign(index).variable(vars.consts).startCall(".size").end(2);
+                        b.startStatement().variable(vars.consts).startCall(".add").string("arg" + i).end(2);
+                        b.statement("serBuffer.writeShort((short) " + SER_CODE_CREATE_OBJECT + ")");
+                        b.statement("serCallback.serialize(SER_CONTEXT, serBuffer, arg" + i + ")");
+                        b.end();
+                        after.add("serBuffer.writeShort((short) arg" + i + "_index)");
+                    } else {
+                        throw new UnsupportedOperationException("cannot serialize: " + argType);
+                    }
+                    i++;
+                }
+
+                b.startStatement().string("serBuffer.writeShort((short) (").variable(op.idConstantField).string(" << 1))").end();
+
+                after.forEach(b::statement);
+            });
+
+            b.returnStatement();
+            b.end();
+        }
+    }
+
     private CodeExecutableElement createSetResultUnboxed() {
         CodeExecutableElement mDoSetResultUnboxed = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "doSetResultBoxed");
 
@@ -1468,6 +1795,18 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement mPublish = new CodeExecutableElement(MOD_PUBLIC, types.OperationNode, "publish");
 
         CodeTreeBuilder b = mPublish.createBuilder();
+
+        if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
+            b.startIf().string("isSerializing").end().startBlock();
+            serializationWrapException(b, () -> {
+                b.statement("serBuffer.writeShort((short) " + SER_CODE_PUBLISH + ")");
+                b.declaration("OperationNode", "result", "new OperationSerNodeImpl(null, buildIndex++)");
+                b.statement("numLocals = 0");
+                b.statement("numLabels = 0");
+                b.statement("return result");
+            });
+            b.end();
+        }
 
         b.startIf().string("operationData.depth != 0").end().startBlock();
         b.startThrow().startNew(context.getType(UnsupportedOperationException.class)).doubleQuote("Not all operations closed").end(2);
@@ -1723,7 +2062,20 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         String simpleName = m.getTemplateType().getSimpleName() + "Builder";
 
-        return List.of(createBuilder(simpleName));
+        try {
+            return List.of(createBuilder(simpleName));
+        } catch (Throwable e) {
+            CodeTypeElement el = GeneratorUtils.createClass(m, null, Set.of(), simpleName, null);
+            CodeTreeBuilder b = el.createDocBuilder();
+
+            StringWriter sb = new StringWriter();
+            e.printStackTrace(new PrintWriter(sb));
+            for (String line : sb.toString().split("\n")) {
+                b.string("// " + line).newLine();
+            }
+
+            return List.of(el);
+        }
     }
 
     // -------------------------- helper methods moved to generated code --------------------------
