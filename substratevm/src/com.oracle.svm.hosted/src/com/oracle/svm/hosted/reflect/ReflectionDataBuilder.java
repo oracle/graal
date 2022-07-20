@@ -30,6 +30,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
@@ -44,6 +45,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,6 +80,7 @@ import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -429,11 +432,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 }
             }
         }
-        Executable enclosingMethod = enclosingMethodOrConstructor(clazz, null);
-        if (enclosingMethod != null) {
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(enclosingMethod.getDeclaringClass()));
-            RuntimeReflection.registerAsQueried(enclosingMethod);
-        }
+
+        registerTypesForEnclosingMethodInfo(access, clazz);
 
         Object[] recordComponents = buildRecordComponents(clazz, access);
         if (recordComponents != null) {
@@ -444,6 +444,53 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         registerTypesForAnnotations(access, analysisType);
         registerTypesForTypeAnnotations(access, analysisType);
+    }
+
+    private void registerTypesForEnclosingMethodInfo(DuringAnalysisAccessImpl access, Class<?> clazz) {
+        Object[] enclosingMethodInfo = getEnclosingMethodInfo(clazz);
+        if (enclosingMethodInfo == null) {
+            return; /* Nothing to do. */
+        }
+
+        /* Ensure the class stored in the enclosing method info is available at run time. */
+        makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType((Class<?>) enclosingMethodInfo[0]));
+
+        Executable enclosingMethodOrConstructor;
+        try {
+            enclosingMethodOrConstructor = Optional.<Executable> ofNullable(clazz.getEnclosingMethod())
+                            .orElse(clazz.getEnclosingConstructor());
+        } catch (TypeNotPresentException | LinkageError | InternalError e) {
+            /*
+             * These are rethrown at run time. However, note that `LinkageError` is rethrown as
+             * `InternalError`, which should be fine for now.
+             */
+            return;
+        }
+
+        if (enclosingMethodOrConstructor != null) {
+            /* Make the metadata for the enclosing method or constructor available at run time. */
+            RuntimeReflection.registerAsQueried(enclosingMethodOrConstructor);
+            access.requireAnalysisIteration();
+        }
+    }
+
+    private final Method getEnclosingMethod0 = ReflectionUtil.lookupMethod(Class.class, "getEnclosingMethod0");
+
+    private Object[] getEnclosingMethodInfo(Class<?> clazz) {
+        try {
+            return (Object[]) getEnclosingMethod0.invoke(clazz);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof LinkageError) {
+                /*
+                 * This error is handled when creating `DynamicHub` (but is then triggered by
+                 * `Class.getDeclaringClass0`), so we can simply ignore it here.
+                 */
+                return null;
+            }
+            throw VMError.shouldNotReachHere(e);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 
     private void registerTypesForField(DuringAnalysisAccessImpl access, AnalysisField analysisField, Field reflectField) {
