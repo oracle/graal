@@ -50,6 +50,14 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTimeImpl(LinuxTime.CLOCK_THREAD_CPUTIME_ID(), includeSystemTime);
     }
 
+    /**
+     * Returns the thread CPU time. Based on <link href=
+     * "https://github.com/openjdk/jdk/blob/master/src/hotspot/os/linux/os_linux.cpp#L4956">fast_cpu_time</link>.
+     *
+     * @param osThreadHandle the pthread
+     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
+     *            returns user time.
+     */
     @Override
     public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         CIntPointer threadsClockId = StackValue.get(Integer.BYTES);

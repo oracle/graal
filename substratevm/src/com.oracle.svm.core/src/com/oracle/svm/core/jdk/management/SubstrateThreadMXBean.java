@@ -114,7 +114,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public boolean isCurrentThreadCpuTimeSupported() {
-        return ImageSingletons.contains(ThreadCpuTimeSupport.class);
+        return isThreadCpuTimeSupported();
     }
 
     @Override
@@ -226,7 +226,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public boolean isThreadCpuTimeEnabled() {
-        return isCurrentThreadCpuTimeSupported();
+        return isThreadCpuTimeSupported();
     }
 
     @Override
@@ -309,13 +309,23 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     }
 
     @Override
-    public long[] getThreadCpuTime(long[] arg0) {
-        throw VMError.unsupportedFeature(MSG);
+    public long[] getThreadCpuTime(long[] ids) {
+        verifyThreadIds(ids);
+        long[] res = new long[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            res[i] = getThreadCpuTime(ids[i]);
+        }
+        return res;
     }
 
     @Override
-    public long[] getThreadUserTime(long[] arg0) {
-        throw VMError.unsupportedFeature(MSG);
+    public long[] getThreadUserTime(long[] ids) {
+        verifyThreadIds(ids);
+        long[] res = new long[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            res[i] = getThreadUserTime(ids[i]);
+        }
+        return res;
     }
 
     @Override

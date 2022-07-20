@@ -51,6 +51,14 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime(pthread, includeSystemTime);
     }
 
+    /**
+     * Returns the thread CPU time. Based on <link href=
+     * "https://github.com/openjdk/jdk/blob/master/src/hotspot/os/bsd/os_bsd.cpp#L2344">os::thread_cpu_time</link>.
+     *
+     * @param osThreadHandle the pthread
+     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
+     *            returns user time.
+     */
     @Override
     public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         int threadsMachPort = DarwinPthread.pthread_mach_thread_np((pthread_t) osThreadHandle);

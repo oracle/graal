@@ -42,5 +42,12 @@ public interface ThreadCpuTimeSupport {
      */
     long getCurrentThreadCpuTime(boolean includeSystemTime);
 
+    /**
+     * Returns the {@code osThreadHandle} thread CPU time.
+     *
+     * @param osThreadHandle the OS thread handle
+     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
+     *            returns user time.
+     */
     long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime);
 }

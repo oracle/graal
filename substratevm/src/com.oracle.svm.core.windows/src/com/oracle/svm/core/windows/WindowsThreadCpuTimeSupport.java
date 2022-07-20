@@ -50,6 +50,14 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime((OSThreadHandle) hThread, includeSystemTime);
     }
 
+    /**
+     * Returns the thread CPU time. Based on <link href=
+     * "https://github.com/openjdk/jdk/blob/master/src/hotspot/os/windows/os_windows.cpp#L4618">os::thread_cpu_time</link>.
+     *
+     * @param osThreadHandle the thread handle
+     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
+     *            returns user time.
+     */
     @Override
     public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         FILETIME create = StackValue.get(FILETIME.class);
@@ -59,6 +67,10 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         if (!Process.NoTransitions.GetThreadTimes((HANDLE) osThreadHandle, create, exit, kernel, user)) {
             return -1;
         }
+        // FILETIME contains two unsigned 32-bit values that combine to form a 64-bit count of
+        // 100-nanosecond time units.
+        // Do not cast a pointer to a FILETIME structure to either a CLongPointer, it can cause
+        // alignment faults on 64-bit Windows.
         UnsignedWord total = WordFactory.unsigned(user.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(user.dwLowDateTime()));
         if (includeSystemTime) {
             total.add(WordFactory.unsigned(kernel.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(kernel.dwLowDateTime())));
