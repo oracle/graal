@@ -118,7 +118,7 @@ public class PThreadDestructorTest {
         for (int i = 0; i < values.length; i++) {
             final int ii = i;
             keyValues.add(values[ii]);
-            threads[i] = new Thread(() -> {
+            threads[i] = InteropTestBase.runWithPolyglot.getTruffleTestEnv().createThread(() -> {
                 testLibrary.invokeMember("set_specific", values[ii]);
                 Value ret = testLibrary.invokeMember("get_specific");
                 Assert.assertEquals(values[ii], ret.asInt());

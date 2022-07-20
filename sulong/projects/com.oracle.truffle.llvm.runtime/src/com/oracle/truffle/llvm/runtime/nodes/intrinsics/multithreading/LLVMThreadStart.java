@@ -82,7 +82,7 @@ public final class LLVMThreadStart {
             } finally {
                 if (!this.context.getEnv().getContext().isClosed()) {
                     // call destructors from key create
-                    pThreadContext.callDestructors();
+                    pThreadContext.callDestructors(this.context);
                 }
             }
         }

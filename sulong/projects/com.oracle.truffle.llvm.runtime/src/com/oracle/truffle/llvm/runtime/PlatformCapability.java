@@ -79,7 +79,7 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public void disposeThread(@SuppressWarnings("unused") LLVMContext context,
                     @SuppressWarnings("unused") Thread thread) {
-        context.getpThreadContext().callDestructors(thread.getId());
+        context.getpThreadContext().callDestructors(context, thread.getId());
     }
 
     @SuppressWarnings("unchecked")
