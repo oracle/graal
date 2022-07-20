@@ -444,7 +444,9 @@ int main(int argc, char *argv[]) {
     struct MainThreadArgs args = { argc, argv, exeDir, jvmModeEnv, jvmMode, libPath};
 
     /* Create dedicated "main" thread for the JVM. The actual main thread
-     * must run the UI event loop on macOS. */
+     * must run the UI event loop on macOS. Inspired by this OpenJDK code:
+     * https://github.com/openjdk/jdk/blob/011958d30b275f0f6a2de097938ceeb34beb314d/src/java.base/macosx/native/libjli/java_md_macosx.m#L328-L358
+     */
     pthread_t main_thr;
     if (pthread_create(&main_thr, NULL, &apple_main, &args) != 0) {
         std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
