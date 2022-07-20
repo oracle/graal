@@ -42,9 +42,9 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 public class BackwardDFAStateNode extends DFAStateNode {
 
-    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
-                    AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
-        super(id, flags, loopTransitionIndex, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
+    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, IndexOfCall indexOfCall, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
+                                AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
+        super(id, flags, loopTransitionIndex, indexOfCall, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
     }
 
     protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {

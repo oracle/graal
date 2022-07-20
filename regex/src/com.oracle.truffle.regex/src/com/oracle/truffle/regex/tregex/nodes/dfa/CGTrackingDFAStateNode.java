@@ -56,7 +56,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     public CGTrackingDFAStateNode(short id,
                     byte flags,
                     short loopTransitionIndex,
-                    LoopOptimizationNode loopOptimizationNode,
+                    IndexOfCall indexOfCall,
                     short[] successors,
                     Matchers matchers,
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher,
@@ -67,7 +67,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     DFACaptureGroupPartialTransition anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition unAnchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition cgLoopToSelf) {
-        super(id, flags, loopTransitionIndex, loopOptimizationNode, successors, matchers, null, allTransitionsInOneTreeMatcher);
+        super(id, flags, loopTransitionIndex, indexOfCall, successors, matchers, null, allTransitionsInOneTreeMatcher);
         this.anchoredFinalStateTransition = anchoredFinalStateTransition;
         this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
         this.lastTransitionIndex = lastTransitionIndex;
@@ -135,7 +135,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
             }
             locals.setIndex(postLoopIndex);
         }
-        executor.inputIncNextIndexRaw(locals, loopOptimizationNode.encodedLength());
+        executor.inputIncNextIndexRaw(locals, indexOfCall.encodedLength());
         if (executor.isSearching()) {
             checkFinalState(locals, executor);
         }

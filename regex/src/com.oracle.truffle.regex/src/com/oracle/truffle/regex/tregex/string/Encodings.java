@@ -46,12 +46,11 @@ import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfAnyByteNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfAnyCharNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfAnyIntNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfStringNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptimizationNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfAnyByteCall;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfAnyCharCall;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfAnyIntCall;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfCall;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfStringCall;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.Builder;
 
@@ -115,7 +114,7 @@ public final class Encodings {
 
         public abstract AbstractStringBuffer createStringBuffer(int capacity);
 
-        public abstract DFAStateNode.LoopOptimizationNode extractLoopOptNode(CodePointSet loopCPS);
+        public abstract IndexOfCall extractIndexOfCall(CodePointSet loopCPS);
 
         public abstract int getNumberOfCodeRanges();
 
@@ -178,8 +177,8 @@ public final class Encodings {
             }
 
             @Override
-            public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
-                return new LoopOptIndexOfAnyIntNode(cps.inverseToIntArray(this));
+            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
+                return new IndexOfAnyIntCall(cps.inverseToIntArray(this));
             }
 
             @Override
@@ -264,7 +263,7 @@ public final class Encodings {
             }
 
             @Override
-            public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
+            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
                 if (cps.inverseGetMax(this) <= 0xffff) {
                     char[] indexOfChars = cps.inverseToCharArray(this);
                     for (char c : indexOfChars) {
@@ -272,11 +271,11 @@ public final class Encodings {
                             return null;
                         }
                     }
-                    return new LoopOptIndexOfAnyCharNode(indexOfChars);
+                    return new IndexOfAnyCharCall(indexOfChars);
                 } else if (cps.inverseValueCount(this) == 1) {
                     StringBufferUTF16 sb = createStringBuffer(2);
                     sb.append(cps.inverseGetMin(this));
-                    return new LoopOptIndexOfStringNode(sb.materialize(), null);
+                    return new IndexOfStringCall(sb.materialize(), null);
                 } else {
                     return null;
                 }
@@ -376,8 +375,8 @@ public final class Encodings {
             }
 
             @Override
-            public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
-                return new LoopOptIndexOfAnyCharNode(cps.inverseToCharArray(this));
+            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
+                return new IndexOfAnyCharCall(cps.inverseToCharArray(this));
             }
 
             @Override
@@ -465,14 +464,14 @@ public final class Encodings {
             }
 
             @Override
-            public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
+            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
                 if (cps.inverseGetMax(this) <= 0x7f) {
                     byte[] indexOfChars = cps.inverseToByteArray(this);
-                    return new LoopOptIndexOfAnyByteNode(indexOfChars);
+                    return new IndexOfAnyByteCall(indexOfChars);
                 } else if (cps.inverseValueCount(this) == 1) {
                     StringBufferUTF8 sb = createStringBuffer(4);
                     sb.append(cps.inverseGetMin(this));
-                    return new LoopOptIndexOfStringNode(sb.materialize(), new StringUTF8(new byte[sb.length()]));
+                    return new IndexOfStringCall(sb.materialize(), new StringUTF8(new byte[sb.length()]));
                 } else {
                     return null;
                 }
@@ -545,8 +544,8 @@ public final class Encodings {
             }
 
             @Override
-            public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
-                return new LoopOptIndexOfAnyByteNode(cps.inverseToByteArray(this));
+            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
+                return new IndexOfAnyByteCall(cps.inverseToByteArray(this));
             }
 
             @Override
@@ -608,8 +607,8 @@ public final class Encodings {
             }
 
             @Override
-            public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
-                return new LoopOptIndexOfAnyByteNode(cps.inverseToByteArray(this));
+            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
+                return new IndexOfAnyByteCall(cps.inverseToByteArray(this));
             }
 
             @Override

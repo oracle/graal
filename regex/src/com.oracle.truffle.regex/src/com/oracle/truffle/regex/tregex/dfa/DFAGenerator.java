@@ -114,7 +114,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private static final DFAStateTransitionBuilder[] EMPTY_TRANSITIONS_ARRAY = new DFAStateTransitionBuilder[0];
 
-    private final TRegexCompilationRequest compilationReqest;
+    private final TRegexCompilationRequest compilationRequest;
     private final NFA nfa;
     private final TRegexDFAExecutorProperties executorProps;
     private final CompilationBuffer compilationBuffer;
@@ -143,10 +143,12 @@ public final class DFAGenerator implements JsonConvertible {
     private List<DFAStateTransitionBuilder[]> bfsTraversalNext;
     private EconomicMap<Integer, DFAAbstractStateNode> stateReplacements;
 
+    private TRegexDFAExecutorNode innerLiteralPrefixMatcher = null;
+
     private final Matchers.Builder matchersBuilder;
 
-    public DFAGenerator(TRegexCompilationRequest compilationReqest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
-        this.compilationReqest = compilationReqest;
+    public DFAGenerator(TRegexCompilationRequest compilationRequest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
+        this.compilationRequest = compilationRequest;
         this.nfa = nfa;
         this.executorProps = executorProps;
         this.pruneUnambiguousPaths = executorProps.isBackward() && nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
@@ -331,7 +333,8 @@ public final class DFAGenerator implements JsonConvertible {
         }
         executorProps.setSimpleCG(doSimpleCG);
         executorProps.setSimpleCGMustCopy(simpleCGMustCopy);
-        return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, getNfa().getAst().getNumberOfCaptureGroups(), states, TRegexDFAExecutorDebugRecorder.create(getOptions(), this));
+        TRegexDFAExecutorDebugRecorder debugRecorder = TRegexDFAExecutorDebugRecorder.create(getOptions(), this);
+        return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates, states, debugRecorder, innerLiteralPrefixMatcher);
     }
 
     private void createInitialStatesForward() {
@@ -641,8 +644,6 @@ public final class DFAGenerator implements JsonConvertible {
             assert literalFirstDFAState != null;
             assert literalLastDFAState != null;
 
-            TRegexDFAExecutorNode prefixMatcher = null;
-
             if (literalStart > 0) {
                 /*
                  * If the prefix is of variable length, we must check if it is possible to match the
@@ -718,18 +719,18 @@ public final class DFAGenerator implements JsonConvertible {
                 NFAState reverseUnAnchoredInitialState = nfa.getReverseUnAnchoredEntry().getSource();
                 nfa.getReverseAnchoredEntry().setSource(literalFirstState);
                 nfa.getReverseUnAnchoredEntry().setSource(literalFirstState);
-                prefixMatcher = compilationReqest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG, getOptions().isRegressionTestMode(),
+                assert innerLiteralPrefixMatcher == null;
+                innerLiteralPrefixMatcher = compilationRequest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG, getOptions().isRegressionTestMode(),
                                 false, rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix");
-                prefixMatcher.setRoot(compilationReqest.getRoot());
-                prefixMatcher.getProperties().setSimpleCGMustCopy(false);
-                doSimpleCG = doSimpleCG && prefixMatcher.isSimpleCG();
+                innerLiteralPrefixMatcher.getProperties().setSimpleCGMustCopy(false);
+                doSimpleCG = doSimpleCG && innerLiteralPrefixMatcher.isSimpleCG();
                 nfa.setInitialLoopBack(true);
                 nfa.getReverseAnchoredEntry().setSource(reverseAnchoredInitialState);
                 nfa.getReverseUnAnchoredEntry().setSource(reverseUnAnchoredInitialState);
             }
 
             registerStateReplacement(unanchoredInitialState.getId(), new DFAFindInnerLiteralStateNode((short) unanchoredInitialState.getId(),
-                            new short[]{(short) literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral(), prefixMatcher));
+                            new short[]{(short) literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral()));
         }
     }
 
@@ -846,7 +847,7 @@ public final class DFAGenerator implements JsonConvertible {
             }
 
             short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EmptyArrays.SHORT;
-            DFAStateNode.LoopOptimizationNode loopOptimizationNode = null;
+            DFAStateNode.IndexOfCall indexOfCall = null;
             short loopToSelf = -1;
             for (int i = 0; i < s.getSuccessors().length; i++) {
                 successors[i] = (short) s.getSuccessors()[i].getTarget().getId();
@@ -854,7 +855,7 @@ public final class DFAGenerator implements JsonConvertible {
                     loopToSelf = (short) i;
                     CodePointSet loopMB = s.getSuccessors()[i].getCodePointSet();
                     if (coversCharSpace && !loopMB.matchesEverything(getEncoding()) && loopMB.inverseValueCount(getEncoding()) <= 4) {
-                        loopOptimizationNode = getEncoding().extractLoopOptNode(loopMB);
+                        indexOfCall = getEncoding().extractIndexOfCall(loopMB);
                     }
                 }
                 assert successors[i] >= 0 && successors[i] < ret.length;
@@ -871,14 +872,14 @@ public final class DFAGenerator implements JsonConvertible {
             }
             DFAStateNode stateNode;
             if (isGenericCG()) {
-                stateNode = createCGTrackingDFAState(s, id, matchers, allTransitionsInOneTreeMatcher, successors, loopOptimizationNode, loopToSelf, flags);
+                stateNode = createCGTrackingDFAState(s, id, matchers, allTransitionsInOneTreeMatcher, successors, indexOfCall, loopToSelf, flags);
             } else if (nfa.isTraceFinderNFA()) {
-                stateNode = new TraceFinderDFAStateNode(id, flags, loopToSelf, loopOptimizationNode, successors, matchers,
+                stateNode = new TraceFinderDFAStateNode(id, flags, loopToSelf, indexOfCall, successors, matchers,
                                 allTransitionsInOneTreeMatcher, s.getPreCalculatedUnAnchoredResult(), s.getPreCalculatedAnchoredResult());
             } else if (isForward()) {
-                stateNode = new DFAStateNode(id, flags, loopToSelf, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
+                stateNode = new DFAStateNode(id, flags, loopToSelf, indexOfCall, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
             } else {
-                stateNode = new BackwardDFAStateNode(id, flags, loopToSelf, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
+                stateNode = new BackwardDFAStateNode(id, flags, loopToSelf, indexOfCall, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
             }
             ret[id] = stateNode;
         }
@@ -907,7 +908,7 @@ public final class DFAGenerator implements JsonConvertible {
      */
     @SuppressWarnings("unchecked")
     private CGTrackingDFAStateNode createCGTrackingDFAState(DFAStateNodeBuilder s, short id, Matchers matchers, AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher, short[] successors,
-                    DFAStateNode.LoopOptimizationNode loopOptimizationNode, short loopToSelf, byte flags) {
+                    DFAStateNode.IndexOfCall indexOfCall, short loopToSelf, byte flags) {
         DFACaptureGroupLazyTransition[] lazyTransitions = new DFACaptureGroupLazyTransition[s.getSuccessors().length];
         DFACaptureGroupLazyTransition lazyPreFinalTransition;
         DFACaptureGroupLazyTransition lazyPreAnchoredFinalTransition;
@@ -993,7 +994,7 @@ public final class DFAGenerator implements JsonConvertible {
             cgLoopToSelf = getLazyTransition(s.getSuccessors()[loopToSelf]).getPartialTransitions()[loopToSelf];
         }
         short[] lastTransitionIndex = new short[s.getSuccessors().length];
-        return new CGTrackingDFAStateNode(id, flags, loopToSelf, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher,
+        return new CGTrackingDFAStateNode(id, flags, loopToSelf, indexOfCall, successors, matchers, allTransitionsInOneTreeMatcher,
                         lastTransitionIndex, lazyTransitions, lazyPreAnchoredFinalTransition, lazyPreFinalTransition, createCGFinalTransition(s.getAnchoredFinalStateTransition()),
                         createCGFinalTransition(s.getUnAnchoredFinalStateTransition()), cgLoopToSelf);
     }

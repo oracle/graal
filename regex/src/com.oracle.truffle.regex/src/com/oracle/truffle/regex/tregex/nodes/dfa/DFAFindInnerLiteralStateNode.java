@@ -44,7 +44,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -52,14 +51,11 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
 
     private final InnerLiteral innerLiteral;
-    @Child private InputIndexOfStringNode indexOfNode = InputIndexOfStringNode.create();
-    @Child private TRegexDFAExecutorNode prefixMatcher;
 
-    public DFAFindInnerLiteralStateNode(short id, short[] successors, InnerLiteral innerLiteral, TRegexDFAExecutorNode prefixMatcher) {
+    public DFAFindInnerLiteralStateNode(short id, short[] successors, InnerLiteral innerLiteral) {
         super(id, successors);
         assert successors.length == 1;
         this.innerLiteral = innerLiteral;
-        this.prefixMatcher = prefixMatcher;
     }
 
     public InnerLiteral getInnerLiteral() {
@@ -68,19 +64,15 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
 
     @Override
     public DFAAbstractStateNode createNodeSplitCopy(short copyID) {
-        return new DFAFindInnerLiteralStateNode(copyID, Arrays.copyOf(getSuccessors(), getSuccessors().length), innerLiteral, prefixMatcher);
-    }
-
-    public boolean hasPrefixMatcher() {
-        return prefixMatcher != null;
+        return new DFAFindInnerLiteralStateNode(copyID, Arrays.copyOf(getSuccessors(), getSuccessors().length), innerLiteral);
     }
 
     int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean tString) {
-        return indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteralContent(tString), innerLiteral.getMaskContent(tString),
-                        executor.getEncoding());
+        return executor.getIndexOfStringNode().execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteralContent(tString),
+                        innerLiteral.getMaskContent(tString), executor.getEncoding());
     }
 
-    boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
+    boolean prefixMatcherMatches(TRegexDFAExecutorNode prefixMatcher, TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
         Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), codeRange, tString);
         return prefixMatcher.isSimpleCG() ? result != null : (int) result != TRegexDFAExecutorNode.NO_MATCH;
     }

@@ -45,14 +45,10 @@ import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
@@ -63,155 +59,101 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
-     * This node is used when all except a very small set of code points will loop back to the
-     * current DFA state. This node's {@link #execute(Object, int, int, Encoding, boolean)} method
-     * will search for the given small set of code points in an optimized, possibly vectorized loop.
+     * This call is used when all except a very small set of code points will loop back to the
+     * current DFA state. The
+     * {@link #execute(TRegexDFAExecutorNode, Object, int, int, Encoding, boolean)} method will
+     * search for the given small set of code points in an optimized, possibly vectorized loop.
      */
-    public abstract static class LoopOptimizationNode extends Node {
+    public abstract static class IndexOfCall {
 
-        public abstract int execute(Object input, int preLoopIndex, int maxIndex, Encoding encoding, boolean tString);
+        public abstract int execute(TRegexDFAExecutorNode executor, Object input, int preLoopIndex, int maxIndex, Encoding encoding, boolean tString);
 
         public abstract int encodedLength();
-
-        abstract LoopOptimizationNode nodeSplitCopy();
     }
 
-    public abstract static class LoopOptIndexOfAnyNode extends LoopOptimizationNode {
-
-        @Child private InputIndexOfNode indexOfNode;
+    public abstract static class IndexOfAnyCall extends IndexOfCall {
 
         @Override
         public int encodedLength() {
             return 1;
-        }
-
-        InputIndexOfNode getIndexOfNode() {
-            if (indexOfNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                indexOfNode = insert(InputIndexOfNode.create());
-            }
-            return indexOfNode;
         }
     }
 
     /**
      * Optimized search for a set of up to 4 {@code int} values.
      */
-    public static final class LoopOptIndexOfAnyIntNode extends LoopOptIndexOfAnyNode {
+    public static final class IndexOfAnyIntCall extends IndexOfAnyCall {
 
         @CompilationFinal(dimensions = 1) private final int[] ints;
 
-        public LoopOptIndexOfAnyIntNode(int[] ints) {
+        public IndexOfAnyIntCall(int[] ints) {
             this.ints = ints;
         }
 
-        private LoopOptIndexOfAnyIntNode(LoopOptIndexOfAnyIntNode copy) {
-            this.ints = copy.ints;
+        @Override
+        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return executor.getIndexOfNode().execute(input, fromIndex, maxIndex, ints, encoding);
         }
 
-        @Override
-        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, ints, encoding);
-        }
-
-        @Override
-        LoopOptimizationNode nodeSplitCopy() {
-            return new LoopOptIndexOfAnyIntNode(this);
-        }
     }
 
     /**
      * Optimized search for a set of up to 4 {@code char} values.
      */
-    public static final class LoopOptIndexOfAnyCharNode extends LoopOptIndexOfAnyNode {
+    public static final class IndexOfAnyCharCall extends IndexOfAnyCall {
 
         @CompilationFinal(dimensions = 1) private final char[] chars;
 
-        public LoopOptIndexOfAnyCharNode(char[] chars) {
+        public IndexOfAnyCharCall(char[] chars) {
             this.chars = chars;
         }
 
-        private LoopOptIndexOfAnyCharNode(LoopOptIndexOfAnyCharNode copy) {
-            this.chars = copy.chars;
+        @Override
+        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return executor.getIndexOfNode().execute(input, fromIndex, maxIndex, chars, encoding);
         }
 
-        @Override
-        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, chars, encoding);
-        }
-
-        @Override
-        LoopOptimizationNode nodeSplitCopy() {
-            return new LoopOptIndexOfAnyCharNode(this);
-        }
     }
 
     /**
      * Optimized search for a set of up to 4 {@code byte} values.
      */
-    public static final class LoopOptIndexOfAnyByteNode extends LoopOptIndexOfAnyNode {
+    public static final class IndexOfAnyByteCall extends IndexOfAnyCall {
 
         @CompilationFinal(dimensions = 1) private final byte[] bytes;
 
-        public LoopOptIndexOfAnyByteNode(byte[] bytes) {
+        public IndexOfAnyByteCall(byte[] bytes) {
             this.bytes = bytes;
         }
 
-        private LoopOptIndexOfAnyByteNode(LoopOptIndexOfAnyByteNode copy) {
-            this.bytes = copy.bytes;
+        @Override
+        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return executor.getIndexOfNode().execute(input, fromIndex, maxIndex, bytes, encoding);
         }
 
-        @Override
-        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, bytes, encoding);
-        }
-
-        @Override
-        LoopOptimizationNode nodeSplitCopy() {
-            return new LoopOptIndexOfAnyByteNode(this);
-        }
     }
 
     /**
      * Optimized search for a substring.
      */
-    public static final class LoopOptIndexOfStringNode extends LoopOptimizationNode {
+    public static final class IndexOfStringCall extends IndexOfCall {
 
         private final int literalLength;
         private final InnerLiteral literal;
-        @Child private InputIndexOfStringNode indexOfNode;
 
-        public LoopOptIndexOfStringNode(AbstractString str, AbstractString mask) {
+        public IndexOfStringCall(AbstractString str, AbstractString mask) {
             this.literalLength = str.encodedLength();
             this.literal = new InnerLiteral(str, mask, 0);
         }
 
-        private LoopOptIndexOfStringNode(LoopOptIndexOfStringNode copy) {
-            this.literalLength = copy.literalLength;
-            this.literal = copy.literal;
-        }
-
         @Override
-        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, literal.getLiteralContent(tString), literal.getMaskContent(tString), encoding);
+        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return executor.getIndexOfStringNode().execute(input, fromIndex, maxIndex, literal.getLiteralContent(tString), literal.getMaskContent(tString), encoding);
         }
 
         @Override
         public int encodedLength() {
             return literalLength;
-        }
-
-        @Override
-        LoopOptimizationNode nodeSplitCopy() {
-            return new LoopOptIndexOfStringNode(this);
-        }
-
-        private InputIndexOfStringNode getIndexOfNode() {
-            if (indexOfNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                indexOfNode = insert(InputIndexOfStringNode.create());
-            }
-            return indexOfNode;
         }
     }
 
@@ -222,24 +164,24 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     private final byte flags;
     private final short loopTransitionIndex;
-    @Child LoopOptimizationNode loopOptimizationNode;
+    protected final IndexOfCall indexOfCall;
     private final Matchers matchers;
     private final DFASimpleCG simpleCG;
     private final AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher;
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.indexOfCall,
                         Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
                         nodeSplitCopy.getMatchers(), nodeSplitCopy.simpleCG, nodeSplitCopy.allTransitionsInOneTreeMatcher);
     }
 
-    public DFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, IndexOfCall indexOfCall, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
         this.loopTransitionIndex = loopTransitionIndex;
-        this.loopOptimizationNode = loopOptimizationNode;
+        this.indexOfCall = indexOfCall;
         this.matchers = matchers;
         this.simpleCG = simpleCG;
         this.allTransitionsInOneTreeMatcher = allTransitionsInOneTreeMatcher;
@@ -313,10 +255,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     /**
-     * Returns {@code true} if this state has a {@link LoopOptimizationNode}.
+     * Returns {@code true} if this state has a {@link IndexOfCall}.
      */
     boolean canDoIndexOf() {
-        return hasLoopToSelf() && loopOptimizationNode != null;
+        return hasLoopToSelf() && indexOfCall != null;
     }
 
     /**
@@ -329,8 +271,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called after every call to
-     * {@link LoopOptimizationNode#execute(Object, int, int, Encoding, boolean)}, which we call an
-     * {@code indexOf}-operation.
+     * {@link IndexOfCall#execute(TRegexDFAExecutorNode, Object, int, int, Encoding, boolean)},
+     * which we call an {@code indexOf}-operation.
      *
      * @param preLoopIndex the starting index of the {@code indexOf}-operation.
      * @param postLoopIndex the index found by the {@code indexOf}-operation. If the {@code indexOf}

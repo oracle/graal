@@ -239,6 +239,7 @@ public abstract class Matchers {
         @CompilationFinal(dimensions = 1) private final CharMatcher[] enc2;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] enc3;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] enc4;
+        private final int maxBytes;
 
         public UTF8Matchers(CharMatcher[] ascii, CharMatcher[] enc2, CharMatcher[] enc3, CharMatcher[] enc4, short noMatchSuccessor) {
             super(noMatchSuccessor);
@@ -246,6 +247,7 @@ public abstract class Matchers {
             this.enc2 = enc2;
             this.enc3 = enc3;
             this.enc4 = enc4;
+            this.maxBytes = enc4 != null ? 4 : enc3 != null ? 3 : enc2 != null ? 2 : 1;
         }
 
         public CharMatcher[] getAscii() {
@@ -262,6 +264,10 @@ public abstract class Matchers {
 
         public CharMatcher[] getEnc4() {
             return enc4;
+        }
+
+        public int getMaxBytes() {
+            return maxBytes;
         }
 
         @Override

@@ -66,6 +66,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     private boolean dfaGeneratorBailedOut;
 
     public TRegexNFAExecutorNode(NFA nfa, boolean trackLastGroup) {
+        super(nfa.getAst());
         this.nfa = nfa;
         nfa.setInitialLoopBack(false);
         this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
@@ -77,12 +78,34 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         this.trackLastGroup = trackLastGroup;
     }
 
+    private TRegexNFAExecutorNode(NFA nfa, boolean searching, boolean trackLastGroup, boolean dfaGeneratorBailedOut) {
+        super(nfa.getAst());
+        this.nfa = nfa;
+        this.searching = searching;
+        this.trackLastGroup = trackLastGroup;
+        this.dfaGeneratorBailedOut = dfaGeneratorBailedOut;
+    }
+
+    private TRegexNFAExecutorNode(TRegexNFAExecutorNode copy) {
+        this(copy.nfa, copy.searching, copy.trackLastGroup, copy.dfaGeneratorBailedOut);
+    }
+
+    @Override
+    public TRegexNFAExecutorNode shallowCopy() {
+        return new TRegexNFAExecutorNode(this);
+    }
+
     public NFA getNFA() {
         return nfa;
     }
 
     public void notifyDfaGeneratorBailedOut() {
         dfaGeneratorBailedOut = true;
+    }
+
+    @Override
+    public String getName() {
+        return "nfa";
     }
 
     @Override

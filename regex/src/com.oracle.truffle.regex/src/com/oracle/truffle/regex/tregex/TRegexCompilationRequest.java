@@ -200,7 +200,7 @@ public final class TRegexCompilationRequest {
         for (int i = 0; i < pureNFA.getSubtrees().size(); i++) {
             PureNFA subNFA = pureNFA.getSubtrees().get(i);
             if (pureNFA.getASTSubtree(subNFA).isLookAroundAssertion() && pureNFA.getASTSubtree(subNFA).asLookAroundAssertion().isLiteral()) {
-                subExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(subNFA).asLookAroundAssertion(), compilationBuffer);
+                subExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA, pureNFA.getASTSubtree(subNFA).asLookAroundAssertion(), compilationBuffer);
             } else {
                 subExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, subNFA, subExecutors, false, compilationBuffer);
             }
