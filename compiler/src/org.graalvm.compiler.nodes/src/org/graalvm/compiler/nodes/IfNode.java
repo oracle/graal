@@ -366,13 +366,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
-        if (splitIfAtPhi(this, tool)) {
-            return;
-        }
-
         if (optimizeCompoundConditional(this)) {
             return;
         }
+
+        if (this.graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING)) {
+            if (splitIfAtPhi(this, tool)) {
+                return;
+            }
+        }
+
     }
 
     public static boolean isWorthPerformingSplit(LogicNode newCondition, LogicNode originalCondition) {
