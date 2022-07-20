@@ -516,10 +516,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     static {
-        // Ensures that the 'espressoClass' and 'arrayKlass' fields can be non-volatile. This uses
+        // Ensures that the 'arrayKlass' field can be non-volatile. This uses
         // "Unsafe Local DCL + Safe Singleton" as described in
         // https://shipilev.net/blog/2014/safe-public-construction
-        assert hasFinalInstanceField(StaticObject.class);
         assert hasFinalInstanceField(ArrayKlass.class);
     }
 
