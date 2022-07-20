@@ -439,26 +439,27 @@ int main(int argc, char *argv[]) {
             std::cerr << "Loading libjli failed." << std::endl;
             return -1;
         }
-
-        struct MainThreadArgs args = { argc, argv, exeDir, jvmModeEnv, jvmMode, libPath};
-
-        /* Create dedicated "main" thread for the JVM. The actual main thread
-         * must run the UI event loop on macOS. */
-        pthread_t main_thr;
-        if (pthread_create(&main_thr, NULL, &apple_main, &args) != 0) {
-            std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
-            return -1;
-        }
-        if (pthread_detach(main_thr)) {
-            std::cerr << "pthread_detach() failed: " << strerror(errno) << std::endl;
-            return -1;
-        }
-
-        ParkEventLoop();
-        return 0;
     }
-#endif
+
+    struct MainThreadArgs args = { argc, argv, exeDir, jvmModeEnv, jvmMode, libPath};
+
+    /* Create dedicated "main" thread for the JVM. The actual main thread
+     * must run the UI event loop on macOS. */
+    pthread_t main_thr;
+    if (pthread_create(&main_thr, NULL, &apple_main, &args) != 0) {
+        std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
+        return -1;
+    }
+    if (pthread_detach(main_thr)) {
+        std::cerr << "pthread_detach() failed: " << strerror(errno) << std::endl;
+        return -1;
+    }
+
+    ParkEventLoop();
+    return 0;
+#else
     return jvm_main_thread(argc, argv, exeDir, jvmModeEnv, jvmMode, libPath);
+#endif
 }
 
 static int jvm_main_thread(int argc, char *argv[], std::string exeDir, char *jvmModeEnv, bool jvmMode, std::string libPath) {
