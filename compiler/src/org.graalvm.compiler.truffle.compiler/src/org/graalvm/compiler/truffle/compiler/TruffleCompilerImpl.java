@@ -1040,5 +1040,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 ttyFilter.close();
             }
         }
+
+        @Override
+        public String toString() {
+            return toString(Verbosity.DETAILED);
+        }
     }
 }

@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -79,6 +78,7 @@ import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.reflect.target.EncodedReflectionMetadataSupplier;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -92,7 +92,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
+import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
@@ -254,7 +254,7 @@ public abstract class NativeImageCodeCache {
         }
 
         ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
-        InternalRuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(InternalRuntimeReflectionSupport.class);
+        ReflectionHostedSupport reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
         HostedUniverse hUniverse = imageHeap.getUniverse();
         HostedMetaAccess hMetaAccess = imageHeap.getMetaAccess();
 
@@ -650,7 +650,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public interface ReflectionMetadataEncoder {
+    public interface ReflectionMetadataEncoder extends EncodedReflectionMetadataSupplier {
         void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] reflectionClasses);
 
         void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField sharedField, Field reflectField);
@@ -669,15 +669,6 @@ public abstract class NativeImageCodeCache {
 
         void encodeAllAndInstall();
 
-        byte[] getAnnotationsEncoding(AccessibleObject object);
-
-        byte[] getParameterAnnotationsEncoding(Executable object);
-
-        byte[] getAnnotationDefaultEncoding(Method object);
-
-        byte[] getTypeAnnotationsEncoding(AccessibleObject object);
-
-        byte[] getReflectParametersEncoding(Executable object);
     }
 
     public interface ReflectionMetadataEncoderFactory {

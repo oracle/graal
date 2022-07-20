@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,16 +135,40 @@ public abstract class TStringTest extends MethodSubstitutionTest {
 
     protected AVXKind.AVXSize getMaxVectorSize() {
         int maxVectorSize = getConfigMaxVectorSize();
-        if (supports(getTarget(), AMD64.CPUFeature.AVX512VL)) {
+        if (supports(getTarget(), null, AMD64.CPUFeature.AVX512VL)) {
             if (maxVectorSize < 0 || maxVectorSize >= 64) {
                 return AVXKind.AVXSize.ZMM;
             }
         }
-        if (supports(getTarget(), AMD64.CPUFeature.AVX2)) {
+        if (supports(getTarget(), null, AMD64.CPUFeature.AVX2)) {
             if (maxVectorSize < 0 || maxVectorSize >= 32) {
                 return AVXKind.AVXSize.YMM;
             }
         }
         return AVXKind.AVXSize.XMM;
+    }
+
+    protected static char[] toCharArray(byte[] array) {
+        char[] charArray = new char[array.length / 2];
+        for (int i = 0; i < charArray.length; i++) {
+            charArray[i] = (char) readValue(array, 1, i);
+        }
+        return charArray;
+    }
+
+    protected static int[] toIntArray(byte[] array) {
+        int[] intArray = new int[array.length / 4];
+        for (int i = 0; i < intArray.length; i++) {
+            intArray[i] = readValue(array, 2, i);
+        }
+        return intArray;
+    }
+
+    protected static long[] toLongArray(byte[] array) {
+        long[] longArray = new long[array.length / 8];
+        for (int i = 0; i < longArray.length; i++) {
+            longArray[i] = readValue(array, 3, i);
+        }
+        return longArray;
     }
 }

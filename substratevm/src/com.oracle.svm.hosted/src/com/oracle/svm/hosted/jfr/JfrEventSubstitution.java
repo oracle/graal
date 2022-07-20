@@ -35,12 +35,12 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.Event;
-import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -63,7 +63,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         jdkJfrEvent = metaAccess.lookupJavaType(Event.class);
-        ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);
+        ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(JfrEventWriterAccess.getEventWriterClass());
         changeWriterResetMethod(jdkJfrEventWriter);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
@@ -196,9 +196,13 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private static Method getMethodToFetchMetaspaceMethod(Class<?> method) throws NoSuchMethodException {
         // The exact method depends on the JVMCI version.
         try {
-            return method.getDeclaredMethod("getMetaspaceMethod");
+            return method.getDeclaredMethod("getMethodPointer");
         } catch (NoSuchMethodException e) {
-            return method.getDeclaredMethod("getMetaspacePointer");
+            try {
+                return method.getDeclaredMethod("getMetaspaceMethod");
+            } catch (NoSuchMethodException e2) {
+                return method.getDeclaredMethod("getMetaspacePointer");
+            }
         }
     }
 }

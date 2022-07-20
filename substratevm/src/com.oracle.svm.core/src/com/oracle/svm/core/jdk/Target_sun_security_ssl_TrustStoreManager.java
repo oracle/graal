@@ -95,6 +95,7 @@ final class TrustStoreManagerFeature implements Feature {
          * certificate files while generating X509Certificates.
          */
         rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for TrustStoreManager");
+        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI$ProviderService", "Required for TrustStoreManager");
     }
 }
 

@@ -29,9 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.heap.OutOfMemoryUtil;
-import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -74,10 +71,13 @@ import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -918,20 +918,15 @@ public final class GCImpl implements GC {
             }
 
             if (DeoptimizationSupport.enabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
-                RuntimeCodeInfoAccess.acquireThreadWriteAccess();
-                try {
-                    /*
-                     * For runtime-compiled code that is currently on the stack, we need to treat
-                     * all the references to Java heap objects as strong references. It is important
-                     * that we really walk *all* those references here. Otherwise,
-                     * RuntimeCodeCacheWalker might decide to invalidate too much code, depending on
-                     * the order in which the CodeInfo objects are visited.
-                     */
-                    RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
-                    RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
-                } finally {
-                    RuntimeCodeInfoAccess.releaseThreadWriteAccess();
-                }
+                /*
+                 * For runtime-compiled code that is currently on the stack, we need to treat all
+                 * the references to Java heap objects as strong references. It is important that we
+                 * really walk *all* those references here. Otherwise, RuntimeCodeCacheWalker might
+                 * decide to invalidate too much code, depending on the order in which the CodeInfo
+                 * objects are visited.
+                 */
+                RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
+                RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
             }
 
             if (!JavaStackWalker.continueWalk(walk, queryResult, deoptFrame)) {

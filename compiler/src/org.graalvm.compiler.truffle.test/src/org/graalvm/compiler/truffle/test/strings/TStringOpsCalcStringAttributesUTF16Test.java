@@ -164,10 +164,6 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<AMD6
 
     @Test
     public void testUnknownC() {
-        char[] charArray = new char[array.length / 2];
-        for (int i = 0; i < charArray.length; i++) {
-            charArray[i] = (char) readValue(array, 1, i);
-        }
-        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, int.class, int.class), null, DUMMY_LOCATION, charArray, offset, length);
+        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, int.class, int.class), null, DUMMY_LOCATION, toCharArray(array), offset, length);
     }
 }

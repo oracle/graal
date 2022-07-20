@@ -28,6 +28,7 @@ package com.oracle.graal.pointsto.api;
 
 import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -238,4 +239,6 @@ public abstract class HostVM {
     public Object getConfiguration() {
         return null;
     }
+
+    public abstract Comparator<? super ResolvedJavaType> getTypeComparator();
 }

@@ -40,6 +40,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
@@ -607,26 +608,30 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.uniqueDebugString(str);
     }
 
-    protected TypeEntry lookupType(String typeName) {
-        return dwarfSections.lookupTypeEntry(typeName);
+    protected TypeEntry lookupType(ResolvedJavaType type) {
+        return dwarfSections.lookupTypeEntry(type);
     }
 
-    protected int getTypeIndex(String typeName) {
+    protected TypeEntry lookupObjectClass() {
+        return dwarfSections.lookupObjectClass();
+    }
+
+    protected int getTypeIndex(TypeEntry typeEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getTypeIndex(typeName);
+        return dwarfSections.getTypeIndex(typeEntry);
     }
 
     protected void setTypeIndex(TypeEntry typeEntry, int pos) {
         dwarfSections.setTypeIndex(typeEntry, pos);
     }
 
-    protected int getIndirectTypeIndex(String typeName) {
+    protected int getIndirectTypeIndex(TypeEntry typeEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getIndirectTypeIndex(typeName);
+        return dwarfSections.getIndirectTypeIndex(typeEntry);
     }
 
     protected void setIndirectTypeIndex(TypeEntry typeEntry, int pos) {
@@ -721,26 +726,26 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getFieldDeclarationIndex(entry, fieldName);
     }
 
-    protected void setMethodDeclarationIndex(ClassEntry classEntry, String methodName, int pos) {
-        dwarfSections.setMethodDeclarationIndex(classEntry, methodName, pos);
+    protected void setMethodDeclarationIndex(MethodEntry methodEntry, int pos) {
+        dwarfSections.setMethodDeclarationIndex(methodEntry, pos);
     }
 
-    protected int getMethodDeclarationIndex(ClassEntry classEntry, String methodName) {
+    protected int getMethodDeclarationIndex(MethodEntry methodEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getMethodDeclarationIndex(classEntry, methodName);
+        return dwarfSections.getMethodDeclarationIndex(methodEntry);
     }
 
-    protected void setAbstractInlineMethodIndex(ClassEntry classEntry, String methodName, int pos) {
-        dwarfSections.setAbstractInlineMethodIndex(classEntry, methodName, pos);
+    protected void setAbstractInlineMethodIndex(MethodEntry methodEntry, int pos) {
+        dwarfSections.setAbstractInlineMethodIndex(methodEntry, pos);
     }
 
-    protected int getAbstractInlineMethodIndex(ClassEntry classEntry, String methodName) {
+    protected int getAbstractInlineMethodIndex(MethodEntry methodEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodName);
+        return dwarfSections.getAbstractInlineMethodIndex(methodEntry);
     }
 
     protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {

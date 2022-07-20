@@ -180,10 +180,11 @@ public class UniverseBuilder {
 
             processFieldLocations();
 
+            hUniverse.uniqueHostedMethodNames.clear();
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
-            Collections.sort(hUniverse.orderedMethods);
+            Collections.sort(hUniverse.orderedMethods, HostedUniverse.METHOD_COMPARATOR);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
-            Collections.sort(hUniverse.orderedFields);
+            Collections.sort(hUniverse.orderedFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
             profilingInformationBuildTask.join();
         }
     }
@@ -294,7 +295,7 @@ public class UniverseBuilder {
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        HostedMethod sMethod = new HostedMethod(hUniverse, aMethod, holder, signature, constantPool, sHandlers, null);
+        HostedMethod sMethod = HostedMethod.create(hUniverse, aMethod, holder, signature, constantPool, sHandlers, null);
         assert !hUniverse.methods.containsKey(aMethod);
         hUniverse.methods.put(aMethod, sMethod);
 
@@ -442,7 +443,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(rawFields);
+        Collections.sort(rawFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
 
         int nextOffset = startSize;
         while (rawFields.size() > 0) {
@@ -521,7 +522,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(fields);
+        Collections.sort(fields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
@@ -586,7 +587,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.getTypes()) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
-                Collections.sort(list);
+                Collections.sort(list, HostedUniverse.METHOD_COMPARATOR);
                 type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
             } else {
                 type.allDeclaredMethods = noMethods;
@@ -599,7 +600,7 @@ public class UniverseBuilder {
 
             // Reuse the implementations from the analysis method.
             method.implementations = hUniverse.lookup(method.wrapped.getImplementations());
-            Arrays.sort(method.implementations);
+            Arrays.sort(method.implementations, HostedUniverse.METHOD_COMPARATOR);
         }
     }
 

@@ -41,10 +41,15 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -150,7 +155,8 @@ public final class PerformanceInformationHandler implements Closeable {
             if (stackTrace.isEmpty()) {
                 builder.append(String.format("  No stack trace available for %s.", locationGroup));
             } else {
-                builder.append(String.format("  Approximated stack trace for %s:", locationGroup));
+                builder.append(String.format("  Approximated stack trace for %s (append --vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+DebugNonSafepoints for more precise approximation):\n",
+                                locationGroup));
                 builder.append(stackTrace);
             }
         }
@@ -197,6 +203,27 @@ public final class PerformanceInformationHandler implements Closeable {
                 String reason = "Partial evaluation could not resolve virtual instanceof to an exact type due to: " +
                                 String.format(type.isInterface() ? "interface type check: %s" : "too deep in class hierarchy: %s", type);
                 logPerformanceInfo(target, entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
+            }
+        }
+        if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+            for (Loop<Block> loop : cfg.getLoops()) {
+                // check if all loop exit contain trusted profiles
+                List<Block> loopBlocks = loop.getBlocks();
+                for (Block exit : loop.getLoopExits()) {
+                    Block exitDom = exit.getDominator();
+                    while (!(exitDom.getEndNode() instanceof ControlSplitNode) && !loopBlocks.contains(exitDom)) {
+                        // potential computation before loop exit
+                        exitDom = exitDom.getDominator();
+                    }
+                    if (loopBlocks.contains(exitDom) && exitDom.getEndNode() instanceof ControlSplitNode) {
+                        ControlSplitNode split = (ControlSplitNode) exitDom.getEndNode();
+                        if (!ProfileSource.isTrusted(split.getProfileData().getProfileSource())) {
+                            logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, target, Arrays.asList(loop.getHeader().getBeginNode()),
+                                            String.format("Missing loop profile for %s at loop %s.", split, loop.getHeader().getBeginNode()), null);
+                        }
+                    }
+                }
             }
         }
 

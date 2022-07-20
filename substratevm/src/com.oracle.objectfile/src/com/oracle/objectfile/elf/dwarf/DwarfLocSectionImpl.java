@@ -26,6 +26,18 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_implicit_value;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.graalvm.compiler.debug.DebugContext;
+
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
@@ -38,23 +50,12 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
-import org.graalvm.compiler.debug.DebugContext;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
-
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_implicit_value;
 
 /**
  * Section generator for debug_loc section.
@@ -614,7 +615,31 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         XMM12(29, AMD64.xmm12.number),
         XMM13(30, AMD64.xmm13.number),
         XMM14(31, AMD64.xmm14.number),
-        XMM15(32, AMD64.xmm15.number);
+        XMM15(32, AMD64.xmm15.number),
+        XMM16(60, AMD64.xmm16.number),
+        XMM17(61, AMD64.xmm17.number),
+        XMM18(62, AMD64.xmm18.number),
+        XMM19(63, AMD64.xmm19.number),
+        XMM20(64, AMD64.xmm20.number),
+        XMM21(65, AMD64.xmm21.number),
+        XMM22(66, AMD64.xmm22.number),
+        XMM23(67, AMD64.xmm23.number),
+        XMM24(68, AMD64.xmm24.number),
+        XMM25(69, AMD64.xmm25.number),
+        XMM26(70, AMD64.xmm26.number),
+        XMM27(71, AMD64.xmm27.number),
+        XMM28(72, AMD64.xmm28.number),
+        XMM29(73, AMD64.xmm29.number),
+        XMM30(74, AMD64.xmm30.number),
+        XMM31(75, AMD64.xmm31.number),
+        K0(118, AMD64.k0.number),
+        K1(119, AMD64.k1.number),
+        K2(120, AMD64.k2.number),
+        K3(121, AMD64.k3.number),
+        K4(122, AMD64.k4.number),
+        K5(123, AMD64.k5.number),
+        K6(124, AMD64.k6.number),
+        K7(125, AMD64.k7.number);
 
         private final int dwarfEncoding;
         private final int graalEncoding;

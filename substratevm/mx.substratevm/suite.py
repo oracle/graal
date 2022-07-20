@@ -63,10 +63,6 @@ suite = {
             "sha1" : "8edc1db5c7ea977e2a9c037b5324bb4cbee40082",
             "packedResource": True,
         },
-        "DACAPO_SVM" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
-            "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
-        },
         "SPARK_BREEZE_PATCHED" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/breeze_2.11-0.11.2-patched.jar"],
             "sha1" : "e3327f5d890b5af0f7363a8b3cd95b6ce24bc1ea",
@@ -80,21 +76,21 @@ suite = {
            },
         },
         "LLVM_WRAPPER_SHADOWED": {
-            "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
-            "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
+            "sha1" : "6e2ccf2127750962ac10fbedee7476fb392d967a",
+            "sourceSha1" : "f3e062834bd7eac4e7d7ec039e2961d07556a87b",
             "dependencies" : ["JAVACPP_SHADOWED"],
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2.jar"],
-            "sourceUrls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-sources.jar"],
+            "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7.jar"],
+            "sourceUrls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-sources.jar"],
             "license" : "GPLv2-CPE",
             "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm"
         },
         "JAVACPP_SHADOWED": {
-            "sha1" : "212aaddcd73448c7b6da781fb6cde934c667dc2c",
-            "sourceSha1" : "3e9cfc02750ba8ea3babc1b8546a50ec36b849a2",
+            "sha1" : "85ba34efaf9b0ce71b4d2a426637ba37b89cf05c",
+            "sourceSha1" : "99c5aaba05b0772577722f51ba3c9eb28ae6a435",
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-            "urls": ["{urlbase}/javacpp-shadowed-1.5.2.jar"],
-            "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.2-sources.jar"],
+            "urls": ["{urlbase}/javacpp-shadowed-1.5.7.jar"],
+            "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.7-sources.jar"],
             "license" : "GPLv2-CPE",
             "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp"
         },
@@ -103,13 +99,13 @@ suite = {
             "os_arch": {
                 "linux": {
                     "amd64": {
-                        "sha1": "53acc3692e0f67f3b4a4e5fa5b4a5a1de1aa7947",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-x86_64.jar"],
+                        "sha1": "ece8e0fdf1f88cf252b942daa71bc403c7f43d2b",
+                        "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-linux-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.x86_64"
                     },
                     "aarch64": {
-                        "sha1": "1340a75f741014eab5795cf37b24551913854dec",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2_1-linux-arm64.jar"],
+                        "sha1": "fdd9027e3d61a4338af556f57ef93fa057a82f94",
+                        "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.arm64"
                     },
                     "<others>": {
@@ -118,9 +114,45 @@ suite = {
                 },
                 "darwin": {
                     "amd64": {
-                        "sha1": "d1082bfd227b8f084682a2cd3b06e36f5d046e5e",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
+                        "sha1": "f5d2b291fc6ed39a03909cec43b658715c0cee47",
+                        "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-macosx-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
+                    },
+                    "aarch64": {
+                        # GR-34811
+                        "optional": True,
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "optional": True,
+                    }
+                }
+            },
+        },
+        "JAVACPP_PLATFORM_SPECIFIC_SHADOWED": {
+            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
+            "os_arch": {
+                "linux": {
+                    "amd64": {
+                        "sha1": "568ae492d26c3a250e26ffec6693e4539b9498fc",
+                        "urls": ["{urlbase}/javacpp-shadowed-1.5.7-linux-x86_64.jar"],
+                        "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.x86_64"
+                    },
+                    "aarch64": {
+                        "sha1": "989d74eee5bbe57e137a58ff45ff008a6ff665a9",
+                        "urls": ["{urlbase}/javacpp-shadowed-1.5.7-linux-arm64.jar"],
+                        "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.arm64"
+                    },
+                    "<others>": {
+                        "optional": True,
+                    },
+                },
+                "darwin": {
+                    "amd64": {
+                        "sha1": "016951eed0da7ac568a8c2031979ede0b8134d07",
+                        "urls": ["{urlbase}/javacpp-shadowed-1.5.7-macosx-x86_64.jar"],
+                        "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.macosx.x86_64"
                     },
                     "aarch64": {
                         # GR-34811
@@ -230,6 +262,8 @@ suite = {
                     "jdk.jfr.events",
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
+                ],
+                "jdk.jfr@11..18": [
                     "jdk.jfr.internal.handlers",
                 ],
             },
@@ -343,6 +377,7 @@ suite = {
                 "com.oracle.svm.hosted",
                 "LLVM_WRAPPER_SHADOWED",
                 "LLVM_PLATFORM_SPECIFIC_SHADOWED",
+                "JAVACPP_PLATFORM_SPECIFIC_SHADOWED",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "11+",
@@ -614,26 +649,6 @@ suite = {
             "class" : "SubstrateJvmFuncsFallbacksBuilder",
         },
 
-        "com.oracle.svm.jni": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.misc",
-                ],
-            },
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "javaCompliance": "11+",
-            "spotbugs": "false",
-        },
-
         "com.oracle.svm.driver": {
             "subDir": "src",
             "sourceDirs": [
@@ -662,7 +677,7 @@ suite = {
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.reflect",
+                "com.oracle.svm.core",
                 "mx:JUNIT_TOOL",
             ],
             "checkstyle": "com.oracle.svm.core",
@@ -738,54 +753,6 @@ suite = {
             "testProject": True,
         },
 
-        "com.oracle.svm.reflect": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "sun.invoke.util",
-                    "sun.reflect.annotation",
-                    "sun.reflect.generics.repository",
-                    "jdk.internal.reflect",
-                    "sun.reflect.generics.scope"
-                ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.code",
-                ],
-            },
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "javaCompliance": "11+",
-            "spotbugs": "false",
-        },
-
-        "com.oracle.svm.methodhandles": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.reflect",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "sun.invoke.util",
-                    "jdk.internal.reflect",
-                ],
-            },
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "javaCompliance": "11+",
-            "spotbugs": "false",
-        },
-
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
@@ -833,6 +800,8 @@ suite = {
                     "jdk.internal.misc",
                 ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.code.site",
                     "jdk.vm.ci.runtime",
                 ],
             },
@@ -997,8 +966,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.jni",
-                "com.oracle.svm.reflect",
                 "com.oracle.svm.graal",
                 "compiler:GRAAL"
             ],
@@ -1038,7 +1005,7 @@ suite = {
                 "src",
             ],
             "dependencies": [
-                "com.oracle.svm.jni",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
@@ -1125,9 +1092,6 @@ suite = {
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
-                "com.oracle.svm.jni",
-                "com.oracle.svm.reflect",
-                "com.oracle.svm.methodhandles"
             ],
             "manifestEntries" : {
                 "Premain-Class": "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent",
@@ -1154,7 +1118,7 @@ suite = {
                     "com.oracle.svm.core.graal.nodes              to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.graal.snippets           to jdk.internal.vm.compiler",
                     "com.oracle.svm.hosted.fieldfolding           to jdk.internal.vm.compiler",
-                    "com.oracle.svm.reflect.hosted                to jdk.internal.vm.compiler",
+                    "com.oracle.svm.hosted.reflect                to jdk.internal.vm.compiler",
                 ],
                 "requires": [
                     "java.management",
@@ -1174,6 +1138,7 @@ suite = {
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
+                    "java.util.spi.ResourceBundleControlProvider",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
@@ -1669,7 +1634,8 @@ suite = {
             },
             "exclude": [
                 "LLVM_WRAPPER_SHADOWED",
-                "LLVM_PLATFORM_SPECIFIC_SHADOWED"
+                "LLVM_PLATFORM_SPECIFIC_SHADOWED",
+                "JAVACPP_PLATFORM_SPECIFIC_SHADOWED",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.llvm",

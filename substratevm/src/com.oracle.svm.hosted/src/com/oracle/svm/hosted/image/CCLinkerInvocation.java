@@ -228,11 +228,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     @Override
-    public void addAdditionalPreOption(String option) {
-        additionalPreOptions.add(option);
-    }
-
-    @Override
     public void addNativeLinkerOption(String option) {
         nativeLinkerOptions.add(option);
     }
@@ -341,9 +336,25 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         DarwinCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols) {
             // Workaround building images with older Xcode with new libraries
             super(imageKind, nativeLibs, symbols);
+            setLinkerFlags(nativeLibs, false);
+        }
+
+        private void setLinkerFlags(NativeLibraries nativeLibs, boolean useFallback) {
             additionalPreOptions.add("-Wl,-U,___darwin_check_fd_set_overflow");
 
-            if (!SubstrateOptions.useLLVMBackend()) {
+            boolean useLld = false;
+            if (useFallback) {
+                Path lld = LLVMToolchain.getLLVMBinDir().resolve("ld64.lld").toAbsolutePath();
+                if (Files.exists(lld)) {
+                    useLld = true;
+                    additionalPreOptions.add("-fuse-ld=" + lld);
+                } else {
+                    throw new RuntimeException("The Native Image build ran into a ld64 limitation. Please use ld64.lld via `gu install llvm-toolchain` and run the same command again.");
+                }
+            }
+
+            if (!SubstrateOptions.useLLVMBackend() && !useLld) {
+                /* flag is not understood by LLVM linker */
                 additionalPreOptions.add("-Wl,-no_compact_unwind");
             }
 
@@ -375,6 +386,22 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             } else if (Platform.includedIn(Platform.AARCH64.class)) {
                 additionalPreOptions.add("arm64");
             }
+        }
+
+        @Override
+        public List<String> getFallbackCommand() {
+            additionalPreOptions.clear();
+            setLinkerFlags(nativeLibs, true);
+            return getCommand();
+        }
+
+        @Override
+        public boolean shouldRunFallback(String message) {
+            if (Platform.includedIn(Platform.AARCH64.class)) {
+                /* detect ld64 limitation around inserting branch islands, retry with LLVM linker */
+                return message.contains("branch out of range") || message.contains("Unable to insert branch island");
+            }
+            return false;
         }
 
         @Override

@@ -50,8 +50,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -69,15 +67,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 public class TruffleTCKFeature implements Feature {
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        try {
-            return Collections.singletonList(Class.forName("com.oracle.svm.reflect.hosted.ReflectionFeature").asSubclass(Feature.class));
-        } catch (ClassNotFoundException cnf) {
-            throw new RuntimeException(cnf);
-        }
-    }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

@@ -48,6 +48,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
@@ -286,7 +287,7 @@ public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
         masm.subsd(xmm5, xmm2);
         masm.andl(rdx, 16711680);
         masm.shrl(rdx, 12);
-        masm.movdqu(xmm0, new AMD64Address(r11, rdx, AMD64Address.Scale.Times1));
+        masm.movdqu(xmm0, new AMD64Address(r11, rdx, Stride.S1));
         masm.movdqu(xmm4, recordExternalAddress(crb, coeff16));        // 0x3d6fb175, 0xbfc5555e,
                                                                        // 0x55555555, 0x3fd55555
         masm.addsd(xmm1, xmm5);

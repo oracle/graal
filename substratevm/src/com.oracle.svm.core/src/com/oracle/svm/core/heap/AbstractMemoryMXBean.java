@@ -64,6 +64,7 @@ public abstract class AbstractMemoryMXBean implements MemoryMXBean, Notification
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public int getObjectPendingFinalizationCount() {
         // SVM does not have any finalization support.
         return 0;

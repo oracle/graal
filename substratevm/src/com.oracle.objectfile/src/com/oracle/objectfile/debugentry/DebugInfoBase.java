@@ -72,7 +72,7 @@ public abstract class DebugInfoBase {
      *
      * An alternative traversal option is
      *
-     * 1) by top level class (String id)
+     * 1) by top level class (unique ResolvedJavaType id)
      *
      * 2) by top level compiled method (primary Range) within a class ordered by ascending address
      *
@@ -82,6 +82,18 @@ public abstract class DebugInfoBase {
      * continuous address range with no intervening code from other methods or data values. this
      * means we can treat each class as a compilation unit, allowing data common to all methods of
      * the class to be shared.
+     *
+     * Just as an aside, for full disclosure, this is not strictly the full story. Sometimes a class
+     * can include speculatively optimized, compiled methods plus deopt fallback compiled variants
+     * of those same methods. In such cases the normal and/or speculatively compiled methods occupy
+     * one contiguous range and deopt methods occupy a separate higher range. The current
+     * compilation strategy ensures that the union across all classes of the normal/speculative
+     * ranges and the union across all classes of the deopt ranges lie in two distinct intervals
+     * where the highest address in the first union is strictly less than the lowest address in the
+     * second union. The implication is twofold. An address order traversal requires generating
+     * details for classes, methods and non-deopt primary ranges before generating details for the
+     * deopt primary ranges. The former details need to be generated in a distinct CU from deopt
+     * method details.
      *
      * A third option appears to be to traverse via files, then top level class within file etc.
      * Unfortunately, files cannot be treated as the compilation unit. A file F may contain multiple
@@ -96,17 +108,22 @@ public abstract class DebugInfoBase {
      */
     private List<TypeEntry> types = new ArrayList<>();
     /**
-     * index of already seen classes.
+     * Index of already seen classes keyed by the unique, associated, identifying ResolvedJavaType
+     * or, in the single special case of the TypeEntry for the Java header structure, by key null.
      */
-    private Map<String, TypeEntry> typesIndex = new HashMap<>();
+    private Map<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
     /**
      * List of class entries detailing class info for primary ranges.
      */
     private List<ClassEntry> primaryClasses = new ArrayList<>();
     /**
-     * index of already seen classes.
+     * Index of already seen classes.
      */
     private Map<ResolvedJavaType, ClassEntry> primaryClassesIndex = new HashMap<>();
+    /**
+     * Handle on class entry for java.lang.Object.
+     */
+    private ClassEntry objectClass;
     /**
      * Index of files which contain primary or secondary ranges.
      */
@@ -213,7 +230,8 @@ public abstract class DebugInfoBase {
 
         /* Create all the types. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
-            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            ResolvedJavaType idType = debugTypeInfo.idType();
+            String typeName = debugTypeInfo.typeName();
             typeName = stringTable.uniqueDebugString(typeName);
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
             int byteSize = debugTypeInfo.size();
@@ -222,16 +240,17 @@ public abstract class DebugInfoBase {
             String fileName = debugTypeInfo.fileName();
             Path filePath = debugTypeInfo.filePath();
             Path cachePath = debugTypeInfo.cachePath();
-            addTypeEntry(typeName, fileName, filePath, cachePath, byteSize, typeKind);
+            addTypeEntry(idType, typeName, fileName, filePath, cachePath, byteSize, typeKind);
         }));
 
         /* Now we can cross reference static and instance field details. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
-            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            ResolvedJavaType idType = debugTypeInfo.idType();
+            String typeName = debugTypeInfo.typeName();
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
 
             debugContext.log(DebugContext.INFO_LEVEL, "Process %s type %s ", typeKind.toString(), typeName);
-            TypeEntry typeEntry = lookupTypeEntry(typeName);
+            TypeEntry typeEntry = lookupTypeEntry(idType);
             typeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
         }));
 
@@ -309,12 +328,15 @@ public abstract class DebugInfoBase {
         return typeEntry;
     }
 
-    private TypeEntry addTypeEntry(String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    private TypeEntry addTypeEntry(ResolvedJavaType idType, String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
+        TypeEntry typeEntry = typesIndex.get(idType);
         if (typeEntry == null) {
             typeEntry = createTypeEntry(typeName, fileName, filePath, cachePath, size, typeKind);
             types.add(typeEntry);
-            typesIndex.put(typeName, typeEntry);
+            typesIndex.put(idType, typeEntry);
+            if (typeName.equals("java.lang.Object")) {
+                objectClass = (ClassEntry) typeEntry;
+            }
         } else {
             if (!(typeEntry.isClass())) {
                 assert ((ClassEntry) typeEntry).getFileName().equals(fileName);
@@ -323,20 +345,24 @@ public abstract class DebugInfoBase {
         return typeEntry;
     }
 
-    public TypeEntry lookupTypeEntry(String typeName) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    public TypeEntry lookupTypeEntry(ResolvedJavaType type) {
+        TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null) {
-            throw new RuntimeException("type entry not found " + typeName);
+            throw new RuntimeException("type entry not found " + type.getName());
         }
         return typeEntry;
     }
 
-    ClassEntry lookupClassEntry(String typeName) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    ClassEntry lookupClassEntry(ResolvedJavaType type) {
+        TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null || !(typeEntry.isClass())) {
-            throw new RuntimeException("class entry not found " + typeName);
+            throw new RuntimeException("class entry not found " + type.getName());
         }
         return (ClassEntry) typeEntry;
+    }
+
+    public ClassEntry lookupObjectClass() {
+        return objectClass;
     }
 
     /**
@@ -360,7 +386,7 @@ public abstract class DebugInfoBase {
         DebugLocationInfo callerLocationInfo = locationInfo.getCaller();
         boolean isTopLevel = callerLocationInfo == null;
         assert (!isTopLevel || (locationInfo.name().equals(primaryRange.getMethodName()) &&
-                        TypeEntry.canonicalize(locationInfo.ownerType().toJavaName()).equals(primaryRange.getClassName())));
+                        locationInfo.ownerType().toJavaName().equals(primaryRange.getClassName())));
         Range caller = (isTopLevel ? primaryRange : subRangeIndex.get(callerLocationInfo));
         // the frame tree is walked topdown so inline ranges should always have a caller range
         assert caller != null;
@@ -396,13 +422,13 @@ public abstract class DebugInfoBase {
         /* See if we already have an entry. */
         ClassEntry classEntry = primaryClassesIndex.get(type);
         if (classEntry == null) {
-            TypeEntry typeEntry = typesIndex.get(TypeEntry.canonicalize(type.toJavaName()));
+            TypeEntry typeEntry = typesIndex.get(type);
             assert (typeEntry != null && typeEntry.isClass());
             classEntry = (ClassEntry) typeEntry;
             primaryClasses.add(classEntry);
             primaryClassesIndex.put(type, classEntry);
         }
-        assert (classEntry.getTypeName().equals(TypeEntry.canonicalize(type.toJavaName())));
+        assert (classEntry.getTypeName().equals(type.toJavaName()));
         return classEntry;
     }
 

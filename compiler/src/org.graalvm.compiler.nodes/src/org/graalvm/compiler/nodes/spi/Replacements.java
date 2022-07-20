@@ -64,10 +64,10 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method);
 
     /**
-     * Create a {@link DebugContext} for use with {@link Snippet} related work. Snippet processingis
-     * hidden by default using the flags {@code DebugStubsAndSnippets}.
+     * Create a {@link DebugContext} for use with {@link Snippet} related work. Snippet processing
+     * is hidden by default using the flags {@code DebugStubsAndSnippets}.
      */
-    DebugContext openSnippetDebugContext(DebugContext.Description description, DebugContext outer, OptionValues options);
+    DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, DebugContext outer, OptionValues options);
 
     /**
      * Gets the snippet graph derived from a given method.

@@ -48,15 +48,13 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.jfr.internal.EventWriter;
-
 /**
  * This class holds various JFR-specific thread local values.
  *
  * Each thread uses both a Java and a native {@link JfrBuffer}:
  * <ul>
  * <li>The Java buffer is accessed by JFR events that are implemented as Java classes and written
- * using {@link EventWriter}.</li>
+ * using {@code EventWriter}.</li>
  * <li>The native buffer is accessed when {@link JfrNativeEventWriter} is used to write an
  * event.</li>
  * </ul>

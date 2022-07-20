@@ -94,7 +94,7 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         return blocks;
     }
 
-    private boolean inverted = true;
+    private boolean inverted = false;
 
     public boolean isInverted() {
         return inverted;

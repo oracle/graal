@@ -38,8 +38,6 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 
 _suite = mx.suite('vm')
-_native_image_vm_registry = mx_benchmark.VmRegistry('NativeImage', 'ni-vm')
-_gu_vm_registry = mx_benchmark.VmRegistry('GraalUpdater', 'gu-vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
 _polybench_modes = [
     ('standard', ['--mode=standard']),
@@ -200,7 +198,6 @@ class NativeImageVM(GraalVm):
         self.pgo_aot_inline = False
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
-        self.pgo_inline_explored = False
         self.is_gate = False
         self.is_quickbuild = False
         self.use_string_inlining = False
@@ -291,7 +288,6 @@ class NativeImageVM(GraalVm):
             elif inliner == "inline-explored":
                 mx.logv("'inline-explored' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 3
-                self.pgo_inline_explored = True
             else:
                 mx.abort("Unknown inliner configuration: {}".format(inliner))
 
@@ -747,10 +743,9 @@ class NativeImageVM(GraalVm):
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
-        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
+        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-        instrument_args += ['-H:+InlineAllExplored'] if self.pgo_inline_explored else []
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
@@ -771,7 +766,7 @@ class NativeImageVM(GraalVm):
     def run_stage_image(self, config, stages):
         executable_name_args = ['-H:Name=' + config.final_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
-        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
+        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
@@ -854,67 +849,6 @@ class NativeImageVM(GraalVm):
         stderr_path = os.path.abspath(
             os.path.join(config.log_dir, executable_name + '-' + stage.current_stage + '-stderr.log'))
         return stderr_path, stdout_path
-
-
-class NativeImageBuildVm(GraalVm):
-    def run(self, cwd, args):
-        return self.run_launcher('native-image', args, cwd)
-
-
-class GuVm(GraalVm):
-    def run(self, cwd, args):
-        return self.run_launcher('gu', ['rebuild-images'] + args, cwd)
-
-
-class NativeImageBuildBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
-    def __init__(self, name, benchmarks, registry):
-        super(NativeImageBuildBenchmarkSuite, self).__init__()
-        self._name = name
-        self._benchmarks = benchmarks
-        self._registry = registry
-
-    def group(self):
-        return 'Graal'
-
-    def subgroup(self):
-        return 'substratevm'
-
-    def name(self):
-        return self._name
-
-    def benchmarkList(self, bmSuiteArgs):
-        return list(self._benchmarks.keys())
-
-    def createVmCommandLineArgs(self, benchmarks, runArgs):
-        if not benchmarks:
-            benchmarks = self.benchmarkList(runArgs)
-
-        cmd_line_args = []
-        for bench in benchmarks:
-            cmd_line_args += self._benchmarks[bench]
-        return cmd_line_args + runArgs
-
-    def get_vm_registry(self):
-        return self._registry
-
-    def rules(self, output, benchmarks, bmSuiteArgs):
-        class NativeImageTimeToInt(object):
-            def __call__(self, *args, **kwargs):
-                return int(float(args[0].replace(',', '')))
-
-        return [
-            mx_benchmark.StdOutRule(r'^\[(?P<benchmark>\S+?):[0-9]+\][ ]+\[total\]:[ ]+(?P<time>[0-9,.]+?) ms', {
-                "bench-suite": self.name(),
-                "benchmark": ("<benchmark>", str),
-                "metric.name": "time",
-                "metric.type": "numeric",
-                "metric.unit": "ms",
-                "metric.value": ("<time>", NativeImageTimeToInt()),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-            })
-        ]
 
 
 class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
@@ -1237,9 +1171,89 @@ class PolyBenchVm(GraalVm):
     def run(self, cwd, args):
         return self.run_launcher('polybench', args, cwd)
 
+def polybenchmark_rules(benchmark, metric_name, mode):
+    rules = []
+    if metric_name == "time":
+        # Special case for metric "time": Instead of reporting the aggregate numbers,
+        # report individual iterations. Two metrics will be reported:
+        # - "warmup" includes all iterations (warmup and run)
+        # - "time" includes only the "run" iterations
+        rules += [
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": "warmup",
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("$iteration", int),
+                "engine.config": mode,
+            }),
+            ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": "time",
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int),
+                "engine.config": mode,
+            }, startPattern=r"::: Running :::"),
+            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmark,
+                "metric.name": "context-eval-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": ("<unit>", str),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "engine.config": mode
+            }),
+            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmark,
+                "metric.name": "context-init-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": ("<unit>", str),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "engine.config": mode,
+            }),
+        ]
+    elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory", "instructions"):
+        rules += [
+            ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": metric_name,
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int),
+                "engine.config": mode,
+            }, startPattern=r"::: Running :::")
+        ]
+    elif metric_name in ("compile-time", "pe-time"):
+        rules += [
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": metric_name,
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": 0,
+                "engine.config": mode,
+            }),
+        ]
+    return rules
 
-mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', benchmarks={'js': ['--language:js']}, registry=_native_image_vm_registry))
-mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
 mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
 mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
@@ -1253,9 +1267,11 @@ def register_graalvm_vms():
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
                 _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))
-        if mx_sdk_vm_impl.has_component('svm'):
-            _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
-            _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
+        if _suite.get_import("polybenchmarks") is not None:
+            import mx_polybenchmarks_benchmark
+            mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "jvm", [], ["--jvm"]))
+            mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "native", [], ["--native"]))
+            mx_polybenchmarks_benchmark.rules = polybenchmark_rules
 
     # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']

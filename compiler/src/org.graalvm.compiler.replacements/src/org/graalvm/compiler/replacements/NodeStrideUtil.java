@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.replacements;
 
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.nodes.ValueNode;
-
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This class provides utility methods for "stride-agnostic" intrinsic nodes such as
@@ -45,7 +44,7 @@ public final class NodeStrideUtil {
      * If the constant stride parameter {@code strideA} is non-null, return it. Otherwise, extract
      * {@code strideA} from the constant direct stub call index value {@code dynamicStrides}.
      */
-    public static JavaKind getConstantStrideA(ValueNode dynamicStrides, JavaKind strideA) {
+    public static Stride getConstantStrideA(ValueNode dynamicStrides, Stride strideA) {
         if (strideA != null) {
             return strideA;
         }
@@ -56,7 +55,7 @@ public final class NodeStrideUtil {
      * If the constant stride parameter {@code strideB} is non-null, return it. Otherwise, extract
      * {@code strideB} from the constant direct stub call index value {@code dynamicStrides}.
      */
-    public static JavaKind getConstantStrideB(ValueNode dynamicStrides, JavaKind strideB) {
+    public static Stride getConstantStrideB(ValueNode dynamicStrides, Stride strideB) {
         if (strideB != null) {
             return strideB;
         }
@@ -69,9 +68,9 @@ public final class NodeStrideUtil {
      * {@code dynamicStrides}, if it is constant. If {@code dynamicStrides} is not constant, return
      * {@code -1}.
      */
-    public static int getDirectStubCallIndex(ValueNode dynamicStrides, JavaKind strideA, JavaKind strideB) {
+    public static int getDirectStubCallIndex(ValueNode dynamicStrides, Stride strideA, Stride strideB) {
         if (strideA != null && strideB != null) {
-            return StrideUtil.getDirectStubCallIndex(StrideUtil.log2(strideA), StrideUtil.log2(strideB));
+            return StrideUtil.getDirectStubCallIndex(strideA.log2, strideB.log2);
         }
         if (dynamicStrides != null && dynamicStrides.isJavaConstant()) {
             return dynamicStrides.asJavaConstant().asInt();

@@ -64,9 +64,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * every load, store, call, and instantiation in the bytecode. These dependencies are collected in
  * {@link SVMHost#getInitializedClasses}.
  */
-public class TypeInitializerGraph {
+final class TypeInitializerGraph {
     private final SVMHost hostVM;
-    private ClassInitializationSupport classInitializationSupport;
+    private final ProvenSafeClassInitializationSupport classInitializationSupport;
 
     private enum Safety {
         SAFE,
@@ -79,9 +79,9 @@ public class TypeInitializerGraph {
     private final Map<AnalysisMethod, Safety> methodSafety = new HashMap<>();
     private final Collection<AnalysisMethod> methods;
 
-    TypeInitializerGraph(AnalysisUniverse universe) {
+    TypeInitializerGraph(ProvenSafeClassInitializationSupport classInitializationSupport, AnalysisUniverse universe) {
         hostVM = ((SVMHost) universe.hostVM());
-        classInitializationSupport = hostVM.getClassInitializationSupport();
+        this.classInitializationSupport = classInitializationSupport;
 
         universe.getTypes().forEach(this::addInitializer);
         universe.getTypes().forEach(this::addInitializerDependencies);

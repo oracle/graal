@@ -57,6 +57,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -328,6 +329,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
 
     /* Delete the original static field for common parallelism. */
     @Delete //
+    @TargetElement(onlyWith = JDK17OrEarlier.class)//
     static int COMMON_PARALLELISM;
 
     @Alias //

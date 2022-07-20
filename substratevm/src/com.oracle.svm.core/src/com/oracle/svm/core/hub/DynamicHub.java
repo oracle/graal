@@ -61,7 +61,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -80,6 +79,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
@@ -87,13 +87,13 @@ import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.DirectAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
-import jdk.vm.ci.meta.JavaKind;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
@@ -103,7 +103,7 @@ import sun.reflect.generics.repository.ClassRepository;
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
 @SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
-public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
+public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
                 Target_java_lang_invoke_TypeDescriptor_OfField, Target_java_lang_constant_Constable {
 
     @Substitute //
@@ -304,14 +304,23 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private final Class<?> nestHost;
 
+    /**
+     * The simple binary name of this class, as returned by {@code Class.getSimpleBinaryName0}.
+     */
+    private final String simpleBinaryName;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setModule(Module module) {
+        assert module != null;
         this.module = module;
     }
 
     private final DynamicHubCompanion companion;
 
     private String signature;
+
+    @Substitute @InjectAccessors(ClassLoaderAccessors.class) //
+    private ClassLoader classLoader;
 
     @Substitute @InjectAccessors(ReflectionDataAccessors.class) //
     private SoftReference<Target_java_lang_Class_ReflectionData<?>> reflectionData;
@@ -342,7 +351,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
                     String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
-                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed) {
+                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed, String simpleBinaryName) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
@@ -354,6 +363,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
         this.nestHost = nestHost;
+        this.simpleBinaryName = simpleBinaryName;
 
         this.flags = NumUtil.safeToUByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
@@ -732,10 +742,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     private native ClassLoader getClassLoader();
 
-    @Substitute
-    private ClassLoader getClassLoader0() {
-        return companion.getClassLoader();
-    }
+    @KeepOriginal
+    private native ClassLoader getClassLoader0();
 
     public boolean isLoaded() {
         return companion.hasClassLoader();
@@ -1107,13 +1115,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
-    public static Class<?> forName(String className) throws ClassNotFoundException {
+    public static Class<?> forName(String className) throws Throwable {
         Class<?> caller = Reflection.getCallerClass();
         return forName(className, true, caller.getClassLoader());
     }
 
     @Substitute //
-    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) {
+    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
          * we use the class loader of the caller class instead of the module's loader.
@@ -1127,13 +1135,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
+    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
         Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
         if (result == null && loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
             result = loader.loadClass(name); // may throw
         }
         if (result == null) {
-            throw new ClassNotFoundException(name);
+            throw ClassLoadingExceptionSupport.getExceptionForClass(name, new ClassNotFoundException(name));
         }
         if (initialize) {
             DynamicHub.fromClass(result).ensureInitialized();
@@ -1231,21 +1239,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute //
     private String getSimpleBinaryName0() {
-        if (isAnonymousClass() || enclosingClass == null) {
-            return null;
-        }
-        try {
-            int prefix = enclosingClass.getName().length();
-            char firstLetter;
-            do {
-                prefix += 1;
-                firstLetter = name.charAt(prefix);
-            } while (!Character.isLetter(firstLetter));
-            return name.substring(prefix);
-        } catch (IndexOutOfBoundsException ex) {
-            throw new InternalError("Malformed class name", ex);
-        }
-        /* See open/src/hotspot/share/prims/jvm.cpp#1522. */
+        return simpleBinaryName;
     }
 
     /**
@@ -1552,6 +1546,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         }
     }
 
+    private static class ClassLoaderAccessors {
+        @SuppressWarnings("unused")
+        private static ClassLoader getClassLoader(DynamicHub that) {
+            return that.companion.getClassLoader();
+        }
+    }
+
     private static class AnnotationDataAccessors {
         @SuppressWarnings("unused")
         private static Target_java_lang_Class_AnnotationData getAnnotationData(DynamicHub that) {
@@ -1725,6 +1726,17 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     @Substitute
     public static ReflectionFactory getReflectionFactory() {
         return soleInstance;
+    }
+
+    /**
+     * Do not use the field handle based field accessor but the one based on unsafe. It takes effect
+     * when {@code Target_java_lang_reflect_Field#fieldAccessorField#fieldAccessor} is recomputed at
+     * runtime. See also GR-39586.
+     */
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    @Substitute
+    static boolean useFieldHandleAccessor() {
+        return false;
     }
 }
 

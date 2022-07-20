@@ -70,6 +70,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine {
     private final MethodSummaryProvider methodSummaryProvider;
+
+    private final Timer reachabilityTimer;
     private final Timer summaryTimer;
 
     private final Set<AnalysisType> allInstantiatedTypes;
@@ -77,10 +79,20 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, MethodSummaryProvider methodSummaryProvider, TimerCollection timerCollection) {
         super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
+        this.executor.init(getTiming());
         this.methodSummaryProvider = methodSummaryProvider;
+        this.reachabilityTimer = timerCollection.createTimer("(reachability)");
         this.summaryTimer = timerCollection.createTimer("((summaries))");
         ReachabilityAnalysisType objectType = assertReachabilityAnalysisType(metaAccess.lookupJavaType(Object.class));
         this.allInstantiatedTypes = Collections.unmodifiableSet(objectType.getInstantiatedSubtypes());
+    }
+
+    /**
+     * Timing is not implemented ATM.
+     */
+    @Override
+    protected CompletionExecutor.Timing getTiming() {
+        return null;
     }
 
     @Override
@@ -314,7 +326,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             executor.start();
             executor.complete();
             executor.shutdown();
-            executor.init(timing);
+            executor.init(getTiming());
         }
     }
 

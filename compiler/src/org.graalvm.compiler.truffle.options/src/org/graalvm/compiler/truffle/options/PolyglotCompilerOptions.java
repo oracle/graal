@@ -77,7 +77,9 @@ public final class PolyglotCompilerOptions {
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
         VIRTUAL_STORE("store", "Enables virtual store warnings"),
         FRAME_INCOMPATIBLE_MERGE("frame_merge", "Enables warnings about deopts inserted for incompatible frame slot merges"),
-        TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
+        TRIVIAL_FAIL("trivial", "Enables trivial fail warnings"),
+        // keep optional until all warnings in downstream are resolved
+        MISSING_LOOP_FREQUENCY_INFO("loop", "Enables missing loop frequency warnings", true);
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
         static {
@@ -89,10 +91,20 @@ public final class PolyglotCompilerOptions {
 
         final String name;
         final String help;
+        final boolean isOptional;
 
         PerformanceWarningKind(String name, String help) {
+            this(name, help, false);
+        }
+
+        PerformanceWarningKind(String name, String help, boolean isOptional) {
             this.name = name;
             this.help = help;
+            this.isOptional = isOptional;
+        }
+
+        boolean isOptional() {
+            return isOptional;
         }
 
         public static PerformanceWarningKind forName(String name) {
@@ -194,7 +206,9 @@ public final class PolyglotCompilerOptions {
             if ("none".equals(value)) {
                 return EnumSet.noneOf(PerformanceWarningKind.class);
             } else if ("all".equals(value)) {
-                return EnumSet.allOf(PerformanceWarningKind.class);
+                Set<PerformanceWarningKind> result = EnumSet.allOf(PerformanceWarningKind.class);
+                result.removeIf(PerformanceWarningKind::isOptional);
+                return result;
             } else {
                 Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
                 for (String name : value.split(",")) {

@@ -60,10 +60,12 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
                             clazz(access, "java.awt.image.ColorModel"),
                             clazz(access, "sun.awt.X11GraphicsEnvironment"),
                             clazz(access, "sun.font.FontManagerNativeLibrary"),
+                            clazz(access, "sun.print.CUPSPrinter"),
                             clazz(access, "sun.java2d.Disposer"));
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("java_awt");
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt");
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_java2d");
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_print");
 
             access.registerReachabilityHandler(JNIRegistrationAwt::registerFreeType,
                             clazz(access, "sun.font.FontManagerNativeLibrary"));

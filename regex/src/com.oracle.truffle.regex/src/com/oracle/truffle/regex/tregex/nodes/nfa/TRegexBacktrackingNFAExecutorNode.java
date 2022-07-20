@@ -46,11 +46,13 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
@@ -115,6 +117,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private final boolean mustAdvance;
     private final boolean loneSurrogates;
     private final boolean loopbackInitialState;
+    private final boolean useMergeExplode;
     private final InnerLiteral innerLiteral;
     @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] subExecutors;
     @CompilationFinal(dimensions = 1) private CharMatcher[] matchers;
@@ -179,6 +182,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             s.initIsDeterministic(forward, compilationBuffer);
         }
         this.maxNTransitions = maxTransitions;
+        this.useMergeExplode = nfa.getNumberOfStates() <= TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize;
     }
 
     public void initialize(TRegexExecNode rootNode) {
@@ -229,12 +233,21 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         if (loopbackInitialState) {
             locals.setLastInitialStateIndex(locals.getIndex());
         }
-        runMergeExplode(locals, codeRange, tString);
+        if (useMergeExplode) {
+            runMergeExplode(locals, codeRange, tString);
+        } else {
+            runSlowPath(locals, codeRange, tString);
+        }
         return locals.popResult();
     }
 
+    @TruffleBoundary
+    private void runSlowPath(TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
+        runMergeExplode(locals, codeRange, tString);
+    }
+
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    protected void runMergeExplode(TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
+    private void runMergeExplode(TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
         int ip = IP_BEGIN;
         outer: while (true) {
             locals.incLoopCount(this);

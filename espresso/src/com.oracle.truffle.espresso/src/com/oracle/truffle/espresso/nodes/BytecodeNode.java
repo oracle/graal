@@ -1718,15 +1718,57 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         // @formatter:on
     }
 
-    private static boolean takeBranchRef2(StaticObject operand1, StaticObject operand2, int opcode) {
+    private boolean takeBranchRef2(StaticObject operand1, StaticObject operand2, int opcode) {
         assert IF_ACMPEQ <= opcode && opcode <= IF_ACMPNE;
         // @formatter:off
-        switch (opcode) {
-            case IF_ACMPEQ : return operand1 == operand2;
-            case IF_ACMPNE : return operand1 != operand2;
-            default        :
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
+        if (noForeignObjects.isValid()) {
+            switch (opcode) {
+                case IF_ACMPEQ:
+                    return operand1 == operand2;
+                case IF_ACMPNE:
+                    return operand1 != operand2;
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
+            }
+        } else {
+            switch (opcode) {
+                case IF_ACMPEQ: {
+                    if (operand1 == operand2) {
+                        return true;
+                    }
+                    // Espresso null == foreign null
+                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
+                        return true;
+                    }
+                    // an Espresso object can never be identical to a foreign object
+                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
+                        return operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                    }
+                    return false;
+                }
+                case IF_ACMPNE: {
+                    if (operand1 == operand2) {
+                        return false;
+                    }
+                    // Espresso null == foreign null
+                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
+                        return false;
+                    }
+                    // an Espresso object can never be identical to a foreign object
+                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
+                        return !operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                    }
+                    return operand1 != operand2;
+                }
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
+            }
         }
         // @formatter:on
     }

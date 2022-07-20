@@ -80,8 +80,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public DebugContext openSnippetDebugContext(DebugContext.Description description, DebugContext outer, OptionValues options) {
-        return delegate.openSnippetDebugContext(description, outer, options);
+    public DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, DebugContext outer, OptionValues options) {
+        return delegate.openSnippetDebugContext(idPrefix, method, outer, options);
     }
 
     @Override

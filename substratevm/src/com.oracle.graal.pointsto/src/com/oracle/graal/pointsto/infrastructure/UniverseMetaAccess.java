@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
-public class UniverseMetaAccess implements WrappedMetaAccess {
+public abstract class UniverseMetaAccess implements WrappedMetaAccess {
     private final Function<Class<?>, ResolvedJavaType> computeJavaType = new Function<>() {
         @Override
         public ResolvedJavaType apply(Class<?> clazz) {
@@ -121,16 +121,6 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
     @Override
     public int decodeDebugId(JavaConstant constant) {
         throw unimplemented();
-    }
-
-    @Override
-    public int getArrayBaseOffset(JavaKind elementKind) {
-        return wrapped.getArrayBaseOffset(elementKind);
-    }
-
-    @Override
-    public int getArrayIndexScale(JavaKind elementKind) {
-        return wrapped.getArrayIndexScale(elementKind);
     }
 
     @Override

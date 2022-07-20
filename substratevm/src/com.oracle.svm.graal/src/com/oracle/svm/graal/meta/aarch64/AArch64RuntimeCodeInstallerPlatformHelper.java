@@ -35,7 +35,10 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeCache;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.UserError;
 
 @AutomaticFeature
 @Platforms(Platform.AARCH64.class)
@@ -43,6 +46,12 @@ class AArch64RuntimeCodeInstallerPlatformHelperFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(RuntimeCodeInstallerPlatformHelper.class, new AArch64RuntimeCodeInstallerPlatformHelper());
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeOptionKey<Boolean> writeableCodeOption = RuntimeCodeCache.Options.WriteableCodeCache;
+        UserError.guarantee(!writeableCodeOption.getValue(), "Enabling " + writeableCodeOption.getName() + " is not supported on this platform.");
     }
 }
 

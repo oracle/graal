@@ -144,6 +144,7 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordTypes;
@@ -1038,18 +1039,36 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
         r = new Registration(plugins, "java.util.Base64$Decoder", replacements);
-        r.registerConditional(config.base64DecodeBlock != 0L, new InvocationPlugin("decodeBlock", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, boolean.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,
-                            ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL) {
-                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-                ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
-                ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
-                ForeignCallNode call = b.add(new ForeignCallNode(BASE64_DECODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
-                b.addPush(JavaKind.Int, call);
-                return true;
+        if (config.base64DecodeBlock != 0L) {
+            if (JavaVersionUtil.JAVA_SPEC >= 18) {
+                // JDK-8268276 - added isMIME parameter
+                r.register(new InvocationPlugin("decodeBlock", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, boolean.class, boolean.class) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,
+                                    ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL, ValueNode isMime) {
+                        int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+                        ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
+                        ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
+                        ForeignCallNode call = b.add(new ForeignCallNode(BASE64_DECODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL, isMime));
+                        b.addPush(JavaKind.Int, call);
+                        return true;
+                    }
+                });
+            } else {
+                r.register(new InvocationPlugin("decodeBlock", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, boolean.class) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,
+                                    ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL) {
+                        int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+                        ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
+                        ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
+                        ForeignCallNode call = b.add(new ForeignCallNode(BASE64_DECODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
+                        b.addPush(JavaKind.Int, call);
+                        return true;
+                    }
+                });
             }
-        });
+        }
     }
 
     private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
@@ -1112,11 +1131,11 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
         r.registerConditional(config.useVectorizedMismatchIntrinsic(), new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode aOffset, ValueNode bObject, ValueNode bOffset,
-                            ValueNode length, ValueNode log2ArrayIndexScale) {
-                ValueNode aAddr = b.add(new ComputeObjectAddressNode(a, aOffset));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode aObject, ValueNode aOffset, ValueNode bObject, ValueNode bOffset, ValueNode length, ValueNode log2ArrayIndexScale) {
+                ValueNode aAddr = b.add(new ComputeObjectAddressNode(aObject, aOffset));
                 ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
-                b.addPush(JavaKind.Int, new ForeignCallNode(HotSpotBackend.VECTORIZED_MISMATCH, aAddr, bAddr, length, log2ArrayIndexScale));
+                b.addPush(JavaKind.Int, new VectorizedMismatchNode(aAddr, bAddr, length, log2ArrayIndexScale));
                 return true;
             }
         });

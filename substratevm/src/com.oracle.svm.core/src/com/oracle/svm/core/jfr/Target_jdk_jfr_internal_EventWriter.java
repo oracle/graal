@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(value = jdk.jfr.internal.EventWriter.class, onlyWith = HasJfrSupport.class)
+@TargetClass(className = "EventWriter", classNameProvider = Package_jdk_jfr_internal_event_helper.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_EventWriter {
     @Alias @SuppressWarnings("unused") boolean notified;
 

@@ -32,17 +32,19 @@ import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.EnumSet;
 
-import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.heap.Heap;
-import org.graalvm.word.WordFactory;
+import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
     @Fold
@@ -83,7 +85,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Override
-    public boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
+    public int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
         int vmAccessBits = VirtualMemoryProvider.Access.NONE;
         if (accessFlags.contains(CommittedMemoryProvider.Access.READ)) {
             vmAccessBits |= VirtualMemoryProvider.Access.READ;
@@ -92,10 +94,12 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
             vmAccessBits |= VirtualMemoryProvider.Access.WRITE;
         }
         if (accessFlags.contains(CommittedMemoryProvider.Access.EXECUTE)) {
+            if ((vmAccessBits & VirtualMemoryProvider.Access.WRITE) != 0 && !RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
+                throw VMError.shouldNotReachHere("memory should never be writable and executable at the same time");
+            }
             vmAccessBits |= VirtualMemoryProvider.Access.EXECUTE;
         }
-        int success = VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
-        return success == 0;
+        return VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
     }
 
     @Override
@@ -115,16 +119,16 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
-        if (executable) {
-            access |= VirtualMemoryProvider.Access.EXECUTE;
-        }
         Pointer reserved = WordFactory.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
             reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
             if (reserved.isNull()) {
                 return nullPointer();
             }
+        }
+        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
+        if (executable) {
+            access |= VirtualMemoryProvider.Access.FUTURE_EXECUTE;
         }
         Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access);
         if (committed.isNull()) {

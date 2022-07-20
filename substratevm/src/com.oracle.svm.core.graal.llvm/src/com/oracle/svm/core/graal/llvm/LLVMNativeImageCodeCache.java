@@ -63,7 +63,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
@@ -72,12 +71,12 @@ import com.oracle.svm.core.graal.llvm.util.LLVMObjectFileReader.LLVMTextSectionI
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMStackMapInfo;
 import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.image.LLVMToolchain;
+import com.oracle.svm.hosted.image.LLVMToolchain.RunFailureException;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -224,7 +223,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         executor.forEach(getOrderedCompilations(), pair -> (debugContext) -> {
             HostedMethod method = pair.getLeft();
-            int offset = textSectionInfo.getOffset(SubstrateUtil.uniqueShortName(method));
+            int offset = textSectionInfo.getOffset(method.getUniqueShortName());
             int nextFunctionStartOffset = textSectionInfo.getNextOffset(offset);
             int functionSize = nextFunctionStartOffset - offset;
 

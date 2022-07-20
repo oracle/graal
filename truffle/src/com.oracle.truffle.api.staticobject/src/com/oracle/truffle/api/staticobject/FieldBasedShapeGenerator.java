@@ -91,6 +91,7 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return FieldBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, safetyChecks);
     }
 
+    @SuppressWarnings("deprecation"/* JDK-8277863 */)
     private static int getObjectFieldOffset(Class<?> c, String fieldName) {
         try {
             return Math.toIntExact(UNSAFE.objectFieldOffset(c.getField(fieldName)));

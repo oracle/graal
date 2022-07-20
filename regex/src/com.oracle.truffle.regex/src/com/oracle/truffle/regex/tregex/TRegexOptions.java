@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.tregex.nfa.PureNFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -218,6 +219,12 @@ public class TRegexOptions {
      * {@link PureNFAGenerator}).
      */
     public static final int TRegexMaxPureNFATransitions = 1_000_000;
+
+    /**
+     * Maximum number of {@link PureNFA} states allowed to be exploded in
+     * {@link TRegexBacktrackingNFAExecutorNode}.
+     */
+    public static final int TRegexMaxBackTrackerMergeExplodeSize = 4_000;
 
     static {
         assert TRegexTraceFinderMaxNumberOfResults <= 254;

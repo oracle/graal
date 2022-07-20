@@ -1,8 +1,9 @@
 ---
-layout: docs
-toc_group: native-image
+layout: ni-docs
+toc_group: debugging-and-diagnostics
 link_title: Debug Info Feature
-permalink: /reference-manual/native-image/DebugInfo/
+permalink: /reference-manual/native-image/debugging-and-diagnostics/DebugInfo/
+redirect_from: /$version/reference-manual/native-image/DebugInfo/
 ---
 
 # Debug Info Feature
@@ -36,16 +37,25 @@ slightly differently and for some applications this can slow down execution.
 
 > Note: Native Image debugging currently works on Linux with initial support for macOS. The feature is experimental.
 
+### Table of Contents
+
+- [Source File Caching](#source-file-caching)
+- [Special Considerations for Debugging Java from GDB](#special-considerations-for-debugging-java-from-gdb)
+- [Identifying Source Code Location](#identifying-source-code-location)
+- [Configuring Source Paths in GNU Debugger](#configuring-source-paths-in-gnu-debugger)
+- [Checking Debug Info on Linux](#checking-debug-info-on-linux)
+- [Debugging with Isolates](#debugging-with-isolates)
+- [Debugging Helper Methods](#debugging-helper-methods)
+
 ## Source File Caching
 
-The `-g` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located during native image generation.
-By default, the cache is created alongside the generated native image in a subdirectory named `sources`.
-If a target directory for the image is specified using option `-H:Path=...` then the cache is also relocated under that same target.
-A command line option can be used to provide an alternative path to `sources`.
-It is used to configure source file search path roots for the debugger.
-Files in the cache are located in a directory hierarchy that matches the file path information included in the native image debug records.
-The source cache should contain all the files needed to debug the generated image and nothing more.
-This local cache provides a convenient way of making just the necessary sources available to the debugger or IDE when debugging a native image.
+The `-g` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located when generating a native executable.
+By default, the cache is created alongside the generated binary in a subdirectory named `sources`.
+If a target directory for the native executable is specified using option `-H:Path=...` then the cache is also relocated under that same target. 
+Use a command line option to provide an alternative path to `sources` and to configure source file search path roots for the debugger.
+Files in the cache are located in a directory hierarchy that matches the file path information included in the debug records of the native executable.
+The source cache should contain all the files needed to debug the generated binary and nothing more.
+This local cache provides a convenient way of making just the necessary sources available to the debugger or IDE when debugging a native executable.
 
 The implementation tries to be smart about locating source files.
 It uses the current `JAVA_HOME` to locate the JDK src.zip when searching for JDK runtime sources.
@@ -68,7 +78,7 @@ native-image -g \
 
 The `DebugInfoSourceSearchPath` option can be repeated as many times as required to notify all the target source locations.
 The value passed to this option can be either an absolute or relative path.
-It can identify either a directory, a source JAR, or a source zip file.
+It can identify either a directory, a source JAR, or a source ZIP file.
 It is also possible to specify several source roots at once using a comma separator:
 
 ```shell
@@ -80,8 +90,7 @@ native-image -g \
 
 By default, the cache of application, GraalVM, and JDK sources is created in a directory named `sources`.
 The `DebugInfoSourceCacheRoot` option can be used to specify an alternative path, which can be absolute or relative.
-In the latter case the path is interpreted relative to the target directory for the generated native image specified via option `-H:Path` (which defaults to the current
-working directory).
+In the latter case the path is interpreted relative to the target directory for the generated executable specified via option `-H:Path` (which defaults to the current working directory).
 As an example, the following variant of the previous command specifies an absolute temporary directory path constructed using the current process `id`:
 
 ```shell
@@ -101,9 +110,9 @@ Note that in all the examples above the `DebugInfoSourceSearchPath` options are 
 In the first case, the classpath entries for _apps/hello/classes_ and _apps/greeter/classes_ will be used to derive the default search roots _apps/hello/src_ and _apps/greeter/src_.
 In the second case, the classpath entries for _apps/target/hello.jar_ and _apps/target/greeter.jar_ will be used to derive the default search roots _apps/target/hello-sources.jar_ and _apps/target/greeter-sources.jar_.
 
-## Currently Implemented Features
+## Supported Features
 
-The currently implemented features include:
+The currently supported features include:
 
   - break points configured by file and line, or by method name
   - single stepping by line including both into and over function calls
@@ -120,8 +129,8 @@ So, GDB may switch files even though you are still in the same compiled method.
 
 ### Special considerations for debugging Java from GDB
 
-GDB does not currently include support for debugging of Java programs.
-In consequence, debug capability has been implemented by generating debug info that models the Java program as an equivalent C++ program.
+GDB does not currently include support for Java debugging.
+In consequence, debug capability has been implemented by generating debug info that models the Java program as an equivalent C++ program. 
 Java class, array and interface references are actually pointers to records that contain the relevant field/array data.
 In the corresponding C++ model the Java name is used to label the underlying C++ (class/struct) layout types and Java references appear as pointers.
 
@@ -289,14 +298,13 @@ The fact that all objects have a common header pointing to a class
 makes it possible to perform a simple test to decide if an address
 is an object reference and, if so,  what the object's class is.
 Given a valid object reference it is always possible to print the
-contents of the `String` referenced from the hub's name field.
+contents of the `String` referenced from the `hub`'s name field.
 
 Note that as a consequence, this allows every object observed by the debugger
 to be downcast to its dynamic type. i.e. even if the debugger only sees the static
 type of e.g. java.nio.file.Path we can easily downcast to the dynamic type, which
 might be a subtype such as `jdk.nio.zipfs.ZipPath`, thus making it possible to inspect
 fields that we would not be able to observe from the static type alone.
-
 First the value is cast to an object reference.
 Then a path expression is used to dereference through the the `hub` field and the `hub`'s name field to the `byte[]` value array located in the name `String`.
 
@@ -330,7 +338,7 @@ A simpler command which allows just the name of the `hub` object to be printed i
 798:	"[Ljava.lang.String;"
 ```
 
-Indeed it is useful to define a gdb command `hubname_raw` to execute this operation on an arbitrary raw memory address.
+Indeed it is useful to define a `gdb` command `hubname_raw` to execute this operation on an arbitrary raw memory address.
 
 ```
 define hubname_raw
@@ -401,7 +409,7 @@ The `hubname` command will not work with this union type because it is only obje
 There is no member named hub.
 ```
 
-However, since all elements include the same header any one of them can be passed to hubname in order to identify the actual type.
+However, since all elements include the same header any one of them can be passed to `hubname` in order to identify the actual type.
 This allows the correct union element to be selected:
 
 ```
@@ -422,7 +430,7 @@ $12 = {
 ```
 
 Notice that the printed class name for `hub` includes some trailing characters.
-That's because a data array storing Java String text is not guaranteed to be zero-terminated.
+That is because a data array storing Java String text is not guaranteed to be zero-terminated.
 
 The debugger does not just understand the name and type of local and
 parameter variables. It also knows about method names and static field
@@ -525,11 +533,11 @@ $18 = {
 }
 ```
 
-### Identifying the Location of Source Code
+## Identifying Source Code Location
 
-One goal of the implementation is to make it simple to configure your debugger so that it can identify the relevant source file when it stops during program execution. The native image builder tries to achieve this by accumulating the relevant sources in a suitably structured file cache.
+One goal of the implementation is to make it simple to configure the debugger so that it can identify the relevant source file when it stops during program execution. The `native-image` tool tries to achieve this by accumulating the relevant sources in a suitably structured file cache.
 
-The native image builder uses different strategies to locate source files for JDK runtime classes, GraalVM classes, and application source classes for inclusion in the local sources cache.
+The `native-image` tool uses different strategies to locate source files for JDK runtime classes, GraalVM classes, and application source classes for inclusion in the local sources cache.
 It identifies which strategy to use based on the package name of the class.
 So, for example, packages starting with `java.*` or `jdk.*` are JDK classes; packages starting with `org.graal.*` or `com.oracle.svm.*` are GraalVM classes; any other packages are regarded as application classes.
 
@@ -539,32 +547,31 @@ Retrieved files are cached under subdirectory _sources_, using the module name (
 For example, on Linux the source for `class java.util.HashMap` will be cached in file _sources/java.base/java/util/HashMap.java_.
 Debug info records for this class and its methods will identify this source file using the relative directory path _java.base/java/util_ and file name _HashMap.java_. On Windows things will be the same modulo use of `\` rather than `/` as the file separator.
 
-Sources for GraalVM classes are retrieved from zip files or source directories derived from entries in the classpath.
+Sources for GraalVM classes are retrieved from ZIP files or source directories derived from entries in the classpath.
 Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `com.oracle.svm.core.VM` has its source file cached at `sources/com/oracle/svm/core/VM.java`).
 
 The lookup scheme for cached GraalVM sources varies depending upon what is found in each classpath entry.
-Given a JAR file entry like _/path/to/foo.jar_, the corresponding file _/path/to/foo.src.zip_ is considered as a candidate zip file system from which source files may be extracted.
-When the entry specifies a dir like _/path/to/bar_ then directories _/path/to/bar/src_ and _/path/to/bar/src_gen_ are considered as candidates.
-Candidates are skipped when the zip file or source directory does not exist, or it does not contain at least one subdirectory hierarchy that matches one of the the expected GraalVM package hierarchies.
+Given a JAR file entry like _/path/to/foo.jar_, the corresponding file _/path/to/foo.src.zip_ is considered as a candidate ZIP file system from which source files may be extracted.
+When the entry specifies a directory like _/path/to/bar_, then directories _/path/to/bar/src_ and _/path/to/bar/src_gen_ are considered as candidates.
+Candidates are skipped when the ZIP file or source directory does not exist, or it does not contain at least one subdirectory hierarchy that matches one of the the expected GraalVM package hierarchies.
 
 Sources for application classes are retrieved from source JAR files or source directories derived from entries in the classpath.
 Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `org.my.foo.Foo` has its source file cached as `sources/org/my/foo/Foo.java`).
 
 The lookup scheme for cached application sources varies depending upon what is found in each classpath entry.
-Given a JAR file entry like _/path/to/foo.jar_, the corresponding JAR _/path/to/foo-sources.jar_ is considered as a candidate zip file system from which source files may
-be extracted.
+Given a JAR file entry like _/path/to/foo.jar_, the corresponding JAR _/path/to/foo-sources.jar_ is considered as a candidate ZIP file system from which source files may be extracted.
 When the entry specifies a dir like _/path/to/bar/classes_ or _/path/to/bar/target/classes_ then one of the directories
 _/path/to/bar/src/main/java_, _/path/to/bar/src/java_ or _/path/to/bar/src_ is selected as a candidate (in that order of preference).
-Finally, the current directory in which the native image program is being run is also considered as a candidate.
+Finally, the current directory in which the native executable is being run is also considered as a candidate.
 
 These lookup strategies are only provisional and may need extending in the future.
 However, it is possible to make missing sources available by other means.
 One option is to unzip extra app source JAR files, or copy extra app source trees into the cache.
 Another is to configure extra source search paths.
 
-### Configuring Source Paths in GNU Debugger
+## Configuring Source Paths in GNU Debugger
 
-By default, GDB will employ the local directory root `sources` to locate the source files for your app classes, GraalVM classes, and JDK runtime classes.
+By default, GDB will employ the local directory root `sources` to locate the source files for your application classes, GraalVM classes, and JDK runtime classes.
 If the sources cache is not located in the directory in which you run GDB, you can configure the required paths using the following command:
 
 ```
@@ -582,16 +589,14 @@ You can also add extra directories to the search path using the `set directories
 ```shell
 (gdb) set directories /path/to/my/sources/:/path/to/my/other/sources
 ```
-Note that the GNU Debugger does not understand zip format file systems so any extra entries you add must identify a directory tree containing the relevant sources.
+Note that the GNU Debugger does not understand ZIP format file systems so any extra entries you add must identify a directory tree containing the relevant sources.
 Once again, top level entries in the directory added to the search path must correspond to the top level package for the classes whose sources are being included.
-
-<!-- ### Configuring Source Paths in VS TO BE ADDED -->
 
 ## Checking Debug Info on Linux
 
 Note that this is only of interest to those who want to understand how the debug info implementation works or want to troubleshoot problems encountered during debugging that might relate to the debug info encoding.
 
-The `objdump` command can be used to display the debug info embedded into a native image.
+The `objdump` command can be used to display the debug info embedded into a native executable.
 The following commands (which all assume the target binary is called `hello`) can be used to display all generated content:
 ```
 objdump --dwarf=info hello > info
@@ -639,26 +644,26 @@ Windows support is still under development.
 
 ## Debugging with Isolates
 
-Enabling the use of Isolates, by passing command line option `-H:-SpawnIsolates` to the `native-image` builder, affects the way ordinary object pointers (oops) are encoded.
+Enabling the use of [isolates](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e), by passing command line option `-H:-SpawnIsolates` to the `native-image` builder, affects the way ordinary object pointers (oops) are encoded.
 In turn, that means the debug info generator has to provide `gdb` with information about how to translate an encoded oop to the address in memory, where the object data is stored.
 This sometimes requires care when asking `gdb` to process encoded oops vs decoded raw addresses.
 
 When isolates are disabled, oops are essentially raw addresses pointing directly at the object contents.
 This is generally the same whether the oop is embedded in a static/instance field or is referenced from a local or parameter variable located in a register or saved to the stack.
 It is not quite that simple because the bottom 3 bits of some oops may be used to hold "tags" that record certain transient properties of an object.
-However, the debuginfo provided to `gdb` means that it will remove these tag bits before dereferencing the oop as an address.
+However, the debug info provided to `gdb` means that it will remove these tag bits before dereferencing the oop as an address.
 
 By contrast, when isolates are enabled, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
-When an 'indirect' oop of this kind gets loaded during execution, it is almost always immediately converted to a 'raw' address by adding the offset to the heap base register value.
+When an "indirect" oop of this kind gets loaded during execution, it is almost always immediately converted to a "raw" address by adding the offset to the heap base register value.
 So, oops which occur as the value of local or parameter vars are actually raw addresses.
 
-> Note that on some operating systems enabling Isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is currently recommended to disable use of Isolates, by passing command line option `-H:-SpawnIsolates`, when generating debug info if your operating system includes one of these earlier releases. Alternatively, you may be able to upgrade your debugger to a later version.
+> Note that on some operating systems enabling isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is currently recommended to disable use of isolates, by passing command line option `-H:-SpawnIsolates`, when generating debug info if your operating system includes one of these earlier releases. Alternatively, you may be able to upgrade your debugger to a later version.
 
 The DWARF info encoded into the image, when isolates are enabled, tells `gdb` to rebase indirect oops whenever it tries to dereference them to access underlying object data.
 This is normally automatic and transparent, but it is visible in the underlying type model that `gdb` displays when you ask for the type of objects.
 
 For example, consider the static field we encountered above.
-Printing its type in an image that uses Isolates shows that this (static) field has a different type to the expected one:
+Printing its type in an image that uses isolates shows that this static field has a different type to the expected one:
 
 ```
 (gdb) ptype 'java.math.BigInteger'::powerCache
@@ -747,10 +752,10 @@ end
 0x7ffff78a52f0:	"java.lang.Class"
 ```
 
-## Debug Helper Methods
+## Debugging Helper Methods
 
 On platforms where the debugging information is not fully supported, or when debugging complex issues, it can be helpful to print or query high-level information about the Native Image execution state.
-For those scenarios, Native Image provides debug helper methods that can be embedded into a native image by specifying the build-time option `-H:+IncludeDebugHelperMethods`.
+For those scenarios, Native Image provides debug helper methods that can be embedded into a native executable by specifying the build-time option `-H:+IncludeDebugHelperMethods`.
 While debugging, it is then possible to invoke those debug helper methods like any normal C method.
 This functionality is compatible with pretty much any debugger.
 
@@ -764,3 +769,7 @@ For example, calling the method below prints high-level information about the Na
 ```
 (gdb) call svm_dbg_print_fatalErrorDiagnostics($r15, $rsp, $rip)
 ```
+
+### Further Reading
+
+- [Debugging Native Image in VS Code](Debugging.md)

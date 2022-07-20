@@ -90,7 +90,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
-import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
+import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -124,7 +124,7 @@ public class ProgressReporter {
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
     private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
-    private long graphEncodingByteLength = 0;
+    private long graphEncodingByteLength = -1;
     private int numJNIClasses = -1;
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
@@ -353,7 +353,7 @@ public class ProgressReporter {
                             .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
         }
         String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
-        InternalRuntimeReflectionSupport rs = ImageSingletons.lookup(InternalRuntimeReflectionSupport.class);
+        ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
         int reflectClassesCount = rs.getReflectionClassesCount();
         int reflectFieldsCount = rs.getReflectionFieldsCount();
         int reflectMethodsCount = rs.getReflectionMethodsCount();

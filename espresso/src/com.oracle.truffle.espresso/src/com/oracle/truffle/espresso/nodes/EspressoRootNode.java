@@ -129,7 +129,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public final String toString() {
-        return getName();
+        return getQualifiedName();
     }
 
     @Override

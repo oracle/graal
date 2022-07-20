@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.os;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
@@ -53,6 +52,11 @@ public interface VirtualMemoryProvider {
         int WRITE = (1 << 1);
         /** Instructions in the memory range may be executed. */
         int EXECUTE = (1 << 2);
+        /**
+         * Used to indicate during {@link #commit} that memory protection {@linkplain #protect may
+         * be changed} to include {@link #EXECUTE} access in the future.
+         */
+        int FUTURE_EXECUTE = (1 << 3);
     }
 
     @Fold
@@ -84,16 +88,11 @@ public interface VirtualMemoryProvider {
      *            to a multiple of the {@linkplain #getGranularity() granularity}. This value must
      *            not be 0.
      * @param alignment The alignment in bytes of the start of the address range to be reserved.
-     * @param executable Indicates if memory for code is requested.
+     * @param code whether the memory may store instructions (see {@link Access#FUTURE_EXECUTE}).
      * @return An {@linkplain #getAlignment aligned} pointer to the beginning of the reserved
      *         address range, or {@link WordFactory#nullPointer()} in case of an error.
      */
-    Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
-
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    default Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment) {
-        return reserve(nbytes, alignment, false);
-    }
+    Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean code);
 
     /**
      * Map a region of an open file to the specified address range. When {@linkplain Access#WRITE
@@ -190,15 +189,4 @@ public interface VirtualMemoryProvider {
      * @return 0 when successful, or a non-zero implementation-specific error code.
      */
     int free(PointerBase start, UnsignedWord nbytes);
-
-    /**
-     * Toggle a thread-local flag that tells the OS our intention about the usage of pages that are
-     * mapped with MAP_JIT. Only applicable on macOS. Only enforced on AArch64.
-     *
-     * @param protect If write protection is enabled, pages mapped with MAP_JIT have effectively
-     *            READ|EXEC permissions for the calling thread. If disabled, the permissions for the
-     *            same pages turn to READ|WRITE.
-     */
-    default void jitWriteProtect(boolean protect) {
-    }
 }

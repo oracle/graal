@@ -49,6 +49,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
@@ -1032,7 +1033,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.addsd(xmm3, xmm5);
         masm.andl(rdx, 16760832);
         masm.shrl(rdx, 10);
-        masm.addpd(xmm5, new AMD64Address(tmp4, rdx, AMD64Address.Scale.Times1, -3648));
+        masm.addpd(xmm5, new AMD64Address(tmp4, rdx, Stride.S1, -3648));
         masm.movdqu(xmm0, recordExternalAddress(crb, coeff48));        // 0x486ececc, 0x3fc4635e,
                                                                        // 0x161bb241, 0xbf5dabe1
         masm.pshufd(xmm2, xmm3, 68);
@@ -1079,7 +1080,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.movl(rcx, rdx);
         masm.andl(rdx, 255);
         masm.addl(rdx, rdx);
-        masm.movdqu(xmm5, new AMD64Address(tmp4, rdx, AMD64Address.Scale.Times8, 0));
+        masm.movdqu(xmm5, new AMD64Address(tmp4, rdx, Stride.S8, 0));
         masm.addsd(xmm4, xmm1);
         masm.mulsd(xmm2, xmm0);
         masm.movdqu(xmm7, recordExternalAddress(crb, eCoeff));         // 0xe78a6731, 0x3f55d87f,
@@ -1257,7 +1258,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.movl(rcx, rax);
         masm.andl(rax, 255);
         masm.addl(rax, rax);
-        masm.movdqu(xmm5, new AMD64Address(tmp4, rax, AMD64Address.Scale.Times8, 0));
+        masm.movdqu(xmm5, new AMD64Address(tmp4, rax, Stride.S8, 0));
         masm.addsd(xmm2, xmm4);
         masm.sarl(rcx, 8);
         masm.movl(rax, rcx);
@@ -1570,7 +1571,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.addsd(xmm3, xmm0);
         masm.leaq(tmp4, recordExternalAddress(crb, log2));             // 0xfefa39ef, 0x3fe62e42,
                                                                        // 0xfefa39ef, 0xbfe62e42
-        masm.movq(xmm4, new AMD64Address(tmp4, tmp1, AMD64Address.Scale.Times8, 0));
+        masm.movq(xmm4, new AMD64Address(tmp4, tmp1, Stride.S8, 0));
         masm.mulsd(xmm1, xmm3);
         masm.xorpd(xmm0, xmm0);
         masm.movl(rax, 16368);
@@ -1755,7 +1756,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.movq(xmm0, recordExternalAddress(crb, coeffH8));          // 0x00000000, 0xbf5dabe1
         masm.andl(rdx, 16760832);
         masm.shrl(rdx, 10);
-        masm.addpd(xmm7, new AMD64Address(tmp4, rdx, AMD64Address.Scale.Times1, -3648));
+        masm.addpd(xmm7, new AMD64Address(tmp4, rdx, Stride.S1, -3648));
         masm.mulsd(xmm4, xmm5);
         masm.mulsd(xmm0, xmm5);
         masm.mulsd(xmm6, xmm2);
@@ -1856,7 +1857,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.movl(rcx, rdx);
         masm.andl(rdx, 255);
         masm.addl(rdx, rdx);
-        masm.movdqu(xmm5, new AMD64Address(tmp4, rdx, AMD64Address.Scale.Times8, 0));
+        masm.movdqu(xmm5, new AMD64Address(tmp4, rdx, Stride.S8, 0));
         masm.addsd(xmm4, xmm1);
         masm.pextrw(rdx, xmm6, 3);
         masm.shrl(rcx, 8);

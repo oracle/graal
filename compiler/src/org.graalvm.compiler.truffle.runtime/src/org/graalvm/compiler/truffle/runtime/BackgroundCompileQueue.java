@@ -276,6 +276,7 @@ public class BackgroundCompileQueue {
             this.runtime = runtime;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public Thread newThread(Runnable r) {
             final Thread t = new Thread(r) {
