@@ -24,68 +24,28 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.util.concurrent.Executor;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.util.VMError;
 
-/**
- * `VirtualThread` is implemented in Java, so we do not need to modify this class very much.
- */
-@TargetClass(className = "java.lang.VirtualThread", onlyWith = JDK19OrLater.class)
+@TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    @TargetElement(onlyWith = LoomJDK.class)//
     private static boolean notifyJvmtiEvents;
 
     @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
     private static void registerNatives() {
     }
 
-    @Alias
-    @TargetElement(onlyWith = LoomJDK.class)
-    public static native Target_java_lang_ContinuationScope continuationScope();
-
-    @Alias//
-    @TargetElement(onlyWith = LoomJDK.class)//
-    Target_java_lang_Continuation cont;
-
-    @Alias//
-    @TargetElement(onlyWith = LoomJDK.class)//
-    Thread carrierThread;
-
-    @Substitute//
-    @TargetElement(onlyWith = LoomJDK.class)
-    StackTraceElement[] asyncGetStackTrace() {
-        if (carrierThread != null) {
-            return carrierThread.getStackTrace();
-        }
-        return tryGetStackTrace();
-    }
-
-    @Alias//
-    @TargetElement(onlyWith = LoomJDK.class)
-    private native StackTraceElement[] tryGetStackTrace();
+    @Alias Executor scheduler;
 
     @Alias
-    @TargetElement(onlyWith = LoomJDK.class)
+    public static native Target_jdk_internal_vm_ContinuationScope continuationScope();
+
+    @Alias
     native boolean joinNanos(long nanos) throws InterruptedException;
-
-    @Substitute
-    @TargetElement(name = "continuationScope", onlyWith = JDK19OrLater.class)
-    static Object continuationScopeJDK19() {
-        throw VMError.unimplemented("JDK 19 continuations not yet supported");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
-    @SuppressWarnings("static-method")
-    private boolean yieldContinuation() {
-        throw VMError.unimplemented("JDK 19 continuations not yet supported");
-    }
 }

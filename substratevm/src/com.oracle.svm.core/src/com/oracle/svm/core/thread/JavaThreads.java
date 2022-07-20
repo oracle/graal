@@ -175,6 +175,7 @@ public final class JavaThreads {
         return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
     }
 
+    @AlwaysInline("Enable constant folding in case of Loom.")
     private static boolean isVirtualDisallowLoom(Thread thread) {
         if (LoomSupport.isEnabled()) {
             assert !isVirtual(thread) : "should not see Loom virtual thread objects here";
@@ -200,7 +201,7 @@ public final class JavaThreads {
     }
 
     static void yieldCurrent() {
-        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
+        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread()) && !LoomSupport.isEnabled()) {
             VirtualThreads.singleton().yield();
         } else {
             PlatformThreads.singleton().yieldCurrent();
@@ -310,7 +311,7 @@ public final class JavaThreads {
 
     static void sleep(long millis) throws InterruptedException {
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
-        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
+        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread()) && !LoomSupport.isEnabled()) {
             VirtualThreads.singleton().sleepMillis(millis);
         } else {
             PlatformThreads.sleep(millis);
@@ -319,7 +320,7 @@ public final class JavaThreads {
     }
 
     static boolean isAlive(Thread thread) {
-        if (supportsVirtual() && isVirtualDisallowLoom(thread)) {
+        if (supportsVirtual() && isVirtualDisallowLoom(thread) && !LoomSupport.isEnabled()) {
             return VirtualThreads.singleton().isAlive(thread);
         }
         return PlatformThreads.isAlive(thread);

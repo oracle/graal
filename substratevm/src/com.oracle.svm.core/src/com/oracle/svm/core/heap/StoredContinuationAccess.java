@@ -125,7 +125,7 @@ public final class StoredContinuationAccess {
         if (!yield) {
             PreemptVisitor visitor = new PreemptVisitor(baseSp);
             JavaStackWalker.walkThread(targetThread, visitor);
-            if (visitor.preemptStatus != Continuation.YIELD_SUCCESS) {
+            if (visitor.preemptStatus != Continuation.FREEZE_OK) {
                 return visitor.preemptStatus;
             }
             startSp = visitor.leafSP;
@@ -138,7 +138,7 @@ public final class StoredContinuationAccess {
         StoredContinuation instance = allocate(framesSize);
         fillUninterruptibly(instance, startIp, startSp, framesSize);
         cont.stored = instance;
-        return Continuation.YIELD_SUCCESS;
+        return Continuation.FREEZE_OK;
     }
 
     @Uninterruptible(reason = "Prevent modifications to the stack while initializing instance and copying frames.")
@@ -234,7 +234,7 @@ public final class StoredContinuationAccess {
 
         Pointer leafSP;
         CodePointer leafIP;
-        int preemptStatus = Continuation.YIELD_SUCCESS;
+        int preemptStatus = Continuation.FREEZE_OK;
 
         PreemptVisitor(Pointer endSP) {
             this.endSP = endSP;

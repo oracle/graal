@@ -30,7 +30,6 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.IsolateThread;
-import com.oracle.svm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -41,7 +40,8 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.LoomSupport;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
+import com.oracle.svm.util.DirectAnnotationAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -137,7 +137,7 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (LoomSupport.isEnabled() && clazz == Target_java_lang_Continuation.class) {
+        if (LoomSupport.isEnabled() && clazz == Target_jdk_internal_vm_Continuation.class) {
             // Skip intrinsics in JDK
             if ("enterSpecial".equals(frameInfo.getSourceMethodName())) {
                 return false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,14 +31,9 @@ import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.stack.JavaFrameAnchor;
-import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
@@ -57,67 +52,22 @@ public final class LoomSupport {
         isEnabled = enabled;
     }
 
-    public static final int YIELD_SUCCESS = 0;
-    public static final int PINNED_CRITICAL_SECTION = 1;
-    public static final int PINNED_NATIVE = 2;
-
     @Fold
     public static boolean isEnabled() {
         return isEnabled;
     }
 
-    public static int yield(Target_java_lang_Continuation cont) {
-        return convertInternalYieldResult(cont.internal.yield());
-    }
+    // See JDK native enum freeze_result
+    static final int FREEZE_OK = 0;
+    static final int FREEZE_PINNED_CS = 2; // critical section
+    static final int FREEZE_PINNED_NATIVE = 3;
 
-    static int convertInternalYieldResult(int value) {
-        return value; // ideally, the values are the same
-    }
-
-    public static int isPinned(Target_java_lang_Thread thread, Target_java_lang_ContinuationScope scope, boolean isCurrentThread) {
-        Target_java_lang_Continuation cont = thread.getContinuation();
-
-        IsolateThread vmThread = isCurrentThread ? CurrentIsolate.getCurrentThread() : PlatformThreads.getIsolateThread(SubstrateUtil.cast(thread, Thread.class));
-
-        if (cont != null) {
-            while (true) {
-                if (cont.cs > 0) {
-                    return PINNED_CRITICAL_SECTION;
-                }
-
-                if (cont.getParent() != null && cont.getScope() != scope) {
-                    cont = cont.getParent();
-                } else {
-                    break;
-                }
-            }
-
-            JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(vmThread);
-            if (anchor.isNonNull() && cont.internal.getBaseSP().aboveThan(anchor.getLastJavaSP())) {
-                return PINNED_NATIVE;
-            }
-        }
-        return YIELD_SUCCESS;
-    }
-
-    public static boolean isStarted(Target_java_lang_Continuation cont) {
+    public static boolean isStarted(Target_jdk_internal_vm_Continuation cont) {
         return cont.isStarted();
     }
 
-    public static Pointer getBaseSP(Target_java_lang_Continuation cont) {
+    public static Pointer getBaseSP(Target_jdk_internal_vm_Continuation cont) {
         return cont.internal.getBaseSP();
-    }
-
-    /**
-     * Note this is different than `Thread.getContinuation`. `Thread.getContinuation` is orthogonal
-     * with `VirtualThread.cont`.
-     */
-    public static Target_java_lang_Continuation getContinuation(Target_java_lang_Thread thread) {
-        if (thread.isVirtual()) {
-            Target_java_lang_VirtualThread vthread = SubstrateUtil.cast(thread, Target_java_lang_VirtualThread.class);
-            return vthread.cont;
-        }
-        return thread.cont;
     }
 
     public static class CompatibilityUtil {

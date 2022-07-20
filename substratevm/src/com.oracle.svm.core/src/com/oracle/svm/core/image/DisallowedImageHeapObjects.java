@@ -33,7 +33,7 @@ import java.util.SplittableRandom;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.oracle.svm.core.thread.LoomSupport;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -76,8 +76,8 @@ public final class DisallowedImageHeapObjects {
                                 asThread, "Try avoiding to initialize the class that caused initialization of the Thread.");
             }
         }
-        if (obj instanceof Target_java_lang_Continuation) {
-            final Target_java_lang_Continuation asCont = (Target_java_lang_Continuation) obj;
+        if (obj instanceof Target_jdk_internal_vm_Continuation) {
+            final Target_jdk_internal_vm_Continuation asCont = (Target_jdk_internal_vm_Continuation) obj;
             if (LoomSupport.isStarted(asCont)) {
                 throw reporter.raise("Detected a started Continuation in the image heap. " +
                                 "Continuations running in the image generator are no longer running at image runtime.",

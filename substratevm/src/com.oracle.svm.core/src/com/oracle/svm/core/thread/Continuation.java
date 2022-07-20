@@ -33,7 +33,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
@@ -45,7 +44,7 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Foundation for continuation support via {@link SubstrateVirtualThread} or
- * {@linkplain Target_java_lang_Continuation Project Loom}.
+ * {@linkplain Target_jdk_internal_vm_Continuation Project Loom}.
  */
 public final class Continuation {
     @Fold
@@ -54,7 +53,7 @@ public final class Continuation {
     }
 
     public static final int YIELDING = -2;
-    public static final int YIELD_SUCCESS = 0;
+    public static final int FREEZE_OK = LoomSupport.FREEZE_OK;
 
     private final Runnable target;
 
@@ -89,7 +88,7 @@ public final class Continuation {
             StackOverflowCheck.singleton().setState(overflowCheckState);
         }
         try {
-            enter0(this, isContinue);
+            enter0(isContinue);
         } catch (StackOverflowError e) {
             throw (e == ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR) ? new StackOverflowError() : e;
         } finally {
@@ -100,11 +99,11 @@ public final class Continuation {
         }
     }
 
-    /** See {@link #yield0} for what this method does. */
-    @StubCallingConvention
-    @NeverInline("Keep the frame with the saved registers.")
-    private static void enter0(Continuation self, boolean isContinue) {
-        self.enter1(isContinue);
+    @NeverInline("Needs a frame to return to when yielding.")
+    private void enter0(boolean isContinue) {
+        // Note that Java-to-Java calls use only caller-saved registers, so we don't need to save
+        // any register values which aren't spilled already and restore them when yielding
+        enter1(isContinue);
     }
 
     /**
@@ -150,7 +149,7 @@ public final class Continuation {
             this.sp = callerSP;
             this.baseSP = currentSP;
             this.stored = null;
-            KnownIntrinsics.farReturn(YIELD_SUCCESS, topSP, enterIP, false);
+            KnownIntrinsics.farReturn(FREEZE_OK, topSP, enterIP, false);
             throw VMError.shouldNotReachHere();
 
         } else {
@@ -192,27 +191,19 @@ public final class Continuation {
         return vmOp.preemptStatus;
     }
 
-    int yield() {
-        return yield0(this);
-    }
-
-    /**
-     * The callers can have live values in callee-saved registers which can be destroyed by the
-     * context we switch to. By using the stub calling convention, this method saves register values
-     * to the stack and restores them upon returning here via {@link KnownIntrinsics#farReturn}.
-     */
-    @StubCallingConvention
-    @NeverInline("Keep the frame with the saved registers.")
-    private static Integer yield0(Continuation self) {
-        return self.yield1();
+    @NeverInline("Needs a frame to resume the continuation at.")
+    Integer yield() {
+        // Note that Java-to-Java calls use only caller-saved registers, so we don't need to save
+        // any register values which aren't spilled already and restore them when yielding
+        return yield0();
     }
 
     /**
      * @return {@link Integer} because we return here via {@link KnownIntrinsics#farReturn} and pass
-     *         boxed {@link #YIELD_SUCCESS} as result code.
+     *         boxed {@link #FREEZE_OK} as result code.
      */
-    @NeverInline("access stack pointer")
-    private Integer yield1() {
+    @NeverInline("Accesses caller stack pointer and return address.")
+    private Integer yield0() {
         Pointer leafSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer leafIP = KnownIntrinsics.readReturnAddress();
 
@@ -237,7 +228,7 @@ public final class Continuation {
     }
 
     public boolean isEmpty() {
-        return stored == null && ip.isNull();
+        return stored == null;
     }
 
     public boolean isDone() {
@@ -245,7 +236,7 @@ public final class Continuation {
     }
 
     private static final class TryPreemptOperation extends JavaVMOperation {
-        int preemptStatus = YIELD_SUCCESS;
+        int preemptStatus = FREEZE_OK;
 
         final Continuation cont;
         final Thread thread;
@@ -263,7 +254,7 @@ public final class Continuation {
             Pointer returnSP = cont.sp;
             CodePointer returnIP = cont.ip;
             preemptStatus = StoredContinuationAccess.allocateToPreempt(cont, baseSP, vmThread);
-            if (preemptStatus == YIELD_SUCCESS) {
+            if (preemptStatus == FREEZE_OK) {
                 cont.sp = WordFactory.nullPointer();
                 cont.baseSP = WordFactory.nullPointer();
                 cont.ip = WordFactory.nullPointer();

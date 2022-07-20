@@ -49,7 +49,7 @@ final class LoomVirtualThreads implements VirtualThreads {
 
     @Override
     public ThreadFactory createFactory() {
-        throw VMError.unimplemented();
+        return Target_java_lang_Thread.ofVirtual().factory();
     }
 
     @Override
@@ -65,7 +65,7 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
     }
 
-    @Platforms({}) // error if reachable
+    @Platforms({}) // fails image build if reachable
     private static RuntimeException unreachable() {
         return VMError.shouldNotReachHere();
     }
@@ -112,16 +112,16 @@ final class LoomVirtualThreads implements VirtualThreads {
 
     @Override
     public void pinCurrent() {
-        throw unreachable();
+        Target_jdk_internal_vm_Continuation.pin();
     }
 
     @Override
     public void unpinCurrent() {
-        throw unreachable();
+        Target_jdk_internal_vm_Continuation.unpin();
     }
 
     @Override
     public Executor getScheduler(Thread thread) {
-        throw VMError.unimplemented();
+        return cast(thread).scheduler;
     }
 }

@@ -59,9 +59,9 @@ import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.LoomSupport;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
-import com.oracle.svm.core.thread.Target_java_lang_ContinuationScope;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_ContinuationScope;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
@@ -72,13 +72,13 @@ final class Target_java_lang_StackWalker {
      * Current continuation that the stack walker is on.
      */
     @Alias @TargetElement(onlyWith = LoomJDK.class)//
-    Target_java_lang_Continuation continuation;
+    Target_jdk_internal_vm_Continuation continuation;
 
     /**
-     * Target continuation scope if we're iterating a {@link Target_java_lang_Continuation}.
+     * Target continuation scope if we're iterating a {@link Target_jdk_internal_vm_Continuation}.
      */
     @Alias @TargetElement(onlyWith = LoomJDK.class)//
-    Target_java_lang_ContinuationScope contScope;
+    Target_jdk_internal_vm_ContinuationScope contScope;
 
     @Alias Set<Option> options;
     @Alias boolean retainClassRef;
@@ -140,8 +140,8 @@ final class Target_java_lang_StackWalker {
 
         if (LoomSupport.isEnabled() && (this.contScope != null || VirtualThreads.singleton().isVirtual(Thread.currentThread()))) {
             // walking a running continuation, has delimitation scope
-            Target_java_lang_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
-            Target_java_lang_Continuation topContinuation = Target_java_lang_Continuation.getCurrentContinuation(delimitationScope);
+            Target_jdk_internal_vm_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
+            Target_jdk_internal_vm_Continuation topContinuation = Target_jdk_internal_vm_Continuation.getCurrentContinuation(delimitationScope);
             if (topContinuation != null) {
                 JavaStackWalker.initWalk(walk, sp, LoomSupport.getBaseSP(topContinuation));
             } else {
