@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 interface JCodings {
@@ -114,7 +115,7 @@ interface JCodings {
     long calcStringAttributes(Node location, Object array, int offset, int length, int encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile);
 
     TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, int targetEncoding,
-                    ConditionProfile outOfMemoryProfile,
+                    BranchProfile outOfMemoryProfile,
                     ConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode);
 }

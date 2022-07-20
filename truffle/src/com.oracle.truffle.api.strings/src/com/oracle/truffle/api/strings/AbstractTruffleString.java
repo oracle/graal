@@ -1010,8 +1010,8 @@ public abstract class AbstractTruffleString {
      * @since 22.3
      */
     @TruffleBoundary
-    public final void copyToByteArrayUncached(TruffleString.Encoding expectedEncoding) {
-        TruffleString.CopyToByteArrayNode.getUncached().execute(this, expectedEncoding);
+    public final byte[] copyToByteArrayUncached(Encoding expectedEncoding) {
+        return TruffleString.CopyToByteArrayNode.getUncached().execute(this, expectedEncoding);
     }
 
     /**

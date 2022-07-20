@@ -56,6 +56,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString.AsTruffleStringNode;
@@ -484,10 +485,11 @@ public final class MutableTruffleString extends AbstractTruffleString {
         static MutableTruffleString concat(AbstractTruffleString a, AbstractTruffleString b, TruffleString.Encoding expectedEncoding,
                         @Cached TruffleString.ToIndexableNode toIndexableNodeA,
                         @Cached TruffleString.ToIndexableNode toIndexableNodeB,
-                        @Cached TStringInternalNodes.ConcatMaterializeBytesNode materializeBytesNode) {
+                        @Cached TStringInternalNodes.ConcatMaterializeBytesNode materializeBytesNode,
+                        @Cached BranchProfile outOfMemoryProfile) {
             a.checkEncoding(expectedEncoding);
             b.checkEncoding(expectedEncoding);
-            int length = TruffleString.ConcatNode.addByteLengths(a, b, expectedEncoding.naturalStride);
+            int length = TruffleString.ConcatNode.addByteLengths(a, b, expectedEncoding.naturalStride, outOfMemoryProfile);
             int offset = 0;
             byte[] array = materializeBytesNode.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()), expectedEncoding.id, length,
                             expectedEncoding.naturalStride);

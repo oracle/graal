@@ -1930,7 +1930,8 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization
         TruffleString doNonEmpty(char[] value, int charOffset, int charLength,
-                        @Cached ConditionProfile utf16CompactProfile) {
+                        @Cached ConditionProfile utf16CompactProfile,
+                        @Cached BranchProfile outOfMemoryProfile) {
             checkArrayRange(value.length, charOffset, charLength);
             if (charLength == 0) {
                 return Encoding.UTF_16.getEmpty();
@@ -1940,6 +1941,7 @@ public final class TruffleString extends AbstractTruffleString {
             }
             int offsetV = charOffset << 1;
             if (value.length > TStringConstants.MAX_ARRAY_SIZE_S1 || offsetV < 0) {
+                outOfMemoryProfile.enter();
                 throw InternalErrors.outOfMemory();
             }
             long attrs = TStringOps.calcStringAttributesUTF16C(this, value, offsetV, charLength);
@@ -2115,7 +2117,8 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization
         TruffleString doNonEmpty(int[] value, int intOffset, int length,
                         @Cached ConditionProfile utf32Compact0Profile,
-                        @Cached ConditionProfile utf32Compact1Profile) {
+                        @Cached ConditionProfile utf32Compact1Profile,
+                        @Cached BranchProfile outOfMemoryProfile) {
             checkArrayRange(value.length, intOffset, length);
             if (length == 0) {
                 return Encoding.UTF_32.getEmpty();
@@ -2125,6 +2128,7 @@ public final class TruffleString extends AbstractTruffleString {
             }
             int offsetV = intOffset << 2;
             if (length > TStringConstants.MAX_ARRAY_SIZE_S2 || offsetV < 0) {
+                outOfMemoryProfile.enter();
                 throw InternalErrors.outOfMemory();
             }
             final int codeRange = TStringOps.calcStringAttributesUTF32I(this, value, offsetV, length);
@@ -4514,6 +4518,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached TStringInternalNodes.ConcatEagerNode concatEagerNode,
                         @Cached AsTruffleStringNode asTruffleStringANode,
                         @Cached AsTruffleStringNode asTruffleStringBNode,
+                        @Cached BranchProfile outOfMemoryProfile,
                         @Cached ConditionProfile lazyProfile) {
             CompilerAsserts.partialEvaluationConstant(lazy);
             final int codeRangeA = getCodeRangeANode.execute(a);
@@ -4523,7 +4528,7 @@ public final class TruffleString extends AbstractTruffleString {
             int commonCodeRange = TSCodeRange.commonCodeRange(codeRangeA, codeRangeB);
             assert !(isBrokenMultiByte(codeRangeA) || isBrokenMultiByte(codeRangeB)) || isBrokenMultiByte(commonCodeRange);
             int targetStride = getStrideNode.execute(commonCodeRange, encoding.id);
-            int length = addByteLengths(a, b, targetStride);
+            int length = addByteLengths(a, b, targetStride, outOfMemoryProfile);
             boolean valid = !isBrokenMultiByte(commonCodeRange);
             if (lazyProfile.profile(lazy && valid && (a.isImmutable() || b.isImmutable()) && (length << targetStride) >= TStringConstants.LAZY_CONCAT_MIN_LENGTH)) {
                 if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
@@ -4535,9 +4540,10 @@ public final class TruffleString extends AbstractTruffleString {
             return concatEagerNode.execute(a, b, encoding.id, length, targetStride, commonCodeRange);
         }
 
-        static int addByteLengths(AbstractTruffleString a, AbstractTruffleString b, int targetStride) {
+        static int addByteLengths(AbstractTruffleString a, AbstractTruffleString b, int targetStride, BranchProfile outOfMemoryProfile) {
             long length = (long) a.length() + (long) b.length();
             if (length << targetStride > TStringConstants.MAX_ARRAY_SIZE) {
+                outOfMemoryProfile.enter();
                 throw InternalErrors.outOfMemory();
             }
             return (int) length;
@@ -4600,7 +4606,8 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.CalcStringAttributesNode calcStringAttributesNode,
-                        @Cached ConditionProfile brokenProfile) {
+                        @Cached ConditionProfile brokenProfile,
+                        @Cached BranchProfile outOfMemoryProfile) {
             a.checkEncoding(expectedEncoding);
             if (n < 0) {
                 throw InternalErrors.illegalArgument("n must be positive");
@@ -4616,7 +4623,8 @@ public final class TruffleString extends AbstractTruffleString {
             int codePointLengthA = getCodePointLengthNode.execute(a);
             int byteLengthA = (a.length()) << a.stride();
             long byteLength = ((long) byteLengthA) * n;
-            if (byteLength < 0 || byteLength > TStringConstants.MAX_ARRAY_SIZE) {
+            if (Long.compareUnsigned(byteLength, TStringConstants.MAX_ARRAY_SIZE) > 0) {
+                outOfMemoryProfile.enter();
                 throw InternalErrors.outOfMemory();
             }
             byte[] array = new byte[(int) byteLength];
@@ -5022,9 +5030,7 @@ public final class TruffleString extends AbstractTruffleString {
      */
     public static final class IllegalByteArrayLengthException extends IllegalArgumentException {
 
-        IllegalByteArrayLengthException() {
-
-        }
+        private static final long serialVersionUID = 0x27d918e593fcf85aL;
 
         IllegalByteArrayLengthException(String msg) {
             super(msg);

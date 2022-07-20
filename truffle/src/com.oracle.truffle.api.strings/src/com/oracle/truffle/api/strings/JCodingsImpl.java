@@ -65,6 +65,7 @@ import org.graalvm.shadowed.org.jcodings.util.CaseInsensitiveBytesHash;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 final class JCodingsImpl implements JCodings {
@@ -267,7 +268,7 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, int targetEncoding,
-                    ConditionProfile outOfMemoryProfile,
+                    BranchProfile outOfMemoryProfile,
                     ConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
         final int encoding = a.encoding();
@@ -319,7 +320,8 @@ final class JCodingsImpl implements JCodings {
                     undefinedConversion = true;
                     econvSetReplacement(jCodingDst, econv, replacement);
                 } else if (result.isDestinationBufferFull()) {
-                    if (outOfMemoryProfile.profile(buffer.length == TStringConstants.MAX_ARRAY_SIZE)) {
+                    if (buffer.length == TStringConstants.MAX_ARRAY_SIZE) {
+                        outOfMemoryProfile.enter();
                         throw InternalErrors.outOfMemory();
                     }
                     buffer = Arrays.copyOf(buffer, (int) Math.min(TStringConstants.MAX_ARRAY_SIZE, ((long) buffer.length) << 1));
