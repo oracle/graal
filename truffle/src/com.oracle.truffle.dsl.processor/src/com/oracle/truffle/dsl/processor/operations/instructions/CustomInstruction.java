@@ -114,7 +114,7 @@ public class CustomInstruction extends Instruction {
         }
 
         if (props.numLocalReferences == -1) {
-            localRefs = new int[0];
+            localRefs = new int[1];
             localRefs[0] = addConstant(MARKER_LOCAL_REFS, new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal));
         } else {
             localRefs = new int[props.numLocalReferences];

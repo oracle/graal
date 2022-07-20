@@ -68,6 +68,10 @@ public abstract class OperationNode extends Node {
 
     public abstract Object execute(VirtualFrame frame);
 
+    public final OperationNodes getOperationNodes() {
+        return nodes;
+    }
+
     public final <T> T getMetadata(MetadataKey<T> key) {
         return key.getValue(this);
     }

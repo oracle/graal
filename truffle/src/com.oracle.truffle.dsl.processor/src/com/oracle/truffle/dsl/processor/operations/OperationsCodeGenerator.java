@@ -79,8 +79,6 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 
-import sun.misc.Unsafe;
-
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
     private ProcessorContext context;
@@ -208,20 +206,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilder.add(new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, types.OperationLabel, "createLabel"));
         typBuilder.add(new CodeExecutableElement(MOD_PUBLIC_ABSTRACT, types.OperationNode, "publish"));
 
-        // unsafe stuff
-        if (OperationGeneratorFlags.USE_UNSAFE) {
-            typBuilder.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(Unsafe.class), "theUnsafe")).setInit(CodeTreeBuilder.singleString("Unsafe.getUnsafe()"));
-        }
-
         CodeExecutableElement metUnsafeFromBytecode = typBuilder.add(new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(short.class), "unsafeFromBytecode"));
         metUnsafeFromBytecode.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
         metUnsafeFromBytecode.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
 
-        if (OperationGeneratorFlags.USE_UNSAFE) {
-            metUnsafeFromBytecode.createBuilder().startReturn().string("theUnsafe.getShort(bc, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE)").end();
-        } else {
-            metUnsafeFromBytecode.createBuilder().startReturn().string("bc[index]").end();
-        }
+        metUnsafeFromBytecode.createBuilder().startReturn().string("bc[index]").end();
 
         CodeTypeElement typBuilderImpl = createBuilderImpl(typBuilder, opNodesImpl);
         typBuilder.add(typBuilderImpl);
@@ -863,6 +852,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                     b.end(3);
                     b.statement("break");
                     b.end();
+                    i++;
                 }
                 b.end();
 
@@ -882,7 +872,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         b.statement("OperationLocal arg" + i + " = locals.get(buffer.readShort())");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
                         b.statement("OperationLocal[] arg" + i + " = new OperationLocal[buffer.readShort()]");
-                        b.startFor().string("int i = 0; i < locals.length; i++").end().startBlock();
+                        b.startFor().string("int i = 0; i < arg" + i + ".length; i++").end().startBlock();
                         // this can be optimized since they are consecutive
                         b.statement("arg" + i + "[i] = locals.get(buffer.readShort());");
                         b.end();
@@ -1761,6 +1751,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         after.add("serBuffer.writeShort((short) ((OperationLocalImpl) arg" + i + ").id)");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
                         after.add("serBuffer.writeShort((short) arg" + i + ".length)");
+                        after.add("for (int i = 0; i < arg" + i + ".length; i++) { serBuffer.writeShort((short) ((OperationLocalImpl) arg" + i + "[i]).id); }");
                     } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
                         after.add("serBuffer.writeShort((short) ((OperationSerLabelImpl) arg" + i + ").id)");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
