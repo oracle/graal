@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers;
 
-import com.oracle.truffle.llvm.toolchain.launchers.common.ClangCLLike;
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
 
 public final class ClangCL {
 
     public static void main(String[] args) {
-        ClangCLLike.runClangCL(args);
+        ClangLike.runClangCL(args);
     }
 }

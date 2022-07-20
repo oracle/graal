@@ -50,10 +50,14 @@ public abstract class ClangLikeBase extends Driver {
 
         public String getToolName() {
             switch (this) {
-            case Clang: return "clang";
-            case ClangXX: return "clang++";
-            case ClangCL: return "clang-cl";
-            default: throw new  IllegalArgumentException("Unknown Tool " + this.toString());
+                case Clang:
+                    return "clang";
+                case ClangXX:
+                    return "clang++";
+                case ClangCL:
+                    return "clang-cl";
+                default:
+                    throw new IllegalArgumentException("Unknown Tool " + this.toString());
             }
         }
     }

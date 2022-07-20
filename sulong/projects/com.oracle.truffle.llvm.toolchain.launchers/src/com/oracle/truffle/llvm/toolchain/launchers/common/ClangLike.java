@@ -54,9 +54,7 @@ public class ClangLike extends ClangLikeBase {
         sulongArgs.add("-I" + getSulongHome().resolve(platform).resolve("include"));
         sulongArgs.add("-I" + getSulongHome().resolve("include"));
         // Add libc++ unconditionally as C++ might be compiled via clang [GR-23036]
-        if (this.tool != ClangLikeBase.Tool.ClangCL) {
-            sulongArgs.add("-stdlib=libc++");
-        }
+        sulongArgs.add("-stdlib=libc++");
         // Suppress warning because of libc++
         sulongArgs.add("-Wno-unused-command-line-argument");
         super.getCompilerArgs(sulongArgs);
