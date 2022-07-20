@@ -39,6 +39,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
@@ -49,23 +50,20 @@ public class ContinuationsFeature implements Feature {
         if (Continuation.isSupported()) {
             VirtualThreads impl;
             if (LoomSupport.isEnabled()) {
+                VMError.guarantee(JavaVersionUtil.JAVA_SPEC >= 19);
                 impl = new LoomVirtualThreads();
-            } else {
+            } else if (JavaVersionUtil.JAVA_SPEC == 17) {
                 /*
                  * GR-37518: ForkJoinPool on 11 syncs on a String which doesn't have its own monitor
                  * field, and unparking a virtual thread in additionalMonitorsLock.unlock causes a
                  * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
                  */
-                UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 17, "Continuations (%s) are currently supported only on JDK 17 and later.",
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
-
                 impl = new SubstrateVirtualThreads();
+            } else {
+                throw UserError.abort("Continuations are currently supported only on JDK 17 with option %s, or on JDK 19 with preview features enabled.",
+                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
             }
             ImageSingletons.add(VirtualThreads.class, impl);
-        } else {
-            UserError.guarantee(!SubstrateOptions.UseLoom.getValue(), "%s cannot be enabled without option %s.",
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"),
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }
 
@@ -89,9 +87,8 @@ public class ContinuationsFeature implements Feature {
 
     static void abortIfUnsupported() {
         if (!Continuation.isSupported()) {
-            throw UserError.abort("Continuation support is used, but not enabled. Use options %s or %s.",
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"),
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"));
+            throw UserError.abort("Continuation support is used, but not available. Use JDK 17 with option %s, or JDK 19 with preview features enabled.",
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }
 }

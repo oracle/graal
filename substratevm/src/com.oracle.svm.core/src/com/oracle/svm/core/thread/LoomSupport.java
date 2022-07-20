@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.SubstrateOptions.UseEpsilonGC;
+import static com.oracle.svm.core.SubstrateOptions.UseSerialGC;
+
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -33,7 +36,6 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
@@ -42,13 +44,26 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.internal.misc.Unsafe;
 
 public final class LoomSupport {
+    private static final boolean isEnabled;
+    static {
+        boolean enabled = false;
+        if (JavaVersionUtil.JAVA_SPEC == 19 && (UseSerialGC.getValue() || UseEpsilonGC.getValue())) {
+            try {
+                enabled = (Boolean) Class.forName("jdk.internal.misc.PreviewFeatures")
+                                .getDeclaredMethod("isEnabled").invoke(null);
+            } catch (ReflectiveOperationException ignored) {
+            }
+        }
+        isEnabled = enabled;
+    }
+
     public static final int YIELD_SUCCESS = 0;
     public static final int PINNED_CRITICAL_SECTION = 1;
     public static final int PINNED_NATIVE = 2;
 
     @Fold
     public static boolean isEnabled() {
-        return Continuation.isSupported() && SubstrateOptions.UseLoom.getValue();
+        return isEnabled;
     }
 
     public static int yield(Target_java_lang_Continuation cont) {

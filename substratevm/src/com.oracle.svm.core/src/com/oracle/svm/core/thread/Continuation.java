@@ -50,7 +50,7 @@ import com.oracle.svm.core.util.VMError;
 public final class Continuation {
     @Fold
     public static boolean isSupported() {
-        return SubstrateOptions.SupportContinuations.getValue();
+        return SubstrateOptions.SupportContinuations.getValue() || LoomSupport.isEnabled();
     }
 
     public static final int YIELDING = -2;
