@@ -1,3 +1,7 @@
+# common
+local common = import 'common.json';
+local graal_common = import 'graal-common.json';
+
 # Compiler
 local compiler = import 'compiler/ci.jsonnet';
 
@@ -43,6 +47,7 @@ local add_excludes_guard(build) = build + {
   # Ensure that entries in common.jsonnet can be resolved.
   _checkCommon: (import 'common.jsonnet'),
   ci_resources:: (import 'ci-resources.libsonnet'),
+  overlay: graal_common.ci.overlay,
   specVersion: "3",
   builds: [add_excludes_guard(b) for b in (
     compiler.builds +
