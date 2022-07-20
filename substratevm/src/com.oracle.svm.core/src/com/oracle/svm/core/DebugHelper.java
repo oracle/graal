@@ -34,24 +34,14 @@ import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.VMOperationInfo;
-import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.NativeVMOperation;
-import com.oracle.svm.core.thread.NativeVMOperationData;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Utf8;
-import com.sun.jdi.ClassType;
-import com.sun.jdi.ObjectReference;
-import com.sun.jdi.ReferenceType;
-import com.sun.jdi.Value;
 import jdk.internal.misc.Unsafe;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
@@ -401,7 +391,7 @@ public class DebugHelper {
 
         /**
          * Set array's element with index position.
-         * This method used to implement {@link com.sun.jdi.ArrayReference#setValue(int, Value)}
+         * This method used to implement {@link com.sun.jdi.ArrayReference#setValue(int, com.sun.jdi.Value)}
          * This method may be called when debugger in on the breakpoint and process is paused.
          * @param thread
          * @param ptrArray pointer to array object.
@@ -456,10 +446,10 @@ public class DebugHelper {
                             ((long[]) obj)[index] = value.rawValue();
                             return;
                         case 'F':
-                            ((float[]) obj)[index] = (float) value.rawValue();
+                            ((float[]) obj)[index] = value.rawValue();
                             return;
                         case 'D':
-                            ((double[]) obj)[index] = (double) value.rawValue();
+                            ((double[]) obj)[index] = value.rawValue();
                             return;
                         default:
                             break;
@@ -534,7 +524,7 @@ public class DebugHelper {
         /**
          * Get classloader from the stack.
          * This method used from debugger:
-         *  - for implementing {@link ReferenceType#classLoader()}
+         *  - for implementing {@link com.sun.jdi.ReferenceType#classLoader()}
          *  - return value is also used as input {@link #getClassForName(IsolateThread, Pointer, CCharPointer)}
          * This method is used on breakpoint or paused process.
          * @param thread
@@ -577,7 +567,7 @@ public class DebugHelper {
 
         /**
          * Returns loaded class by name for given classloader.
-         * This method used for implementing {@link ReferenceType}
+         * This method used for implementing {@link com.sun.jdi.ReferenceType}
          *
          * This method is used on breakpoint or pause.
          * @param thread
@@ -587,8 +577,9 @@ public class DebugHelper {
          */
         @CEntryPoint(name = "svm_dbg_class_for_name", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class)
-        public static Pointer getClassForName(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClassLoader, CCharPointer cClassName) {
-            Object classLoader = ptrClassLoader.toObject();
+        public static Pointer getClassForName(@SuppressWarnings("unused") IsolateThread thread,
+                                              @SuppressWarnings("unused") Pointer ptrClassLoader,
+                                              CCharPointer cClassName) {
             Log.log().string("getClassForName: ").string(cClassName).newline();
             String className = Utf8.utf8ToString(cClassName);
             Optional<Class<?>> opt = Heap.getHeap().getLoadedClasses().stream().filter((it) -> {
@@ -609,7 +600,7 @@ public class DebugHelper {
         public static Pointer getAllocateObject(@SuppressWarnings("unused") IsolateThread thread, Pointer ptrClass) {
             Object classObject = ptrClass.toObject();
             try {
-                return Word.objectToUntrackedPointer(Unsafe.getUnsafe().allocateInstance((Class)classObject));
+                return Word.objectToUntrackedPointer(Unsafe.getUnsafe().allocateInstance((Class<?>)classObject));
             } catch (InstantiationException e) {
                 return Word.objectToUntrackedPointer(null);
             }
@@ -617,7 +608,7 @@ public class DebugHelper {
 
         /**
          * Pin object.
-         * It's used for implementation {@link ObjectReference#disableCollection()}. It's pair for {@link #unPinObject(IsolateThread, Pointer)}
+         * It's used for implementation {@link com.sun.jdi.ObjectReference#disableCollection()}. It's pair for {@link #unPinObject(IsolateThread, Pointer)}
          * @note: Collection disabled for arguments on method call.
          * This method used on breakpoint or when process is paused.
          * @param thread
@@ -635,7 +626,7 @@ public class DebugHelper {
 
         /**
          * Unpin object.
-         * It's used for implementation {@link ObjectReference#disableCollection()}. It's pair for {@link #pinObject(IsolateThread, Pointer)}
+         * It's used for implementation {@link com.sun.jdi.ObjectReference#disableCollection()}. It's pair for {@link #pinObject(IsolateThread, Pointer)}
          * @note: Collection enabled for arguments after method call.
          * This method used on breakpoint or when process is paused.
          * @param thread
@@ -650,7 +641,7 @@ public class DebugHelper {
 
         /**
          * Returns modifier for given class.
-         * Used for implementation {@link ReferenceType}
+         * Used for implementation {@link com.sun.jdi.ReferenceType}
          * Called on breakpoint or paused process.
          * @param thread
          * @param ptrClass pointer to class.
@@ -666,7 +657,7 @@ public class DebugHelper {
 
         /**
          * Returns array of fields' descriptors.
-         * Used for implementation {@link ReferenceType#fields()}
+         * Used for implementation {@link com.sun.jdi.ReferenceType#fields()}
          * Called on breakpoint hit or on paused process.
          * @param thread
          * @param ptrClass pointer of class.
@@ -730,7 +721,7 @@ public class DebugHelper {
 
         /**
          * Returns array of methods' descriptors.
-         * Used for implementation {@link ReferenceType#methods()}
+         * Used for implementation {@link com.sun.jdi.ReferenceType#methods()}
          * Called on breakpoint hit or on paused process.
          * @param thread
          * @param ptrClass pointer of class.
@@ -765,7 +756,7 @@ public class DebugHelper {
 
         /**
          * Returns super class for given class.
-         * Used for implementation {@link ClassType#superclass()}
+         * Used for implementation {@link com.sun.jdi.ClassType#superclass()}
          * Called on breakpoint hit or paused process.
          * @param thread
          * @param ptrClass pointer to class.
@@ -782,7 +773,7 @@ public class DebugHelper {
 
         /**
          * Returns interfaces implemented by given class.
-         * Used for implementation {@link ClassType#interfaces()}
+         * Used for implementation {@link com.sun.jdi.ClassType#interfaces()}
          * Called on breakpoint hit or paused process.
          * @param thread
          * @param ptrClass pointer to class.
