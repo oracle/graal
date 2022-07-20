@@ -45,6 +45,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -592,14 +593,19 @@ public final class ObjectKlass extends Klass {
     void initializeImpl() {
         if (!isInitializedImpl()) { // Skip synchronization and locks if already init.
             // Allow folding the exception path if erroneous
-            checkErroneousVerification();
-            checkErroneousInitialization();
-            if (CompilerDirectives.isCompilationConstant(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            ensureLinked();
-            actualInit();
+            doInitialize();
         }
+    }
+
+    @HostCompilerDirectives.InliningCutoff
+    private void doInitialize() {
+        checkErroneousVerification();
+        checkErroneousInitialization();
+        if (CompilerDirectives.isCompilationConstant(this)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        ensureLinked();
+        actualInit();
     }
 
     private void recursiveInitialize() {
@@ -1261,17 +1267,6 @@ public final class ObjectKlass extends Klass {
     @Override
     public int getClassModifiers() {
         return getKlassVersion().getClassModifiers();
-    }
-
-    @Override
-    public int getModifiers() {
-        // getKlassVersion().getModifiers() introduces a ~10%
-        // perf hit on some benchmarks, so put behind a check
-        if (getContext().advancedRedefinitionEnabled()) {
-            return getKlassVersion().getModifiers();
-        } else {
-            return super.getModifiers();
-        }
     }
 
     @Override

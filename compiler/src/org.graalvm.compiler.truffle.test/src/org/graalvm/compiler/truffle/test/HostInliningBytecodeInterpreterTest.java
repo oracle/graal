@@ -24,15 +24,12 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -55,11 +52,11 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
                 ResolvedJavaMethod invokedMethod = invoke.getTargetMethod();
 
                 final String fullName = invokedMethod.format("%H.%n");
-                boolean validIndirect = fullName.contains("List") || fullName.contains("ArrayList") || fullName.contains("Object.hashCode");
+                boolean validIndirect = true;
                 boolean validException = fullName.contains("createException");
 
                 if (!validIndirect && !validException) {
-                    Assert.fail("Unexpected node type found in the graph: " + invoke);
+                    throw GraphUtil.approxSourceException(invoke, new AssertionError("Unexpected node type found in the graph: " + invoke));
                 }
             }
         }
@@ -238,7 +235,7 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
 
     private static int op1(State state, byte x) {
         state.statistic += 0.01;
-        return state.stack.size() * x;
+        return state.length() * x;
     }
 
     private static int op2(State state, byte x) {
@@ -246,30 +243,30 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
     }
 
     private static int op3(State state, byte x) {
-        state.stack.add((int) x);
-        return state.stack.size() * x;
+        state.push(x);
+        return state.length() * x;
     }
 
     private static int op4(State state, byte x) {
-        if (state.stack.isEmpty()) {
+        if (state.length() == 0) {
             return x;
         }
-        return state.stack.get(state.stack.size() - 1);
+        return state.peek();
     }
 
     private static int op5(State state, byte x) {
-        if (state.stack.isEmpty()) {
+        if (state.length() == 0) {
             throw createException(x);
         }
         return 0;
     }
 
     private static int op6(State state, byte x) {
-        if (state.stack.isEmpty()) {
+        if (state.length() == 0) {
             return x;
         }
-        state.stack.remove(state.stack.size() - 1);
-        return state.stack.size();
+        state.pop();
+        return state.length();
     }
 
     private static int op7(State state, byte x) {
@@ -289,155 +286,161 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
         return state.counter;
     }
 
+    @BytecodeInterpreterSwitch
     private static int opgen(int index, State state) {
         state.counter++;
         switch ((index + state.counter) % 10 + 10) {
             case 10:
                 return state.counter;
             case 11:
-                state.stack.add(index);
-                return state.stack.size();
+                state.push(index);
+                return state.length();
             case 12:
-                state.stack.clear();
+                state.clear();
                 return state.counter;
             case 13:
                 return (int) (2 * state.statistic);
             case 14:
-                return state.stack.isEmpty() ? 1 : 0;
+                return state.length() == 0 ? 1 : 0;
             case 15:
-                state.stack.add(state.stack.lastIndexOf(1));
-                return state.stack.size();
+                state.push(state.length());
+                return state.length();
             case 16:
                 state.counter--;
                 state.statistic += 0.15;
-                return state.stack.isEmpty() ? -1 : state.stack.get(0);
+                return state.length() == 0 ? -1 : state.peek();
             case 17:
                 state.counter += 2;
                 return 11;
             case 18:
                 return (int) state.statistic * state.counter;
             case 19:
-                return (int) (state.statistic + state.counter + state.stack.size());
+                return (int) (state.statistic + state.counter + state.length());
             default:
                 throw createException((byte) index);
         }
     }
 
     private static int op20(State state) {
-        state.stack.add(20);
-        state.stack.add(state.counter);
-        return state.stack.hashCode();
+        state.push(20);
+        state.push(state.counter);
+        return state.length();
     }
 
     private static int op21(State state) {
-        if (state.stack.size() >= 2) {
-            state.stack.remove(state.stack.size() - 1);
-            state.stack.remove(state.stack.size() - 1);
+        if (state.length() >= 2) {
+            state.pop();
+            state.pop();
         }
-        return state.stack.size();
+        return state.length();
     }
 
     private static int op22(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) + state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() + state.pop();
         }
         return -1000;
     }
 
     private static int op23(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) - state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() - state.pop();
         }
         return -1000;
     }
 
     private static int op24(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) * state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() * state.pop();
         }
         return -1000;
     }
 
     private static int op25(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) / state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() / state.pop();
         }
         return -1000;
     }
 
     private static int op26(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) % state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() % state.pop();
         }
         return -1000;
     }
 
     private static int op27(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) < state.stack.remove(state.stack.size() - 2) ? 1 : 0;
+        if (state.length() >= 2) {
+            return state.pop() < state.pop() ? 1 : 0;
         }
+
         return -1000;
     }
 
     private static int op28(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) <= state.stack.remove(state.stack.size() - 2) ? 1 : 0;
+        if (state.length() >= 2) {
+            return state.pop() <= state.pop() ? 1 : 0;
         }
         return -1000;
     }
 
     private static int op29(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) & state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() & state.pop();
         }
         return -1000;
     }
 
     private static int op30(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) ^ state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() ^ state.pop();
         }
+
         return -1000;
     }
 
     private static int op31(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) | state.stack.remove(state.stack.size() - 2);
+        if (state.length() >= 2) {
+            return state.pop() | state.pop();
         }
         return -1000;
     }
 
     private static int op32(State state) {
-        if (state.stack.size() >= 2) {
-            return state.stack.remove(state.stack.size() - 1) != 0 ? state.stack.remove(state.stack.size() - 2) : 0;
+        if (state.length() >= 2) {
+            return state.pop() != 0 ? state.pop() : 0;
         }
+
         return -1000;
     }
 
     private static int op33(State state) {
-        if (state.stack.size() >= 1) {
-            return -state.stack.remove(state.stack.size() - 1);
+        if (state.length() >= 1) {
+            return -state.pop();
         }
         return -1000;
     }
 
     private static int op34(State state) {
-        if (state.stack.size() >= 1) {
-            return ~state.stack.remove(state.stack.size() - 1);
+        if (state.length() >= 1) {
+            return ~state.pop();
         }
+
         return -1000;
     }
 
     private static int op35(State state) {
-        if (state.stack.size() >= 1) {
-            return !(state.stack.remove(state.stack.size() - 1) == 0) ? 1 : 0;
+        if (state.length() >= 1) {
+            return !(state.pop() == 0) ? 1 : 0;
         }
+
         return -1000;
     }
 
     private static int op36(State state) {
-        if (state.stack.size() != 0) {
-            state.stack.add(state.stack.get(state.stack.size() - 1));
+        if (state.length() >= 1) {
+            state.push(state.length());
             return 1;
         }
         return -1000;
@@ -445,8 +448,8 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
 
     private static int op37(State state) {
         int sum = 0;
-        for (int i = 0; i < state.stack.size(); i++) {
-            sum = state.stack.get(i);
+        for (int i = 0; i < state.stack.length; i++) {
+            sum = state.stack[i];
         }
         return sum;
     }
@@ -454,7 +457,7 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
     private static int op38(State state) {
         int sum = 0;
         for (int i = 0; i < state.counter; i++) {
-            sum = (int) (state.statistic * state.stack.size());
+            sum = (int) (state.statistic * state.stack.length);
         }
         return sum;
     }
@@ -504,7 +507,7 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
     }
 
     private static int op50(State state) {
-        return state.stack.size() * 50;
+        return state.stack.length * 50;
     }
 
     @TruffleBoundary
@@ -512,10 +515,31 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
         return new RuntimeException("Invalid stack: " + x);
     }
 
-    private class State {
+    private final class State {
         private int counter = 0;
         private double statistic = 0.0;
-        private List<Integer> stack = new ArrayList<>();
+        private int sp = -1;
+        private int[] stack = new int[100];
+
+        int length() {
+            return sp + 1;
+        }
+
+        public void clear() {
+            sp = -1;
+        }
+
+        int peek() {
+            return stack[sp];
+        }
+
+        int pop() {
+            return stack[sp--];
+        }
+
+        void push(int value) {
+            stack[++sp] = value;
+        }
 
         @Override
         public int hashCode() {

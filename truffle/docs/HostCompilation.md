@@ -49,6 +49,9 @@ For the vast majority of runtime compilable methods, this limit will not be reac
 If there are methods that exceed the budget limit, then the recommendation is to optimize such nodes by adding more PE boundaries.
 If a method exceeds the limit, it is likely that the same code also has a high cost for runtime compilation.
 
+
+## Debugging Host Inlining
+
 The inlining decisions performed by this phase is best debugged with `-H:Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
 
 Consider the following example, which shows previously described common patterns of partial evaluatable code in Truffle interpreters:
@@ -186,4 +189,186 @@ This prints:
 Note that we have also used the `-Dgraal.Dump=:3 ` option, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
 To debug CUTOFF decisions for incomplete exploration (entries with `incomplete  true`) use the `-Dgraal.TruffleHostInliningPrintExplored=true` option to see all incomplete subtrees in the log.
 
+## Tuning Host Inlining
+
+After learning how to debug and trace host inlining decisions, it is time to look at some ways to tune it.
+As a first step, it is necessary to identify compilation units essential for good interpreter performance.
+To do this, a Truffle interpreter can be executed in interpreter-only mode by setting the `engine.Compilation` flag to `false`. 
+After that, a Java profiler may be used to identify hot spots in the execution.
+For further details on profiling, see [Profiling.md](https://github.com/oracle/graal/blob/master/truffle/docs/Profiling.md)
+If you are looking for advice on how and when to optimize Truffle interpreters, see [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md)
+
+After identifying a hot method, for example, the bytecode dispatch loop in a Truffle bytecode interpreter, we can further investigate using host inlining logging as described in the previous section.
+Interesting entries are prefixed with `CUTOFF` and have a `reason` that explains the reason for the individual cutoff.
+
+Common reasons for `CUTOFF` entries are:
+* `dominated by transferToInterpreter()` or `protected by inInterpreter()`: This means that the is call performed in a slow-path. Host inlining will not decide on such calls and just mark them as CUTOFF. 
+* `target method not inlinable` this happens for host VM methods that cannot be inlined. There is typically not much we can do about that.
+* `Out of budget` we ran out of budget for inlining this method. This happens if the cost of the method becomes too high.
+
+Additionally, to avoid the explosion of code size, host inlining has a built-in heuristic to detect call subtrees that are considered too complex to inline. 
+For example, the tracing may print the following:
+
+```
+CUTOFF com.oracle.truffle.espresso.nodes.BytecodeNode.putPoolConstant(VirtualFrame, int, char, int)   [inlined   -1, explored    0, monomorphic false, deopt false, inInterpreter false, propDeopt false, graphSize 1132, subTreeCost 5136, invokes    1, subTreeInvokes   12, forced false, incomplete false,  reason call has too many fast-path invokes - too complex, please optimize, see truffle/docs/HostOptimization.md
+```
+
+This indicates that there are too many fast-path invokes (by default 10) in the subtree, it also stops exploring after that number.
+The `-Dgraal.TruffleHostInliningPrintExplored=true` flag may be provided to see the entire subtree for the decision.
+The following calls are considered fast-path invokes:
+
+* Invokes where the target method is annotated by `@TruffleBoundary`.
+* Invokes that are polymorphic or where no monomorphic profiling feedback is available. For example, a call to a subexpression's execute method.
+* Invokes that are recursive.
+* Invokes that are too complex themselves. For example, invokes that have too many fast-path invokes.
+
+The following calls are _not_ considered fast-path invokes:
+
+* Invokes that can be inlined using the host inlining heuristic.
+* Invokes in a slow-path, like any invoke that is dominated by `transferToInterpreter()` or protected by `isInterpreter()`. 
+* Invokes that cannot be inlined due to limitations of the host VM, like calls to `Throwable.fillInStackTrace()`.
+* Invokes that are no longer reachable.
+
+It is impossible to avoid fast-path invokes entirely, as, for example, child nodes need to be executed in an AST.
+It is theoretically possible to avoid all fast-path invokes in a bytecode interpreter. 
+In practice, languages will rely on `@TruffleBoundary` to the runtime to implement more complex bytecodes.
+
+In the following sections, we discuss techniques on how to improve host interpreter code:
+
+### Optimization: Manually cut code paths with @HostCompilerDirectives.InliningCutoff
+
+As mentioned in the previous section, a heuristic automatically cuts inlining subtrees with too many calls in them.
+One way to optimize this is by using the [@InliningCutoff](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/HostCompilerDirectives.InliningCutoff.html) annotation.
+
+Consider the following example:
+
+```
+abstract class AddNode extends Node {
+
+   abstract Object execute(Object a, Object b);
+
+   @Specialization int doInt(int a, int b) { return a + b; }
+   
+   @Specialization double doDouble(double a, double b) { return a + b; }
+   
+   @Specialization double doGeneric(Object a, Object b, @Cached LookupAndCallNode callNode) { 
+       return callNode.execute("__add", a, b); 
+   }
+}
+
+```
+
+In this example, the specializations `doInt` and `doDouble` are very simple, but there is also the `doGeneric` specialization, which calls into a complex lookup chain.
+Assuming that the `LookupAndCallNode.execute` is a very complex method with more than ten fast-path subtree calls, we could not expect the execute method to get inlined.
+Host inlining currently does not support automatic component analysis; though it can be specified manually using the `@InliningCutoff` annotation:
+
+```
+abstract class AddNode extends Node {
+
+   abstract Object execute(Object a, Object b);
+
+   @Specialization int doInt(int a, int b) { return a + b; }
+   
+   @Specialization double doDouble(double a, double b) { return a + b; }
+   
+   @HostCompilerDirectives.InliningCutoff
+   @Specialization double doGeneric(Object a, Object b, @Cached LookupAndCallNode callNode) { 
+       return callNode.execute("__add__", a, b); 
+   }
+}
+
+```
+
+After changing the code, host inlining may now decide to inline the execute method of the `AddNode` if it fits into the host inlining budget, but force a `CUTOFF` at the `doGeneric(...)` method call.
+Please see the [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/HostCompilerDirectives.InliningCutoff.html) on other use-cases for using this annotation.
+
+
+### Optimization: Deduplicating calls from branches that fold during partial evaluation
+
+The following is an example where the code is efficient for compilation using partial evaluation but is not ideal for host compilation.
+
+```
+@Child HelperNode helperNode;
+
+final boolean negate;
+// ....
+
+int execute(int argument) {
+	if (negate) {
+		return helperNode.execute(-argument);
+	} else {
+         return helperNode.execute(argument);
+	}
+}
+```
+
+When this code is compiled using partial evaluation, this code is efficient as the condition is guaranteed to fold to a single case, as the `negate` field is compilation final. 
+During host optimization, the `negate` field is not compilation final, and the compiler would either inline the code twice or decide not to inline the execute method.
+In order to avoid this the code can be rewritten as follows:
+
+```
+@Child HelperNode helperNode;
+
+final boolean negate;
+// ....
+
+int execute(int argument) {
+    int negatedArgument;
+    if (negate) {
+        negatedArgument = -argument;
+    } else {
+        negatedArgument = argument;
+    }
+    return helperNode.execute(negatedArgument);
+}
+```
+
+Similar code patterns can arise indirectly through code generation if many specializations with the same method body are used.
+Host compilers typically have a hard time optimizing such patterns automatically.
+
+
+### Optimization: Extract complex slow-path code in separate methods
+
+Consider the following example:
+
+```
+int execute(int argument) {
+	if (argument == 0) {
+	   CompilerDirectives.transferToInterpeterAndInvalidate();
+	   throw new RuntimeException("Invalid zero argument " + argument);
+	}
+	return argument;
+}
+```
+
+The Java compiler generates bytecode equivalent to the following code:
+
+```
+int execute(int argument) {
+	if (argument == 0) {
+	   CompilerDirectives.transferToInterpeterAndInvalidate();
+	   throw new RuntimeException(new StringBuilder("Invalid zero argument ").append(argument).build());
+	}
+	return argument;
+}
+```
+
+While this code is efficient for partial evaluation, this code takes up unnecessary space during host inlining.
+It is therefore recommended to extract a single method for the slow-path part of the code:
+
+
+```
+int execute(int argument) {
+	if (argument == 0) {
+	   CompilerDirectives.transferToInterpeterAndInvalidate();
+	   throw invalidZeroArgument(argument);
+	}
+	return argument;
+}
+
+RuntimeException invalidZeroArgument(int argument) {
+   throw new RuntimeException("Invalid zero argument " + argument);
+}
+
+```
 
