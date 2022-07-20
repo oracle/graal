@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.parser;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLOperationsRootNode;
+import com.oracle.truffle.sl.operations.SLOperationSerialization;
 import com.oracle.truffle.sl.operations.SLOperations;
 import com.oracle.truffle.sl.operations.SLOperationsBuilder;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.ArithmeticContext;
@@ -94,12 +96,22 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public final class SLOperationsVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = true;
+    private static final boolean FORCE_SERIALIZE = true;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
         OperationNodes nodes = SLOperationsBuilder.create(OperationConfig.DEFAULT, builder -> {
             SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, builder);
             parseSLImpl(source, visitor);
         });
+
+        if (FORCE_SERIALIZE) {
+            try {
+                byte[] serializedData = SLOperationSerialization.serializeNodes(nodes);
+                nodes = SLOperationSerialization.deserializeNodes(serializedData);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
 
         for (OperationNode node : nodes.getNodes()) {
             TruffleString name = node.getMetadata(SLOperations.MethodName);

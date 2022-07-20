@@ -111,6 +111,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private static final int SER_CODE_CREATE_LOCAL = -3;
     private static final int SER_CODE_CREATE_OBJECT = -4;
     private static final int SER_CODE_END = -5;
+    private static final int SER_CODE_METADATA = -6;
 
     CodeTypeElement createOperationNodes() {
         CodeTypeElement typOperationNodes = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, OPERATION_NODES_IMPL_NAME, types.OperationNodes);
@@ -849,6 +850,26 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.returnStatement();
             b.end();
 
+            if (!m.getMetadatas().isEmpty()) {
+                b.startCase().string("" + SER_CODE_METADATA).end().startBlock();
+                // todo: we only need a byte if < 255 metadata types
+                b.startSwitch().string("buffer.readShort()").end().startBlock();
+                int i = 0;
+                for (OperationMetadataData metadata : m.getMetadatas()) {
+                    b.startCase().string("" + i).end().startCaseBlock();
+                    b.startStatement().startCall("builder", "set" + metadata.getName());
+                    b.startGroup().maybeCast(context.getType(Object.class), metadata.getType());
+                    b.string("callback.deserialize(context, buffer)");
+                    b.end(3);
+                    b.statement("break");
+                    b.end();
+                }
+                b.end();
+
+                b.statement("break");
+                b.end();
+            }
+
             for (Operation op : m.getOperations()) {
 
                 // create begin/emit code
@@ -1521,6 +1542,15 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         CodeTreeBuilder b = method.createBuilder();
+
+        b.startIf().string("isSerializing").end().startBlock();
+        serializationWrapException(b, () -> {
+            b.statement("serBuffer.writeShort((short) " + SER_CODE_METADATA + ")");
+            b.statement("serBuffer.writeShort(" + m.getMetadatas().indexOf(metadata) + ")");
+            b.statement("serCallback.serialize(SER_CONTEXT, serBuffer, value)");
+            b.returnStatement();
+        });
+        b.end();
 
         b.startAssign("metadata_" + metadata.getName()).variable(parValue).end();
 

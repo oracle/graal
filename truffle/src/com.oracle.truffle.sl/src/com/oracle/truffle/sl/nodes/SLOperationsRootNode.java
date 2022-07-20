@@ -1,5 +1,7 @@
 package com.oracle.truffle.sl.nodes;
 
+import java.io.DataOutputStream;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.operation.OperationNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -35,5 +37,4 @@ public class SLOperationsRootNode extends SLRootNode {
     public TruffleString getTSName() {
         return operationsNode.getMetadata(SLOperations.MethodName);
     }
-
 }
