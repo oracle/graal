@@ -67,12 +67,20 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
             if (object == null) {
                 return trueValue;
             }
+            GuardingNode guard = SnippetAnchorNode.anchor();
+            Object nonNullObject = PiNode.piCastNonNull(object, guard);
+            DynamicHub nonNullHub = loadHub(nonNullObject);
+            if (nonNullHub != exactType) {
+                return falseValue;
+            }
+            return trueValue;
+        } else {
+            Object hubOrNull = loadHubOrNull(object);
+            if (hubOrNull != exactType) {
+                return falseValue;
+            }
+            return trueValue;
         }
-        Object hubOrNull = loadHubOrNull(object);
-        if (hubOrNull != exactType) {
-            return falseValue;
-        }
-        return trueValue;
     }
 
     @Snippet
