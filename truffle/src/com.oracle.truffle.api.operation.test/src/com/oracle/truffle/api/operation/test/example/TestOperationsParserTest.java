@@ -56,6 +56,7 @@ import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNode;
 
 public class TestOperationsParserTest {
+    // @formatter:off
 
     private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
         OperationNode operationsNode = parseNode(builder);
@@ -164,34 +165,26 @@ public class TestOperationsParserTest {
             b.endStoreLocal();
 
             b.beginWhile();
-            {
                 b.beginLessThanOperation();
                 b.emitLoadLocal(locI);
                 b.emitLoadArgument(0);
                 b.endLessThanOperation();
 
                 b.beginBlock();
-                {
                     b.beginStoreLocal(locJ);
-                    {
                         b.beginAddOperation();
                         b.emitLoadLocal(locJ);
                         b.emitLoadLocal(locI);
                         b.endAddOperation();
-                    }
                     b.endStoreLocal();
 
                     b.beginStoreLocal(locI);
-                    {
                         b.beginAddOperation();
                         b.emitLoadLocal(locI);
                         b.emitConstObject(1L);
                         b.endAddOperation();
-                    }
                     b.endStoreLocal();
-                }
                 b.endBlock();
-            }
             b.endWhile();
 
             b.beginReturn();
@@ -316,8 +309,6 @@ public class TestOperationsParserTest {
 
         RootCallTarget root = parse(b -> {
             b.beginFinallyTry();
-            {
-
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
                 b.emitConstObject(2L);
@@ -327,7 +318,6 @@ public class TestOperationsParserTest {
                 b.emitLoadArgument(0);
                 b.emitConstObject(1L);
                 b.endAppenderOperation();
-            }
             b.endFinallyTry();
 
             b.beginReturn();
@@ -348,14 +338,12 @@ public class TestOperationsParserTest {
 
         RootCallTarget root = parse(b -> {
             b.beginFinallyTry();
-            {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
                 b.emitConstObject(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -367,9 +355,7 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
-            }
             b.endFinallyTry();
 
             b.beginReturn();
@@ -386,14 +372,12 @@ public class TestOperationsParserTest {
     public void testFinallyTryReturn() {
         RootCallTarget root = parse(b -> {
             b.beginFinallyTry();
-            {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
                 b.emitConstObject(1L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
@@ -402,9 +386,7 @@ public class TestOperationsParserTest {
                     b.beginReturn();
                     b.emitConstObject(0L);
                     b.endReturn();
-                }
                 b.endBlock();
-            }
             b.endFinallyTry();
 
             b.beginAppenderOperation();
@@ -428,14 +410,12 @@ public class TestOperationsParserTest {
             OperationLabel lbl = b.createLabel();
 
             b.beginFinallyTry();
-            {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
                 b.emitConstObject(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -447,9 +427,7 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
-            }
             b.endFinallyTry();
 
             b.beginAppenderOperation();
@@ -484,20 +462,16 @@ public class TestOperationsParserTest {
             OperationLabel lbl = b.createLabel();
 
             b.beginFinallyTry();
-            {
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
 
                     b.emitBranch(lbl);
-                }
                 b.endBlock();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -506,9 +480,7 @@ public class TestOperationsParserTest {
                     b.beginReturn();
                     b.emitConstObject(0L);
                     b.endReturn();
-                }
                 b.endBlock();
-            }
             b.endFinallyTry();
 
             b.beginAppenderOperation();
@@ -541,9 +513,7 @@ public class TestOperationsParserTest {
             // expected: 1, 3, 5
 
             b.beginFinallyTry();
-            {
                 b.beginBlock();
-                {
                     OperationLabel lbl = b.createLabel();
 
                     b.beginAppenderOperation();
@@ -564,11 +534,9 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(5L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -582,9 +550,7 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
-            }
             b.endFinallyTry();
 
             b.publish();
@@ -601,29 +567,22 @@ public class TestOperationsParserTest {
             // expected: 1, 3, 4
 
             b.beginFinallyTry();
-            {
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(4L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
 
                 b.beginFinallyTry();
-                {
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(3L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
 
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(1L);
@@ -637,11 +596,8 @@ public class TestOperationsParserTest {
                         b.emitLoadArgument(0);
                         b.emitConstObject(2L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
-                }
                 b.endFinallyTry();
-            }
             b.endFinallyTry();
 
             b.publish();
@@ -658,20 +614,15 @@ public class TestOperationsParserTest {
             // expected: 1, 3, 5
 
             b.beginFinallyTry();
-            {
                 b.beginFinallyTry();
-                {
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(5L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
 
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(3L);
@@ -685,13 +636,10 @@ public class TestOperationsParserTest {
                         b.emitLoadArgument(0);
                         b.emitConstObject(4L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
-                }
                 b.endFinallyTry();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -705,9 +653,7 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
-            }
             b.endFinallyTry();
 
             b.publish();
@@ -724,29 +670,22 @@ public class TestOperationsParserTest {
             // expected: 1, 3, 4
 
             b.beginFinallyTry();
-            {
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(4L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
 
                 b.beginFinallyTry();
-                {
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(3L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
 
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(1L);
@@ -758,11 +697,8 @@ public class TestOperationsParserTest {
                         b.emitLoadArgument(0);
                         b.emitConstObject(2L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
-                }
                 b.endFinallyTry();
-            }
             b.endFinallyTry();
 
             b.publish();
@@ -779,20 +715,15 @@ public class TestOperationsParserTest {
             // expected: 1, 3, 5
 
             b.beginFinallyTry();
-            {
                 b.beginFinallyTry();
-                {
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(5L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
 
                     b.beginBlock();
-                    {
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
                         b.emitConstObject(3L);
@@ -804,13 +735,10 @@ public class TestOperationsParserTest {
                         b.emitLoadArgument(0);
                         b.emitConstObject(4L);
                         b.endAppenderOperation();
-                    }
                     b.endBlock();
-                }
                 b.endFinallyTry();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -822,9 +750,7 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
-            }
             b.endFinallyTry();
 
             b.publish();
@@ -841,14 +767,12 @@ public class TestOperationsParserTest {
 
         RootCallTarget root = parse(b -> {
             b.beginFinallyTryNoExcept();
-            {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
                 b.emitConstObject(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -862,9 +786,7 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
-            }
             b.endFinallyTryNoExcept();
 
             b.publish();
@@ -881,14 +803,12 @@ public class TestOperationsParserTest {
 
         RootCallTarget root = parse(b -> {
             b.beginFinallyTryNoExcept();
-            {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
                 b.emitConstObject(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
-                {
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
                     b.emitConstObject(1L);
@@ -900,9 +820,7 @@ public class TestOperationsParserTest {
                     b.emitLoadArgument(0);
                     b.emitConstObject(2L);
                     b.endAppenderOperation();
-                }
                 b.endBlock();
-            }
             b.endFinallyTryNoExcept();
 
             b.publish();

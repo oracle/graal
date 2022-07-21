@@ -146,14 +146,14 @@ public class ChildExecutionTest {
     }
 
     @TypeSystem({int.class})
-    public static class TestTypeSystem {
+    public static class ChildTestTypeSystem {
     }
 
     @NodeChildren({
                     @NodeChild(value = "first", type = ChildExecutionChildNodeWithError.class),
                     @NodeChild(value = "second", type = ChildExecutionChildNode2.class)
     })
-    @TypeSystemReference(TestTypeSystem.class)
+    @TypeSystemReference(ChildTestTypeSystem.class)
     public abstract static class TestNode4 extends Node {
 
         public abstract Object execute(VirtualFrame frame);

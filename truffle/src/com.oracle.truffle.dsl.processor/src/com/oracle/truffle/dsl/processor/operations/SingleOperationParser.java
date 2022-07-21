@@ -233,6 +233,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             ct.getAnnotationMirrors().removeIf(m -> ElementUtils.typeEquals(m.getAnnotationType(), types.NodeChild) || ElementUtils.typeEquals(m.getAnnotationType(), types.NodeChildren));
             // remove GenerateUncached annotations - we do not care
             ct.getAnnotationMirrors().removeIf(m -> ElementUtils.typeEquals(m.getAnnotationType(), types.GenerateUncached));
+            ct.getAnnotationMirrors().removeIf(m -> ElementUtils.typeEquals(m.getAnnotationType(), types.GenerateNodeFactory));
 
             // remove all non-static or private elements
             // this includes all the execute methods

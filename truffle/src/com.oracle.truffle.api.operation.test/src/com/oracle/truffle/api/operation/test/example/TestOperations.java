@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -54,11 +55,13 @@ import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
 import com.oracle.truffle.api.operation.LocalSetter;
 import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.Variadic;
 
 @GenerateOperations
 @GenerateUncached
 @GenerateAOT
+@OperationProxy(SomeOperationNode.class)
 public final class TestOperations {
 
     @Metadata public static final MetadataKey<String> TestData = new MetadataKey<>("default value");
@@ -142,5 +145,16 @@ public final class TestOperations {
             setter.setObject(frame, value);
             return value;
         }
+    }
+}
+
+@GenerateNodeFactory
+abstract class SomeOperationNode extends Node {
+
+    abstract int execute();
+
+    @Specialization
+    static int doMagic() {
+        return 1337;
     }
 }

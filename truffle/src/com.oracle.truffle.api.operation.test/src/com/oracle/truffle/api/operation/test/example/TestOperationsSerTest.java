@@ -63,7 +63,7 @@ public class TestOperationsSerTest {
         Assert.assertEquals(3L, root.getCallTarget().call());
     }
 
-    private TestRootNode deserialize(byte[] byteArray) {
+    private static TestRootNode deserialize(byte[] byteArray) {
         ByteArrayInputStream input = new ByteArrayInputStream(byteArray);
 
         OperationNodes nodes2 = null;
