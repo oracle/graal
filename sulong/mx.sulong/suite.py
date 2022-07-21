@@ -861,7 +861,7 @@ suite = {
           "<others>" : {
             "ninja_targets" : ["cxx"],
             "ninja_install_targets" : ["install-cxx"],
-            "results" : ["native/lib", "native/bin/<lib:c++>", "native/include"],
+            "results" : ["native/lib/c++.lib", "native/bin/<lib:c++>", "native/include"],
             "cmakeConfig" : {
               "LLVM_ENABLE_RUNTIMES" : "libcxx",
               "LIBCXXABI_INCLUDE_TESTS": "NO",
@@ -873,6 +873,8 @@ suite = {
               "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
               "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
               "CMAKE_LINKER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:lld-link>",
+              "CMAKE_C_FLAGS" : "-flto -gdwarf-5 -O1",
+              "CMAKE_CXX_FLAGS" : "-flto -gdwarf-5 -O1",
               "CMAKE_INSTALL_PREFIX" : "native",
               # workaround for build problem with cmake >=3.22
               # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
@@ -1619,10 +1621,9 @@ suite = {
               "./" : [
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/include"
               ],
-              "./native" : [
-                "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/lib"
-              ],
               "./native/lib/" : [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/bin/*",
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/lib/*",
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
                 "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
               ],

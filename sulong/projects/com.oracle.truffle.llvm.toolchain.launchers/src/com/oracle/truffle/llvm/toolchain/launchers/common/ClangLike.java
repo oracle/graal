@@ -57,7 +57,11 @@ public class ClangLike extends ClangLikeBase {
         sulongArgs.add("-stdlib=libc++");
         // Suppress warning because of libc++
         sulongArgs.add("-Wno-unused-command-line-argument");
-        super.getCompilerArgs(sulongArgs);
+        if (tool != Tool.ClangCL) {
+            // clang-cl does not support any of these when using CMakeTestCCompiler.cmake
+            // set CMAKE_C_FLAGS or CMAKE_CXX_FLAGS instead
+            super.getCompilerArgs(sulongArgs);
+        }
     }
 
     @Override
