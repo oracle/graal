@@ -529,7 +529,7 @@ public class OptimizationLog implements CompilationListener {
 
     private EconomicMap<String, Object> asJsonMap() {
         EconomicMap<String, Object> map = EconomicMap.create();
-        String compilationMethodName = graph.compilationId().toString(CompilationIdentifier.Verbosity.NAME);
+        String compilationMethodName = graph.method().format("%H.%n(%p)");
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
         map.put("rootPhase", currentPhase.asJsonMap());
