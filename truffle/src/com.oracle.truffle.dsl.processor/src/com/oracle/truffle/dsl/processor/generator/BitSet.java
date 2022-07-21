@@ -44,9 +44,11 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.createReference
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -451,6 +453,32 @@ public class BitSet {
             return 0;
         }
         return value;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s %s %s", getClass().getSimpleName(), getName(), Arrays.toString(getObjects()));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getClass(), getName());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+
+        // names and types must be the same
+        if (obj.getClass() != getClass()) {
+            return false;
+        }
+
+        BitSet bs = (BitSet) obj;
+
+        return bs.getName().equals(getName());
     }
 
 }

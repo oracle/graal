@@ -410,7 +410,7 @@ public class OperationsBytecodeCodeGenerator {
 
             final SingleOperationData soData = cinstr.getData();
 
-            OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(m, innerTypeNames, methodNames, isVariadic, cinstr, staticConstants);
+            OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(m, innerTypeNames, methodNames, isVariadic, cinstr, staticConstants, isUncached);
             cinstr.setPlugs(plugs);
 
             NodeCodeGenerator generator = new NodeCodeGenerator();

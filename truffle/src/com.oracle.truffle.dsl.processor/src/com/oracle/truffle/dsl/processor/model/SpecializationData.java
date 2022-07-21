@@ -602,7 +602,7 @@ public final class SpecializationData extends TemplateMethod {
 
     @Override
     public String toString() {
-        return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getDynamicTypes());
+        return String.format("%s [id = %s]", getClass().getSimpleName(), getId());
     }
 
     public boolean isFrameUsedByGuard() {

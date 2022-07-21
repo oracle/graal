@@ -382,160 +382,160 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         static final int C_SL_ADD_CHILDREN_OFFSET = 2;
         static final int C_SL_ADD_POP_INDEXED_OFFSET = 3;
         static final int C_SL_ADD_STATE_BITS_OFFSET = 4;
-        static final int C_SL_ADD_LENGTH = 8;
+        static final int C_SL_ADD_LENGTH = 6;
         static final int INSTR_C_SL_DIV = 25;
         static final int C_SL_DIV_CONSTANT_OFFSET = 1;
         static final int C_SL_DIV_CHILDREN_OFFSET = 2;
         static final int C_SL_DIV_POP_INDEXED_OFFSET = 3;
         static final int C_SL_DIV_STATE_BITS_OFFSET = 4;
-        static final int C_SL_DIV_LENGTH = 8;
+        static final int C_SL_DIV_LENGTH = 6;
         static final int INSTR_C_SL_EQUAL = 26;
         static final int C_SL_EQUAL_CHILDREN_OFFSET = 1;
         static final int C_SL_EQUAL_POP_INDEXED_OFFSET = 2;
         static final int C_SL_EQUAL_STATE_BITS_OFFSET = 3;
-        static final int C_SL_EQUAL_LENGTH = 7;
+        static final int C_SL_EQUAL_LENGTH = 5;
         static final int INSTR_C_SL_LESS_OR_EQUAL = 27;
         static final int C_SL_LESS_OR_EQUAL_CONSTANT_OFFSET = 1;
         static final int C_SL_LESS_OR_EQUAL_CHILDREN_OFFSET = 2;
         static final int C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET = 3;
         static final int C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET = 4;
-        static final int C_SL_LESS_OR_EQUAL_LENGTH = 6;
+        static final int C_SL_LESS_OR_EQUAL_LENGTH = 5;
         static final int INSTR_C_SL_LESS_THAN = 28;
         static final int C_SL_LESS_THAN_CONSTANT_OFFSET = 1;
         static final int C_SL_LESS_THAN_CHILDREN_OFFSET = 2;
         static final int C_SL_LESS_THAN_POP_INDEXED_OFFSET = 3;
         static final int C_SL_LESS_THAN_STATE_BITS_OFFSET = 4;
-        static final int C_SL_LESS_THAN_LENGTH = 6;
+        static final int C_SL_LESS_THAN_LENGTH = 5;
         static final int INSTR_C_SL_LOGICAL_NOT = 29;
         static final int C_SL_LOGICAL_NOT_CONSTANT_OFFSET = 1;
         static final int C_SL_LOGICAL_NOT_CHILDREN_OFFSET = 2;
         static final int C_SL_LOGICAL_NOT_POP_INDEXED_OFFSET = 3;
         static final int C_SL_LOGICAL_NOT_STATE_BITS_OFFSET = 4;
-        static final int C_SL_LOGICAL_NOT_LENGTH = 6;
+        static final int C_SL_LOGICAL_NOT_LENGTH = 5;
         static final int INSTR_C_SL_MUL = 30;
         static final int C_SL_MUL_CONSTANT_OFFSET = 1;
         static final int C_SL_MUL_CHILDREN_OFFSET = 2;
         static final int C_SL_MUL_POP_INDEXED_OFFSET = 3;
         static final int C_SL_MUL_STATE_BITS_OFFSET = 4;
-        static final int C_SL_MUL_LENGTH = 8;
+        static final int C_SL_MUL_LENGTH = 6;
         static final int INSTR_C_SL_READ_PROPERTY = 31;
         static final int C_SL_READ_PROPERTY_CONSTANT_OFFSET = 1;
         static final int C_SL_READ_PROPERTY_CHILDREN_OFFSET = 2;
         static final int C_SL_READ_PROPERTY_POP_INDEXED_OFFSET = 3;
         static final int C_SL_READ_PROPERTY_STATE_BITS_OFFSET = 4;
-        static final int C_SL_READ_PROPERTY_LENGTH = 8;
+        static final int C_SL_READ_PROPERTY_LENGTH = 6;
         static final int INSTR_C_SL_SUB = 32;
         static final int C_SL_SUB_CONSTANT_OFFSET = 1;
         static final int C_SL_SUB_CHILDREN_OFFSET = 2;
         static final int C_SL_SUB_POP_INDEXED_OFFSET = 3;
         static final int C_SL_SUB_STATE_BITS_OFFSET = 4;
-        static final int C_SL_SUB_LENGTH = 8;
+        static final int C_SL_SUB_LENGTH = 6;
         static final int INSTR_C_SL_WRITE_PROPERTY = 33;
         static final int C_SL_WRITE_PROPERTY_CONSTANT_OFFSET = 1;
         static final int C_SL_WRITE_PROPERTY_CHILDREN_OFFSET = 2;
         static final int C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET = 3;
         static final int C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET = 5;
-        static final int C_SL_WRITE_PROPERTY_LENGTH = 9;
+        static final int C_SL_WRITE_PROPERTY_LENGTH = 7;
         static final int INSTR_C_SL_UNBOX = 34;
         static final int C_SL_UNBOX_CHILDREN_OFFSET = 1;
         static final int C_SL_UNBOX_POP_INDEXED_OFFSET = 2;
         static final int C_SL_UNBOX_STATE_BITS_OFFSET = 3;
-        static final int C_SL_UNBOX_LENGTH = 7;
+        static final int C_SL_UNBOX_LENGTH = 5;
         static final int INSTR_C_SL_FUNCTION_LITERAL = 35;
         static final int C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET = 1;
         static final int C_SL_FUNCTION_LITERAL_CHILDREN_OFFSET = 2;
         static final int C_SL_FUNCTION_LITERAL_POP_INDEXED_OFFSET = 3;
         static final int C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET = 4;
-        static final int C_SL_FUNCTION_LITERAL_LENGTH = 6;
+        static final int C_SL_FUNCTION_LITERAL_LENGTH = 5;
         static final int INSTR_C_SL_TO_BOOLEAN = 36;
         static final int C_SL_TO_BOOLEAN_CONSTANT_OFFSET = 1;
         static final int C_SL_TO_BOOLEAN_CHILDREN_OFFSET = 2;
         static final int C_SL_TO_BOOLEAN_POP_INDEXED_OFFSET = 3;
         static final int C_SL_TO_BOOLEAN_STATE_BITS_OFFSET = 4;
-        static final int C_SL_TO_BOOLEAN_LENGTH = 6;
+        static final int C_SL_TO_BOOLEAN_LENGTH = 5;
         static final int INSTR_C_SL_INVOKE = 37;
         static final int C_SL_INVOKE_CONSTANT_OFFSET = 1;
         static final int C_SL_INVOKE_CHILDREN_OFFSET = 2;
         static final int C_SL_INVOKE_VARIADIC_OFFSET = 3;
         static final int C_SL_INVOKE_STATE_BITS_OFFSET = 4;
-        static final int C_SL_INVOKE_LENGTH = 8;
+        static final int C_SL_INVOKE_LENGTH = 6;
         static final int INSTR_SC_SL_AND = 38;
         static final int SC_SL_AND_CONSTANT_OFFSET = 1;
         static final int SC_SL_AND_CHILDREN_OFFSET = 2;
         static final int SC_SL_AND_POP_INDEXED_OFFSET = 3;
         static final int SC_SL_AND_BRANCH_TARGET_OFFSET = 4;
         static final int SC_SL_AND_STATE_BITS_OFFSET = 5;
-        static final int SC_SL_AND_LENGTH = 7;
+        static final int SC_SL_AND_LENGTH = 6;
         static final int INSTR_SC_SL_OR = 39;
         static final int SC_SL_OR_CONSTANT_OFFSET = 1;
         static final int SC_SL_OR_CHILDREN_OFFSET = 2;
         static final int SC_SL_OR_POP_INDEXED_OFFSET = 3;
         static final int SC_SL_OR_BRANCH_TARGET_OFFSET = 4;
         static final int SC_SL_OR_STATE_BITS_OFFSET = 5;
-        static final int SC_SL_OR_LENGTH = 7;
+        static final int SC_SL_OR_LENGTH = 6;
         static final int INSTR_C_SL_UNBOX_Q_FROM_LONG = 40;
         static final int C_SL_UNBOX_Q_FROM_LONG_CHILDREN_OFFSET = 1;
         static final int C_SL_UNBOX_Q_FROM_LONG_POP_INDEXED_OFFSET = 2;
         static final int C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET = 3;
-        static final int C_SL_UNBOX_Q_FROM_LONG_LENGTH = 7;
+        static final int C_SL_UNBOX_Q_FROM_LONG_LENGTH = 5;
         static final int INSTR_C_SL_ADD_Q_ADD_LONG = 41;
         static final int C_SL_ADD_Q_ADD_LONG_CONSTANT_OFFSET = 1;
         static final int C_SL_ADD_Q_ADD_LONG_CHILDREN_OFFSET = 2;
         static final int C_SL_ADD_Q_ADD_LONG_POP_INDEXED_OFFSET = 3;
         static final int C_SL_ADD_Q_ADD_LONG_STATE_BITS_OFFSET = 4;
-        static final int C_SL_ADD_Q_ADD_LONG_LENGTH = 8;
+        static final int C_SL_ADD_Q_ADD_LONG_LENGTH = 6;
         static final int INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 = 42;
         static final int C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CONSTANT_OFFSET = 1;
         static final int C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CHILDREN_OFFSET = 2;
         static final int C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_POP_INDEXED_OFFSET = 3;
         static final int C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_STATE_BITS_OFFSET = 4;
-        static final int C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH = 8;
+        static final int C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH = 6;
         static final int INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN = 43;
         static final int C_SL_UNBOX_Q_FROM_BOOLEAN_CHILDREN_OFFSET = 1;
         static final int C_SL_UNBOX_Q_FROM_BOOLEAN_POP_INDEXED_OFFSET = 2;
         static final int C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET = 3;
-        static final int C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH = 7;
+        static final int C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH = 5;
         static final int INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN = 44;
         static final int C_SL_TO_BOOLEAN_Q_BOOLEAN_CONSTANT_OFFSET = 1;
         static final int C_SL_TO_BOOLEAN_Q_BOOLEAN_CHILDREN_OFFSET = 2;
         static final int C_SL_TO_BOOLEAN_Q_BOOLEAN_POP_INDEXED_OFFSET = 3;
         static final int C_SL_TO_BOOLEAN_Q_BOOLEAN_STATE_BITS_OFFSET = 4;
-        static final int C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH = 6;
+        static final int C_SL_TO_BOOLEAN_Q_BOOLEAN_LENGTH = 5;
         static final int INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 = 45;
         static final int C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_CONSTANT_OFFSET = 1;
         static final int C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_CHILDREN_OFFSET = 2;
         static final int C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_POP_INDEXED_OFFSET = 3;
         static final int C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_STATE_BITS_OFFSET = 4;
-        static final int C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH = 6;
+        static final int C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_LENGTH = 5;
         static final int INSTR_C_SL_INVOKE_Q_DIRECT = 46;
         static final int C_SL_INVOKE_Q_DIRECT_CONSTANT_OFFSET = 1;
         static final int C_SL_INVOKE_Q_DIRECT_CHILDREN_OFFSET = 2;
         static final int C_SL_INVOKE_Q_DIRECT_VARIADIC_OFFSET = 3;
         static final int C_SL_INVOKE_Q_DIRECT_STATE_BITS_OFFSET = 4;
-        static final int C_SL_INVOKE_Q_DIRECT_LENGTH = 8;
+        static final int C_SL_INVOKE_Q_DIRECT_LENGTH = 6;
         static final int INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM = 47;
         static final int C_SL_FUNCTION_LITERAL_Q_PERFORM_CONSTANT_OFFSET = 1;
         static final int C_SL_FUNCTION_LITERAL_Q_PERFORM_CHILDREN_OFFSET = 2;
         static final int C_SL_FUNCTION_LITERAL_Q_PERFORM_POP_INDEXED_OFFSET = 3;
         static final int C_SL_FUNCTION_LITERAL_Q_PERFORM_STATE_BITS_OFFSET = 4;
-        static final int C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH = 6;
+        static final int C_SL_FUNCTION_LITERAL_Q_PERFORM_LENGTH = 5;
         static final int INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 = 48;
         static final int C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_CONSTANT_OFFSET = 1;
         static final int C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_CHILDREN_OFFSET = 2;
         static final int C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_POP_INDEXED_OFFSET = 3;
         static final int C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_STATE_BITS_OFFSET = 5;
-        static final int C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH = 9;
+        static final int C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_LENGTH = 7;
         static final int INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 = 49;
         static final int C_SL_LESS_THAN_Q_LESS_THAN0_CONSTANT_OFFSET = 1;
         static final int C_SL_LESS_THAN_Q_LESS_THAN0_CHILDREN_OFFSET = 2;
         static final int C_SL_LESS_THAN_Q_LESS_THAN0_POP_INDEXED_OFFSET = 3;
         static final int C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET = 4;
-        static final int C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH = 6;
+        static final int C_SL_LESS_THAN_Q_LESS_THAN0_LENGTH = 5;
         private static final short[][] BOXING_DESCRIPTORS = {
         // OBJECT
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_LONG, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_LONG, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // INT
         null,
         // DOUBLE
@@ -543,7 +543,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         // FLOAT
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_BOOLEAN, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 1) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 2) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 1) << 8) | 1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_BOOLEAN, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // BYTE
         null};
 
@@ -897,8 +897,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         bc[bci + 3 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
                         labelFills.add(new LabelFill(bci + 4 + 0, ((OperationLabelImpl) operationData.aux[0])));
                         bc[bci + 5 + 0] = 0;
-                        bc[bci + 5 + 1] = 0;
-                        bci = bci + 7;
+                        bci = bci + 6;
                     }
                     break;
                 }
@@ -915,8 +914,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         bc[bci + 3 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
                         labelFills.add(new LabelFill(bci + 4 + 0, ((OperationLabelImpl) operationData.aux[0])));
                         bc[bci + 5 + 0] = 0;
-                        bc[bci + 5 + 1] = 0;
-                        bci = bci + 7;
+                        bci = bci + 6;
                     }
                     break;
                 }
@@ -1879,9 +1877,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
-            bc[bci + 4 + 2] = 0;
-            bc[bci + 4 + 3] = 0;
-            bci = bci + 8;
+            bci = bci + 6;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -1931,9 +1927,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
-            bc[bci + 4 + 2] = 0;
-            bc[bci + 4 + 3] = 0;
-            bci = bci + 8;
+            bci = bci + 6;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -1980,9 +1974,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 2 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 3 + 0] = 0;
             bc[bci + 3 + 1] = 0;
-            bc[bci + 3 + 2] = 0;
-            bc[bci + 3 + 3] = 0;
-            bci = bci + 7;
+            bci = bci + 5;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2031,8 +2023,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
             bc[bci + 3 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 4 + 0] = 0;
-            bc[bci + 4 + 1] = 0;
-            bci = bci + 6;
+            bci = bci + 5;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2081,8 +2072,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
             bc[bci + 3 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 4 + 0] = 0;
-            bc[bci + 4 + 1] = 0;
-            bci = bci + 6;
+            bci = bci + 5;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2130,8 +2120,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             numChildNodes += 1;
             bc[bci + 3 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
             bc[bci + 4 + 0] = 0;
-            bc[bci + 4 + 1] = 0;
-            bci = bci + 6;
+            bci = bci + 5;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2181,9 +2170,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
-            bc[bci + 4 + 2] = 0;
-            bc[bci + 4 + 3] = 0;
-            bci = bci + 8;
+            bci = bci + 6;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2235,9 +2222,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
-            bc[bci + 4 + 2] = 0;
-            bc[bci + 4 + 3] = 0;
-            bci = bci + 8;
+            bci = bci + 6;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2287,9 +2272,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 0] |= (short) ((bci - predecessorBcis[1] < 256 ? bci - predecessorBcis[1] : 0) << 8);
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
-            bc[bci + 4 + 2] = 0;
-            bc[bci + 4 + 3] = 0;
-            bci = bci + 8;
+            bci = bci + 6;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2341,9 +2324,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3 + 1] = (short) ((bci - predecessorBcis[2] < 256 ? bci - predecessorBcis[2] : 0));
             bc[bci + 5 + 0] = 0;
             bc[bci + 5 + 1] = 0;
-            bc[bci + 5 + 2] = 0;
-            bc[bci + 5 + 3] = 0;
-            bci = bci + 9;
+            bci = bci + 7;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2389,9 +2370,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 2 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
             bc[bci + 3 + 0] = 0;
             bc[bci + 3 + 1] = 0;
-            bc[bci + 3 + 2] = 0;
-            bc[bci + 3 + 3] = 0;
-            bci = bci + 7;
+            bci = bci + 5;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2439,8 +2418,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             numChildNodes += 1;
             bc[bci + 3 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
             bc[bci + 4 + 0] = 0;
-            bc[bci + 4 + 1] = 0;
-            bci = bci + 6;
+            bci = bci + 5;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2488,8 +2466,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             numChildNodes += 1;
             bc[bci + 3 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
             bc[bci + 4 + 0] = 0;
-            bc[bci + 4 + 1] = 0;
-            bci = bci + 6;
+            bci = bci + 5;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -2538,9 +2515,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             bc[bci + 3] = (short) (numChildren - 1);
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
-            bc[bci + 4 + 2] = 0;
-            bc[bci + 4 + 3] = 0;
-            bci = bci + 8;
+            bci = bci + 6;
             lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
@@ -3980,15 +3955,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = Add1]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19cfc07
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@643f16e7
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD :
                             {
@@ -4007,8 +3982,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@587558fe
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6e56aaae
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_DIV :
                             {
@@ -4020,7 +3995,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLEqual
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = equalNode]
-                            //     [ 1] SpecializationData [id = Generic0, method = public static boolean doGeneric(java.lang.Object, java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] SpecializationData [id = Generic0]
                             //     [ 2] CacheExpression [sourceParameter = leftInterop]
                             //     [ 3] CacheExpression [sourceParameter = rightInterop]
                             //   Indexed Pops:
@@ -4028,8 +4003,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@8cc0fa7
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@14d8a877
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_EQUAL :
                             {
@@ -4048,7 +4023,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6618a0ba
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL :
                             {
@@ -4067,7 +4042,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3d40650d
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN :
                             {
@@ -4085,7 +4060,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5599f435
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LOGICAL_NOT :
                             {
@@ -4104,8 +4079,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@45365e1
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@276d18a1
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_MUL :
                             {
@@ -4120,15 +4095,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //     [ 2] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = ReadArray0]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = ReadSLObject0]
                             //     [ 5] CacheExpression [sourceParameter = node]
                             //     [ 6] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 8] SpecializationData [id = ReadObject0]
                             //     [ 9] CacheExpression [sourceParameter = node]
                             //     [10] CacheExpression [sourceParameter = objects]
                             //     [11] CacheExpression [sourceParameter = asMember]
@@ -4137,8 +4112,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19bb694c
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@3990e12
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY :
                             {
@@ -4157,8 +4132,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1cfa1fed
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@539da4c3
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_SUB :
                             {
@@ -4172,14 +4147,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = WriteArray0]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = WriteSLObject0]
                             //     [ 5] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 7] SpecializationData [id = WriteObject0]
                             //     [ 8] CacheExpression [sourceParameter = node]
                             //     [ 9] CacheExpression [sourceParameter = objectLibrary]
                             //     [10] CacheExpression [sourceParameter = asMember]
@@ -4189,8 +4164,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@11ae46f5
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5a8c334c
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY :
                             {
@@ -4202,14 +4177,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@16455a87
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@28c05f30
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX :
                             {
@@ -4227,7 +4202,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4b3a2d33
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Perform]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL :
                             {
@@ -4245,7 +4220,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7097614b
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN :
                             {
@@ -4258,7 +4233,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 0] SpecializationData [id = Direct]
                             //     [ 1] CacheExpression [sourceParameter = callNode]
                             //     [ 2] CacheExpression [sourceParameter = library]
                             //     [ 3] CacheExpression [sourceParameter = node]
@@ -4267,8 +4242,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4c3a8cbc
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@662973d4
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE :
                             {
@@ -4295,7 +4270,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7ce08997
+                            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_AND :
                             {
@@ -4319,7 +4294,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@37362279
+                            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_OR :
                             {
@@ -4335,14 +4310,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox.q.FromLong
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2f71174f
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@26b76a6
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX_Q_FROM_LONG :
                             {
@@ -4355,15 +4330,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = Add1]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7abffb4d
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@7c1c2b89
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD_Q_ADD_LONG :
                             {
@@ -4378,15 +4353,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //     [ 2] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = ReadArray0]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = ReadSLObject0]
                             //     [ 5] CacheExpression [sourceParameter = node]
                             //     [ 6] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 8] SpecializationData [id = ReadObject0]
                             //     [ 9] CacheExpression [sourceParameter = node]
                             //     [10] CacheExpression [sourceParameter = objects]
                             //     [11] CacheExpression [sourceParameter = asMember]
@@ -4395,8 +4370,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5b70802a
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@27703a4
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
                             {
@@ -4408,14 +4383,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox.q.FromBoolean
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@717f534
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1acad63c
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
                             {
@@ -4433,7 +4408,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@45e4649f
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
                             {
@@ -4452,7 +4427,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7f3435a4
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
                             {
@@ -4465,7 +4440,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 0] SpecializationData [id = Direct]
                             //     [ 1] CacheExpression [sourceParameter = callNode]
                             //     [ 2] CacheExpression [sourceParameter = library]
                             //     [ 3] CacheExpression [sourceParameter = node]
@@ -4474,8 +4449,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4732d123
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@b8584cf
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE_Q_DIRECT :
                             {
@@ -4500,7 +4475,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6da3d9bc
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Perform]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
                             {
@@ -4514,14 +4489,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = WriteArray0]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = WriteSLObject0]
                             //     [ 5] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 7] SpecializationData [id = WriteObject0]
                             //     [ 8] CacheExpression [sourceParameter = node]
                             //     [ 9] CacheExpression [sourceParameter = objectLibrary]
                             //     [10] CacheExpression [sourceParameter = asMember]
@@ -4531,8 +4506,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@33e448b9
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@620e3c2f
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
                             {
@@ -4551,7 +4526,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@458a6f5d
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
                             {
@@ -9773,50 +9748,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                                 continue loop;
                             }
-                            // load.argument.long
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            //     LONG -> INSTR_LOAD_ARGUMENT_LONG
-                            //     INT -> INSTR_LOAD_ARGUMENT_LONG
-                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_LONG
-                            //     FLOAT -> INSTR_LOAD_ARGUMENT_LONG
-                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_LONG
-                            //     BYTE -> INSTR_LOAD_ARGUMENT_LONG
-                            case INSTR_LOAD_ARGUMENT_LONG :
-                            {
-                                Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]];
-                                if (value instanceof Long) {
-                                    $frame.setLong($sp, (long) value);
-                                } else {
-                                    $frame.setObject($sp, value);
-                                }
-                                $sp = $sp + 1;
-                                $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
-                                continue loop;
-                            }
-                            // load.argument.boolean
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            //     LONG -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     INT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     FLOAT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     BYTE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
-                            {
-                                Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]];
-                                if (value instanceof Boolean) {
-                                    $frame.setBoolean($sp, (boolean) value);
-                                } else {
-                                    $frame.setObject($sp, value);
-                                }
-                                $sp = $sp + 1;
-                                $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
-                                continue loop;
-                            }
                             // store.local.uninit
                             //   Locals:
                             //     [ 0] target
@@ -9871,17 +9802,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = Add1]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19cfc07
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@643f16e7
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5ec7fc1
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@45a827e9
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD :
                             {
@@ -9900,10 +9829,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@587558fe
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6e56aaae
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3e16eb33
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@2f88b46
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_DIV :
                             {
@@ -9915,7 +9842,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLEqual
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = equalNode]
-                            //     [ 1] SpecializationData [id = Generic0, method = public static boolean doGeneric(java.lang.Object, java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] SpecializationData [id = Generic0]
                             //     [ 2] CacheExpression [sourceParameter = leftInterop]
                             //     [ 3] CacheExpression [sourceParameter = rightInterop]
                             //   Indexed Pops:
@@ -9923,10 +9850,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@8cc0fa7
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@14d8a877
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@640cfeaf
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@609f0aa8
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_EQUAL :
                             {
@@ -9945,8 +9870,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6618a0ba
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@69d93afb
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL :
                             {
@@ -9965,8 +9889,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3d40650d
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2f3d2e3d
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN :
                             {
@@ -9984,8 +9907,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5599f435
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2cc754f3
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LOGICAL_NOT :
                             {
@@ -10004,10 +9926,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@45365e1
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@276d18a1
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3495d189
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@143b2b02
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_MUL :
                             {
@@ -10022,15 +9942,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //     [ 2] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = ReadArray0]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = ReadSLObject0]
                             //     [ 5] CacheExpression [sourceParameter = node]
                             //     [ 6] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 8] SpecializationData [id = ReadObject0]
                             //     [ 9] CacheExpression [sourceParameter = node]
                             //     [10] CacheExpression [sourceParameter = objects]
                             //     [11] CacheExpression [sourceParameter = asMember]
@@ -10039,10 +9959,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19bb694c
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@3990e12
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@52b1a37e
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@44c71517
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY :
                             {
@@ -10061,10 +9979,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1cfa1fed
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@539da4c3
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5ec48d9f
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@136ace7e
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_SUB :
                             {
@@ -10078,14 +9994,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = WriteArray0]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = WriteSLObject0]
                             //     [ 5] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 7] SpecializationData [id = WriteObject0]
                             //     [ 8] CacheExpression [sourceParameter = node]
                             //     [ 9] CacheExpression [sourceParameter = objectLibrary]
                             //     [10] CacheExpression [sourceParameter = asMember]
@@ -10095,10 +10011,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@11ae46f5
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5a8c334c
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4c9f353e
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@300cfe17
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY :
                             {
@@ -10110,16 +10024,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@16455a87
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@28c05f30
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4a5e35fc
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@f021bf7
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX :
                             {
@@ -10137,8 +10049,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4b3a2d33
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3a81e9ec
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Perform]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL :
                             {
@@ -10156,8 +10067,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7097614b
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6daa44ed
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN :
                             {
@@ -10170,7 +10080,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 0] SpecializationData [id = Direct]
                             //     [ 1] CacheExpression [sourceParameter = callNode]
                             //     [ 2] CacheExpression [sourceParameter = library]
                             //     [ 3] CacheExpression [sourceParameter = node]
@@ -10179,10 +10089,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4c3a8cbc
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@662973d4
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@56e06d71
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@492209f9
+                            //     [ 0] StateBitSet state_0 [RESULT-UNBOXED, SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE :
                             {
@@ -10209,8 +10117,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7ce08997
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7c5957b8
+                            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_AND :
                             {
@@ -10234,8 +10141,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@37362279
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@43ebf9f2
+                            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_OR :
                             {
@@ -10811,8 +10717,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLAdd                       ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_ADD_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -10828,8 +10734,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLDiv                       ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_DIV_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_DIV_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -10844,8 +10750,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLEqual                     ");
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -10860,7 +10766,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLLessOrEqual               ");
@@ -10877,7 +10783,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLLessThan                  ");
@@ -10894,7 +10800,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLLogicalNot                ");
@@ -10911,8 +10817,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLMul                       ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_MUL_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_MUL_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -10928,8 +10834,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLReadProperty              ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1])));
@@ -10947,8 +10853,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLSub                       ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_SUB_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_SUB_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -10965,8 +10871,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
                             sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
-                            sb.append(String.format(" %04x", $bc[$bci + 8]));
+                            sb.append("     ");
                             sb.append("c.SLWriteProperty             ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CONSTANT_OFFSET) + 1])));
@@ -10983,8 +10888,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLUnbox                     ");
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -10998,7 +10903,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLFunctionLiteral           ");
@@ -11014,7 +10919,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLToBoolean                 ");
@@ -11031,8 +10936,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLInvoke                    ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" var(%s)", $bc[$bci + C_SL_INVOKE_VARIADIC_OFFSET + 0]));
@@ -11047,7 +10952,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("sc.SLAnd                      ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + SC_SL_AND_CONSTANT_OFFSET) + 0])));
@@ -11064,7 +10969,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("sc.SLOr                       ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + SC_SL_OR_CONSTANT_OFFSET) + 0])));
@@ -11080,8 +10985,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLUnbox.q.FromLong          ");
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_UNBOX_Q_FROM_LONG_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -11096,8 +11001,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLAdd.q.AddLong             ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD_LONG_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_ADD_Q_ADD_LONG_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -11113,8 +11018,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLReadProperty.q.ReadSLObject0");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CONSTANT_OFFSET) + 1])));
@@ -11131,8 +11036,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLUnbox.q.FromBoolean       ");
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + C_SL_UNBOX_Q_FROM_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff)));
@@ -11146,7 +11051,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLToBoolean.q.Boolean       ");
@@ -11162,7 +11067,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLLessOrEqual.q.LessOrEqual0");
@@ -11180,8 +11085,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
-                            sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
+                            sb.append("     ");
+                            sb.append("     ");
                             sb.append("c.SLInvoke.q.Direct           ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_INVOKE_Q_DIRECT_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" var(%s)", $bc[$bci + C_SL_INVOKE_Q_DIRECT_VARIADIC_OFFSET + 0]));
@@ -11195,7 +11100,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLFunctionLiteral.q.Perform ");
@@ -11213,8 +11118,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
                             sb.append(String.format(" %04x", $bc[$bci + 5]));
                             sb.append(String.format(" %04x", $bc[$bci + 6]));
-                            sb.append(String.format(" %04x", $bc[$bci + 7]));
-                            sb.append(String.format(" %04x", $bc[$bci + 8]));
+                            sb.append("     ");
                             sb.append("c.SLWriteProperty.q.WriteSLObject0");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_CONSTANT_OFFSET) + 0])));
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0_CONSTANT_OFFSET) + 1])));
@@ -11231,7 +11135,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" %04x", $bc[$bci + 2]));
                             sb.append(String.format(" %04x", $bc[$bci + 3]));
                             sb.append(String.format(" %04x", $bc[$bci + 4]));
-                            sb.append(String.format(" %04x", $bc[$bci + 5]));
+                            sb.append("     ");
                             sb.append("     ");
                             sb.append("     ");
                             sb.append("c.SLLessThan.q.LessThan0      ");
@@ -11291,12 +11195,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
-                        boolean value = SLEqualNode.doLong($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLEqualNode.doLong($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11304,12 +11203,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
-                        boolean value = SLEqualNode.doBigNumber($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLEqualNode.doBigNumber($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11317,12 +11211,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     boolean $child0Value_ = (boolean) $child0Value;
                     if ($child1Value instanceof Boolean) {
                         boolean $child1Value_ = (boolean) $child1Value;
-                        boolean value = SLEqualNode.doBoolean($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLEqualNode.doBoolean($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11330,12 +11219,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     String $child0Value_ = (String) $child0Value;
                     if ($child1Value instanceof String) {
                         String $child1Value_ = (String) $child1Value;
-                        boolean value = SLEqualNode.doString($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLEqualNode.doString($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11343,12 +11227,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     TruffleString $child0Value_ = (TruffleString) $child0Value;
                     if ($child1Value instanceof TruffleString) {
                         TruffleString $child1Value_ = (TruffleString) $child1Value;
-                        boolean value = SLEqualNode.doTruffleString($child0Value_, $child1Value_, (EqualNode.getUncached()));
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLEqualNode.doTruffleString($child0Value_, $child1Value_, (EqualNode.getUncached())));
                         return;
                     }
                 }
@@ -11356,31 +11235,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     SLNull $child0Value_ = SLTypes.asSLNull($child0Value);
                     if (SLTypes.isSLNull($child1Value)) {
                         SLNull $child1Value_ = SLTypes.asSLNull($child1Value);
-                        boolean value = SLEqualNode.doNull($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLEqualNode.doNull($child0Value_, $child1Value_));
                         return;
                     }
                 }
                 if ($child0Value instanceof SLFunction) {
                     SLFunction $child0Value_ = (SLFunction) $child0Value;
-                    boolean value = SLEqualNode.doFunction($child0Value_, $child1Value);
-                    if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 2, value);
-                    } else {
-                        $frame.setBoolean($sp - 2, value);
-                    }
+                    $frame.setObject($sp - 2, SLEqualNode.doFunction($child0Value_, $child1Value));
                     return;
                 }
-                boolean value = SLEqualNode.doGeneric($child0Value, $child1Value, (INTEROP_LIBRARY_.getUncached($child0Value)), (INTEROP_LIBRARY_.getUncached($child1Value)));
-                if ((($bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                    $frame.setObject($sp - 2, value);
-                } else {
-                    $frame.setBoolean($sp - 2, value);
-                }
+                $frame.setObject($sp - 2, SLEqualNode.doGeneric($child0Value, $child1Value, (INTEROP_LIBRARY_.getUncached($child0Value)), (INTEROP_LIBRARY_.getUncached($child1Value))));
                 return;
             }
 
@@ -11391,12 +11255,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
-                        boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11404,12 +11263,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
-                        boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11424,12 +11278,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
-                        boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessThanNode.lessThan($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11437,12 +11286,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
-                        boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessThanNode.lessThan($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11455,12 +11299,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
-                    boolean value = SLLogicalNotNode.doBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setBoolean($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLLogicalNotNode.doBoolean($child0Value_));
                     return;
                 }
                 $frame.setObject($sp - 1, SLLogicalNotNode.typeError($child0Value, ($this), ($bci)));
@@ -11550,22 +11389,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
-                    boolean value = SLUnboxNode.fromBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setBoolean($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLUnboxNode.fromBoolean($child0Value_));
                     return;
                 }
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
-                    long value = SLUnboxNode.fromLong($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setLong($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLUnboxNode.fromLong($child0Value_));
                     return;
                 }
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
@@ -11603,20 +11432,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
-                    boolean value = SLToBooleanNode.doBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setBoolean($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLToBooleanNode.doBoolean($child0Value_));
                     return;
                 }
-                boolean value = SLToBooleanNode.doFallback($child0Value, ($this), ($bci));
-                if ((($bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                    $frame.setObject($sp - 1, value);
-                } else {
-                    $frame.setBoolean($sp - 1, value);
-                }
+                $frame.setObject($sp - 1, SLToBooleanNode.doFallback($child0Value, ($this), ($bci)));
                 return;
             }
 
@@ -11665,22 +11484,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
-                    boolean value = SLUnboxNode.fromBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setBoolean($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLUnboxNode.fromBoolean($child0Value_));
                     return;
                 }
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
-                    long value = SLUnboxNode.fromLong($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setLong($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLUnboxNode.fromLong($child0Value_));
                     return;
                 }
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
@@ -11755,22 +11564,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
-                    boolean value = SLUnboxNode.fromBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setBoolean($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLUnboxNode.fromBoolean($child0Value_));
                     return;
                 }
                 if ($child0Value instanceof Long) {
                     long $child0Value_ = (long) $child0Value;
-                    long value = SLUnboxNode.fromLong($child0Value_);
-                    if ((($bc[$bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 2] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setLong($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLUnboxNode.fromLong($child0Value_));
                     return;
                 }
                 if (SLTypesGen.isImplicitSLBigNumber($child0Value)) {
@@ -11797,20 +11596,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 int constArrayOffset_;
                 if ($child0Value instanceof Boolean) {
                     boolean $child0Value_ = (boolean) $child0Value;
-                    boolean value = SLToBooleanNode.doBoolean($child0Value_);
-                    if ((($bc[$bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                        $frame.setObject($sp - 1, value);
-                    } else {
-                        $frame.setBoolean($sp - 1, value);
-                    }
+                    $frame.setObject($sp - 1, SLToBooleanNode.doBoolean($child0Value_));
                     return;
                 }
-                boolean value = SLToBooleanNode.doFallback($child0Value, ($this), ($bci));
-                if ((($bc[$bci + C_SL_TO_BOOLEAN_Q_BOOLEAN_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                    $frame.setObject($sp - 1, value);
-                } else {
-                    $frame.setBoolean($sp - 1, value);
-                }
+                $frame.setObject($sp - 1, SLToBooleanNode.doFallback($child0Value, ($this), ($bci)));
                 return;
             }
 
@@ -11821,12 +11610,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
-                        boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11834,12 +11618,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
-                        boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11894,12 +11673,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     long $child0Value_ = (long) $child0Value;
                     if ($child1Value instanceof Long) {
                         long $child1Value_ = (long) $child1Value;
-                        boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessThanNode.lessThan($child0Value_, $child1Value_));
                         return;
                     }
                 }
@@ -11907,12 +11681,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber($child0Value);
                     if (SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                         SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber($child1Value);
-                        boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
-                        if ((($bc[$bci + C_SL_LESS_THAN_Q_LESS_THAN0_STATE_BITS_OFFSET + 1] & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
-                            $frame.setObject($sp - 2, value);
-                        } else {
-                            $frame.setBoolean($sp - 2, value);
-                        }
+                        $frame.setObject($sp - 2, SLLessThanNode.lessThan($child0Value_, $child1Value_));
                         return;
                     }
                 }

@@ -125,4 +125,8 @@ public class LoadArgumentInstruction extends Instruction {
         return null;
     }
 
+    @Override
+    public boolean neverInUncached() {
+        return kind != FrameKind.OBJECT;
+    }
 }

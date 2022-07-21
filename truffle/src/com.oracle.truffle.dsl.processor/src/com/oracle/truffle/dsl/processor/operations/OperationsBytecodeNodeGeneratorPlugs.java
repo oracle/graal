@@ -104,6 +104,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private final ExecutionVariables dummyVariables = new ExecutionVariables();
     private NodeData nodeData;
     private Predicate<SpecializationData> useSpecializationClass;
+    private final boolean uncached;
 
     {
         context = ProcessorContext.getInstance();
@@ -111,7 +112,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         OperationsBytecodeCodeGenerator.populateVariables(dummyVariables);
     }
 
-    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, Set<String> innerTypeNames, Set<String> methodNames, boolean isVariadic, CustomInstruction cinstr, StaticConstants staticConstants) {
+    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, Set<String> innerTypeNames, Set<String> methodNames, boolean isVariadic, CustomInstruction cinstr, StaticConstants staticConstants,
+                    boolean uncached) {
         this.m = m;
         this.innerTypeNames = innerTypeNames;
         this.methodNames = methodNames;
@@ -131,6 +133,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 }
             };
         }
+
+        this.uncached = uncached;
     }
 
     public void setUseSpecializationClass(Predicate<SpecializationData> useSpecializationClass) {
@@ -445,7 +449,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         CodeTree isResultBoxed = multiState.createNotContains(frameState, new Object[]{resultUnboxedState});
 
-        if (typeName.equals("Object")) {
+        if (uncached || typeName.equals("Object")) {
             b.startStatement();
             b.startCall("$frame", "setObject");
             b.string("$sp - " + destOffset);

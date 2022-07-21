@@ -5865,7 +5865,6 @@ public class FlatNodeGenFactory {
         String getNewName() {
             return "new" + ElementUtils.firstLetterUpperCase(getName());
         }
-
     }
 
     public class StateBitSet extends NodeBitSet {
@@ -5898,7 +5897,6 @@ public class FlatNodeGenFactory {
             }
             return false;
         }
-
     }
 
     private static class ExcludeBitSet extends NodeBitSet {
@@ -5920,7 +5918,6 @@ public class FlatNodeGenFactory {
             }
             throw new IllegalArgumentException();
         }
-
     }
 
     public static final class FrameState {
