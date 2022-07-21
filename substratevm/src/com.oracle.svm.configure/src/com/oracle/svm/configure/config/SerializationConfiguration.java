@@ -128,7 +128,7 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     private void printProxies(JsonWriter writer) throws IOException {
-        proxyConfiguration.printJsonSerialization(writer, interfaceListsSerializableProxies);
+        ProxyConfiguration.printJsonSerialization(writer, interfaceListsSerializableProxies);
     }
 
     private static void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
