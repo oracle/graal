@@ -481,7 +481,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
             setCurrentBlocker(null);
             node.clearStatus();
-            //waiting is done, emit wait event
+            // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierTid, 0L, false);
             acquire(node, savedState);
             if (interrupted) {
@@ -518,7 +518,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                 }
             }
             node.clearStatus();
-            //waiting is done, emit wait event
+            // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierTid, time, cancelled);
             acquire(node, savedState);
             if (cancelled) {
