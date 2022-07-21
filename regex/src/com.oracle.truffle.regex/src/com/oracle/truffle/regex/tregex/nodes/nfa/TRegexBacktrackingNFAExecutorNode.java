@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -110,8 +109,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Child InputIndexOfStringNode indexOfNode;
     private final CharMatcher loopbackInitialStateMatcher;
 
-    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] subExecutors, boolean mustAdvance, CompilationBuffer compilationBuffer) {
-        super(nfaMap.getAst());
+    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, int numberOfTransitions, TRegexExecutorNode[] subExecutors, boolean mustAdvance, CompilationBuffer compilationBuffer) {
+        super(nfaMap.getAst(), numberOfTransitions);
         RegexASTSubtreeRootNode subtree = nfaMap.getASTSubtree(nfa);
         this.nfa = nfa;
         this.flags = createFlags(nfaMap, nfa, mustAdvance, subtree);
@@ -156,55 +155,31 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.maxNTransitions = maxTransitions;
     }
 
-    private TRegexBacktrackingNFAExecutorNode(
-                    RegexSource source,
-                    int nCaptureGroups,
-                    PureNFA nfa,
-                    int nQuantifiers,
-                    int nZeroWidthQuantifiers,
-                    int maxNTransitions,
-                    int flags,
-                    InnerLiteral innerLiteral,
-                    TRegexExecutorNode[] subExecutors,
-                    CharMatcher[] matchers,
-                    int[] zeroWidthTermEnclosedCGLow,
-                    int[] zeroWidthQuantifierCGOffsets,
-                    CharMatcher loopbackInitialStateMatcher) {
-        super(source, nCaptureGroups);
-        this.nfa = nfa;
-        this.nQuantifiers = nQuantifiers;
-        this.nZeroWidthQuantifiers = nZeroWidthQuantifiers;
-        this.maxNTransitions = maxNTransitions;
-        this.flags = flags;
-        this.innerLiteral = innerLiteral;
-        this.subExecutors = subExecutors;
-        this.matchers = matchers;
-        this.zeroWidthTermEnclosedCGLow = zeroWidthTermEnclosedCGLow;
-        this.zeroWidthQuantifierCGOffsets = zeroWidthQuantifierCGOffsets;
-        this.loopbackInitialStateMatcher = loopbackInitialStateMatcher;
-    }
-
     private TRegexBacktrackingNFAExecutorNode(TRegexBacktrackingNFAExecutorNode copy, TRegexExecutorNode[] subExecutors) {
-        this(copy.getSource(),
-                        copy.getNumberOfCaptureGroups(),
-                        copy.nfa,
-                        copy.nQuantifiers,
-                        copy.nZeroWidthQuantifiers,
-                        copy.maxNTransitions,
-                        copy.flags,
-                        copy.innerLiteral,
-                        subExecutors,
-                        copy.matchers,
-                        copy.zeroWidthTermEnclosedCGLow,
-                        copy.zeroWidthQuantifierCGOffsets,
-                        copy.loopbackInitialStateMatcher);
+        super(copy);
+        this.nfa = copy.nfa;
+        this.nQuantifiers = copy.nQuantifiers;
+        this.nZeroWidthQuantifiers = copy.nZeroWidthQuantifiers;
+        this.maxNTransitions = copy.maxNTransitions;
+        this.flags = copy.flags;
+        this.innerLiteral = copy.innerLiteral;
+        this.subExecutors = subExecutors;
+        this.matchers = copy.matchers;
+        this.zeroWidthTermEnclosedCGLow = copy.zeroWidthTermEnclosedCGLow;
+        this.zeroWidthQuantifierCGOffsets = copy.zeroWidthQuantifierCGOffsets;
+        this.loopbackInitialStateMatcher = copy.loopbackInitialStateMatcher;
     }
 
     @Override
     public TRegexExecutorNode shallowCopy() {
-        TRegexExecutorNode[] subExecutorsCopy = new TRegexExecutorNode[subExecutors.length];
-        for (int i = 0; i < subExecutors.length; i++) {
-            subExecutorsCopy[i] = subExecutors[i].shallowCopy();
+        TRegexExecutorNode[] subExecutorsCopy;
+        if (nfa.getSubTreeId() < 0) {
+            subExecutorsCopy = new TRegexExecutorNode[subExecutors.length];
+            for (int i = 0; i < subExecutors.length; i++) {
+                subExecutorsCopy[i] = subExecutors[i].shallowCopy();
+            }
+        } else {
+            subExecutorsCopy = subExecutors;
         }
         return new TRegexBacktrackingNFAExecutorNode(this, subExecutorsCopy);
     }

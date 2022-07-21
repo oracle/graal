@@ -81,7 +81,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     DFAAbstractStateNode[] states,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
                     TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
-        this(source, props, numberOfCaptureGroups, maxNumberOfNFAStates, states,
+        this(source, props, numberOfCaptureGroups, calcNumberOfTransitions(states), maxNumberOfNFAStates, states,
                         props.isGenericCG() && maxNumberOfNFAStates > 1 ? initResultOrder(maxNumberOfNFAStates, numberOfCaptureGroups, props) : null, debugRecorder,
                         innerLiteralPrefixMatcher);
     }
@@ -90,12 +90,13 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     RegexSource source,
                     TRegexDFAExecutorProperties props,
                     int numberOfCaptureGroups,
+                    int numberOfTransitions,
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
                     int[] cgResultOrder,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
                     TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
-        super(source, numberOfCaptureGroups);
+        super(source, numberOfCaptureGroups, numberOfTransitions);
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
         this.states = states;
@@ -105,7 +106,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     private TRegexDFAExecutorNode(TRegexDFAExecutorNode copy, TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
-        this(copy.getSource(), copy.props, copy.getNumberOfCaptureGroups(), copy.maxNumberOfNFAStates, copy.states, copy.cgResultOrder, copy.debugRecorder, innerLiteralPrefixMatcher);
+        this(copy.getSource(), copy.props, copy.getNumberOfCaptureGroups(), copy.getNumberOfTransitions(), copy.maxNumberOfNFAStates, copy.states, copy.cgResultOrder, copy.debugRecorder,
+                        innerLiteralPrefixMatcher);
     }
 
     @Override
@@ -159,7 +161,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return states.length;
     }
 
-    public int getNumberOfTransitions() {
+    private static int calcNumberOfTransitions(DFAAbstractStateNode[] states) {
         int sum = 0;
         for (DFAAbstractStateNode state : states) {
             sum += state.getSuccessors().length;
@@ -611,7 +613,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     if (locals.getIndex() < 0) {
                         break outer;
                     }
-                    if (innerLiteralPrefixMatcher == null || state.prefixMatcherMatches(innerLiteralPrefixMatcher, locals, codeRange, tString)) {
+                    if (innerLiteralPrefixMatcher == null || prefixMatcherMatches(innerLiteralPrefixMatcher, locals, codeRange, tString)) {
                         if (innerLiteralPrefixMatcher == null && isSimpleCG()) {
                             locals.getCGData().results[0] = locals.getIndex();
                         }
@@ -635,6 +637,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             return locals.getResultInt() == 0 ? locals.getCGData().currentResult : null;
         }
         return locals.getResultInt();
+    }
+
+    private static boolean prefixMatcherMatches(TRegexDFAExecutorNode prefixMatcher, TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
+        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), codeRange, tString);
+        return prefixMatcher.isSimpleCG() ? result != null : (int) result != NO_MATCH;
     }
 
     private static CharMatcher[] asciiOrLatin1Matchers(TruffleString.CodeRange codeRange, CharMatcher[] ascii, CharMatcher[] latin1) {

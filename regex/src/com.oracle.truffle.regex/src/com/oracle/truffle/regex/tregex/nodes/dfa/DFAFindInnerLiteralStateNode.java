@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -70,11 +69,6 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
     int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean tString) {
         return executor.getIndexOfStringNode().execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteralContent(tString),
                         innerLiteral.getMaskContent(tString), executor.getEncoding());
-    }
-
-    boolean prefixMatcherMatches(TRegexDFAExecutorNode prefixMatcher, TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
-        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), codeRange, tString);
-        return prefixMatcher.isSimpleCG() ? result != null : (int) result != TRegexDFAExecutorNode.NO_MATCH;
     }
 
     @TruffleBoundary

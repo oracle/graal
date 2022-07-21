@@ -65,29 +65,31 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     private final boolean trackLastGroup;
     private boolean dfaGeneratorBailedOut;
 
-    public TRegexNFAExecutorNode(NFA nfa, boolean trackLastGroup) {
-        super(nfa.getAst());
+    private TRegexNFAExecutorNode(NFA nfa, int numberOfTransitions) {
+        super(nfa.getAst(), numberOfTransitions);
         this.nfa = nfa;
-        nfa.setInitialLoopBack(false);
         this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
-        for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
-            if (nfa.getTransitions()[i] != null) {
-                nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
-            }
-        }
-        this.trackLastGroup = trackLastGroup;
-    }
-
-    private TRegexNFAExecutorNode(NFA nfa, boolean searching, boolean trackLastGroup, boolean dfaGeneratorBailedOut) {
-        super(nfa.getAst());
-        this.nfa = nfa;
-        this.searching = searching;
-        this.trackLastGroup = trackLastGroup;
-        this.dfaGeneratorBailedOut = dfaGeneratorBailedOut;
+        this.trackLastGroup = nfa.getAst().getOptions().getFlavor().usesLastGroupResultField();
     }
 
     private TRegexNFAExecutorNode(TRegexNFAExecutorNode copy) {
-        this(copy.nfa, copy.searching, copy.trackLastGroup, copy.dfaGeneratorBailedOut);
+        super(copy);
+        this.nfa = copy.nfa;
+        this.searching = copy.searching;
+        this.trackLastGroup = copy.trackLastGroup;
+        this.dfaGeneratorBailedOut = copy.dfaGeneratorBailedOut;
+    }
+
+    public static TRegexNFAExecutorNode create(NFA nfa) {
+        nfa.setInitialLoopBack(false);
+        int numberOfTransitions = 0;
+        for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
+            if (nfa.getTransitions()[i] != null) {
+                nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
+                numberOfTransitions++;
+            }
+        }
+        return new TRegexNFAExecutorNode(nfa, numberOfTransitions);
     }
 
     @Override

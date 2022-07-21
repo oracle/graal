@@ -46,7 +46,6 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
@@ -54,6 +53,7 @@ import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
 /**
  * Specialized {@link TRegexExecutorNode} for matching {@link LookAroundAssertion#isLiteral()
@@ -65,27 +65,30 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
     private final boolean negated;
     @CompilationFinal(dimensions = 1) private CharMatcher[] matchers;
 
-    public TRegexLiteralLookAroundExecutorNode(PureNFAMap nfaMap, LookAroundAssertion lookAround, CompilationBuffer compilationBuffer) {
-        super(nfaMap.getAst());
-        assert lookAround.isLiteral();
-        forward = lookAround.isLookAheadAssertion();
-        negated = lookAround.isNegated();
-        matchers = new CharMatcher[lookAround.getLiteralLength()];
-        for (int i = 0; i < matchers.length; i++) {
-            CharMatcher matcher = CharMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
-            matchers[forward ? i : matchers.length - (i + 1)] = matcher;
-        }
-    }
-
-    private TRegexLiteralLookAroundExecutorNode(RegexSource source, int numberOfCaptureGroups, boolean forward, boolean negated, CharMatcher[] matchers) {
-        super(source, numberOfCaptureGroups);
+    private TRegexLiteralLookAroundExecutorNode(RegexAST ast, int numberOfTransitions, boolean forward, boolean negated, CharMatcher[] matchers) {
+        super(ast, numberOfTransitions);
         this.forward = forward;
         this.negated = negated;
         this.matchers = matchers;
     }
 
     private TRegexLiteralLookAroundExecutorNode(TRegexLiteralLookAroundExecutorNode copy) {
-        this(copy.getSource(), copy.getNumberOfCaptureGroups(), copy.forward, copy.negated, copy.matchers);
+        super(copy);
+        this.forward = copy.forward;
+        this.negated = copy.negated;
+        this.matchers = copy.matchers;
+    }
+
+    public static TRegexLiteralLookAroundExecutorNode create(PureNFAMap nfaMap, LookAroundAssertion lookAround, CompilationBuffer compilationBuffer) {
+        assert lookAround.isLiteral();
+        boolean forward = lookAround.isLookAheadAssertion();
+        boolean negated = lookAround.isNegated();
+        CharMatcher[] matchers = new CharMatcher[lookAround.getLiteralLength()];
+        for (int i = 0; i < matchers.length; i++) {
+            CharMatcher matcher = CharMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
+            matchers[forward ? i : matchers.length - (i + 1)] = matcher;
+        }
+        return new TRegexLiteralLookAroundExecutorNode(nfaMap.getAst(), matchers.length, forward, negated, matchers);
     }
 
     @Override

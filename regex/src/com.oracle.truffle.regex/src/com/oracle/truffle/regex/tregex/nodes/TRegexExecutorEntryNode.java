@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.util.TRegexGuards;
 
 import sun.misc.Unsafe;
@@ -158,19 +160,19 @@ public abstract class TRegexExecutorEntryNode extends Node {
     @Specialization
     Object doByteArray(byte[] input, int fromIndex, int index, int maxIndex,
                     @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
-        return callNode.call(input, fromIndex, index, maxIndex);
+        return runExecutor(input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
     }
 
     @Specialization(guards = "isCompactString(input)")
     Object doStringCompact(String input, int fromIndex, int index, int maxIndex,
                     @Cached("createCallTarget(LATIN_1, false)") DirectCallNode callNode) {
-        return callNode.call(input, fromIndex, index, maxIndex);
+        return runExecutor(input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.LATIN_1, false);
     }
 
     @Specialization(guards = "!isCompactString(input)")
     Object doStringNonCompact(String input, int fromIndex, int index, int maxIndex,
                     @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
-        return callNode.call(input, fromIndex, index, maxIndex);
+        return runExecutor(input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
     }
 
     @Specialization(guards = "codeRangeEqualsNode.execute(input, cachedCodeRange)", limit = "5")
@@ -181,11 +183,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
                     @Cached("codeRangeNode.execute(input, executor.getEncoding().getTStringEncoding())") @SuppressWarnings("unused") TruffleString.CodeRange cachedCodeRange,
                     @Cached("createCallTarget(cachedCodeRange, true)") DirectCallNode callNode) {
         materializeNode.execute(input, executor.getEncoding().getTStringEncoding());
-        if (cachedCodeRange == TruffleString.CodeRange.ASCII) {
-            return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), TruffleString.CodeRange.ASCII, true);
-        } else {
-            return callNode.call(input, fromIndex, index, maxIndex);
-        }
+        return runExecutor(input, fromIndex, index, maxIndex, callNode, cachedCodeRange, true);
     }
 
     @Specialization(guards = "neitherByteArrayNorString(input)")
@@ -195,11 +193,28 @@ public abstract class TRegexExecutorEntryNode extends Node {
         // conservatively disable compact string optimizations.
         // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
         // strings?
-        return callNode.call(input, fromIndex, index, maxIndex);
+        return runExecutor(inputClassProfile.profile(input), fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
     }
 
     DirectCallNode createCallTarget(TruffleString.CodeRange codeRange, boolean isTString) {
-        return DirectCallNode.create(new TRegexExecutorRootNode(language, executor.shallowCopy(), codeRange, isTString).getCallTarget());
+        final boolean isTrivial = executor.getNumberOfTransitions() <= TRegexOptions.TRegexMaxTransitionsInTrivialExecutor;
+        CompilerAsserts.partialEvaluationConstant(isTrivial);
+        if (isTrivial) {
+            return null;
+        } else {
+            return DirectCallNode.create(new TRegexExecutorRootNode(language, executor.shallowCopy(), codeRange, isTString).getCallTarget());
+        }
+    }
+
+    private Object runExecutor(Object input, int fromIndex, int index, int maxIndex, DirectCallNode callNode, TruffleString.CodeRange cachedCodeRange, boolean isTString) {
+        CompilerAsserts.partialEvaluationConstant(cachedCodeRange);
+        CompilerAsserts.partialEvaluationConstant(isTString);
+        CompilerAsserts.partialEvaluationConstant(callNode);
+        if (callNode == null) {
+            return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, isTString);
+        } else {
+            return callNode.call(input, fromIndex, index, maxIndex);
+        }
     }
 
     static boolean isCompactString(String str) {

@@ -58,22 +58,36 @@ public abstract class TRegexExecutorNode extends Node {
 
     private final RegexSource source;
     private final int numberOfCaptureGroups;
+    private final int numberOfTransitions;
     private @Child InputLengthNode lengthNode;
     private @Child InputReadNode charAtNode;
     private final BranchProfile bmpProfile = BranchProfile.create();
     private final BranchProfile astralProfile = BranchProfile.create();
 
-    protected TRegexExecutorNode(RegexAST ast) {
-        this(ast.getSource(), ast.getNumberOfCaptureGroups());
+    protected TRegexExecutorNode(RegexAST ast, int numberOfTransitions) {
+        this(ast.getSource(), ast.getNumberOfCaptureGroups(), numberOfTransitions);
     }
 
-    protected TRegexExecutorNode(RegexSource source, int numberOfCaptureGroups) {
+    protected TRegexExecutorNode(TRegexExecutorNode copy) {
+        this(copy.source, copy.numberOfCaptureGroups, copy.numberOfTransitions);
+    }
+
+    protected TRegexExecutorNode(RegexSource source, int numberOfCaptureGroups, int numberOfTransitions) {
         this.source = source;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
+        this.numberOfTransitions = numberOfTransitions;
     }
 
     public RegexSource getSource() {
         return source;
+    }
+
+    public final int getNumberOfCaptureGroups() {
+        return numberOfCaptureGroups;
+    }
+
+    public final int getNumberOfTransitions() {
+        return numberOfTransitions;
     }
 
     public Encoding getEncoding() {
@@ -372,10 +386,6 @@ public abstract class TRegexExecutorNode extends Node {
             return i;
         }
         return 0;
-    }
-
-    protected int getNumberOfCaptureGroups() {
-        return numberOfCaptureGroups;
     }
 
     public boolean isBooleanMatch() {
