@@ -42,6 +42,7 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -70,6 +71,7 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
     }
 
     @ExportMessage
+    @ImportStatic(CompilerDirectives.class)
     public abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
@@ -95,10 +97,6 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
         public static boolean isReadable(AbstractConstantKeysObject receiver, String symbol,
                         @Cached("createClassProfile()") @Cached.Shared("classProfile") ValueProfile classProfile) {
             return classProfile.profile(receiver).isMemberReadableImpl(symbol);
-        }
-
-        static boolean isExact(AbstractConstantKeysObject receiver, Class<?> cachedClass) {
-            return CompilerDirectives.isExact(receiver, cachedClass);
         }
     }
 

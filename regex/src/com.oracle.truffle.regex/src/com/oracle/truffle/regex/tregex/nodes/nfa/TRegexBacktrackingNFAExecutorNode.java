@@ -254,13 +254,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         return isFlagSet(FLAG_TRACK_LAST_GROUP);
     }
 
-    /**
-     * Should the reported lastGroup point to the first group that *begins* instead of the last
-     * group that *ends*? This is needed when executing Python lookbehind expressions. The semantics
-     * of the lastGroup field should correspond to the left-to-right evaluation of lookbehind
-     * assertions in Python, but we run lookbehinds in the right-to-left direction.
-     */
-
     public boolean isIgnoreCase() {
         return isFlagSet(FLAG_IGNORE_CASE);
     }
@@ -670,6 +663,12 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         return state.isFinalState(isForward()) && !(isMustAdvance() && locals.getIndex() == locals.getFromIndex());
     }
 
+    /**
+     * Should the reported lastGroup point to the first group that *begins* instead of the last
+     * group that *ends*? This is needed when executing Python lookbehind expressions. The semantics
+     * of the lastGroup field should correspond to the left-to-right evaluation of lookbehind
+     * assertions in Python, but we run lookbehinds in the right-to-left direction.
+     */
     public boolean returnsFirstGroup() {
         return isFlagSet(FLAG_RETURNS_FIRST_GROUP);
     }

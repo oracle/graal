@@ -102,7 +102,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         this.states = states;
         this.cgResultOrder = cgResultOrder;
         this.debugRecorder = debugRecorder;
-        this.innerLiteralPrefixMatcher = insert(innerLiteralPrefixMatcher);
+        this.innerLiteralPrefixMatcher = innerLiteralPrefixMatcher;
     }
 
     private TRegexDFAExecutorNode(TRegexDFAExecutorNode copy, TRegexDFAExecutorNode innerLiteralPrefixMatcher) {

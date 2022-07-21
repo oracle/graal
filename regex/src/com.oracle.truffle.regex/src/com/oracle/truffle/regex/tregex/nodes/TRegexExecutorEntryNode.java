@@ -180,7 +180,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
                     @Cached TruffleString.MaterializeNode materializeNode,
                     @Cached @SuppressWarnings("unused") TruffleString.GetCodeRangeNode codeRangeNode,
                     @Cached @SuppressWarnings("unused") TruffleString.CodeRangeEqualsNode codeRangeEqualsNode,
-                    @Cached("codeRangeNode.execute(input, executor.getEncoding().getTStringEncoding())") @SuppressWarnings("unused") TruffleString.CodeRange cachedCodeRange,
+                    @Cached("codeRangeNode.execute(input, executor.getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange,
                     @Cached("createCallTarget(cachedCodeRange, true)") DirectCallNode callNode) {
         materializeNode.execute(input, executor.getEncoding().getTStringEncoding());
         return runExecutor(input, fromIndex, index, maxIndex, callNode, cachedCodeRange, true);
@@ -197,9 +197,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
     }
 
     DirectCallNode createCallTarget(TruffleString.CodeRange codeRange, boolean isTString) {
-        final boolean isTrivial = executor.getNumberOfTransitions() <= TRegexOptions.TRegexMaxTransitionsInTrivialExecutor;
-        CompilerAsserts.partialEvaluationConstant(isTrivial);
-        if (isTrivial) {
+        if (executor.getNumberOfTransitions() <= TRegexOptions.TRegexMaxTransitionsInTrivialExecutor) {
             return null;
         } else {
             return DirectCallNode.create(new TRegexExecutorRootNode(language, executor.shallowCopy(), codeRange, isTString).getCallTarget());
