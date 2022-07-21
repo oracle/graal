@@ -28,6 +28,7 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.UseSnippetGraphCache;
 import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
@@ -249,28 +250,33 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     private static final TimerKey SnippetPreparationTime = DebugContext.timer("SnippetPreparationTime");
 
-    private static final AtomicInteger nextDebugContextId = new AtomicInteger();
-
     @Override
-    public DebugContext openSnippetDebugContext(Description description, DebugContext outer, OptionValues options) {
+    public DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, DebugContext outer, OptionValues options) {
         if (DebugStubsAndSnippets.getValue(options)) {
-            return openDebugContext(options, outer, description);
+            return openDebugContext(idPrefix, method, options, outer, false);
+        } else if (DumpOnError.getValue(options)) {
+            // If DumpOnError is enabled create a DebugContext with only scopes enabled and the
+            // debugHandlersFactory configured. This ensures that the snippet graphs can be found
+            // from the scope context and that the dump handlers are available to write out
+            // the graph dumps.
+            return openDebugContext(idPrefix, method, options, outer, true);
         }
         return DebugContext.disabled(options);
     }
 
     public DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
-        Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
-        return openSnippetDebugContext(description, DebugContext.forCurrentThread(), options);
+        return openSnippetDebugContext(idPrefix, method, DebugContext.forCurrentThread(), options);
     }
 
     public DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
-        Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
-        return openDebugContext(options, DebugContext.forCurrentThread(), description);
+        return openDebugContext(idPrefix, method, options, DebugContext.forCurrentThread(), false);
     }
 
-    private DebugContext openDebugContext(OptionValues options, DebugContext outer, Description description) {
-        return new Builder(options, debugHandlersFactory).globalMetrics(outer.getGlobalMetrics()).description(description).build();
+    private static final AtomicInteger nextDebugContextId = new AtomicInteger();
+
+    private DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options, DebugContext outer, boolean disabled) {
+        Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
+        return new Builder(options, debugHandlersFactory).globalMetrics(outer.getGlobalMetrics()).description(description).disabled(disabled).build();
     }
 
     @Override

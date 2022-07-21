@@ -64,6 +64,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -75,7 +76,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @RunWith(Parameterized.class)
 public class HostInliningTest extends GraalCompilerTest {
 
-    static final int NODE_COST_LIMIT = 500;
+    static final int NODE_COST_LIMIT = 1000;
 
     public enum TestRun {
         WITH_CONVERT_TO_GUARD,
@@ -120,6 +121,9 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testExplorationDepth1Fail");
         runTest("testExplorationDepth2Fail");
         runTest("testBytecodeSwitchtoBytecodeSwitch");
+        runTest("testInliningCutoff");
+        runTest("testNonDirectCalls");
+        runTest("testConstantFolding");
     }
 
     @SuppressWarnings("try")
@@ -258,6 +262,11 @@ public class HostInliningTest extends GraalCompilerTest {
         return sum;
     }
 
+    @InliningCutoff
+    static int inliningCutoff(int v) {
+        return v;
+    }
+
     static void trivalWithBoundary() {
         truffleBoundary();
     }
@@ -361,18 +370,20 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     interface A {
-        void foo();
+        int foo();
     }
 
     static final class B_extends_A implements A {
         @Override
-        public void foo() {
+        public int foo() {
+            return 1;
         }
     }
 
     static final class C_extends_A implements A {
         @Override
-        public void foo() {
+        public int foo() {
+            return 2;
         }
     }
 
@@ -589,10 +600,8 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
-    // bytecode dispatches should inline no matter the budget.
-    @NodeCostLimit(0)
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"nonTrivialMethod", "trivalWithBoundary"})
+    @ExpectNotInlined({"truffleBoundary"})
     static int testBytecodeSwitchtoBytecodeSwitch(int value) {
         int result = 0;
         for (int i = 0; i < 8; i++) {
@@ -637,19 +646,91 @@ public class HostInliningTest extends GraalCompilerTest {
             case 6:
                 return 4;
             case 7:
-                // not inlined, as not trivial (invokes >= 0)
                 trivalWithBoundary();
                 return 3;
             case 8:
-                // this is not inlined its not trivial.
                 return nonTrivialMethod(value);
             default:
-                /*
-                 * this call is still inlined because it is trivial.
-                 */
                 trivialMethod();
                 return -1;
         }
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined({"inliningCutoff"})
+    static int testInliningCutoff(int value) {
+        return inliningCutoff(value);
+    }
+
+    @BytecodeInterpreterSwitch
+    static int testNonDirectCalls(int value) {
+        return nonDirectCalls(value, new B_extends_A()) + nonDirectCalls(value, new C_extends_A());
+    }
+
+    private static int nonDirectCalls(int value, A a) {
+        // more than 10 indirect calls
+        int sum = value;
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        sum += a.foo();
+        return sum;
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined({"truffleBoundary"})
+    static int testConstantFolding(int value) {
+        return constantFolding(1) + constantFolding(12) + value;
+    }
+
+    private static int constantFolding(int value) {
+        // more than 10 indirect calls
+        switch (value) {
+            case 0:
+                truffleBoundary();
+                break;
+            case 1:
+                truffleBoundary();
+                break;
+            case 2:
+                truffleBoundary();
+                break;
+            case 3:
+                truffleBoundary();
+                break;
+            case 4:
+                truffleBoundary();
+                break;
+            case 5:
+                truffleBoundary();
+                break;
+            case 6:
+                truffleBoundary();
+                break;
+            case 7:
+                truffleBoundary();
+                break;
+            case 8:
+                truffleBoundary();
+                break;
+            case 9:
+                truffleBoundary();
+                break;
+            case 10:
+                truffleBoundary();
+                break;
+            case 11:
+                truffleBoundary();
+                break;
+        }
+        return value;
     }
 
     @Retention(RetentionPolicy.RUNTIME)

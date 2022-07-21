@@ -834,7 +834,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         truffleRuntime.initializeHostedKnownMethods(config.getMetaAccess());
 
         runtimeCompiledMethods = new LinkedHashSet<>();
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods()));
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods()));
+
         for (CallTreeNode runtimeCompiledMethod : ImageSingletons.lookup(GraalFeature.class).getRuntimeCompiledMethods().values()) {
+
             runtimeCompiledMethods.add(runtimeCompiledMethod.getImplementationMethod());
 
             /*

@@ -24,18 +24,15 @@
  */
 package com.oracle.svm.junit;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.util.ModuleSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.runner.Description;
 import org.junit.runner.Request;
 
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
+import com.oracle.svm.util.ModuleSupport;
 
 public final class JUnitFeature implements Feature {
 
@@ -66,11 +63,6 @@ public final class JUnitFeature implements Feature {
 
     private static boolean includesClass(Description dn, Class<?> clazz) {
         return clazz.equals(dn.getTestClass()) || dn.getChildren().stream().anyMatch(child -> includesClass(child, clazz));
-    }
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ReflectionFeature.class);
     }
 
     @Override

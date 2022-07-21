@@ -28,11 +28,18 @@ import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -323,6 +330,13 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
         }
         superResult = superResult.max(processInterfaces(clazz, memoize, earlyClassInitializerAnalyzedClasses));
 
+        if (superResult == InitKind.BUILD_TIME && (Proxy.isProxyClass(clazz) || LambdaUtils.isLambdaType(metaAccess.lookupJavaType(clazz)))) {
+            if (!Proxy.isProxyClass(clazz) || !implementsRunTimeInitializedInterface(clazz)) {
+                forceInitializeHosted(clazz, "proxy/lambda classes with interfaces initialized at build time are also initialized at build time", false);
+                return InitKind.BUILD_TIME;
+            }
+        }
+
         if (memoize && superResult != InitKind.RUN_TIME && clazzResult == InitKind.RUN_TIME && canBeProvenSafe(clazz)) {
             /*
              * Check if the class initializer is side-effect free using a simple intraprocedural
@@ -362,6 +376,32 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
             result = classInitKinds.merge(clazz, result, InitKind::min);
         }
         return result;
+    }
+
+    /**
+     * Interfaces must be initialized at run time if any interface method references a type that
+     * {@linkplain #shouldInitializeAtRuntime should be initialized at run time}.
+     */
+    private boolean implementsRunTimeInitializedInterface(Class<?> clazz) {
+        EconomicSet<Class<?>> visited = EconomicSet.create();
+        return Arrays.stream(clazz.getInterfaces()).anyMatch(c -> shouldInitializeInterfaceAtRunTime(c, visited));
+    }
+
+    private boolean shouldInitializeInterfaceAtRunTime(Class<?> clazz, EconomicSet<Class<?>> visited) {
+        if (visited.contains(clazz)) {
+            // already visited
+            return false;
+        }
+        GraalError.guarantee(clazz.isInterface(), "expected interface, got %s", clazz);
+        visited.add(clazz);
+        var methods = Arrays.stream(clazz.getDeclaredMethods());
+        var types = methods.flatMap(m -> Stream.concat(Stream.of(m.getReturnType()), Arrays.stream(m.getParameterTypes())));
+        // check for initialize at run time
+        if (types.anyMatch(this::shouldInitializeAtRuntime)) {
+            return true;
+        }
+        // iterate super interfaces recursively
+        return Arrays.stream(clazz.getInterfaces()).anyMatch(c -> shouldInitializeInterfaceAtRunTime(c, visited));
     }
 
     private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager, Set<Class<?>> earlyClassInitializerAnalyzedClasses) {

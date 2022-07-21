@@ -23,8 +23,6 @@ For the Java application used in this guide the first two approaches are applica
 This guide demonstrates how to build a native executable with the [Tracing agent](#build-a-native-executable-with-the-agent) and using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata).
 The goal is to show users the difference, and prove how using shared metadata can simplify the work.
 
-<!-- [Describe what the demo application is about] -->
-
 We recommend that you follow the instructions and create the application step-by-step. Alternatively, you can go right to the [completed example](https://github.com/graalvm/native-build-tools/tree/master/samples/metadata-repo-integration).
 
 > You must have [GraalVM installed with Native Image support](../README.md#install-native-image). 

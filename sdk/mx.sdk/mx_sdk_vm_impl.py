@@ -129,6 +129,9 @@ graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+
 _registered_graalvm_components = {}
 _env_tests = []
 
+_project_name = 'graal'
+
+mx.add_argument('--base-dist-name', help='Sets the name of the GraalVM base image ( for complete, ruby ... images), default to "base"', default='base')
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -339,6 +342,8 @@ mx.add_argument('--no-jlinking', action='store_true', help='Do not jlink graal l
 def _jlink_libraries():
     return not (mx.get_opts().no_jlinking or mx.env_var_to_bool('NO_JLINKING'))
 
+def get_graalvm_edition():
+    return 'ee' if mx_sdk_vm.graalvm_component_by_name('cmpee', fatalIfMissing=False) else 'ce'
 
 class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
@@ -878,6 +883,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         # COMMIT_INFO is unquoted to simplify JSON parsing
         return mx_sdk_vm.format_release_file(_metadata_dict, {'COMMIT_INFO'})
+
+    def get_artifact_metadata(self):
+        return {'edition': get_graalvm_edition(), 'type': mx.get_opts().base_dist_name, 'project': _project_name}
 
 
 class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
@@ -2427,6 +2435,17 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             path=None,
             **kw_args)
 
+    def get_artifact_metadata(self):
+        meta = super(GraalVmInstallableComponent, self).get_artifact_metadata()
+        meta.update({
+            'type': 'installable',
+            'installableName': self.main_component.installable_id.lower().replace('-', '_'),
+            'longName': self.main_component.name,
+            'stability': self.main_component.stability,
+            'symbolicName': 'org.graalvm.{}'.format(self.main_component.installable_id),
+        })
+        return meta
+
 
 class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     def __init__(self, component, graalvm, **kw_args):
@@ -2552,6 +2571,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             path_substitutions=graalvm.path_substitutions,
             string_substitutions=graalvm.string_substitutions,
             **kw_args)
+
+    def get_artifact_metadata(self):
+        return {'type': 'standalone', 'edition': get_graalvm_edition(), 'project': _project_name}
 
 
 def _get_jvm_cfg_contents():
@@ -2720,6 +2742,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
+        if mx.is_darwin():
+            _dynamic_cflags += ['-ObjC++']
 
         _graalvm_home = _get_graalvm_archive_path("")
 
@@ -2785,6 +2809,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_ldlibs = []
         if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
+        if mx.is_darwin():
+            _dynamic_ldlibs += ['-framework', 'Foundation']
         return super(NativeLibraryLauncherProject, self).ldlibs + _dynamic_ldlibs
 
     def default_language_home_relative_libpath(self):

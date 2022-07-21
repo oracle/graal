@@ -30,14 +30,14 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.config.conditional.MethodInfo;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.configure.config.conditional.MethodInfo;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.jvmtiagentbase.Support;
 
 /**

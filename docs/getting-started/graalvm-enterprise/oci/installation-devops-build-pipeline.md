@@ -27,6 +27,7 @@ The way to work with a build pipeline is to add statements to a [build specifica
 To install and use GraalVM Enterprise in the DevOps build pipeline, update your build specification file as follows:
 
 1. Add the command to install GraalVM Enterprise with Native Image and Java Development Kit (JDK):
+
     ```yml
     steps:
     - type: Command
@@ -60,9 +61,31 @@ To install and use GraalVM Enterprise in the DevOps build pipeline, update your 
 
 Here is an example of a complete [build specification file](https://github.com/oracle-devrel/oci-devops-examples/blob/main/oci-build-examples/oci_devops_build_with_graalenterprise/build_spec.yaml).
 
+Use  the `yum list` command to get a list of all the GraalVM Enterprise RPMs available. For instance, use the following command to list all the available GraalVM Enterprise 22.x JDK17 components:
+
+```shell
+yum list graalvm22-ee-17*
+
+graalvm22-ee-17-native-image.x86_64        22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-espresso.x86_64            22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-javascript.x86_64          22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-jdk.x86_64                 22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-libpolyglot.x86_64         22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-llvm.x86_64                22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-llvm-toolchain.x86_64      22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-nodejs.x86_64              22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-polyglot.x86_64            22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-python.x86_64              22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-ruby.x86_64                22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-tools.x86_64               22.2.0-1.el7       ol7_oci_included
+graalvm22-ee-17-wasm.x86_64                22.2.0-1.el7       ol7_oci_included
+...
+```
+
 To try this feature out, use the sample project: [Using GraalVM Enterprise in OCI DevOps Build Pipelines](https://github.com/oracle-devrel/oci-devops-examples/tree/main/oci-build-examples/oci_devops_build_with_graalenterprise). It describes how to set up GraalVM Enterprise in OCI DevOps service, create a build pipeline, add build stages, and so on.
 
 ### Related Documentation
 
 * [OCI DevOps: Using GraalVM Enterprise in DevOps Build Pipelines](https://docs.oracle.com/en-us/iaas/Content/devops/using/graalvm.htm)
 * [OCI Build Examples: Using GraalVM Enterprise in OCI DevOps Build Pipelines](https://github.com/oracle-devrel/oci-devops-examples/tree/main/oci-build-examples/oci_devops_build_with_graalenterprise)
+* [OCI Build Examples: Using GraalVM Enterprise in OCI DevOps to build a Micronaut REST App](https://github.com/oracle-devrel/oci-devops-examples/tree/main/oci-build-examples/oci_devops_graalee_micronaut)

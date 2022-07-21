@@ -532,6 +532,7 @@ public final class DebugContext implements AutoCloseable {
         private GlobalMetrics globalMetrics = NO_GLOBAL_METRIC_VALUES;
         private PrintStream logStream = getDefaultLogStream();
         private final Iterable<DebugHandlersFactory> factories;
+        private boolean disabled = false;
 
         /**
          * Builder for a {@link DebugContext} based on {@code options} and
@@ -588,13 +589,19 @@ public final class DebugContext implements AutoCloseable {
             return this;
         }
 
+        public Builder disabled(boolean disable) {
+            this.disabled = disable;
+            return this;
+        }
+
         public DebugContext build() {
             return new DebugContext(description,
                             compilationListener,
                             globalMetrics,
                             logStream,
                             Immutable.create(options),
-                            factories);
+                            factories,
+                            disabled);
         }
     }
 
@@ -604,6 +611,15 @@ public final class DebugContext implements AutoCloseable {
                     PrintStream logStream,
                     Immutable immutable,
                     Iterable<DebugHandlersFactory> factories) {
+        this(description, compilationListener, globalMetrics, logStream, immutable, factories, false);
+    }
+
+    private DebugContext(Description description,
+                    CompilationListener compilationListener,
+                    GlobalMetrics globalMetrics,
+                    PrintStream logStream,
+                    Immutable immutable,
+                    Iterable<DebugHandlersFactory> factories, boolean disableConfig) {
         this.immutable = immutable;
         this.description = description;
         this.globalMetrics = globalMetrics;
@@ -622,7 +638,11 @@ public final class DebugContext implements AutoCloseable {
                     }
                 }
             }
-            currentConfig = new DebugConfigImpl(options, logStream, dumpHandlers, verifyHandlers);
+            if (disableConfig) {
+                currentConfig = new DebugConfigImpl(options, null, null, null, null, null, null, null, logStream, dumpHandlers, verifyHandlers);
+            } else {
+                currentConfig = new DebugConfigImpl(options, logStream, dumpHandlers, verifyHandlers);
+            }
             currentScope = new ScopeImpl(this, Thread.currentThread(), DisableIntercept.getValue(options));
             currentScope.updateFlags(currentConfig);
             metricsEnabled = true;

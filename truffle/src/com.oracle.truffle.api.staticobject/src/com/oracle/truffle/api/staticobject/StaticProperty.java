@@ -43,6 +43,7 @@ package com.oracle.truffle.api.staticobject;
 import java.lang.reflect.Field;
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
@@ -133,12 +134,13 @@ public abstract class StaticProperty {
     }
 
     private void throwIllegalArgumentException(Class<?> accessType) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+        CompilerAsserts.neverPartOfCompilation();
         throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + type.getName() + "' cannot be accessed as '" + (accessType == null ? "null" : accessType.getName()) + "'");
     }
 
     private void checkObjectGetAccess() {
         if (type.isPrimitive()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throwIllegalArgumentException(Object.class);
         }
     }
@@ -146,15 +148,18 @@ public abstract class StaticProperty {
     private void checkObjectSetAccess(Object value) {
         if (value == null) {
             if (type.isPrimitive()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throwIllegalArgumentException(null);
             }
         } else if (!type.isInstance(value)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throwIllegalArgumentException(value.getClass());
         }
     }
 
     private void checkPrimitiveAccess(Class<?> accessType) {
         if (type != accessType) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throwIllegalArgumentException(accessType);
         }
     }

@@ -144,14 +144,15 @@ class DumpAllStacks implements SignalHandler {
             } else {
                 log.string("(no Java thread)");
             }
-            log.string(" tid=0x").zhex(vmThread.rawValue());
+            log.string(" thread=").zhex(vmThread);
             if (javaThread != null) {
                 log.string(" state=").string(javaThread.getState().name());
             }
             log.newline();
 
             log.indent(true);
-            JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
+            StackFramePrintVisitor visitor = new StackFramePrintVisitor();
+            JavaStackWalker.walkThread(vmThread, visitor, log);
             log.indent(false);
         }
     }

@@ -95,8 +95,14 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.Counter;
 
 public class SubstrateDiagnostics {
+    private static final int MAX_THREADS_TO_PRINT = 100_000;
+    private static final int MAX_FRAME_ANCHORS_TO_PRINT_PER_THREAD = 1000;
+
     private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1, "SubstrateDiagnostics.threadOnlyAttachedForCrashHandler");
     private static final ImageCodeLocationInfoPrinter imageCodeLocationInfoPrinter = new ImageCodeLocationInfoPrinter();
+    private static final Stage0StackFramePrintVisitor[] printVisitors = new Stage0StackFramePrintVisitor[]{new StackFramePrintVisitor(), new Stage1StackFramePrintVisitor(),
+                    new Stage0StackFramePrintVisitor()};
+
     private static volatile boolean loopOnFatalError;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -164,6 +170,9 @@ public class SubstrateDiagnostics {
     /**
      * Prints less detailed information than {@link #printFatalError} but this method guarantees
      * that it won't cause a crash if all parts of Native Image are fully functional.
+     *
+     * NOTE: Be aware that this method is not fully thread safe and that it may interfere with the
+     * fatal error handling. So, don't use this method in production.
      */
     public static void printInformation(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
         // Stack allocate an error context.
@@ -338,9 +347,17 @@ public class SubstrateDiagnostics {
         if (anchor.isNull()) {
             log.string("No anchors").newline();
         }
+
+        int printed = 0;
         while (anchor.isNonNull()) {
-            log.string("Anchor ").zhex(anchor.rawValue()).string(" LastJavaSP ").zhex(anchor.getLastJavaSP().rawValue()).string(" LastJavaIP ").zhex(anchor.getLastJavaIP().rawValue()).newline();
+            if (printed >= MAX_FRAME_ANCHORS_TO_PRINT_PER_THREAD) {
+                log.string("... (truncated)").newline();
+                break;
+            }
+
+            log.string("Anchor ").zhex(anchor).string(" LastJavaSP ").zhex(anchor.getLastJavaSP()).string(" LastJavaIP ").zhex(anchor.getLastJavaIP()).newline();
             anchor = anchor.getPreviousAnchor();
+            printed++;
         }
     }
 
@@ -668,11 +685,20 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 3;
             boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 2;
+            /*
+             * If we are not at a safepoint, then it is unsafe to access the thread locals of
+             * another thread as the IsolateThread could be freed at any time.
+             */
             if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
-                // If we are not at a safepoint, then it is unsafe to access thread locals of
-                // another thread as the IsolateThread could be freed at any time.
                 log.string("Threads:").indent(true);
+
+                int printed = 0;
                 for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                    if (printed >= MAX_THREADS_TO_PRINT) {
+                        log.string("... (truncated)").newline();
+                        break;
+                    }
+
                     log.zhex(thread).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
 
                     int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(thread);
@@ -687,7 +713,9 @@ public class SubstrateDiagnostics {
                     }
                     log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
                     log.newline();
+                    printed++;
                 }
+
                 log.indent(false);
             }
         }
@@ -826,9 +854,6 @@ public class SubstrateDiagnostics {
     }
 
     private static class DumpCurrentThreadDecodedStackTrace extends DiagnosticThunk {
-        private static final Stage0StackFramePrintVisitor[] PRINT_VISITORS = new Stage0StackFramePrintVisitor[]{StackFramePrintVisitor.SINGLETON, Stage1StackFramePrintVisitor.SINGLETON,
-                        Stage0StackFramePrintVisitor.SINGLETON};
-
         @Override
         public int maxInvocationCount() {
             return 3;
@@ -841,7 +866,7 @@ public class SubstrateDiagnostics {
             CodePointer ip = context.getInstructionPointer();
 
             log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(":").indent(true);
-            boolean success = ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
+            boolean success = ThreadStackPrinter.printStacktrace(sp, ip, printVisitors[invocationCount - 1].reset(), log);
 
             if (!success && DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel)) {
                 /*
@@ -857,7 +882,7 @@ public class SubstrateDiagnostics {
                     ip = sp.readWord(0);
                     sp = sp.add(ConfigurationValues.getTarget().wordSize);
 
-                    ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
+                    ThreadStackPrinter.printStacktrace(sp, ip, printVisitors[invocationCount - 1].reset(), log);
                 }
             }
 
@@ -868,7 +893,7 @@ public class SubstrateDiagnostics {
     private static class DumpOtherStackTraces extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
-            return 1;
+            return 3;
         }
 
         @Override
@@ -877,18 +902,25 @@ public class SubstrateDiagnostics {
             if (VMOperation.isInProgressAtSafepoint()) {
                 // Iterate all threads without checking if the thread mutex is locked (it should
                 // be locked by this thread though because we are at a safepoint).
+                int printed = 0;
                 for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (vmThread == CurrentIsolate.getCurrentThread()) {
                         continue;
                     }
+                    if (printed >= MAX_THREADS_TO_PRINT) {
+                        log.string("... (truncated)").newline();
+                        break;
+                    }
+
                     try {
                         log.string("Thread ").zhex(vmThread).string(":").indent(true);
                         printFrameAnchors(log, vmThread);
-                        printStackTrace(log, vmThread);
+                        printStackTrace(log, vmThread, invocationCount);
                         log.indent(false);
                     } catch (Exception e) {
                         dumpException(log, this, e);
                     }
+                    printed++;
                 }
             }
         }
@@ -899,9 +931,9 @@ public class SubstrateDiagnostics {
             log.indent(false);
         }
 
-        private static void printStackTrace(Log log, IsolateThread vmThread) {
+        private static void printStackTrace(Log log, IsolateThread vmThread, int invocationCount) {
             log.string("Stacktrace:").indent(true);
-            JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
+            JavaStackWalker.walkThread(vmThread, printVisitors[invocationCount - 1].reset(), log);
             log.redent(false);
         }
     }
@@ -960,8 +992,7 @@ public class SubstrateDiagnostics {
                     FrameInfoQueryResult frameInfo;
                     FrameInfoQueryResult rootInfo = null;
                     do {
-                        singleShotFrameInfoQueryResultAllocator.reload();
-                        frameInfo = CodeInfoAccess.nextFrameInfo(info, frameInfoReader, singleShotFrameInfoQueryResultAllocator, dummyValueInfoAllocator, frameInfoState);
+                        frameInfo = CodeInfoAccess.nextFrameInfo(info, frameInfoReader, singleShotFrameInfoQueryResultAllocator.reload(), dummyValueInfoAllocator, frameInfoState);
                         if (frameInfo != null) {
                             rootInfo = frameInfo;
                         }
@@ -1023,12 +1054,13 @@ public class SubstrateDiagnostics {
 
     /**
      * Can be used to implement printing of custom diagnostic information. Instances are singletons
-     * that live in the image heap. The same instance can be used by multiple threads concurrently.
+     * that live in the image heap.
      */
     public abstract static class DiagnosticThunk {
         /**
          * Prints diagnostic information. This method may be invoked by multiple threads
-         * concurrently.
+         * concurrently. When printing information, be careful that the output is limited to a sane
+         * amount, even if data structures are corrupt (e.g., a cycle in a linked list).
          *
          * If an error (e.g., exception or segfault) occurs while executing this method, then the
          * same thread may execute this method multiple times sequentially. The parameter

@@ -355,10 +355,14 @@ public final class BytecodeStream {
                     // Should rather be CompilerAsserts.neverPartOfCompilation() but this is
                     // reachable in SVM.
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
+                    throw EspressoError.shouldNotReachHere(unknownVariableLengthBytecodeMessage(opcode));
             }
         }
         return length;
+    }
+
+    private static String unknownVariableLengthBytecodeMessage(int opcode) {
+        return "unknown variable-length bytecode: " + opcode;
     }
 
     public void printBytecode(Klass klass, PrintStream out) {

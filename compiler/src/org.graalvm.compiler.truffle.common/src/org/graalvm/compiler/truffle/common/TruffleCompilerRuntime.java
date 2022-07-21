@@ -72,7 +72,7 @@ public interface TruffleCompilerRuntime {
      * Value returned by {@link TruffleCompilerRuntime#getConstantFieldInfo(ResolvedJavaField)}
      * describing how a field read can be constant folded based on Truffle annotations.
      */
-    class ConstantFieldInfo {
+    final class ConstantFieldInfo {
 
         /**
          * Denotes a field is annotated by {@code com.oracle.truffle.api.nodes.Node.Child}.
@@ -457,6 +457,11 @@ public interface TruffleCompilerRuntime {
      * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitch}.
      */
     boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method);
+
+    /**
+     * Determines if {@code method} is annotated by {@code InliningCutoff}.
+     */
+    boolean isInliningCutoff(ResolvedJavaMethod method);
 
     /**
      * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitchBoundary}.

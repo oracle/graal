@@ -1,8 +1,8 @@
 ---
 layout: ni-docs
-toc_group: native-interoperability
+toc_group: native-code-interoperability
 link_title: C API
-permalink: /reference-manual/native-image/native-interoperability/C-API/
+permalink: /reference-manual/native-image/native-code-interoperability/C-API/
 redirect_from: /$version/reference-manual/native-image/C-API/
 ---
 

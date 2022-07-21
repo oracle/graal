@@ -35,6 +35,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
@@ -431,6 +433,9 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     private Object interruptLock() {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            throw VMError.unsupportedFeature("Loom is not yet supported on JDK 19");
+        }
         return JavaThreads.toTarget(this).blockerLock;
     }
 
@@ -466,6 +471,9 @@ final class SubstrateVirtualThread extends Thread {
 
     @Override
     public void interrupt() {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            throw VMError.unsupportedFeature("Loom is not yet supported on JDK 19");
+        }
         if (Thread.currentThread() != this) {
             Object token = switchToCarrierAndAcquireInterruptLock();
             try {

@@ -38,8 +38,6 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 
 _suite = mx.suite('vm')
-_native_image_vm_registry = mx_benchmark.VmRegistry('NativeImage', 'ni-vm')
-_gu_vm_registry = mx_benchmark.VmRegistry('GraalUpdater', 'gu-vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
 _polybench_modes = [
     ('standard', ['--mode=standard']),
@@ -853,67 +851,6 @@ class NativeImageVM(GraalVm):
         return stderr_path, stdout_path
 
 
-class NativeImageBuildVm(GraalVm):
-    def run(self, cwd, args):
-        return self.run_launcher('native-image', args, cwd)
-
-
-class GuVm(GraalVm):
-    def run(self, cwd, args):
-        return self.run_launcher('gu', ['rebuild-images'] + args, cwd)
-
-
-class NativeImageBuildBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
-    def __init__(self, name, benchmarks, registry):
-        super(NativeImageBuildBenchmarkSuite, self).__init__()
-        self._name = name
-        self._benchmarks = benchmarks
-        self._registry = registry
-
-    def group(self):
-        return 'Graal'
-
-    def subgroup(self):
-        return 'substratevm'
-
-    def name(self):
-        return self._name
-
-    def benchmarkList(self, bmSuiteArgs):
-        return list(self._benchmarks.keys())
-
-    def createVmCommandLineArgs(self, benchmarks, runArgs):
-        if not benchmarks:
-            benchmarks = self.benchmarkList(runArgs)
-
-        cmd_line_args = []
-        for bench in benchmarks:
-            cmd_line_args += self._benchmarks[bench]
-        return cmd_line_args + runArgs
-
-    def get_vm_registry(self):
-        return self._registry
-
-    def rules(self, output, benchmarks, bmSuiteArgs):
-        class NativeImageTimeToInt(object):
-            def __call__(self, *args, **kwargs):
-                return int(float(args[0].replace(',', '')))
-
-        return [
-            mx_benchmark.StdOutRule(r'^\[(?P<benchmark>\S+?):[0-9]+\][ ]+\[total\]:[ ]+(?P<time>[0-9,.]+?) ms', {
-                "bench-suite": self.name(),
-                "benchmark": ("<benchmark>", str),
-                "metric.name": "time",
-                "metric.type": "numeric",
-                "metric.unit": "ms",
-                "metric.value": ("<time>", NativeImageTimeToInt()),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-            })
-        ]
-
-
 class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
     def __init__(self):
         super(AgentScriptJsBenchmarkSuite, self).__init__()
@@ -1317,8 +1254,6 @@ def polybenchmark_rules(benchmark, metric_name, mode):
         ]
     return rules
 
-mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', benchmarks={'js': ['--language:js']}, registry=_native_image_vm_registry))
-mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
 mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
 mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
@@ -1332,9 +1267,6 @@ def register_graalvm_vms():
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
                 _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))
-        if mx_sdk_vm_impl.has_component('svm'):
-            _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
-            _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
         if _suite.get_import("polybenchmarks") is not None:
             import mx_polybenchmarks_benchmark
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "jvm", [], ["--jvm"]))

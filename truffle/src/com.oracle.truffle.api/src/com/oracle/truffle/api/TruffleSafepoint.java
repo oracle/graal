@@ -148,7 +148,10 @@ public abstract class TruffleSafepoint {
      * @since 21.1
      */
     public static void poll(Node location) {
-        Objects.requireNonNull(location);
+        if (location == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new NullPointerException();
+        }
         HANDSHAKE.poll(location);
     }
 

@@ -303,13 +303,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     include_by_default=True,
 ))
 
-for mode in ['jvm', 'native']:
-    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
-    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])
-    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-statements', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=statements'])
-    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cputracer-roots', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceRoots=true'])
-    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cputracer-statements', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceStatements=true'])
-
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],
     'gate' : [mx_gate.gate, ''],
