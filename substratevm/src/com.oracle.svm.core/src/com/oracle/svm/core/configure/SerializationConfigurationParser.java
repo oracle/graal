@@ -49,7 +49,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
         super(strictConfiguration);
         this.serializationSupport = serializationSupport;
-        this.proxyConfigurationParser = new ProxyConfigurationParser((conditionalElement) -> serializationSupport.registerProxyClass(conditionalElement.getCondition(), conditionalElement.getElement()), strictConfiguration);
+        this.proxyConfigurationParser = new ProxyConfigurationParser(
+                        (conditionalElement) -> serializationSupport.registerProxyClass(conditionalElement.getCondition(), conditionalElement.getElement()), strictConfiguration);
     }
 
     @Override

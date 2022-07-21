@@ -52,7 +52,6 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     private final ProxyConfiguration proxyConfiguration;
     private final Set<ConditionalElement<List<String>>> interfaceListsSerializableProxies = ConcurrentHashMap.newKeySet();
 
-
     public SerializationConfiguration() {
         proxyConfiguration = new ProxyConfiguration();
     }
