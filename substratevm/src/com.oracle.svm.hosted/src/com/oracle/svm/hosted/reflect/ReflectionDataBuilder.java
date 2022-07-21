@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.reflect;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -108,7 +107,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<AccessibleObject> heapReflectionObjects = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
 
-    private final Set<Class<?>> processedClasses = new HashSet<>();
     private final Set<Type> processedTypes = new HashSet<>();
     private final Set<DynamicHub> processedDynamicHubs = new HashSet<>();
     private final Map<AnalysisField, Set<AnalysisType>> processedHidingFields = new HashMap<>();
@@ -195,74 +193,38 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     protected void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        processReachableTypes(access);
+        processAnnotationProxyTypes(access);
         processRegisteredElements(access);
         processMethodMetadata(access);
     }
 
-    /*
-     * Process all reachable types, looking for array types or types that have an enclosing method
-     * or constructor. Initialize the reflection metadata for those types.
-     */
-    private void processReachableTypes(DuringAnalysisAccessImpl access) {
-        /*
-         * We need to find all classes that have an enclosingMethod or enclosingConstructor.
-         * Unfortunately, there is no reverse lookup (ask a Method or Constructor about the classes
-         * they contain), so we need to iterate through all types that have been loaded so far.
-         * Accessing the original java.lang.Class for a ResolvedJavaType is not 100% reliable,
-         * especially in the case of class and method substitutions. But it is the best we can do
-         * here, and we assume that user code that requires reflection support is not using
-         * substitutions.
-         */
+    private void processAnnotationProxyTypes(DuringAnalysisAccessImpl access) {
         for (AnalysisType type : access.getUniverse().getTypes()) {
-            Class<?> originalClass = type.getJavaClass();
-            if (originalClass != null) {
-                if (processedClasses.contains(originalClass)) {
-                    /* Class has already been processed. */
-                    continue;
+            if (type.getWrappedWithoutResolve() instanceof AnnotationSubstitutionType) {
+                /*
+                 * Proxy classes for annotations present the annotation default methods and fields
+                 * as their own.
+                 */
+                ResolvedJavaType annotationType = ((AnnotationSubstitutionType) type.getWrappedWithoutResolve()).getAnnotationInterfaceType();
+                Class<?> annotationClass = access.getUniverse().lookup(annotationType).getJavaClass();
+                if (!annotationMembers.containsKey(annotationClass)) {
+                    processClass(access, annotationClass);
                 }
-                if (type.isArray() && !access.isReachable(type)) {
-                    /*
-                     * We don't want the array type (and its elemental type) to become reachable as
-                     * a result of initializing its reflection data.
-                     */
-                    continue;
-                }
-                if (type.isArray() || enclosingMethodOrConstructor(originalClass, null) != null) {
-                    /*
-                     * This type is either an array or it has an enclosing method or constructor. In
-                     * either case we process the class, i.e., initialize its reflection data, mark
-                     * it as processed and require an analysis iteration.
-                     */
-                    processClass(access, originalClass);
-                    processedClasses.add(originalClass);
-                    access.requireAnalysisIteration();
-                }
-                if (type.getWrappedWithoutResolve() instanceof AnnotationSubstitutionType) {
-                    /*
-                     * Proxy classes for annotations present the annotation default methods and
-                     * fields as their own.
-                     */
-                    ResolvedJavaType annotationType = ((AnnotationSubstitutionType) type.getWrappedWithoutResolve()).getAnnotationInterfaceType();
-                    Class<?> annotationClass = access.getUniverse().lookup(annotationType).getJavaClass();
-                    if (!annotationMembers.containsKey(annotationClass)) {
-                        processClass(access, annotationClass);
-                    }
-                    for (Member member : annotationMembers.get(annotationClass)) {
-                        try {
-                            if (member instanceof Field) {
-                                Field field = (Field) member;
-                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredField(field.getName()));
-                            } else if (member instanceof Method) {
-                                Method method = (Method) member;
-                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
-                            }
-                        } catch (NoSuchFieldException | NoSuchMethodException e) {
-                            /*
-                             * The annotation member is not present in the proxy class so we don't
-                             * add it.
-                             */
+                for (Member member : annotationMembers.get(annotationClass)) {
+                    try {
+                        Class<?> annotationProxyClass = type.getJavaClass();
+                        if (member instanceof Field) {
+                            Field field = (Field) member;
+                            register(ConfigurationCondition.alwaysTrue(), false, annotationProxyClass.getDeclaredField(field.getName()));
+                        } else if (member instanceof Method) {
+                            Method method = (Method) member;
+                            register(ConfigurationCondition.alwaysTrue(), false, annotationProxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
                         }
+                    } catch (NoSuchFieldException | NoSuchMethodException e) {
+                        /*
+                         * The annotation member is not present in the proxy class so we don't add
+                         * it.
+                         */
                     }
                 }
             }
@@ -816,45 +778,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public boolean requiresProcessing() {
         return !modifiedClasses.isEmpty();
-    }
-
-    private static Executable enclosingMethodOrConstructor(Class<?> clazz, List<Throwable> errors) {
-        Method enclosingMethod;
-        Constructor<?> enclosingConstructor;
-        try {
-            enclosingMethod = clazz.getEnclosingMethod();
-            enclosingConstructor = clazz.getEnclosingConstructor();
-        } catch (TypeNotPresentException | LinkageError e) {
-            /*
-             * If any of the methods or fields in the class of the enclosing method reference
-             * missing types or types that have incompatible changes a LinkageError is thrown. Skip
-             * the class.
-             */
-            if (errors != null) {
-                errors.add(e);
-            }
-            return null;
-        } catch (InternalError ex) {
-            /*
-             * Could not find the enclosing method of the class. This is a host VM error which can
-             * happen due to invalid bytecode. For example if the eclosing method index points to a
-             * synthetic method for a anonymous class declared inside a lambda. We skip registering
-             * the enclosing method for such classes.
-             */
-            if (errors != null) {
-                errors.add(ex);
-            }
-            return null;
-        }
-
-        if (enclosingMethod == null && enclosingConstructor == null) {
-            return null;
-        }
-        if (enclosingMethod != null && enclosingConstructor != null) {
-            throw VMError.shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
-        }
-
-        return enclosingMethod != null ? enclosingMethod : enclosingConstructor;
     }
 
     @Override
