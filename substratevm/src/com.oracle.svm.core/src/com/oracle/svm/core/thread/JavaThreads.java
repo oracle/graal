@@ -40,7 +40,6 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -85,19 +84,6 @@ public final class JavaThreads {
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_Thread toTarget(Thread thread) {
         return Target_java_lang_Thread.class.cast(thread);
-    }
-
-    public static int getThreadStatus(Thread thread) {
-        return LoomSupport.CompatibilityUtil.getThreadStatus(toTarget(thread));
-    }
-
-    public static void setThreadStatus(Thread thread, int threadStatus) {
-        LoomSupport.CompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
-    }
-
-    /** Safe method to get a thread's internal state since {@link Thread#getState} is not final. */
-    static Thread.State getThreadState(Thread thread) {
-        return Target_jdk_internal_misc_VM.toThreadState(getThreadStatus(thread));
     }
 
     /**
@@ -264,7 +250,7 @@ public final class JavaThreads {
      * <li>No security manager: using the ContextClassLoader of the parent.</li>
      * </ul>
      */
-    @SuppressWarnings({"deprecation"}) // AccessController is deprecated starting JDK 17
+    @SuppressWarnings({"deprecation", "removal"}) // AccessController is deprecated starting JDK 17
     static void initializeNewThread(
                     Target_java_lang_Thread tjlt,
                     ThreadGroup groupArg,
@@ -291,21 +277,41 @@ public final class JavaThreads {
             priority = parent.getPriority();
             daemon = parent.isDaemon();
         }
-        LoomSupport.CompatibilityUtil.initThreadFields(tjlt, group, target, stackSize, priority, daemon, ThreadStatus.NEW);
 
-        if (!(LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(fromTarget(tjlt)))) {
-            JavaThreads.toTarget(group).addUnstarted();
+        initThreadFields(tjlt, group, target, stackSize, priority, daemon);
+
+        if (!VirtualThreads.isSupported() || !VirtualThreads.singleton().isVirtual(fromTarget(tjlt))) {
+            PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
+            if (JavaVersionUtil.JAVA_SPEC < 19) {
+                JavaThreads.toTarget(group).addUnstarted();
+            }
         }
 
         tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
 
-        initializeNewThreadLocalsAndLoader(tjlt, allowThreadLocals, inheritThreadLocals, parent);
+        initNewThreadLocalsAndLoader(tjlt, allowThreadLocals, inheritThreadLocals, parent);
 
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();
     }
 
-    static void initializeNewThreadLocalsAndLoader(Target_java_lang_Thread tjlt, boolean allowThreadLocals, boolean inheritThreadLocals, Thread parent) {
+    static void initThreadFields(Target_java_lang_Thread tjlt, ThreadGroup group, Runnable target, long stackSize, int priority, boolean daemon) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            assert tjlt.holder == null;
+            tjlt.holder = new Target_java_lang_Thread_FieldHolder(group, target, stackSize, priority, daemon);
+        } else {
+            tjlt.group = group;
+            tjlt.priority = priority;
+            tjlt.daemon = daemon;
+            tjlt.target = target;
+            tjlt.setPriority(priority);
+
+            /* Stash the specified stack size in case the VM cares */
+            tjlt.stackSize = stackSize;
+        }
+    }
+
+    static void initNewThreadLocalsAndLoader(Target_java_lang_Thread tjlt, boolean allowThreadLocals, boolean inheritThreadLocals, Thread parent) {
         if (JavaVersionUtil.JAVA_SPEC >= 19 && !allowThreadLocals) {
             tjlt.threadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
             tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;

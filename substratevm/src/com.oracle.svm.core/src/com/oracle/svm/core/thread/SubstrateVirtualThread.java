@@ -553,7 +553,7 @@ final class SubstrateVirtualThread extends Thread {
                     @SuppressWarnings("hiding")
                     Thread carrierThread = this.carrierThread;
                     if (carrierThread != null) {
-                        return JavaThreads.getThreadState(carrierThread);
+                        return PlatformThreads.getThreadState(carrierThread);
                     }
                 } finally {
                     releaseInterruptLockAndSwitchBack(token);
@@ -592,7 +592,7 @@ final class SubstrateVirtualThread extends Thread {
             try {
                 carrier = carrierThread;
                 if (carrier != null) {
-                    String stateAsString = JavaThreads.getThreadState(carrier).toString();
+                    String stateAsString = PlatformThreads.getThreadState(carrier).toString();
                     sb.append(stateAsString.toLowerCase(Locale.ROOT));
                     sb.append('@');
                     sb.append(carrier.getName());

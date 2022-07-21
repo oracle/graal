@@ -217,13 +217,13 @@ public final class Target_java_lang_Thread {
          */
         this.threadData = new ThreadData();
 
-        LoomSupport.CompatibilityUtil.initThreadFields(this,
-                        (withGroup != null) ? withGroup : PlatformThreads.singleton().mainGroup,
-                        null, 0,
-                        Thread.NORM_PRIORITY, asDaemon, ThreadStatus.RUNNABLE);
+        ThreadGroup nonnullGroup = (withGroup != null) ? withGroup : PlatformThreads.singleton().mainGroup;
+        JavaThreads.initThreadFields(this, nonnullGroup, null, 0, Thread.NORM_PRIORITY, asDaemon);
+        PlatformThreads.setThreadStatus(JavaThreads.fromTarget(this), ThreadStatus.RUNNABLE);
 
-        if (LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
             tid = Target_java_lang_Thread_ThreadIdentifiers.next();
+            interruptLock = new Object();
         } else {
             tid = nextThreadID();
             blockerLock = new Object();
@@ -342,6 +342,8 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     private Target_java_lang_Thread(String name, int characteristics, boolean bound) {
+        VMError.guarantee(!bound, "Bound virtual threads are not supported");
+
         /* Non-0 instance field initialization. */
         this.interruptLock = new Object();
 
@@ -351,7 +353,7 @@ public final class Target_java_lang_Thread {
 
         boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
-        JavaThreads.initializeNewThreadLocalsAndLoader(this, allowThreadLocals, inheritThreadLocals, Thread.currentThread());
+        JavaThreads.initNewThreadLocalsAndLoader(this, allowThreadLocals, inheritThreadLocals, Thread.currentThread());
     }
 
     @SuppressWarnings("hiding")
@@ -374,7 +376,7 @@ public final class Target_java_lang_Thread {
          * Thread.join() on the launched thread, but the thread could also already have changed its
          * state itself. Atomically switch from NEW to RUNNABLE if it has not.
          */
-        LoomSupport.CompatibilityUtil.compareAndSetThreadStatus(this, ThreadStatus.NEW, ThreadStatus.RUNNABLE);
+        PlatformThreads.compareAndSetThreadStatus(JavaThreads.fromTarget(this), ThreadStatus.NEW, ThreadStatus.RUNNABLE);
     }
 
     @Substitute
@@ -616,6 +618,7 @@ final class Target_java_lang_Thread_Constants {
 }
 
 @TargetClass(value = Thread.class, innerClass = "FieldHolder", onlyWith = JDK19OrLater.class)
+@SuppressWarnings("unused")
 final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     ThreadGroup group;
@@ -624,26 +627,20 @@ final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     long stackSize;
     @Alias //
-    int priority;
+    volatile int priority;
     @Alias //
-    boolean daemon;
+    volatile boolean daemon;
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadHolderRecomputation.class) //
     volatile int threadStatus;
 
-    Target_java_lang_Thread_FieldHolder(
-                    ThreadGroup group,
+    @Alias
+    Target_java_lang_Thread_FieldHolder(ThreadGroup group,
                     Runnable task,
                     long stackSize,
                     int priority,
                     boolean daemon) {
-        this.group = group;
-        this.task = task;
-        this.stackSize = stackSize;
-        this.priority = priority;
-        this.daemon = daemon;
     }
-
 }
 
 @Substitute//

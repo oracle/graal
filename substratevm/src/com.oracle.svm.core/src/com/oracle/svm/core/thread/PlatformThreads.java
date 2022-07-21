@@ -30,6 +30,7 @@ import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
 import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,6 +52,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -78,6 +80,7 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -91,6 +94,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 
@@ -101,6 +105,11 @@ import jdk.internal.misc.Unsafe;
  * @see JavaThreads
  */
 public abstract class PlatformThreads {
+    private static final Field FIELDHOLDER_STATUS_FIELD = (!ImageInfo.inImageCode() || JavaVersionUtil.JAVA_SPEC < 19) ? null
+                    : ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus");
+    private static final Field THREAD_STATUS_FIELD = (!ImageInfo.inImageCode() || JavaVersionUtil.JAVA_SPEC >= 19) ? null
+                    : ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus");
+
     @Fold
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
@@ -366,7 +375,8 @@ public abstract class PlatformThreads {
     public static long getRequestedStackSize(Thread thread) {
         /* Return a stack size based on parameters and command line flags. */
         long stackSize;
-        long threadSpecificStackSize = LoomSupport.CompatibilityUtil.getStackSize(toTarget(thread));
+        Target_java_lang_Thread tjlt = toTarget(thread);
+        long threadSpecificStackSize = (JavaVersionUtil.JAVA_SPEC >= 19) ? tjlt.holder.stackSize : tjlt.stackSize;
         if (threadSpecificStackSize != 0) {
             /* If the user set a thread stack size at thread creation, then use that. */
             stackSize = threadSpecificStackSize;
@@ -441,14 +451,14 @@ public abstract class PlatformThreads {
          * First of all, ensure we are in RUNNABLE state. If !manuallyStarted, we race with the
          * thread that launched us to set the status and we could still be in status NEW.
          */
-        JavaThreads.setThreadStatus(thread, ThreadStatus.RUNNABLE);
+        setThreadStatus(thread, ThreadStatus.RUNNABLE);
 
         assignCurrent0(thread);
 
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
             final ThreadGroup group = thread.getThreadGroup();
-            if (!(LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread))) {
+            if (JavaVersionUtil.JAVA_SPEC < 19 && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread))) {
                 toTarget(group).addUnstarted();
                 toTarget(group).add(thread);
             }
@@ -643,7 +653,7 @@ public abstract class PlatformThreads {
          * Then set the threadStatus to TERMINATED. This makes Thread.isAlive() return false and
          * allows Thread.join() to complete once we notify all the waiters below.
          */
-        JavaThreads.setThreadStatus(thread, ThreadStatus.TERMINATED);
+        setThreadStatus(thread, ThreadStatus.TERMINATED);
         /*
          * And finally, wake up any threads waiting to join this one.
          */
@@ -812,9 +822,9 @@ public abstract class PlatformThreads {
 
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
         // Change the Java thread state while parking.
-        int oldStatus = JavaThreads.getThreadStatus(thread);
+        int oldStatus = getThreadStatus(thread);
         int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED);
-        JavaThreads.setThreadStatus(thread, newStatus);
+        setThreadStatus(thread, newStatus);
         try {
             /*
              * If another thread interrupted this thread in the meanwhile, then the call below won't
@@ -822,7 +832,7 @@ public abstract class PlatformThreads {
              */
             parkEvent.condWait();
         } finally {
-            JavaThreads.setThreadStatus(thread, oldStatus);
+            setThreadStatus(thread, oldStatus);
         }
     }
 
@@ -835,9 +845,9 @@ public abstract class PlatformThreads {
         }
 
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
-        int oldStatus = JavaThreads.getThreadStatus(thread);
+        int oldStatus = getThreadStatus(thread);
         int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
-        JavaThreads.setThreadStatus(thread, newStatus);
+        setThreadStatus(thread, newStatus);
         try {
             /*
              * If another thread interrupted this thread in the meanwhile, then the call below won't
@@ -845,7 +855,7 @@ public abstract class PlatformThreads {
              */
             parkEvent.condTimedWait(delayNanos);
         } finally {
-            JavaThreads.setThreadStatus(thread, oldStatus);
+            setThreadStatus(thread, oldStatus);
         }
     }
 
@@ -899,8 +909,8 @@ public abstract class PlatformThreads {
         if (JavaThreads.isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()
         }
-        final int oldStatus = JavaThreads.getThreadStatus(thread);
-        JavaThreads.setThreadStatus(thread, ThreadStatus.SLEEPING);
+        final int oldStatus = getThreadStatus(thread);
+        setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
             /*
              * If another thread interrupted this thread in the meanwhile, then the call below won't
@@ -908,7 +918,7 @@ public abstract class PlatformThreads {
              */
             sleepEvent.condTimedWait(delayNanos);
         } finally {
-            JavaThreads.setThreadStatus(thread, oldStatus);
+            setThreadStatus(thread, oldStatus);
         }
     }
 
@@ -932,9 +942,36 @@ public abstract class PlatformThreads {
         }
     }
 
-    static boolean isAlive(Thread thread) {
+    public static int getThreadStatus(Thread thread) {
         assert !isVirtual(thread);
-        int threadStatus = LoomSupport.CompatibilityUtil.getThreadStatus(toTarget(thread));
+        return (JavaVersionUtil.JAVA_SPEC >= 19) ? toTarget(thread).holder.threadStatus : toTarget(thread).threadStatus;
+    }
+
+    /** Safe method to get a thread's internal state since {@link Thread#getState} is not final. */
+    static Thread.State getThreadState(Thread thread) {
+        return Target_jdk_internal_misc_VM.toThreadState(getThreadStatus(thread));
+    }
+
+    public static void setThreadStatus(Thread thread, int threadStatus) {
+        assert !isVirtual(thread);
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            toTarget(thread).holder.threadStatus = threadStatus;
+        } else {
+            toTarget(thread).threadStatus = threadStatus;
+        }
+    }
+
+    static boolean compareAndSetThreadStatus(Thread thread, int expectedStatus, int newStatus) {
+        assert !isVirtual(thread);
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            return Unsafe.getUnsafe().compareAndSetInt(toTarget(thread).holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
+        } else {
+            return Unsafe.getUnsafe().compareAndSetInt(thread, Unsafe.getUnsafe().objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
+        }
+    }
+
+    static boolean isAlive(Thread thread) {
+        int threadStatus = getThreadStatus(thread);
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
     }
 
