@@ -82,6 +82,8 @@ public final class Meta extends ContextAccessImpl {
         // Object and Class (+ Class fields) must be initialized before all other classes in order
         // to eagerly create the guest Class instances.
         java_lang_Object = knownKlass(Type.java_lang_Object);
+        // Cloneable must be loaded before Serializable.
+        java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
         java_lang_Class = knownKlass(Type.java_lang_Class);
         java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
         java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
@@ -102,11 +104,12 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Class_module = null;
         }
 
-        // Ensure that Object, Class and all its super-interfaces have the guest Class initialized.
+        // Ensure that Object, Cloneable, Class and all its super-interfaces have the guest Class
+        // initialized.
+        initializeEspressoClassInHierarchy(java_lang_Cloneable);
         initializeEspressoClassInHierarchy(java_lang_Class);
         // From now on, all Klass'es will safely initialize the guest Class.
 
-        java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
         java_lang_Object_array = java_lang_Object.array();
