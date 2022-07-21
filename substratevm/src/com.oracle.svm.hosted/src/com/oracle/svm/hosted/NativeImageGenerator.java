@@ -648,10 +648,12 @@ public class NativeImageGenerator {
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
 
-                codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, loader.platform,
-                                ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
-                codeCache.layoutConstants();
-                codeCache.layoutMethods(debug, bb, compilationExecutor);
+                try (ProgressReporter.ReporterClosable ac = reporter.printLayout()) {
+                    codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, loader.platform,
+                                    ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
+                    codeCache.layoutConstants();
+                    codeCache.layoutMethods(debug, bb, compilationExecutor);
+                }
 
                 BuildPhaseProvider.markCompilationFinished();
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug, runtime);

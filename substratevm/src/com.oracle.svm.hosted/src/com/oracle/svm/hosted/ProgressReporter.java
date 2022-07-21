@@ -139,6 +139,7 @@ public class ProgressReporter {
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
+        LAYOUTING("Layouting methods", true, true),
         CREATING("Creating image");
 
         private static final int NUM_STAGES = values().length;
@@ -419,6 +420,19 @@ public class ProgressReporter {
         Timer timer = getTimer(TimerCollection.Registry.COMPILE);
         timer.start();
         stagePrinter.start(BuildStage.COMPILING);
+        return new ReporterClosable() {
+            @Override
+            public void closeAction() {
+                timer.stop();
+                stagePrinter.end(timer);
+            }
+        };
+    }
+
+    public ReporterClosable printLayout() {
+        Timer timer = getTimer(TimerCollection.Registry.LAYOUT);
+        timer.start();
+        stagePrinter.start(BuildStage.LAYOUTING);
         return new ReporterClosable() {
             @Override
             public void closeAction() {
