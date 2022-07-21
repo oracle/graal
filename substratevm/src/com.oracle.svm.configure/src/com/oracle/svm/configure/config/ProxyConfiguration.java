@@ -109,7 +109,7 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         printProxyInterfaces(writer, lists);
     }
 
-    public void printProxyInterfaces(JsonWriter writer, List<ConditionalElement<List<String>>> lists) throws IOException {
+    public static void printProxyInterfaces(JsonWriter writer, List<ConditionalElement<List<String>>> lists) throws IOException {
         lists.sort(ConditionalElement.comparator(ProxyConfiguration::compareList));
 
         writer.append('[');
