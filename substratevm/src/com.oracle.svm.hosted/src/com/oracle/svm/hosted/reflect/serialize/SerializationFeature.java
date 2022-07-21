@@ -323,7 +323,8 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
     }
 
     @Override
-    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {}
+    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+    }
 
     public boolean isAllowed(Class<?> clazz) {
         boolean denied = deniedClasses.containsKey(clazz);
