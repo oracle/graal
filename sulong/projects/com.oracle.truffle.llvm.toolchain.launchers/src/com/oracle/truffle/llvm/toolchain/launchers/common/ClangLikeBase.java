@@ -181,6 +181,15 @@ public abstract class ClangLikeBase extends Driver {
         switch (Arch.getCurrent()) {
             case X86_64:
                 return Arrays.asList("-mno-sse3", "-mno-avx");
+            case AARCH_64:
+                /*
+                 * This is a bit controversal as per Arm ARM Armv8 has support for "Advanced SIMD"
+                 * (aka. NEON), thus it's a reasonable assumption that `__ARM_NEON` is always
+                 * defined. However, there is an option to ship an Armv8 core without NEON for
+                 * "spezialized markets", so in theory a clean codebase must have a fallback for
+                 * which `__ARM_NEON` is not defined.
+                 */
+                return Arrays.asList("-Xclang", "-target-feature", "-Xclang", "-neon");
             default:
                 return Collections.emptyList();
         }
