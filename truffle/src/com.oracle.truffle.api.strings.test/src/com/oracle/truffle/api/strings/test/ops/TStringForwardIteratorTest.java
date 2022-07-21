@@ -60,28 +60,29 @@ public class TStringForwardIteratorTest extends TStringTestBase {
 
     @Parameter public TruffleString.CreateCodePointIteratorNode createIteratorNode;
     @Parameter(1) public TruffleStringIterator.NextNode nextNode;
+    @Parameter(2) public TruffleString.ErrorHandling errorHandling;
 
-    @Parameters(name = "{0}, {1}")
+    @Parameters(name = "{0}, {1}, {2}")
     public static Iterable<Object[]> data() {
-        return Arrays.asList(
+        return withErrorHandling(Arrays.asList(
                         new Object[]{TruffleString.CreateCodePointIteratorNode.create(), TruffleStringIterator.NextNode.create()},
-                        new Object[]{TruffleString.CreateCodePointIteratorNode.getUncached(), TruffleStringIterator.NextNode.getUncached()});
+                        new Object[]{TruffleString.CreateCodePointIteratorNode.getUncached(), TruffleStringIterator.NextNode.getUncached()}));
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            TruffleStringIterator iterator = createIteratorNode.execute(a, encoding);
+            TruffleStringIterator iterator = createIteratorNode.execute(a, encoding, errorHandling);
             for (int i = 0; i < codepoints.length; i++) {
                 Assert.assertEquals(byteIndices[i], iterator.getByteIndex());
-                Assert.assertEquals(codepoints[i], nextNode.execute(iterator));
+                checkCodepoint(isValid, encoding, codepoints, i, nextNode.execute(iterator), errorHandling);
             }
         });
     }
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s1, e) -> createIteratorNode.execute(s1, e));
+        checkNullSE((s1, e) -> createIteratorNode.execute(s1, e, errorHandling));
         expectNullPointerException(() -> nextNode.execute(null));
     }
 }

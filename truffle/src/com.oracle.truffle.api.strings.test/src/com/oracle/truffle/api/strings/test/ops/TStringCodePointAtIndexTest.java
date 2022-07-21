@@ -45,7 +45,6 @@ import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -69,12 +68,7 @@ public class TStringCodePointAtIndexTest extends TStringTestBase {
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             for (int i = 0; i < codepoints.length; i++) {
-                int result = node.execute(a, i, encoding, errorHandling);
-                if (errorHandling == TruffleString.ErrorHandling.RETURN_NEGATIVE && (codepoints.length == 1 && !isValid || !isValidCodePoint(codepoints[i], encoding))) {
-                    Assert.assertTrue(result < 0);
-                } else {
-                    Assert.assertEquals(codepoints[i], result);
-                }
+                checkCodepoint(isValid, encoding, codepoints, i, node.execute(a, i, encoding, errorHandling), errorHandling);
             }
         });
     }
