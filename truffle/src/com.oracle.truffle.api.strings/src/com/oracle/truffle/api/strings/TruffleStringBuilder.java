@@ -900,8 +900,7 @@ public final class TruffleStringBuilder {
         @Specialization
         void append(TruffleStringBuilder sb, String javaString, int fromIndex, int lengthStr,
                         @Cached AppendArrayIntlNode appendArrayIntlNode,
-                        @Cached ConditionProfile stride0Profile,
-                        @Cached BranchProfile errorProfile) {
+                        @Cached ConditionProfile stride0Profile) {
             if (!isUTF16(sb)) {
                 throw InternalErrors.unsupportedOperation("appendJavaString is supported on UTF-16 only, use appendString for other encodings");
             }

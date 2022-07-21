@@ -4751,7 +4751,8 @@ public final class TruffleString extends AbstractTruffleString {
         public abstract TruffleString execute(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy);
 
         @Specialization(guards = "byteLength == 0")
-        static TruffleString substringEmpty(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy) {
+        static TruffleString substringEmpty(AbstractTruffleString a, int fromByteIndex, @SuppressWarnings("unused") int byteLength, Encoding expectedEncoding,
+                        @SuppressWarnings("unused") boolean lazy) {
             a.checkEncoding(expectedEncoding);
             final int fromIndex = rawIndex(fromByteIndex, expectedEncoding);
             a.boundsCheckRegionRaw(fromIndex, 0);
@@ -5027,6 +5028,8 @@ public final class TruffleString extends AbstractTruffleString {
      * This exception is thrown when any operation tries to create a {@link Encoding#UTF_16 UTF-16}
      * or {@link Encoding#UTF_32 UTF-32} string with an invalid byte length (not a multiple of 2/4
      * bytes).
+     *
+     * @since 22.3
      */
     public static final class IllegalByteArrayLengthException extends IllegalArgumentException {
 
