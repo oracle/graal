@@ -570,6 +570,7 @@ public abstract class VMThreads {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static OSThreadHandle findOSThreadHandleForIsolateThread(IsolateThread isolateThread) {
         return OSThreadHandleTL.get(isolateThread);
     }

@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.windows;
 
-import java.util.List;
-
-import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
@@ -38,13 +37,13 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         HANDLE hThread = Process.NoTransitions.GetCurrentThread();
         return getThreadCpuTime((OSThreadHandle) hThread, includeSystemTime);
@@ -52,13 +51,14 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     /**
      * Returns the thread CPU time. Based on <link href=
-     * "https://github.com/openjdk/jdk/blob/master/src/hotspot/os/windows/os_windows.cpp#L4618">os::thread_cpu_time</link>.
+     * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/windows/os_windows.cpp#L4618">os::thread_cpu_time</link>.
      *
      * @param osThreadHandle the thread handle
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         FILETIME create = StackValue.get(FILETIME.class);
         FILETIME exit = StackValue.get(FILETIME.class);
@@ -82,10 +82,6 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
 class WindowsThreadCpuTimeFeature implements Feature {
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(ManagementFeature.class);
-    }
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {

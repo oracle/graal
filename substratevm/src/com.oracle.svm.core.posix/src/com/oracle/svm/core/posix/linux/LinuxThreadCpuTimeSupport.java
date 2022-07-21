@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
@@ -40,52 +38,53 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 
 final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
-        return getThreadCpuTimeImpl(LinuxTime.CLOCK_THREAD_CPUTIME_ID(), includeSystemTime);
+        if (!includeSystemTime) {
+            return -1;
+        }
+        return getThreadCpuTimeImpl(LinuxTime.CLOCK_THREAD_CPUTIME_ID());
     }
 
     /**
      * Returns the thread CPU time. Based on <link href=
-     * "https://github.com/openjdk/jdk/blob/master/src/hotspot/os/linux/os_linux.cpp#L4956">fast_cpu_time</link>.
+     * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/linux/os_linux.cpp#L4956">fast_cpu_time</link>.
      *
      * @param osThreadHandle the pthread
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
+        if (!includeSystemTime) {
+            return -1;
+        }
         CIntPointer threadsClockId = StackValue.get(Integer.BYTES);
         if (LinuxPthread.pthread_getcpuclockid((pthread_t) osThreadHandle, threadsClockId) != 0) {
             return -1;
         }
-        return getThreadCpuTimeImpl(threadsClockId.read(), includeSystemTime);
+        return getThreadCpuTimeImpl(threadsClockId.read());
     }
 
-    private static long getThreadCpuTimeImpl(int clockId, boolean includeSystemTime) {
-        if (!includeSystemTime) {
-            throw new UnsupportedOperationException("ThreadCpuTime is supported only for combined user-mode and kernel-mode time.");
-        }
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static long getThreadCpuTimeImpl(int clockId) {
         timespec time = StackValue.get(timespec.class);
         if (LinuxTime.clock_gettime(clockId, time) != 0) {
             return -1;
         }
-        return TimeUnit.SECONDS.toNanos(time.tv_sec()) + time.tv_nsec();
+        return time.tv_sec() * 1_000_000_000 + time.tv_nsec();
     }
 }
 
 @Platforms({Platform.LINUX.class})
 @AutomaticFeature
 final class LinuxThreadCpuTimeFeature implements Feature {
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(ManagementFeature.class);
-    }
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {

@@ -25,8 +25,8 @@
 package com.oracle.svm.core.posix.darwin;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
-import com.oracle.svm.core.jdk.management.ThreadCpuTimeSupport;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
@@ -40,12 +40,10 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         pthread_t pthread = Pthread.pthread_self();
         return getThreadCpuTime(pthread, includeSystemTime);
@@ -53,13 +51,14 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     /**
      * Returns the thread CPU time. Based on <link href=
-     * "https://github.com/openjdk/jdk/blob/master/src/hotspot/os/bsd/os_bsd.cpp#L2344">os::thread_cpu_time</link>.
+     * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/bsd/os_bsd.cpp#L2344">os::thread_cpu_time</link>.
      *
      * @param osThreadHandle the pthread
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         int threadsMachPort = DarwinPthread.pthread_mach_thread_np((pthread_t) osThreadHandle);
         CIntPointer sizePointer = StackValue.get(Integer.BYTES);
@@ -74,7 +73,7 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
             seconds += basicThreadInfo.system_time().seconds();
             micros += basicThreadInfo.system_time().microseconds();
         }
-        return TimeUnit.SECONDS.toNanos(seconds) + TimeUnit.MICROSECONDS.toNanos(micros);
+        return seconds * 1_000_000_000 + micros * 1_000;
     }
 
 }
@@ -82,10 +81,6 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 @Platforms({Platform.DARWIN.class})
 @AutomaticFeature
 final class DarwinThreadCpuTimeFeature implements Feature {
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(ManagementFeature.class);
-    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

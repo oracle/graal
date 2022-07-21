@@ -22,13 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.management;
+package com.oracle.svm.core.thread;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
- * Support for implementation of {@link SubstrateThreadMXBean} methods returning the thread
- * execution time.
+ * Support for getting thread execution time.
  */
 public interface ThreadCpuTimeSupport {
 
@@ -40,6 +42,7 @@ public interface ThreadCpuTimeSupport {
      * @throws UnsupportedOperationException if OS specific implementation does not support given
      *             parameters.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long getCurrentThreadCpuTime(boolean includeSystemTime);
 
     /**
@@ -49,5 +52,11 @@ public interface ThreadCpuTimeSupport {
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime);
+
+    @Fold
+    static ThreadCpuTimeSupport getInstance() {
+        return ImageSingletons.lookup(ThreadCpuTimeSupport.class);
+    }
 }

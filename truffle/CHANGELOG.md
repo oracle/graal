@@ -22,6 +22,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * (GR-35797) The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
 * Added the `@HostCompilerDirectives.InliningCutoff` annotation that allows to manually tune inlining decisions for host inlining.
 * Tuned host inlining heuristic for reduced code size. A new host inlining tuning guide is available in the [docs](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md#host-inlining)
+* (GR-35007)(EE-only) The Truffle sandboxing CPU time limits (`sandbox.MaxCPUTime`) are also supported on the native image.
+
 
 ## Version 22.2.0
 

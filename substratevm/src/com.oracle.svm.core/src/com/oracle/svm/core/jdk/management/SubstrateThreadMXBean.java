@@ -31,9 +31,8 @@ import java.util.Objects;
 
 import javax.management.ObjectName;
 
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -55,6 +54,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     private final AtomicInteger daemonThreadCount = new AtomicInteger(0);
 
     private boolean allocatedMemoryEnabled;
+    private boolean cpuTimeEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateThreadMXBean() {
@@ -63,6 +63,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
          * feature can be on by default.
          */
         this.allocatedMemoryEnabled = true;
+        this.cpuTimeEnabled = true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -114,7 +115,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public boolean isCurrentThreadCpuTimeSupported() {
-        return isThreadCpuTimeSupported();
+        return ImageSingletons.contains(ThreadCpuTimeSupport.class);
     }
 
     @Override
@@ -186,51 +187,65 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public long getCurrentThreadCpuTime() {
-        return getCurrentThreadUserTimeImpl(true, "GetCurrentThreadCpuTime");
+        if (verifyCurrentThreadCpuTime()) {
+            return ThreadCpuTimeSupport.getInstance().getCurrentThreadCpuTime(true);
+        }
+        return -1;
     }
 
     @Override
     public long getCurrentThreadUserTime() {
-        return getCurrentThreadUserTimeImpl(false, "GetCurrentThreadUserTime");
+        if (verifyCurrentThreadCpuTime()) {
+            return ThreadCpuTimeSupport.getInstance().getCurrentThreadCpuTime(false);
+        }
+        return -1;
     }
 
-    private static long getCurrentThreadUserTimeImpl(boolean includeSystemTime, String operation) {
-        if (!ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
-            throw new UnsupportedOperationException(operation + " is not supported.");
+    private boolean verifyCurrentThreadCpuTime() {
+        if (!isCurrentThreadCpuTimeSupported()) {
+            throw new UnsupportedOperationException("Current thread CPU time measurement is not supported.");
         }
-        return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getCurrentThreadCpuTime(includeSystemTime);
+        return isThreadCpuTimeEnabled();
     }
 
     @Override
     public long getThreadCpuTime(long id) {
-        return getThreadCpuTimeImpl(id, true, "GetThreadCpuTime");
+        if (verifyThreadCpuTime(id)) {
+            return PlatformThreads.getThreadCpuTime(id, true);
+        }
+        return -1;
     }
 
     @Override
     public long getThreadUserTime(long id) {
-        return getThreadCpuTimeImpl(id, false, "GetThreadUserTime");
+        if (verifyThreadCpuTime(id)) {
+            return PlatformThreads.getThreadCpuTime(id, false);
+        }
+        return -1;
     }
 
-    private static long getThreadCpuTimeImpl(long id, boolean includeSystemTime, String operation) {
+    private boolean verifyThreadCpuTime(long id) {
         verifyThreadId(id);
-        if (!ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
-            throw new UnsupportedOperationException(operation + " is not supported.");
+        if (!isThreadCpuTimeSupported()) {
+            throw new UnsupportedOperationException("Thread CPU time measurement is not supported.");
         }
-        IsolateThread isolateThread = PlatformThreads.findIsolateThreadByJavaThreadId(id);
-        if (isolateThread.isNull()) {
-            return -1;
-        }
-        VMThreads.OSThreadHandle osThread = VMThreads.findOSThreadHandleForIsolateThread(isolateThread);
-        return ImageSingletons.lookup(ThreadCpuTimeSupport.class).getThreadCpuTime(osThread, includeSystemTime);
+        return isThreadCpuTimeEnabled();
     }
 
     @Override
     public boolean isThreadCpuTimeEnabled() {
-        return isThreadCpuTimeSupported();
+        if (!isThreadCpuTimeSupported() && !isCurrentThreadCpuTimeSupported()) {
+            throw new UnsupportedOperationException("Thread CPU time measurement is not supported");
+        }
+        return cpuTimeEnabled;
     }
 
     @Override
     public void setThreadCpuTimeEnabled(boolean enable) {
+        if (!isThreadCpuTimeSupported() && !isCurrentThreadCpuTimeSupported()) {
+            throw new UnsupportedOperationException("Thread CPU time measurement is not supported");
+        }
+        cpuTimeEnabled = enable;
     }
 
     @Override
@@ -310,22 +325,32 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public long[] getThreadCpuTime(long[] ids) {
-        verifyThreadIds(ids);
-        long[] res = new long[ids.length];
-        for (int i = 0; i < ids.length; i++) {
-            res[i] = getThreadCpuTime(ids[i]);
-        }
-        return res;
+        return getThreadCpuTimeImpl(ids, true);
     }
 
     @Override
     public long[] getThreadUserTime(long[] ids) {
-        verifyThreadIds(ids);
-        long[] res = new long[ids.length];
-        for (int i = 0; i < ids.length; i++) {
-            res[i] = getThreadUserTime(ids[i]);
+        return getThreadCpuTimeImpl(ids, false);
+    }
+
+    private long[] getThreadCpuTimeImpl(long[] ids, boolean includeSystemTime) {
+        boolean verified = verifyThreadCpuTime(ids);
+        long[] times = new long[ids.length];
+        Arrays.fill(times, -1);
+        if (verified) {
+            for (int i = 0; i < ids.length; i++) {
+                times[i] = PlatformThreads.getThreadCpuTime(ids[i], includeSystemTime);
+            }
         }
-        return res;
+        return times;
+    }
+
+    private boolean verifyThreadCpuTime(long[] ids) {
+        verifyThreadIds(ids);
+        if (!isThreadCpuTimeSupported()) {
+            throw new UnsupportedOperationException("Thread CPU time measurement is not supported.");
+        }
+        return isThreadCpuTimeEnabled();
     }
 
     @Override
