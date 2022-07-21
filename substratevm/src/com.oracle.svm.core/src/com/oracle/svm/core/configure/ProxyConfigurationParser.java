@@ -39,34 +39,29 @@ import com.oracle.svm.core.util.json.JSONParserException;
 /**
  * Parses JSON describing lists of interfaces and register them in the {@link DynamicProxyRegistry}.
  */
-public final class ProxyConfigurationParser extends ConfigurationParser {
+public class ProxyConfigurationParser extends ConfigurationParser {
     private final Consumer<ConditionalElement<List<String>>> interfaceListConsumer;
-    public static boolean serializing = false;
 
     public ProxyConfigurationParser(Consumer<ConditionalElement<List<String>>> interfaceListConsumer, boolean strictConfiguration) {
         super(strictConfiguration);
         this.interfaceListConsumer = interfaceListConsumer;
     }
 
-    public void parseProxiesForSerialization(Object json) {
-        parseTopLevelArray(asList(json, "proxies must be an array of interface lists"), true);
-    }
-
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        parseTopLevelArray(asList(json, "first level of document must be an array of interface lists"), false);
+        parseTopLevelArray(asList(json, "first level of document must be an array of interface lists"));
     }
 
-    private void parseTopLevelArray(List<Object> proxyConfiguration, boolean serialization) {
+    private void parseTopLevelArray(List<Object> proxyConfiguration) {
         boolean foundInterfaceLists = false;
         boolean foundProxyConfigurationObjects = false;
         for (Object proxyConfigurationObject : proxyConfiguration) {
             if (proxyConfigurationObject instanceof List) {
                 foundInterfaceLists = true;
-                parseInterfaceList(ConfigurationCondition.alwaysTrue(), asList(proxyConfigurationObject, "<shouldn't reach here>"), serialization);
+                parseInterfaceList(ConfigurationCondition.alwaysTrue(), asList(proxyConfigurationObject, "<shouldn't reach here>"));
             } else if (proxyConfigurationObject instanceof Map) {
                 foundProxyConfigurationObjects = true;
-                parseWithConditionalConfig(asMap(proxyConfigurationObject, "<shouldn't reach here>"), serialization);
+                parseWithConditionalConfig(asMap(proxyConfigurationObject, "<shouldn't reach here>"));
             } else {
                 throw new JSONParserException("second level must be composed of either interface lists or proxy configuration objects");
             }
@@ -74,18 +69,11 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
                 throw new JSONParserException("second level can only be populated of either interface lists or proxy configuration objects, but these cannot be mixed");
             }
         }
-
-        serializing = false;
     }
 
-    private void parseInterfaceList(ConfigurationCondition condition, List<?> data, boolean serialization) {
+    private void parseInterfaceList(ConfigurationCondition condition, List<?> data) {
         List<String> interfaces = data.stream().map(ConfigurationParser::asString).collect(Collectors.toList());
 
-        assert interfaceListConsumer != null;
-
-        if (serialization) {
-            serializing = true;
-        }
         try {
             interfaceListConsumer.accept(new ConditionalElement<>(condition, interfaces));
         } catch (Exception e) {
@@ -93,10 +81,10 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
         }
     }
 
-    private void parseWithConditionalConfig(Map<String, Object> proxyConfigObject, boolean serialization) {
+    private void parseWithConditionalConfig(Map<String, Object> proxyConfigObject) {
         checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaces"), Collections.singletonList(CONDITIONAL_KEY));
         ConfigurationCondition condition = parseCondition(proxyConfigObject);
-        parseInterfaceList(condition, asList(proxyConfigObject.get("interfaces"), "\"interfaces\" must be an array of fully qualified interface names"), serialization);
+        parseInterfaceList(condition, asList(proxyConfigObject.get("interfaces"), "\"interfaces\" must be an array of fully qualified interface names"));
     }
 
 }

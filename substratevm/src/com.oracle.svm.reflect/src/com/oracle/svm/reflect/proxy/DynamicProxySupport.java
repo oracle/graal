@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -131,12 +132,13 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         });
     }
 
-    public void registerProxyForSerialization(Class<?>... interfaces) {
+    @Override
+    public void registerProxyClassForSerialization(Class<?>... interfaces) {
         final Class<?>[] intfs = interfaces.clone();
 
         Class<?> proxyClass = createProxyClassFromImplementedInterfaces(intfs);
 
-        SerializationFeature.registerProxyClassForSerialization(proxyClass);
+        ImageSingletons.lookup(SerializationFeature.class).registerProxyClassForSerialization(proxyClass);
     }
 
     private Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {

@@ -44,11 +44,12 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     private static final String LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY = "lambdaCapturingTypes";
     private static final String PROXY_SERIALIZATION_TYPES_KEY = "proxies";
     private final RuntimeSerializationSupport serializationSupport;
-    private ProxyConfigurationParser proxyConfigurationParser;
+    private final ProxyConfigurationParser proxyConfigurationParser;
 
     public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
         super(strictConfiguration);
         this.serializationSupport = serializationSupport;
+        this.proxyConfigurationParser = new ProxyConfigurationParser((conditionalElement) -> serializationSupport.registerProxyClass(conditionalElement.getCondition(), conditionalElement.getElement()), strictConfiguration);
     }
 
     @Override
@@ -76,9 +77,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         parseSerializationTypes(
                         asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY), "lambdaCapturingTypes must be an array of serialization descriptor objects"),
                         true);
-        if (proxyConfigurationParser != null) {
-            proxyConfigurationParser.parseProxiesForSerialization(listOfSerializationConfigurationObjects.get(PROXY_SERIALIZATION_TYPES_KEY));
-        }
+
+        proxyConfigurationParser.parseAndRegister(listOfSerializationConfigurationObjects.get(PROXY_SERIALIZATION_TYPES_KEY), null);
     }
 
     private void parseSerializationTypes(List<Object> listOfSerializationTypes, boolean lambdaCapturingTypes) {
@@ -104,9 +104,5 @@ public class SerializationConfigurationParser extends ConfigurationParser {
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
             serializationSupport.registerWithTargetConstructorClass(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
         }
-    }
-
-    public void setProxyConfigurationParser(ProxyConfigurationParser proxyConfigurationParser) {
-        this.proxyConfigurationParser = proxyConfigurationParser;
     }
 }

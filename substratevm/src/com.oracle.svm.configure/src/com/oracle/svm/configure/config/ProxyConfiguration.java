@@ -31,17 +31,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ProxyConfigurationParser;
 
-public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.Predicate> {
+public class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.Predicate> {
     private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
-    public final Set<ConditionalElement<List<String>>> interfaceListsSerializableProxies = ConcurrentHashMap.newKeySet();
 
     public ProxyConfiguration() {
     }
@@ -49,10 +48,6 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     public ProxyConfiguration(ProxyConfiguration other) {
         for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
             interfaceLists.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
-        }
-
-        for (ConditionalElement<List<String>> interfaceList : other.interfaceListsSerializableProxies) {
-            interfaceListsSerializableProxies.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
         }
     }
 
@@ -66,28 +61,21 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
             interfaceLists.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
         }
-
-        for (ConditionalElement<List<String>> interfaceList : other.interfaceListsSerializableProxies) {
-            interfaceListsSerializableProxies.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
-        }
     }
 
     @Override
     protected void intersect(ProxyConfiguration other) {
         interfaceLists.retainAll(other.interfaceLists);
-        interfaceListsSerializableProxies.retainAll(other.interfaceListsSerializableProxies);
     }
 
     @Override
     protected void removeIf(Predicate predicate) {
         interfaceLists.removeIf(predicate::testProxyInterfaceList);
-        interfaceListsSerializableProxies.removeIf(predicate::testProxyInterfaceList);
     }
 
     @Override
     public void subtract(ProxyConfiguration other) {
         interfaceLists.removeAll(other.interfaceLists);
-        interfaceListsSerializableProxies.removeAll(other.interfaceListsSerializableProxies);
     }
 
     @Override
@@ -95,14 +83,6 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
             add(condition, new ArrayList<>(interfaceList.getElement()));
         }
-
-        for (ConditionalElement<List<String>> interfaceList : other.interfaceListsSerializableProxies) {
-            addProxyForSerialization(condition, new ArrayList<>(interfaceList.getElement()));
-        }
-    }
-
-    public void addProxyForSerialization(ConfigurationCondition condition, List<String> interfaceList) {
-        interfaceListsSerializableProxies.add(new ConditionalElement<>(condition, interfaceList));
     }
 
     public void add(ConfigurationCondition condition, List<String> interfaceList) {
@@ -110,16 +90,15 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     }
 
     public boolean contains(ConfigurationCondition condition, List<String> interfaceList) {
-        return interfaceLists.contains(new ConditionalElement<>(condition, interfaceList)) || interfaceListsSerializableProxies.contains(new ConditionalElement<>(condition, interfaceList));
+        return interfaceLists.contains(new ConditionalElement<>(condition, interfaceList));
     }
 
     public boolean contains(ConfigurationCondition condition, String... interfaces) {
         return contains(condition, Arrays.asList(interfaces));
     }
 
-    public void printJsonSerialization(JsonWriter writer) throws IOException {
-        List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceListsSerializableProxies.size());
-        lists.addAll(interfaceListsSerializableProxies);
+    public void printJsonSerialization(JsonWriter writer, Set<ConditionalElement<List<String>>> interfaceListsSerializableProxies) throws IOException {
+        List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceListsSerializableProxies);
         printProxyInterfaces(writer, lists);
     }
 
@@ -130,7 +109,7 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         printProxyInterfaces(writer, lists);
     }
 
-    private static void printProxyInterfaces(JsonWriter writer, List<ConditionalElement<List<String>>> lists) throws IOException {
+    public void printProxyInterfaces(JsonWriter writer, List<ConditionalElement<List<String>>> lists) throws IOException {
         lists.sort(ConditionalElement.comparator(ProxyConfiguration::compareList));
 
         writer.append('[');
