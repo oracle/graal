@@ -19,6 +19,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Removed deprecated `UnionAssumption`, `AlwaysValidAssumption` and `NeverValidAssumption`. The API was deprecated in 22.1.
     
 * (GR-35797) The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
+* GR-31304 `Debugger.disableStepping()` and `Debugger.restoreStepping()` added to disable/restore stepping on a dedicated thread on a specific code path.
 
 ## Version 22.2.0
 
