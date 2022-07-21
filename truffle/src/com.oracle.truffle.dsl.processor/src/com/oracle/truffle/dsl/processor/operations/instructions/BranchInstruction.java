@@ -48,6 +48,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 
+@SuppressWarnings("unused")
 public class BranchInstruction extends Instruction {
 
     private final ProcessorContext context = ProcessorContext.getInstance();
@@ -57,7 +58,7 @@ public class BranchInstruction extends Instruction {
 
     private static final boolean SAFEPOINT_POLL = true;
     private static final boolean LOOP_COUNTING = true;
-    private static final boolean TRY_OSR = false;
+    private static final boolean TRY_OSR = true;
 
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
@@ -84,23 +85,25 @@ public class BranchInstruction extends Instruction {
         if (SAFEPOINT_POLL || LOOP_COUNTING || TRY_OSR || uncached) {
             b.startIf().string("targetBci <= ").variable(vars.bci).end().startBlock(); // {
 
-            if (SAFEPOINT_POLL) {
-                b.startStatement().startStaticCall(typeTruffleSafepoint, "poll");
-                b.string("$this");
-                b.end(2);
-            }
-
-            if (LOOP_COUNTING) {
+            if (LOOP_COUNTING || SAFEPOINT_POLL) {
                 b.startIf();
                 b.tree(GeneratorUtils.createHasNextTier());
                 b.string(" && ");
                 b.string("++loopCounter.count >= " + REPORT_LOOP_STRIDE);
                 b.end().startBlock(); // {
 
-                b.startStatement().startStaticCall(typeLoopNode, "reportLoopCount");
-                b.string("$this");
-                b.string("" + REPORT_LOOP_STRIDE);
-                b.end(2);
+                if (SAFEPOINT_POLL) {
+                    b.startStatement().startStaticCall(typeTruffleSafepoint, "poll");
+                    b.string("$this");
+                    b.end(2);
+                }
+
+                if (LOOP_COUNTING) {
+                    b.startStatement().startStaticCall(typeLoopNode, "reportLoopCount");
+                    b.string("$this");
+                    b.string("" + REPORT_LOOP_STRIDE);
+                    b.end(2);
+                }
 
                 b.statement("loopCounter.count = 0");
 
@@ -111,10 +114,10 @@ public class BranchInstruction extends Instruction {
                 b.startIf();
                 b.tree(GeneratorUtils.createInInterpreter());
                 b.string(" && ");
-                b.startStaticCall(typeBytecodeOsrNode, "pollOSRBackEdge").string("this").end();
+                b.startStaticCall(typeBytecodeOsrNode, "pollOSRBackEdge").string("$this").end();
                 b.end().startBlock(); // {
                 b.startAssign("Object osrResult").startStaticCall(typeBytecodeOsrNode, "tryOSR");
-                b.string("this");
+                b.string("$this");
                 b.string("targetBci");
                 b.variable(vars.sp);
                 b.string("null");
@@ -122,15 +125,17 @@ public class BranchInstruction extends Instruction {
                 b.end(2);
 
                 b.startIf().string("osrResult != null").end().startBlock(); // {
-                b.startReturn().string("osrResult").end();
+                // todo: check if this will overwrite a local in reused frames
+                b.statement("$frame.setObject(0, osrResult)");
+                b.startReturn().string("0x0000ffff").end();
                 b.end(); // }
 
                 b.end(); // }
             }
 
             if (uncached) {
-                b.statement("uncachedExecuteCount++");
-                b.startIf().string("uncachedExecuteCount > 16").end().startBlock();
+                b.statement("uncachedExecuteCount--");
+                b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();
 
                 b.statement("$this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE)");
                 b.statement("return ($sp << 16) | targetBci");

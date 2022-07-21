@@ -258,6 +258,8 @@ public class OperationsBytecodeCodeGenerator {
         b.declaration("Counter", "loopCounter", "new Counter()");
 
         if (isUncached) {
+            // todo: better signaling to compiler that the method is not ready for compilation
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.declaration("int", "uncachedExecuteCount", "$this.uncachedExecuteCount");
         }
 

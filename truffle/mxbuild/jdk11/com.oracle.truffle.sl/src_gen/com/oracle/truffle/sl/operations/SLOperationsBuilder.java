@@ -3321,7 +3321,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             @CompilationFinal int _maxLocals;
             @CompilationFinal int _maxStack;
             @CompilationFinal(dimensions = 1) int[] sourceInfo;
-            @CompilationFinal int uncachedExecuteCount;
+            @CompilationFinal int uncachedExecuteCount = 16;
             @CompilationFinal private Object _osrMetadata;
             private TruffleString _metadata_MethodName;
             @CompilationFinal private BytecodeLoopBase switchImpl = INITIAL_EXECUTE;
@@ -3609,10 +3609,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             {
                                 int targetBci = $bc[$bci + BRANCH_BRANCH_TARGET_OFFSET + 0];
                                 if (targetBci <= $bci) {
-                                    TruffleSafepoint.poll($this);
                                     if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
+                                        TruffleSafepoint.poll($this);
                                         LoopNode.reportLoopCount($this, 256);
                                         loopCounter.count = 0;
+                                    }
+                                    if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
+                                        Object osrResult = BytecodeOSRNode.tryOSR($this, targetBci, $sp, null, $frame);
+                                        if (osrResult != null) {
+                                            $frame.setObject(0, osrResult);
+                                            return 0x0000ffff;
+                                        }
                                     }
                                 }
                                 $bci = targetBci;
@@ -3973,15 +3980,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Add1, method = add(java.lang.Object,java.lang.Object,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,com.oracle.truffle.api.strings.TruffleString.ConcatNode), guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6cae1f5a
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@26078062
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19cfc07
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@643f16e7
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD :
                             {
@@ -4000,8 +4007,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1fbfc170
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@458f431a
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@587558fe
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6e56aaae
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_DIV :
                             {
@@ -4013,7 +4020,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLEqual
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = equalNode]
-                            //     [ 1] SpecializationData [id = Generic0, method = doGeneric(java.lang.Object,java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] SpecializationData [id = Generic0, method = public static boolean doGeneric(java.lang.Object, java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 2] CacheExpression [sourceParameter = leftInterop]
                             //     [ 3] CacheExpression [sourceParameter = rightInterop]
                             //   Indexed Pops:
@@ -4021,8 +4028,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7c6de31b
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1a73e479
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@8cc0fa7
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@14d8a877
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_EQUAL :
                             {
@@ -4041,7 +4048,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7b261206
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6618a0ba
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL :
                             {
@@ -4060,7 +4067,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@440e09eb
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3d40650d
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN :
                             {
@@ -4078,7 +4085,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@57e84f4a
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5599f435
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LOGICAL_NOT :
                             {
@@ -4097,8 +4104,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@523d29e2
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1940b781
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@45365e1
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@276d18a1
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_MUL :
                             {
@@ -4113,15 +4120,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //     [ 2] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = ReadArray0, method = readArray(java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = ReadSLObject0, method = readSLObject(com.oracle.truffle.sl.runtime.SLObject,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.object.DynamicObjectLibrary,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode), guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
                             //     [ 5] CacheExpression [sourceParameter = node]
                             //     [ 6] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 8] SpecializationData [id = ReadObject0, method = readObject(java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.sl.nodes.util.SLToMemberNode), guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 9] CacheExpression [sourceParameter = node]
                             //     [10] CacheExpression [sourceParameter = objects]
                             //     [11] CacheExpression [sourceParameter = asMember]
@@ -4130,8 +4137,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2d35b413
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@38322ce0
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19bb694c
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@3990e12
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY :
                             {
@@ -4150,8 +4157,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3fb603d
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1f9b337c
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1cfa1fed
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@539da4c3
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_SUB :
                             {
@@ -4165,14 +4172,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = WriteArray0, method = writeArray(java.lang.Object,java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = WriteSLObject0, method = writeSLObject(com.oracle.truffle.sl.runtime.SLObject,java.lang.Object,java.lang.Object,com.oracle.truffle.api.object.DynamicObjectLibrary,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode), guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
                             //     [ 5] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 7] SpecializationData [id = WriteObject0, method = writeObject(java.lang.Object,java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.sl.nodes.util.SLToMemberNode), guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
                             //     [ 8] CacheExpression [sourceParameter = node]
                             //     [ 9] CacheExpression [sourceParameter = objectLibrary]
                             //     [10] CacheExpression [sourceParameter = asMember]
@@ -4182,8 +4189,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1f0e89b0
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@36f2f39d
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@11ae46f5
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5a8c334c
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY :
                             {
@@ -4195,14 +4202,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = fromForeign(java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6e5097f6
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@28965993
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@16455a87
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@28c05f30
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX :
                             {
@@ -4220,7 +4227,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@43be1638
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4b3a2d33
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL :
                             {
@@ -4238,7 +4245,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@62f16bc9
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7097614b
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN :
                             {
@@ -4251,7 +4258,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Direct, method = doDirect(com.oracle.truffle.sl.runtime.SLFunction,java.lang.Object[],com.oracle.truffle.api.Assumption,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.nodes.DirectCallNode), guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
                             //     [ 1] CacheExpression [sourceParameter = callNode]
                             //     [ 2] CacheExpression [sourceParameter = library]
                             //     [ 3] CacheExpression [sourceParameter = node]
@@ -4260,8 +4267,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@874af46
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@12b4351a
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4c3a8cbc
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@662973d4
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE :
                             {
@@ -4288,7 +4295,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@65edfeb9
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7ce08997
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_AND :
                             {
@@ -4312,7 +4319,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@56c20bfb
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@37362279
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_OR :
                             {
@@ -4328,14 +4335,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox.q.FromLong
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = fromForeign(java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3059126f
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@b1fd733
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2f71174f
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@26b76a6
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX_Q_FROM_LONG :
                             {
@@ -4348,15 +4355,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Add1, method = add(java.lang.Object,java.lang.Object,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,com.oracle.truffle.api.strings.TruffleString.ConcatNode), guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@10de8df
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@47d6b6d6
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7abffb4d
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@7c1c2b89
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD_Q_ADD_LONG :
                             {
@@ -4371,15 +4378,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //     [ 2] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = ReadArray0, method = readArray(java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = ReadSLObject0, method = readSLObject(com.oracle.truffle.sl.runtime.SLObject,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.object.DynamicObjectLibrary,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode), guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
                             //     [ 5] CacheExpression [sourceParameter = node]
                             //     [ 6] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 8] SpecializationData [id = ReadObject0, method = readObject(java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.sl.nodes.util.SLToMemberNode), guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 9] CacheExpression [sourceParameter = node]
                             //     [10] CacheExpression [sourceParameter = objects]
                             //     [11] CacheExpression [sourceParameter = asMember]
@@ -4388,8 +4395,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3fe40e29
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@4a37e0a9
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5b70802a
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@27703a4
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
                             {
@@ -4401,14 +4408,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox.q.FromBoolean
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = fromForeign(java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2492b220
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5680c062
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@717f534
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1acad63c
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
                             {
@@ -4426,7 +4433,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@490a09dd
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@45e4649f
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN_Q_BOOLEAN :
                             {
@@ -4445,7 +4452,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3ccd8afd
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7f3435a4
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
                             {
@@ -4458,7 +4465,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Direct, method = doDirect(com.oracle.truffle.sl.runtime.SLFunction,java.lang.Object[],com.oracle.truffle.api.Assumption,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.nodes.DirectCallNode), guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
                             //     [ 1] CacheExpression [sourceParameter = callNode]
                             //     [ 2] CacheExpression [sourceParameter = library]
                             //     [ 3] CacheExpression [sourceParameter = node]
@@ -4467,8 +4474,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@dff3cf6
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5dac6efb
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4732d123
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@b8584cf
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE_Q_DIRECT :
                             {
@@ -4493,7 +4500,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4471d072
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6da3d9bc
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL_Q_PERFORM :
                             {
@@ -4507,14 +4514,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = WriteArray0, method = writeArray(java.lang.Object,java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = WriteSLObject0, method = writeSLObject(com.oracle.truffle.sl.runtime.SLObject,java.lang.Object,java.lang.Object,com.oracle.truffle.api.object.DynamicObjectLibrary,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode), guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
                             //     [ 5] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 7] SpecializationData [id = WriteObject0, method = writeObject(java.lang.Object,java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.sl.nodes.util.SLToMemberNode), guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
                             //     [ 8] CacheExpression [sourceParameter = node]
                             //     [ 9] CacheExpression [sourceParameter = objectLibrary]
                             //     [10] CacheExpression [sourceParameter = asMember]
@@ -4524,8 +4531,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@14bb2063
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6057b68e
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@33e448b9
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@620e3c2f
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY_Q_WRITE_SL_OBJECT0 :
                             {
@@ -4544,7 +4551,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5e32c7c9
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@458a6f5d
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN_Q_LESS_THAN0 :
                             {
@@ -9652,6 +9659,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 int $sp = $startSp;
                 int $bci = $startBci;
                 Counter loopCounter = new Counter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 int uncachedExecuteCount = $this.uncachedExecuteCount;
                 loop: while (true) {
                     CompilerAsserts.partialEvaluationConstant($bci);
@@ -9684,13 +9692,20 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             {
                                 int targetBci = $bc[$bci + BRANCH_BRANCH_TARGET_OFFSET + 0];
                                 if (targetBci <= $bci) {
-                                    TruffleSafepoint.poll($this);
                                     if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
+                                        TruffleSafepoint.poll($this);
                                         LoopNode.reportLoopCount($this, 256);
                                         loopCounter.count = 0;
                                     }
-                                    uncachedExecuteCount++;
-                                    if (uncachedExecuteCount > 16) {
+                                    if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
+                                        Object osrResult = BytecodeOSRNode.tryOSR($this, targetBci, $sp, null, $frame);
+                                        if (osrResult != null) {
+                                            $frame.setObject(0, osrResult);
+                                            return 0x0000ffff;
+                                        }
+                                    }
+                                    uncachedExecuteCount--;
+                                    if (uncachedExecuteCount <= 0) {
                                         $this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE);
                                         return ($sp << 16) | targetBci;
                                     }
@@ -9844,9 +9859,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Boxing Elimination: Do Nothing
                             case INSTR_RETURN :
                             {
-                                uncachedExecuteCount++;
-                                if (uncachedExecuteCount > 16) {
+                                uncachedExecuteCount--;
+                                if (uncachedExecuteCount <= 0) {
                                     $this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE);
+                                } else {
+                                    $this.uncachedExecuteCount = uncachedExecuteCount;
                                 }
                                 return (($sp - 1) << 16) | 0xffff;
                             }
@@ -9854,17 +9871,17 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Add1, method = add(java.lang.Object,java.lang.Object,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode,com.oracle.truffle.api.strings.TruffleString.ConcatNode), guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = Add1, method = public static com.oracle.truffle.api.strings.TruffleString add(java.lang.Object, java.lang.Object, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode, com.oracle.truffle.api.strings.TruffleString.ConcatNode) , guards = [Guard[(SLAddNode.isString(left, right))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6cae1f5a
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@26078062
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2c54c74d
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@47b2f91d
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19cfc07
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@643f16e7
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5ec7fc1
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@45a827e9
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_ADD :
                             {
@@ -9883,10 +9900,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1fbfc170
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@458f431a
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@73248fd6
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@58ae9528
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@587558fe
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6e56aaae
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3e16eb33
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@2f88b46
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_DIV :
                             {
@@ -9898,7 +9915,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLEqual
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = equalNode]
-                            //     [ 1] SpecializationData [id = Generic0, method = doGeneric(java.lang.Object,java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 1] SpecializationData [id = Generic0, method = public static boolean doGeneric(java.lang.Object, java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(leftInterop.accepts(left))], Guard[(rightInterop.accepts(right))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 2] CacheExpression [sourceParameter = leftInterop]
                             //     [ 3] CacheExpression [sourceParameter = rightInterop]
                             //   Indexed Pops:
@@ -9906,10 +9923,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7c6de31b
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1a73e479
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@524a5fdf
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@2e02e9a
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@8cc0fa7
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@14d8a877
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@640cfeaf
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@609f0aa8
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_EQUAL :
                             {
@@ -9928,8 +9945,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7b261206
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@55ed4b2f
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6618a0ba
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@69d93afb
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_OR_EQUAL :
                             {
@@ -9948,8 +9965,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@440e09eb
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@79c6936f
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3d40650d
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2f3d2e3d
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LESS_THAN :
                             {
@@ -9967,8 +9984,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@57e84f4a
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@79f28f2f
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5599f435
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2cc754f3
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_LOGICAL_NOT :
                             {
@@ -9987,10 +10004,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@523d29e2
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1940b781
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7a65fa75
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@45ee6225
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@45365e1
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@276d18a1
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3495d189
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@143b2b02
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_MUL :
                             {
@@ -10005,15 +10022,15 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //     [ 2] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = ReadArray0, method = readArray(java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = ReadArray0, method = public static java.lang.Object readArray(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = ReadSLObject0, method = readSLObject(com.oracle.truffle.sl.runtime.SLObject,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.object.DynamicObjectLibrary,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode), guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = ReadSLObject0, method = public static java.lang.Object readSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object]]
                             //     [ 5] CacheExpression [sourceParameter = node]
                             //     [ 6] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 8] SpecializationData [id = ReadObject0, method = readObject(java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.sl.nodes.util.SLToMemberNode), guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
+                            //     [ 8] SpecializationData [id = ReadObject0, method = public static java.lang.Object readObject(java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objects.accepts(receiver))], Guard[(!(SLReadPropertyNode.isSLObject(receiver)))], Guard[(objects.hasMembers(receiver))]], signature = [java.lang.Object, java.lang.Object]]
                             //     [ 9] CacheExpression [sourceParameter = node]
                             //     [10] CacheExpression [sourceParameter = objects]
                             //     [11] CacheExpression [sourceParameter = asMember]
@@ -10022,10 +10039,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@2d35b413
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@38322ce0
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@8fecc1c
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@6518a1db
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@19bb694c
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@3990e12
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@52b1a37e
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@44c71517
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_READ_PROPERTY :
                             {
@@ -10044,10 +10061,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 1] arg1
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3fb603d
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@1f9b337c
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@307b595f
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@632ea3f
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1cfa1fed
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@539da4c3
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@5ec48d9f
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@136ace7e
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_SUB :
                             {
@@ -10061,14 +10078,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //     [ 1] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = WriteArray0, method = writeArray(java.lang.Object,java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 0] SpecializationData [id = WriteArray0, method = public static java.lang.Object writeArray(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(arrays.accepts(receiver))], Guard[(numbers.accepts(index))], Guard[(arrays.hasArrayElements(receiver))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
                             //     [ 1] CacheExpression [sourceParameter = node]
                             //     [ 2] CacheExpression [sourceParameter = arrays]
                             //     [ 3] CacheExpression [sourceParameter = numbers]
-                            //     [ 4] SpecializationData [id = WriteSLObject0, method = writeSLObject(com.oracle.truffle.sl.runtime.SLObject,java.lang.Object,java.lang.Object,com.oracle.truffle.api.object.DynamicObjectLibrary,com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode), guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
+                            //     [ 4] SpecializationData [id = WriteSLObject0, method = public static java.lang.Object writeSLObject(com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object, com.oracle.truffle.api.object.DynamicObjectLibrary, com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode) , guards = [Guard[(objectLibrary.accepts(receiver))]], signature = [com.oracle.truffle.sl.runtime.SLObject, java.lang.Object, java.lang.Object]]
                             //     [ 5] CacheExpression [sourceParameter = objectLibrary]
                             //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-                            //     [ 7] SpecializationData [id = WriteObject0, method = writeObject(java.lang.Object,java.lang.Object,java.lang.Object,com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.interop.InteropLibrary,com.oracle.truffle.sl.nodes.util.SLToMemberNode), guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
+                            //     [ 7] SpecializationData [id = WriteObject0, method = public static java.lang.Object writeObject(java.lang.Object, java.lang.Object, java.lang.Object, com.oracle.truffle.api.nodes.Node, int, com.oracle.truffle.api.interop.InteropLibrary, com.oracle.truffle.sl.nodes.util.SLToMemberNode) , guards = [Guard[(objectLibrary.accepts(receiver))], Guard[(!(SLWritePropertyNode.isSLObject(receiver)))]], signature = [java.lang.Object, java.lang.Object, java.lang.Object]]
                             //     [ 8] CacheExpression [sourceParameter = node]
                             //     [ 9] CacheExpression [sourceParameter = objectLibrary]
                             //     [10] CacheExpression [sourceParameter = asMember]
@@ -10078,10 +10095,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 2] arg2
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@1f0e89b0
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@36f2f39d
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@78d248c9
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@58e43871
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@11ae46f5
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@5a8c334c
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4c9f353e
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@300cfe17
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_WRITE_PROPERTY :
                             {
@@ -10093,16 +10110,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             // c.SLUnbox
                             //   Children:
                             //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-                            //     [ 1] SpecializationData [id = FromForeign0, method = fromForeign(java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary), guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
+                            //     [ 1] SpecializationData [id = FromForeign0, method = public static java.lang.Object fromForeign(java.lang.Object, com.oracle.truffle.api.interop.InteropLibrary) , guards = [Guard[(interop.accepts(value))]], signature = [java.lang.Object]]
                             //     [ 2] CacheExpression [sourceParameter = interop]
                             //   Indexed Pops:
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6e5097f6
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@28965993
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@32bf3393
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@23cd44e9
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@16455a87
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@28c05f30
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4a5e35fc
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@f021bf7
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_UNBOX :
                             {
@@ -10120,8 +10137,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@43be1638
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4933d459
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4b3a2d33
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3a81e9ec
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_FUNCTION_LITERAL :
                             {
@@ -10139,8 +10156,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //     [ 0] arg0
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@62f16bc9
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@30ed4abe
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7097614b
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@6daa44ed
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_TO_BOOLEAN :
                             {
@@ -10153,7 +10170,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Constants:
                             //     [ 0] CacheExpression [sourceParameter = bci]
                             //   Children:
-                            //     [ 0] SpecializationData [id = Direct, method = doDirect(com.oracle.truffle.sl.runtime.SLFunction,java.lang.Object[],com.oracle.truffle.api.Assumption,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.nodes.DirectCallNode), guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
+                            //     [ 0] SpecializationData [id = Direct, method = protected static java.lang.Object doDirect(com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[], com.oracle.truffle.api.Assumption, com.oracle.truffle.api.RootCallTarget, com.oracle.truffle.api.nodes.DirectCallNode) , guards = [Guard[(function.getCallTarget() == cachedTarget)]], signature = [com.oracle.truffle.sl.runtime.SLFunction, java.lang.Object[]]]
                             //     [ 1] CacheExpression [sourceParameter = callNode]
                             //     [ 2] CacheExpression [sourceParameter = library]
                             //     [ 3] CacheExpression [sourceParameter = node]
@@ -10162,10 +10179,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Variadic
                             //   Pushed Values: 1
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@874af46
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@12b4351a
-                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7b05d49b
-                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@32a63d1e
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@4c3a8cbc
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@662973d4
+                            //     [ 2] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@56e06d71
+                            //     [ 3] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$ExcludeBitSet@492209f9
                             //   Boxing Elimination: Bit Mask
                             case INSTR_C_SL_INVOKE :
                             {
@@ -10192,8 +10209,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@65edfeb9
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@65e0b60f
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7ce08997
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@7c5957b8
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_AND :
                             {
@@ -10217,8 +10234,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             //   Branch Targets:
                             //     [ 0] end
                             //   State Bitsets:
-                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@56c20bfb
-                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@3f82a8b7
+                            //     [ 0] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@37362279
+                            //     [ 1] com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory$StateBitSet@43ebf9f2
                             //   Boxing Elimination: Do Nothing
                             case INSTR_SC_SL_OR :
                             {

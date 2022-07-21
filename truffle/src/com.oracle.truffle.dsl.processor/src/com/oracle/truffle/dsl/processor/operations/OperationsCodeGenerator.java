@@ -350,7 +350,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "_maxStack")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int[].class), "sourceInfo")));
 
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "uncachedExecuteCount")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "uncachedExecuteCount = 16")));
 
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object.class), "_osrMetadata")));
 

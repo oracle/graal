@@ -75,9 +75,11 @@ public class ReturnInstruction extends Instruction {
         }
 
         if (uncached) {
-            b.statement("uncachedExecuteCount++");
-            b.startIf().string("uncachedExecuteCount > 16").end().startBlock();
+            b.statement("uncachedExecuteCount--");
+            b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();
             b.statement("$this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE)");
+            b.end().startElseBlock();
+            b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
             b.end();
         }
 
