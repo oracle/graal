@@ -39,7 +39,7 @@ import com.oracle.svm.core.util.json.JSONParserException;
 /**
  * Parses JSON describing lists of interfaces and register them in the {@link DynamicProxyRegistry}.
  */
-public class ProxyConfigurationParser extends ConfigurationParser {
+public final class ProxyConfigurationParser extends ConfigurationParser {
     private final Consumer<ConditionalElement<List<String>>> interfaceListConsumer;
 
     public ProxyConfigurationParser(Consumer<ConditionalElement<List<String>>> interfaceListConsumer, boolean strictConfiguration) {
