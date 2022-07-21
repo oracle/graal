@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.classinitialization;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
+import java.lang.reflect.Proxy;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -53,6 +54,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -112,6 +114,13 @@ final class EarlyClassInitializerAnalysis {
 
     @SuppressWarnings("try")
     boolean canInitializeWithoutSideEffects(Class<?> clazz, Set<Class<?>> existingAnalyzedClasses) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && Proxy.isProxyClass(clazz)) {
+            /*
+             * Proxy classes are no longer side-effect free in JDK 19 wrt this analysis. They are
+             * still safe to initialize at build time. (GR-40009)
+             */
+            return true;
+        }
         ResolvedJavaType type = originalProviders.getMetaAccess().lookupJavaType(clazz);
         assert type.getSuperclass() == null || type.getSuperclass().isInitialized() : "This analysis assumes that the superclass was successfully analyzed and initialized beforehand: " +
                         type.toJavaName(true);
