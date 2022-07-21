@@ -60,7 +60,7 @@ public final class EconomicMapUtil {
     }
 
     /**
-     * Computes a hash code for an {@link EconomicMap}.
+     * Computes an order-independent hash code for an {@link EconomicMap}.
      *
      * @param map the input map or {@code null}
      * @return the hash code of the map
@@ -69,13 +69,16 @@ public final class EconomicMapUtil {
         if (map == null) {
             return -1;
         }
-        int hash = 0;
+        int keyHash = 0;
+        int valueHash = 0;
         MapCursor<K, V> cursor = map.getEntries();
         while (cursor.advance()) {
-            hash = 31 * hash + cursor.getKey().hashCode();
-            hash = 31 * hash + cursor.getValue().hashCode();
+            keyHash ^= cursor.getKey().hashCode();
+            if (cursor.getValue() != null) {
+                valueHash ^= cursor.getValue().hashCode();
+            }
         }
-        return hash;
+        return keyHash + 31 * valueHash;
     }
 
     /**

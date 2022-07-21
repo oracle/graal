@@ -67,6 +67,7 @@ public class EconomicMapUtilTest {
         map2.put("foo", new Box(1));
         Assert.assertTrue(EconomicMapUtil.equals(map1, map2));
         Assert.assertTrue(EconomicMapUtil.equals(map2, map1));
+        Assert.assertEquals(EconomicMapUtil.hashCode(map1), EconomicMapUtil.hashCode(map2));
     }
 
     @Test
