@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,40 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.memory;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemorySizedOpNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class ProtectReadOnlyGlobalsBlockNode extends LLVMMemorySizedOpNode {
+import org.graalvm.collections.Pair;
 
-    public ProtectReadOnlyGlobalsBlockNode() {
-    }
+public abstract class LLVMMemorySizedOpNode extends LLVMNode {
+    public abstract void execute(LLVMPointer pointer, long size);
 
-    @Specialization(limit = "1")
-    @GenerateAOT.Exclude
-    public void doDefault(LLVMPointer ptr, long size,
-                    @Bind("getContext(ptr, size).getProtectReadOnlyGlobalsBlockFunction()") Object protectGlobalsBlock,
-                    @CachedLibrary("protectGlobalsBlock") InteropLibrary interop) {
-        try {
-            interop.execute(protectGlobalsBlock, ptr, size);
-        } catch (InteropException ex) {
-            assert false; // should never happen, but probably also safe to ignore
-        }
-    }
-
-    /**
-     * Workaround to make the DSL understand that the context value is dynamic here. Used in
-     * {@link #doDefault(LLVMPointer, long, Object, InteropLibrary)}.
-     */
-    final LLVMContext getContext(@SuppressWarnings("unused") LLVMPointer dynamicValue, @SuppressWarnings("unused") long size) {
-        return getContext();
+    public void doPair(Pair<LLVMPointer, Long> pair) {
+        execute(pair.getLeft(), pair.getRight());
     }
 }

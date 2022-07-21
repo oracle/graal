@@ -112,6 +112,11 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     }
 
     @Override
+    public int getPageSize() {
+        return unsafe.pageSize();
+    }
+
+    @Override
     @Deprecated
     @SuppressWarnings("deprecation")
     public void memset(Node location, LLVMNativePointer address, long size, byte value) {

@@ -65,7 +65,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemorySizedOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
@@ -145,7 +145,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMLifetimeStartNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemCopyNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemMoveFactory.LLVMMemMoveI64NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemSetNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeOpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMPrefetchNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMReturnAddressNodeGen;
@@ -210,11 +209,10 @@ import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI8VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateGlobalsBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateReadOnlyGlobalsBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.FreeReadOnlyGlobalsBlockNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.FreeGlobalsBlockNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMCompareExchangeNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceExpressionNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMInsertValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNodeGen;
@@ -1962,39 +1960,23 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMAllocateNode createAllocateGlobalsBlock(StructureType structType, boolean readOnly) {
-        try {
-            if (readOnly) {
-                return AllocateReadOnlyGlobalsBlockNode.create(structType, dataLayout);
-            } else {
-                return AllocateGlobalsBlockNode.create(structType, dataLayout);
-            }
-        } catch (TypeOverflowException e) {
-            return Type.handleOverflowAllocate(e);
-        }
+    public LLVMAllocateNode createAllocateGlobalsBlock(long totalSize) {
+        return AllocateGlobalsBlockNode.create(totalSize);
     }
 
     @Override
-    public LLVMMemoryOpNode createProtectGlobalsBlock() {
+    public LLVMMemorySizedOpNode createProtectGlobalsBlock() {
         return ProtectReadOnlyGlobalsBlockNodeGen.create();
     }
 
     @Override
-    public LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly) {
-        if (readOnly) {
-            return FreeReadOnlyGlobalsBlockNodeGen.create();
-        } else {
-            return LLVMFreeOpNodeGen.create();
-        }
+    public LLVMMemorySizedOpNode createFreeGlobalsBlock() {
+        return FreeGlobalsBlockNodeGen.create();
     }
 
     @Override
-    public LLVMMemoryOpNode getFreeGlobalsBlockUncached(boolean readOnly) {
-        if (readOnly) {
-            return FreeReadOnlyGlobalsBlockNodeGen.getUncached();
-        } else {
-            return LLVMFreeOpNodeGen.getUncached();
-        }
+    public LLVMMemorySizedOpNode getFreeGlobalsBlockUncached() {
+        return FreeGlobalsBlockNodeGen.getUncached();
     }
 
     @Override

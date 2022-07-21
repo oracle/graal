@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -38,11 +43,12 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMContext.TLSInitializerAccess;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemorySizedOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -52,15 +58,11 @@ import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateLiteralInPlaceNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateLiteralInPlaceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.truffle.llvm.runtime.LLVMContext.TLSInitializerAccess;
+import org.graalvm.collections.Pair;
 
 /**
  * {@link InitializeGlobalNode} initializes the value of all defined global symbols.
@@ -76,7 +78,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
 
     @Child private StaticInitsNode globalVarInit;
     @Child private DirectCallNode threadGlobalVarInit;
-    @Child private LLVMMemoryOpNode protectRoData;
+    @Child private LLVMMemorySizedOpNode protectRoData;
 
     public InitializeGlobalNode(LLVMParserResult parserResult, String moduleName, DataSectionFactory dataSectionFactory) {
         this.dataLayout = parserResult.getDataLayout();
@@ -89,10 +91,10 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
                         parserResult.getRuntime(), moduleName, true, dataSectionFactory)).getCallTarget());
     }
 
-    public void execute(VirtualFrame frame, LLVMPointer roDataBase) {
+    public void execute(VirtualFrame frame, Pair<LLVMPointer, Long> roDataBase) {
         globalVarInit.execute(frame);
         if (roDataBase != null) {
-            protectRoData.execute(roDataBase);
+            protectRoData.doPair(roDataBase);
         }
         LLVMContext context = LLVMContext.get(this);
 
@@ -234,8 +236,19 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             assert isThreadLocal;
             LLVMLanguage language = LLVMLanguage.get(node);
             AggregateLiteralInPlaceNode aggregateLiteralInPlaceNode = (AggregateLiteralInPlaceNode) createNode(bufferOffsets, descriptors, isThreadLocal);
-            LLVMAllocateNode allocateNode = dataSectionFactory.getThreadLocalSection().createAllocateNode(runtime.getNodeFactory(), "tlglobals_struct", false);
-            return new AggregateTLGlobalInPlaceNode(language, aggregateLiteralInPlaceNode, allocateNode, runtime.getBitcodeID(), dataSectionFactory.getThreadLocalGlobalContainerLength());
+            StructureType threadLocalStructureType = dataSectionFactory.getThreadLocalSection().getStructureType("tlglobals_struct");
+            LLVMAllocateNode allocateNode = null;
+            long allocationSize = 0;
+            try {
+                if (threadLocalStructureType != null) {
+                    allocationSize = threadLocalStructureType.getSize(dataLayout);
+                    allocateNode = runtime.getNodeFactory().createAllocateGlobalsBlock(allocationSize);
+                }
+            } catch (TypeOverflowException e) {
+                allocateNode = Type.handleOverflowAllocate(e);
+            }
+            return new AggregateTLGlobalInPlaceNode(language, aggregateLiteralInPlaceNode, allocateNode, runtime.getBitcodeID(), dataSectionFactory.getThreadLocalGlobalContainerLength(),
+                            allocationSize);
         }
     }
 }

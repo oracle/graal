@@ -29,20 +29,18 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class DataSectionFactory {
 
@@ -164,10 +162,9 @@ public class DataSectionFactory {
             return ret;
         }
 
-        LLVMAllocateNode createAllocateNode(NodeFactory factory, String typeName, boolean readOnly) {
+        StructureType getStructureType(String typeName) {
             if (offset > 0) {
-                StructureType structType = StructureType.createNamedFromList(typeName, true, types);
-                return factory.createAllocateGlobalsBlock(structType, readOnly);
+                return StructureType.createNamedFromList(typeName, true, types);
             } else {
                 return null;
             }
