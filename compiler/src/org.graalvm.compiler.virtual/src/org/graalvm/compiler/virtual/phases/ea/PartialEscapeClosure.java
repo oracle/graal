@@ -124,7 +124,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         for (Block block : cfg.getBlocks()) {
             GraphEffectList effects = blockEffects.get(block);
             if (effects != null) {
-                if (effects.getVirtualizationDelta() != 0) {
+                if (effects.getVirtualizationDelta() != 0 || effects.getAllocationDelta() != 0) {
                     return true;
                 }
             }
@@ -228,6 +228,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return false;
             }
             if (tool.isDeleted()) {
+                effects.addAllocationDelta(1);
                 VirtualUtil.trace(node.getOptions(), debug, "deleted virtualizable allocation %s", node);
                 return true;
             }

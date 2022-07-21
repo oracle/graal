@@ -200,7 +200,11 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         List<ValueNode> otherAllocations = new ArrayList<>(2);
         List<Boolean> ensureVirtual = new ArrayList<>(2);
         materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations);
-
+        materializeEffects.addAllocationDelta(-(1/*
+                                                  * because all currently virtualized allocations
+                                                  * will be materialized in 1 commit alloc node with
+                                                  * barriers
+                                                  */ + otherAllocations.size()));
         materializeEffects.addVirtualizationDelta(-(objects.size() + otherAllocations.size()));
         materializeEffects.add(new Effect("materializeBefore") {
             @Override

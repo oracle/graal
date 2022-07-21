@@ -64,10 +64,20 @@ public final class GraphEffectList extends EffectList {
      */
     private int virtualizationDelta;
 
+    /**
+     * Determines how many nodes are virtualized (positive) or materialized (negative) by this
+     * effect. Note that this is different than {@link #virtualizationDelta} as it considers actual
+     * nods in the IR. This can be relevant if the only effect of a PEA is to fold two commit
+     * allocation nodes into one. While this may look like no progress the actual allocation path
+     * can common out barriers, tlab reads etc.
+     */
+    private int allocationNodeDelta;
+
     @Override
     public void clear() {
         super.clear();
         virtualizationDelta = 0;
+        allocationNodeDelta = 0;
     }
 
     public void addCounterBefore(String group, String name, int increment, boolean addContext, FixedNode position) {
@@ -170,6 +180,14 @@ public final class GraphEffectList extends EffectList {
 
     public int getVirtualizationDelta() {
         return virtualizationDelta;
+    }
+
+    public void addAllocationDelta(int delta) {
+        allocationNodeDelta += delta;
+    }
+
+    public int getAllocationDelta() {
+        return allocationNodeDelta;
     }
 
     /**
