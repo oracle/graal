@@ -397,11 +397,20 @@ public class CompilationResultBuilder {
         return recordDataSectionReference(data);
     }
 
+    /**
+     * Creates an entry in the data section for the given constant.
+     *
+     * During one compilation if this is called multiple times for the same constant (as determined
+     * by {@link Object#equals(Object)}), the same data entry will be returned for every call.
+     */
     public Data createDataItem(Constant constant) {
         Data data = dataCache.get(constant);
         if (data == null) {
             data = dataBuilder.createDataItem(constant);
-            dataCache.put(constant, data);
+            Data previousData = dataCache.putIfAbsent(constant, data);
+            if (previousData != null) {
+                data = previousData;
+            }
         }
         return data;
     }
