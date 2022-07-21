@@ -52,10 +52,10 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.SimpleMatchers;
-import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF16Or32Matchers;
-import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF16RawMatchers;
-import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF8Matchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.SimpleSequentialMatchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF16Or32SequentialMatchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF16RawSequentialMatchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF8SequentialMatchers;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 
@@ -165,7 +165,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         int sum = 0;
         for (DFAAbstractStateNode state : states) {
             sum += state.getSuccessors().length;
-            if (state instanceof DFAStateNode && ((DFAStateNode) state).getMatchers().getNoMatchSuccessor() >= 0) {
+            if (state instanceof DFAStateNode && !((DFAStateNode) state).treeTransitionMatching() &&
+                            ((DFAStateNode) state).getSequentialMatchers().getNoMatchSuccessor() >= 0) {
                 sum++;
             }
         }
@@ -377,7 +378,6 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     if (state.treeTransitionMatching()) {
                         int c = inputReadAndDecode(locals);
                         int treeSuccessor = state.getTreeMatcher().checkMatchTree(c);
-                        assert !isRegressionTestMode() || state.sameResultAsRegularMatchers(c, treeSuccessor);
                         // TODO: this switch loop should be replaced with a PE intrinsic
                         for (int i = 0; i < successors.length; i++) {
                             if (i == treeSuccessor) {
@@ -387,11 +387,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         }
                         break;
                     }
-                    Matchers matchers = state.getMatchers();
+                    Matchers matchers = state.getSequentialMatchers();
                     CompilerAsserts.partialEvaluationConstant(matchers);
-                    if (matchers instanceof SimpleMatchers) {
+                    if (matchers instanceof SimpleSequentialMatchers) {
                         final int c = inputReadAndDecode(locals);
-                        CharMatcher[] cMatchers = ((SimpleMatchers) matchers).getMatchers();
+                        CharMatcher[] cMatchers = ((SimpleSequentialMatchers) matchers).getMatchers();
                         if (cMatchers != null) {
                             for (int i = 0; i < cMatchers.length; i++) {
                                 if (match(cMatchers, i, c)) {
@@ -400,11 +400,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 }
                             }
                         }
-                    } else if (matchers instanceof UTF8Matchers) {
+                    } else if (matchers instanceof UTF8SequentialMatchers) {
                         /*
                          * UTF-8 on-the fly decoding
                          */
-                        final UTF8Matchers utf8Matchers = (UTF8Matchers) matchers;
+                        final UTF8SequentialMatchers utf8Matchers = (UTF8SequentialMatchers) matchers;
                         final CharMatcher[] ascii = utf8Matchers.getAscii();
                         final CharMatcher[] enc2 = utf8Matchers.getEnc2();
                         final CharMatcher[] enc3 = utf8Matchers.getEnc3();
@@ -490,14 +490,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 }
                             }
                         }
-                    } else if (matchers instanceof UTF16RawMatchers) {
+                    } else if (matchers instanceof UTF16RawSequentialMatchers) {
                         /*
                          * UTF-16 interpreted as raw 16-bit values, no decoding
                          */
                         final int c = inputReadAndDecode(locals);
-                        CharMatcher[] ascii = ((UTF16RawMatchers) matchers).getAscii();
-                        CharMatcher[] latin1 = ((UTF16RawMatchers) matchers).getLatin1();
-                        CharMatcher[] bmp = ((UTF16RawMatchers) matchers).getBmp();
+                        CharMatcher[] ascii = ((UTF16RawSequentialMatchers) matchers).getAscii();
+                        CharMatcher[] latin1 = ((UTF16RawSequentialMatchers) matchers).getLatin1();
+                        CharMatcher[] bmp = ((UTF16RawSequentialMatchers) matchers).getBmp();
                         if (latin1 != null && (bmp == null || codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) || c < 256)) {
                             CharMatcher[] byteMatchers = asciiOrLatin1Matchers(codeRange, ascii, latin1);
                             for (int i = 0; i < byteMatchers.length; i++) {
@@ -519,8 +519,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         /*
                          * UTF-32 or UTF-16 on-the fly decoding
                          */
-                        assert matchers instanceof UTF16Or32Matchers;
-                        UTF16Or32Matchers utf16Or32Matchers = (UTF16Or32Matchers) matchers;
+                        assert matchers instanceof UTF16Or32SequentialMatchers;
+                        UTF16Or32SequentialMatchers utf16Or32Matchers = (UTF16Or32SequentialMatchers) matchers;
                         CharMatcher[] ascii = utf16Or32Matchers.getAscii();
                         CharMatcher[] latin1 = utf16Or32Matchers.getLatin1();
                         CharMatcher[] bmp = utf16Or32Matchers.getBmp();
@@ -680,11 +680,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     /**
      * Returns a new instruction pointer value that denotes the
-     * {@link Matchers#getNoMatchSuccessor() no-match successor} of {@code state}.
+     * {@link SequentialMatchers#getNoMatchSuccessor() no-match successor} of {@code state}.
      */
     private static int transitionNoMatch(DFAStateNode state) {
         CompilerAsserts.partialEvaluationConstant(state);
-        return state.getId() | IP_TRANSITION_MARKER | (state.getMatchers().getNoMatchSuccessor() << 16);
+        return state.getId() | IP_TRANSITION_MARKER | (state.getSequentialMatchers().getNoMatchSuccessor() << 16);
     }
 
     private int execTransition(TRegexDFAExecutorLocals locals, DFAStateNode state, int i) {

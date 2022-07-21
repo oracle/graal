@@ -59,7 +59,6 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     IndexOfCall indexOfCall,
                     short[] successors,
                     Matchers matchers,
-                    AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher,
                     short[] lastTransitionIndex,
                     DFACaptureGroupLazyTransition[] lazyTransitions,
                     DFACaptureGroupLazyTransition preAnchoredFinalStateTransition,
@@ -67,7 +66,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     DFACaptureGroupPartialTransition anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition unAnchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition cgLoopToSelf) {
-        super(id, flags, loopTransitionIndex, indexOfCall, successors, matchers, null, allTransitionsInOneTreeMatcher);
+        super(id, flags, loopTransitionIndex, indexOfCall, successors, matchers, null);
         this.anchoredFinalStateTransition = anchoredFinalStateTransition;
         this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
         this.lastTransitionIndex = lastTransitionIndex;
