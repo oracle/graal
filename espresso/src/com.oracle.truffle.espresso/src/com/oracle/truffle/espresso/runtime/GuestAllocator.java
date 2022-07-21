@@ -148,7 +148,8 @@ public final class GuestAllocator extends ContextAccessImpl {
         if (klass.getContext().getJavaVersion().modulesEnabled()) {
             setModule(newObj, klass);
         }
-        if (klass.isArray()) {
+        // The Class.componentType field is only available on 9+.
+        if (klass.isArray() && getMeta().java_lang_Class_componentType != null) {
             getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
