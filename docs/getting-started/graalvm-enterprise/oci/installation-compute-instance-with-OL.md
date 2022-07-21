@@ -113,7 +113,7 @@ To add additional features to GraalVM Enterprise, use the `yum install <package_
 
 ### Install Native Image
 
-[Native Image](../../../reference-manual/native-image/README.md) is a technology to turn your Java application into a standalone native executable and has to be installed to GraalVM Enterprise core installation.
+[Native Image](../../../reference-manual/native-image/README.md) is a technology to turn your Java application into a standalone native executable and has to be installed to GraalVM Enterprise JDK installation.
 
 1. Search for Native Image PRMs available for your installation: 
 
