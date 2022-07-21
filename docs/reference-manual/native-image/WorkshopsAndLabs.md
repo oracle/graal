@@ -1,15 +1,15 @@
 ---
 layout: ni-docs
-toc_group: how-to-guides
+toc_group: native-image
 link_title: Workshops and Labs
 permalink: /reference-manual/native-image/workshops/
 ---
 
-# Native Image Workshops and Interactive Labs
+# Workshops and Interactive Labs
 
 Consider running interactive workshops in Oracle Cloud to get some practical experience. 
 The interactive cloud platform provides you with a temporary account for the time you run a lab with required cloud resources (a virtual machine, Oracle Linux, storage, and so on).
-That means you can try Native Image without downloading any additional software to your computer.
+This means you can try Native Image without downloading any additional software to your computer.
 
 Go to [Luna Labs](https://luna.oracle.com/) and search for "Native Image". 
 The following labs are available:

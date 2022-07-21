@@ -86,7 +86,7 @@ GraalVM Enterprise consists of core and additional functionalities.
 * [GraalVM Updater](../reference-manual/graalvm-updater.md) - a utility to install additional functionalities
 
 ### Additional Functionalities
-GraalVM Enterprise core installation can be extended with more languages runtimes and utilities.
+GraalVM Enterprise JDK installation can be extended with more languages runtimes and utilities.
 
 Tools/Utilities:
 
