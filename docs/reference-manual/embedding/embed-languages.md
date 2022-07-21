@@ -378,23 +378,37 @@ The following access parameters may be configured:
 Polyglot embeddings can also be compiled ahead-of-time using [Native Image](../native-image/README.md).
 By default, no language is included if the Polyglot API is used.
 To enable guest languages, the `--language:<languageId>` (e.g., `--language:js`) option needs to be specified.
-Currently, it is required to set the `--initialize-at-build-time` option when building a polyglot native executable.
 All examples on this page can be converted to native executables with the `native-image` builder.
 
-The following example shows how a simple HelloWorld JavaScript application can be built using `native-image`:
+The following example shows how a simple HelloPolyglot JavaScript application can be built using `native-image`.
 
 ```shell
 javac HelloPolyglot.java
-native-image --language:js --initialize-at-build-time -cp . HelloPolyglot
-./HelloPolyglot
+native-image --language:js -cp . HelloPolyglot
+./hellopolyglot
 ```
 
-It should be mentioned that you can also include a guest language into the native executable, but exclude the JIT compiler by passing the `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` option to the builder.
+Please note that some languages (e.g. Python, Ruby) need their language home directories to work without limitations.
+If the polyglot application runs on a JVM (e.g. [here](#compile-and-run-a-polyglot-application)), the language homes are discovered automatically.
+However, for native images, the language homes have to be specified. We are currently working on a feature that will enable the `native-image` builder to automatically bundle
+the necessary language homes to the same directory as the produced executable/library. Until that feature is available, we recommend specifying
+a GraalVM home at runtime using the option `-Dorg.graalvm.home=$GRAALVM_HOME`, assuming the environment variable `GRAALVM_HOME` is populated with an absolute path to a GraalVM home directory.
+Language homes are automatically discovered in the specified directory. For example:
+
+```shell
+native-image --language:python -cp . HelloPolyglot
+./hellopolyglot -Dorg.graalvm.home=$GRAALVM_HOME
+```
+> Note: The version of GraalVM the home of which is specified at runtime must match the version of GraalVM used to build the native executable/library. 
+
+### Excluding the JIT compiler 
+
+It is possible to include a guest language in the native executable, but exclude the JIT compiler by passing the `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` option to the builder.
 Be aware, the flag `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` has to placed *after* all the Truffle language/tool options, so that it will override the default settings.
 
-You can build the above example again but this time the created image will only contain the Truffle language interpreter (the Graal compiler will not be included in the image) by running:
+The following example shows a native image build command that creates an image that will only contain the Truffle language interpreter (the Graal compiler will not be included in the image).
 ```shell
-native-image --language:js -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime --initialize-at-build-time -cp . HelloPolyglotInterpreter
+native-image --language:js -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime -cp . HelloPolyglotInterpreter
 ```
 
 ### Configuring Native Host Reflection
@@ -446,7 +460,7 @@ Now you can create a native executable that supports host access:
 
 ```shell
 javac AccessJavaFromJS.java
-native-image --language:js --initialize-at-build-time -H:ReflectionConfigurationFiles=reflect.json -cp . AccessJavaFromJS
+native-image --language:js -H:ReflectionConfigurationFiles=reflect.json -cp . AccessJavaFromJS
 ./accessjavafromjs
 ```
 
