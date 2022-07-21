@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.0.1",
+    "mxversion": "6.4.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -52,6 +52,8 @@ suite = {
             },
         ]
     },
+
+    "ignore_suite_commit_info": True,
 
     "projects" : {
         "com.oracle.truffle.tools.chromeinspector" : {

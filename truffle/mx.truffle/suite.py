@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.0.1",
+  "mxversion" : "6.4.0",
   "name" : "truffle",
   "version" : "22.3.0",
   "release" : False,
@@ -69,6 +69,7 @@ suite = {
       },
     ]
   },
+  "ignore_suite_commit_info": True,
   "libraries" : {
 
     # ------------- Libraries -------------
