@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.CurrentIsolate;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -38,6 +39,9 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
 
 import jdk.internal.misc.Unsafe;
 
@@ -114,6 +118,7 @@ abstract class JavaMonitorQueuedSynchronizer {
     // see AbstractQueuedSynchronizer.ConditionNode
     static final class ConditionNode extends Node {
         ConditionNode nextWaiter;
+        protected long notifierTid = 0;
 
         // see AbstractQueuedSynchronizer.ConditionNode.isReleasable()
         public boolean isReleasable() {
@@ -364,6 +369,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                     lastWaiter = null;
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
+                    first.notifierTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
                     enqueue(first);
                     if (!all) {
                         break;
@@ -451,8 +457,10 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedSynchronizer.ConditionObject.await()
         @SuppressWarnings("all")
-        public void await() throws InterruptedException {
+        public void await(Object obj) throws InterruptedException {
+            long startTicks = JfrTicks.elapsedTicks();
             if (Thread.interrupted()) {
+                JavaMonitorWaitEvent.emit(startTicks, obj, 0, 0L, false);
                 throw new InterruptedException();
             }
             ConditionNode node = new ConditionNode();
@@ -473,6 +481,8 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
             setCurrentBlocker(null);
             node.clearStatus();
+            //waiting is done, emit wait event
+            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierTid, 0L, false);
             acquire(node, savedState);
             if (interrupted) {
                 if (cancelled) {
@@ -485,9 +495,11 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedSynchronizer.ConditionObject.await(long, TimeUnit)
         @SuppressWarnings("all")
-        public boolean await(long time, TimeUnit unit) throws InterruptedException {
+        public boolean await(Object obj, long time, TimeUnit unit) throws InterruptedException {
+            long startTicks = JfrTicks.elapsedTicks();
             long nanosTimeout = unit.toNanos(time);
             if (Thread.interrupted()) {
+                JavaMonitorWaitEvent.emit(startTicks, obj, 0, 0L, false);
                 throw new InterruptedException();
             }
             ConditionNode node = new ConditionNode();
@@ -506,6 +518,8 @@ abstract class JavaMonitorQueuedSynchronizer {
                 }
             }
             node.clearStatus();
+            //waiting is done, emit wait event
+            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierTid, time, cancelled);
             acquire(node, savedState);
             if (cancelled) {
                 unlinkCancelledWaiters(node);
