@@ -48,6 +48,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -84,9 +87,6 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
-import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature;
-import com.oracle.svm.reflect.proxy.hosted.ProxyRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
@@ -323,9 +323,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
     }
 
     @Override
-    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
-
-    }
+    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {}
 
     public boolean isAllowed(Class<?> clazz) {
         boolean denied = deniedClasses.containsKey(clazz);
@@ -351,7 +349,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private final ConfigurationTypeResolver typeResolver;
     private final FeatureImpl.DuringSetupAccessImpl access;
     private boolean sealed;
-
     private final ProxyRegistry proxyRegistry;
 
     SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver, ProxyRegistry proxyRegistry) {
@@ -464,7 +461,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     @Override
     public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
-        proxyRegistry.registerForSerialization(new ConditionalElement<>(condition, implementedInterfaces));
+        Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(new ConditionalElement<>(condition, implementedInterfaces));
+        ImageSingletons.lookup(SerializationFeature.class).registerProxyClassForSerialization(proxyClass);
     }
 
     @Override

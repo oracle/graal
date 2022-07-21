@@ -61,6 +61,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -101,7 +102,6 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
-import com.oracle.svm.reflect.proxy.DynamicProxySupport;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.

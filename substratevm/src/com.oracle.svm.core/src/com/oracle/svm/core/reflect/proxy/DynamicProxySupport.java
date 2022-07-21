@@ -31,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -42,7 +41,6 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.serialize.hosted.SerializationFeature;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -133,12 +131,10 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     }
 
     @Override
-    public void registerProxyClassForSerialization(Class<?>... interfaces) {
+    public Class<?> createProxyClassForSerialization(Class<?>... interfaces) {
         final Class<?>[] intfs = interfaces.clone();
 
-        Class<?> proxyClass = createProxyClassFromImplementedInterfaces(intfs);
-
-        ImageSingletons.lookup(SerializationFeature.class).registerProxyClassForSerialization(proxyClass);
+        return createProxyClassFromImplementedInterfaces(intfs);
     }
 
     private Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {

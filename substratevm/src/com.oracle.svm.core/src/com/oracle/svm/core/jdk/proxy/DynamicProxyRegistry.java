@@ -37,5 +37,5 @@ public interface DynamicProxyRegistry {
     boolean isProxyClass(Class<?> clazz);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    void registerProxyClassForSerialization(Class<?>... interfaces);
+    Class<?> createProxyClassForSerialization(Class<?>... interfaces);
 }

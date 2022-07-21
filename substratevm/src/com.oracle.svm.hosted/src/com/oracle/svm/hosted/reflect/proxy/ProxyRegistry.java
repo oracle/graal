@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.reflect.proxy;
 
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
@@ -57,11 +55,13 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
         }
     }
 
-    public void registerForSerialization(ConditionalElement<List<String>> proxies) {
+    public Class<?> createProxyClassForSerialization(ConditionalElement<List<String>> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
-            dynamicProxySupport.registerProxyClassForSerialization(interfaces);
+            return dynamicProxySupport.createProxyClassForSerialization(interfaces);
         }
+
+        return null;
     }
 
     private Class<?>[] checkIfInterfacesAreValid(ConditionalElement<List<String>> proxies) {
