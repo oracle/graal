@@ -29,13 +29,13 @@ import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
 
 /**
- * Creates a matching of optimization trees by flattening them to lists of optimization.
+ * Creates a matching between optimization trees by flattening them to lists of optimizations.
  */
 public class FlatTreeMatcher implements TreeMatcher {
     final SetBasedOptimizationMatcher optimizationMatcher = new SetBasedOptimizationMatcher();
 
     /**
-     * Creates a matching of optimization trees by flattening them to lists of optimization.
+     * Creates a matching between optimization trees by flattening them to lists of optimizations.
      *
      * @param method1 the method from the first experiment
      * @param method2 the method from the second experiment

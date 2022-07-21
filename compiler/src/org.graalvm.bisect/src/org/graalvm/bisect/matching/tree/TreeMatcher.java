@@ -27,11 +27,11 @@ package org.graalvm.bisect.matching.tree;
 import org.graalvm.bisect.core.ExecutedMethod;
 
 /**
- * Creates a matching of optimization trees.
+ * Creates a matching between optimization trees.
  */
 public interface TreeMatcher {
     /**
-     * Matches the optimization trees of the provided methods.
+     * Computes a matching between two provided optimization trees.
      *
      * @param method1 the method from the first experiment
      * @param method2 the method from the second experiment
