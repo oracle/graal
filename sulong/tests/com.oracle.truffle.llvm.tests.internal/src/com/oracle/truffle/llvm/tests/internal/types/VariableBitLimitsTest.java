@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,33 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.runtime;
+package com.oracle.truffle.llvm.tests.internal.types;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import com.oracle.truffle.llvm.runtime.LLVMIVarBitSmall;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
-public class LLVMIVarBitSmallTest {
+public class VariableBitLimitsTest {
+
+    @Rule public ExpectedException exception = ExpectedException.none();
+
     @Test
-    public void unpackUnsignedLong() {
-        LLVMIVarBitSmall v = new LLVMIVarBitSmall(40, 0x00FF_FFFF_FF00L);
-        assertEquals(0x00FF_FFFF_FF00L, v.getZeroExtendedLongValue());
+    public void allocaVarWidthUnderflow() {
+        // we cannot easily create an out-of-range bitcode -- testing the constructor instead
+        exception.expect(LLVMParserException.class);
+        exception.expectMessage("out of range");
+        VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MIN_INT_BITS - 1);
+        Assert.assertNotNull(varWidth);
     }
 
     @Test
-    public void unpackSignedLong() {
-        LLVMIVarBitSmall v = new LLVMIVarBitSmall(40, 0x00FF_FFFF_FF00L);
-
-        assertTrue("v.getLongValue() is negative", v.getLongValue() < 0);
-        assertEquals(0xFFFF_FFFF_FFFF_FF00L, v.getLongValue());
-    }
-
-    @Test
-    public void arithMeticShiftRight() {
-        LLVMIVarBitSmall v = new LLVMIVarBitSmall(40, 0x00FF_FFFF_FC00L).arithmeticRightShift(new LLVMIVarBitSmall(32, 10));
-        assertEquals(-1L, v.getLongValue());
+    public void allocaVarWidthOverflow() {
+        // we cannot easily create an out-of-range bitcode -- testing the constructor instead
+        exception.expect(LLVMParserException.class);
+        exception.expectMessage("out of range");
+        VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MAX_INT_BITS + 1);
+        Assert.assertNotNull(varWidth);
     }
 }

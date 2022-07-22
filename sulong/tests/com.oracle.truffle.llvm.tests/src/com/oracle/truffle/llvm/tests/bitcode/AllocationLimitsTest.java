@@ -49,8 +49,6 @@ import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.TruffleRunner;
 
@@ -245,23 +243,5 @@ public class AllocationLimitsTest {
     public void varWidthMaxIntBitsPtr() {
         Value v = library.getMember("varwidth_max_int_bits_ptr").execute(new Object[]{null});
         Assert.assertTrue(v.asBoolean());
-    }
-
-    @Test
-    public void allocaVarWidthUnderflow() {
-        // we cannot easily create an out-of-range bitcode -- testing the constructor instead
-        exception.expect(LLVMParserException.class);
-        exception.expectMessage("out of range");
-        VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MIN_INT_BITS - 1);
-        Assert.assertNotNull(varWidth);
-    }
-
-    @Test
-    public void allocaVarWidthOverflow() {
-        // we cannot easily create an out-of-range bitcode -- testing the constructor instead
-        exception.expect(LLVMParserException.class);
-        exception.expectMessage("out of range");
-        VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MAX_INT_BITS + 1);
-        Assert.assertNotNull(varWidth);
     }
 }
