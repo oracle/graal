@@ -121,7 +121,7 @@ public class StubPortProcessor extends AbstractProcessor {
         }
     }
 
-    private int find(Proxy proxy, String oldUrl, String newUrl, int lineStart, int lineEnd) throws IOException {
+    private static int find(Proxy proxy, String oldUrl, String newUrl, int lineStart, int lineEnd) throws IOException {
         URLConnection oldUrlConnection = new URL(oldUrl).openConnection(proxy);
         URLConnection newUrlConnection = new URL(newUrl).openConnection(proxy);
 
@@ -139,7 +139,7 @@ public class StubPortProcessor extends AbstractProcessor {
         return -1;
     }
 
-    private String fetchLatestCommit(Proxy proxy) throws IOException {
+    private static String fetchLatestCommit(Proxy proxy) throws IOException {
         URLConnection connection = new URL(JDK_LATEST_INFO).openConnection(proxy);
 
         try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
