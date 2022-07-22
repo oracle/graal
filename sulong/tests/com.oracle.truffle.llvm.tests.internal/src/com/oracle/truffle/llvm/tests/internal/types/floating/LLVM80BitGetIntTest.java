@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+package com.oracle.truffle.llvm.tests.internal.types.floating;
 
 import static org.junit.Assert.assertEquals;
 
@@ -37,54 +37,54 @@ import org.junit.Test;
 
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
-public class LLVM80BitGetShortTest extends LLVM80BitTest {
+public class LLVM80BitGetIntTest extends LLVM80BitTest {
 
     private static final int NR_RANDOM_NUMBERS = 10000;
 
     @Test
     public void testPositiveInfinty() {
-        int positiveInfity = positiveInfinity().getShortValue();
-        assertEquals(0, positiveInfity);
+        int positiveInfity = positiveInfinity().getIntValue();
+        assertEquals(-2147483648, positiveInfity);
     }
 
     @Test
     public void testNegativeInfinty() {
-        int negativeInfinity = negativeInfinity().getShortValue();
-        assertEquals(0, negativeInfinity);
+        int negativeInfinity = negativeInfinity().getIntValue();
+        assertEquals(-2147483648, negativeInfinity);
     }
 
     @Test
     public void testQNAN() {
-        int nan = nan().getShortValue();
-        assertEquals(0, nan);
+        int nan = nan().getIntValue();
+        assertEquals(-2147483648, nan);
     }
 
     @Test
     public void testZero() {
-        int zero = LLVM80BitFloat.fromShort((byte) 0).getShortValue();
+        int zero = LLVM80BitFloat.fromInt(0).getIntValue();
         assertEquals(0, zero);
     }
 
     @Test
     public void testOne() {
-        int one = LLVM80BitFloat.fromShort((byte) 1).getShortValue();
+        int one = LLVM80BitFloat.fromInt(1).getIntValue();
         assertEquals(1, one);
     }
 
     @Test
     public void testMinusOne() {
-        int oneInt = LLVM80BitFloat.fromShort((byte) -1).getShortValue();
+        int oneInt = LLVM80BitFloat.fromInt(-1).getIntValue();
+        long oneLong = LLVM80BitFloat.fromInt(-1).getLongValue();
         assertEquals(-1, oneInt);
+        assertEquals(-1, oneLong);
     }
 
     @Test
     public void testRandomInt() {
         for (int i = 0; i < NR_RANDOM_NUMBERS; i++) {
-            byte[] bytes = new byte[1];
-            ThreadLocalRandom.current().nextBytes(bytes);
-            byte nextByte = bytes[0];
-            assertEquals(nextByte, LLVM80BitFloat.fromShort(nextByte).getShortValue());
-            assertEquals(nextByte, LLVM80BitFloat.fromShort(nextByte).getShortValue());
+            int nextInt = ThreadLocalRandom.current().nextInt();
+            assertEquals(nextInt, LLVM80BitFloat.fromInt(nextInt).getIntValue());
+            assertEquals(nextInt, LLVM80BitFloat.fromInt(nextInt).getLongValue());
         }
     }
 }

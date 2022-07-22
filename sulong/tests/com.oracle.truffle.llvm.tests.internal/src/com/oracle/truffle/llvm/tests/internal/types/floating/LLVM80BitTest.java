@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,41 +27,55 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+package com.oracle.truffle.llvm.tests.internal.types.floating;
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Test;
+import org.junit.Assert;
 
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
-public class LLVM80BitFromUnsignedIntTest {
+public abstract class LLVM80BitTest {
 
-    @Test
-    public void testZero() {
-        LLVM80BitFloat val = LLVM80BitFloat.fromUnsignedInt(0);
-        LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(false, 0, 0);
-        assertEquals(expected, val);
+    protected static LLVM80BitFloat val(int val) {
+        return LLVM80BitFloat.fromInt(val);
     }
 
-    @Test
-    public void testMinusOne() {
-        LLVM80BitFloat val = LLVM80BitFloat.fromUnsignedInt(-1);
-        LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(false, 0x401e, 0xffffffff00000000L);
-        assertEquals(expected, val);
+    protected static LLVM80BitFloat val(double val) {
+        return LLVM80BitFloat.fromDouble(val);
     }
 
-    @Test
-    public void testMinValue() {
-        LLVM80BitFloat val = LLVM80BitFloat.fromUnsignedInt(Integer.MIN_VALUE);
-        LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(false, 0x401e, 0x8000000000000000L);
-        assertEquals(expected, val);
+    protected static LLVM80BitFloat one() {
+        return LLVM80BitFloat.fromInt(1);
     }
 
-    @Test
-    public void testMaxValue() {
-        LLVM80BitFloat val = LLVM80BitFloat.fromUnsignedInt(Integer.MAX_VALUE);
-        LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(false, 0x401d, 0xfffffffe00000000L);
-        assertEquals(expected, val);
+    protected static LLVM80BitFloat zero() {
+        return LLVM80BitFloat.fromInt(0);
+    }
+
+    protected static LLVM80BitFloat minusZero() {
+        return LLVM80BitFloat.fromDouble(-0.0);
+    }
+
+    protected static LLVM80BitFloat minusOne() {
+        return LLVM80BitFloat.fromInt(-1);
+    }
+
+    protected static LLVM80BitFloat negativeInfinity() {
+        return LLVM80BitFloat.fromRawValues(true, LLVM80BitFloat.EXPONENT_MASK, LLVM80BitFloat.bit(63L));
+    }
+
+    protected static LLVM80BitFloat positiveInfinity() {
+        return LLVM80BitFloat.fromRawValues(false, LLVM80BitFloat.EXPONENT_MASK, LLVM80BitFloat.bit(63L));
+    }
+
+    protected static LLVM80BitFloat nan() {
+        return LLVM80BitFloat.fromRawValues(false, 0b111111111111111, 1L << 62);
+    }
+
+    protected static void assertBitEquals(double expected, double actual) {
+        Assert.assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(actual));
+    }
+
+    protected static void assertBitEquals(float expected, float actual) {
+        Assert.assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(actual));
     }
 }

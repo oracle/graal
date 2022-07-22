@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,48 +27,49 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+package com.oracle.truffle.llvm.tests.internal.types.floating;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-public class LLVM80BitGetFloatTest extends LLVM80BitTest {
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+
+public class LLVM80BitConstantsTest extends LLVM80BitTest {
+
+    @Test
+    public void testPositiveInt() {
+        byte[] test = {0x40, 0x09, (byte) 0x9A, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        assertEquals(val(1234), LLVM80BitFloat.fromBytesBigEndian(test));
+    }
+
+    @Test
+    public void testNegativeInt() {
+        byte[] test = {(byte) 0xC0, 0x09, (byte) 0x9A, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        assertEquals(val(-1234), LLVM80BitFloat.fromBytesBigEndian(test));
+    }
 
     @Test
     public void testZero() {
-        assertBitEquals(0f, zero().getFloatValue());
+        byte[] test = new byte[10];
+        assertEquals(zero(), LLVM80BitFloat.fromBytesBigEndian(test));
     }
 
     @Test
     public void testMinusZero() {
-        assertBitEquals(-0.0f, minusZero().getFloatValue());
+        byte[] test = {(byte) 0xBF, (byte) 0xFF, (byte) 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        assertEquals(minusOne(), LLVM80BitFloat.fromBytesBigEndian(test));
     }
 
     @Test
-    public void testOne() {
-        float val = one().getFloatValue();
-        assertEquals(0b111111100000000000000000000000, Float.floatToRawIntBits(val));
+    public void testPi() {
+        byte[] test = {0x40, 0x00, (byte) 0xC9, 0x0F, (byte) 0xDA, (byte) 0xA2, 0x21, 0x68, (byte) 0xC2, 0x35};
+        assertEquals(LLVM80BitFloat.fromRawValues(false, 0x4000, 0xc90fdaa22168c235L), LLVM80BitFloat.fromBytesBigEndian(test));
     }
 
     @Test
-    public void testValue() {
-        float val = val(3.5).getFloatValue();
-        assertBitEquals(3.5, val);
-    }
-
-    @Test
-    public void testPositiveInfinity() {
-        assertBitEquals(Float.POSITIVE_INFINITY, positiveInfinity().getFloatValue());
-    }
-
-    @Test
-    public void testNegativeInfinity() {
-        assertBitEquals(Float.NEGATIVE_INFINITY, negativeInfinity().getFloatValue());
-    }
-
-    @Test
-    public void testQNaN() {
-        assertBitEquals(Float.NaN, nan().getFloatValue());
+    public void testMinusOne() {
+        byte[] test = {(byte) 0xBF, (byte) 0xFF, (byte) 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        assertEquals(LLVM80BitFloat.fromRawValues(true, 0x3fff, 0x8000000000000000L), LLVM80BitFloat.fromBytesBigEndian(test));
     }
 }

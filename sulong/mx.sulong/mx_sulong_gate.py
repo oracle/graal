@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -192,7 +192,7 @@ def _sulong_gate_runner(args, tasks):
         if t: mx.command_function('clangformat')([])
     # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
-    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating.'], tags=['type', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('Internal', 'SULONG_TEST', description="Test internal Sulong implementation classes (e.g. fp80)", testClasses=['com.oracle.truffle.llvm.tests.internal.'], tags=['internal', 'sulongMisc', 'sulongWinSupport'])
     _unittest('Pipe', 'SULONG_TEST', description="Test output capturing", testClasses=['CaptureOutputTest'], tags=['pipe', 'sulongMisc'])
     _unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', description="LLVM 3.2 test suite", testClasses=['LLVMSuite'], tags=['llvm'])
     _unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', description="Test suite of the NWCC compiler v0.8.3", testClasses=['NWCCSuite'], tags=['nwcc'])

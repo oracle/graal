@@ -239,7 +239,7 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
     },
-    "com.oracle.truffle.llvm.tests.types" : {
+    "com.oracle.truffle.llvm.tests.internal" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -1959,7 +1959,7 @@ suite = {
       "subDir" : "tests",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
-        "com.oracle.truffle.llvm.tests.types",
+        "com.oracle.truffle.llvm.tests.internal",
         "com.oracle.truffle.llvm.tests.pipe",
         "com.oracle.truffle.llvm.tests.tck"
       ],

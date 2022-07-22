@@ -27,55 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+package com.oracle.truffle.llvm.tests.internal.types.floating;
 
-import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
-public abstract class LLVM80BitTest {
+public class LLVM80BitMixedTests extends LLVM80BitTest {
 
-    protected static LLVM80BitFloat val(int val) {
-        return LLVM80BitFloat.fromInt(val);
+    @Test
+    public void testMinusOneDoubleToLong() {
+        long oneLong = LLVM80BitFloat.fromDouble(-1).getLongValue();
+        assertEquals(-1, oneLong);
     }
 
-    protected static LLVM80BitFloat val(double val) {
-        return LLVM80BitFloat.fromDouble(val);
-    }
-
-    protected static LLVM80BitFloat one() {
-        return LLVM80BitFloat.fromInt(1);
-    }
-
-    protected static LLVM80BitFloat zero() {
-        return LLVM80BitFloat.fromInt(0);
-    }
-
-    protected static LLVM80BitFloat minusZero() {
-        return LLVM80BitFloat.fromDouble(-0.0);
-    }
-
-    protected static LLVM80BitFloat minusOne() {
-        return LLVM80BitFloat.fromInt(-1);
-    }
-
-    protected static LLVM80BitFloat negativeInfinity() {
-        return LLVM80BitFloat.fromRawValues(true, LLVM80BitFloat.EXPONENT_MASK, LLVM80BitFloat.bit(63L));
-    }
-
-    protected static LLVM80BitFloat positiveInfinity() {
-        return LLVM80BitFloat.fromRawValues(false, LLVM80BitFloat.EXPONENT_MASK, LLVM80BitFloat.bit(63L));
-    }
-
-    protected static LLVM80BitFloat nan() {
-        return LLVM80BitFloat.fromRawValues(false, 0b111111111111111, 1L << 62);
-    }
-
-    protected static void assertBitEquals(double expected, double actual) {
-        Assert.assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(actual));
-    }
-
-    protected static void assertBitEquals(float expected, float actual) {
-        Assert.assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(actual));
+    @Test
+    public void testMinusOneLongToDouble() {
+        double oneLong = LLVM80BitFloat.fromLong(-1).toDoubleValue();
+        assertBitEquals(-1.0, oneLong);
     }
 }

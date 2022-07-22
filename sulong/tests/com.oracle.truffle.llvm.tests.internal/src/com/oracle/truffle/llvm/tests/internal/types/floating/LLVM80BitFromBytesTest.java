@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,48 +27,58 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+package com.oracle.truffle.llvm.tests.internal.types.floating;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-public class LLVM80BitGetDoubleTest extends LLVM80BitTest {
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+
+public class LLVM80BitFromBytesTest extends LLVM80BitTest {
 
     @Test
-    public void testZero() {
-        assertBitEquals(0, zero().toDoubleValue());
-    }
-
-    @Test
-    public void testMinusZero() {
-        assertBitEquals(-0.0, minusZero().toDoubleValue());
+    public void testMinusOne() {
+        assertEquals(LLVM80BitFloat.fromBytes(minusOne().getBytes()), minusOne());
     }
 
     @Test
     public void testOne() {
-        double val = one().getFloatValue();
-        assertEquals(0x3ff0000000000000L, Double.doubleToRawLongBits(val));
+        assertEquals(LLVM80BitFloat.fromBytes(one().getBytes()), one());
     }
 
     @Test
-    public void testValue() {
-        double val = val(3.5).toDoubleValue();
-        assertBitEquals(3.5, val);
+    public void testTwo() {
+        assertEquals(LLVM80BitFloat.fromBytes(val(2.0).getBytes()), val(2));
+    }
+
+    @Test
+    public void testZero() {
+        assertEquals(LLVM80BitFloat.fromBytes(zero().getBytes()), zero());
     }
 
     @Test
     public void testPositiveInfinity() {
-        assertBitEquals(Double.POSITIVE_INFINITY, positiveInfinity().toDoubleValue());
+        assertEquals(LLVM80BitFloat.fromBytes(positiveInfinity().getBytes()), positiveInfinity());
     }
 
     @Test
     public void testNegativeInfinity() {
-        assertBitEquals(Double.NEGATIVE_INFINITY, negativeInfinity().toDoubleValue());
+        assertEquals(LLVM80BitFloat.fromBytes(negativeInfinity().getBytes()), negativeInfinity());
     }
 
     @Test
     public void testQNaN() {
-        assertBitEquals(Double.NaN, nan().toDoubleValue());
+        assertEquals(LLVM80BitFloat.fromBytes(nan().getBytes()), nan());
+    }
+
+    @Test
+    public void testPositiveValue() {
+        assertEquals(LLVM80BitFloat.fromBytes(val(Long.MAX_VALUE).getBytes()), val(Long.MAX_VALUE));
+    }
+
+    @Test
+    public void testNegativeValue() {
+        assertEquals(LLVM80BitFloat.fromBytes(val(Long.MIN_VALUE).getBytes()), val(Long.MIN_VALUE));
     }
 }
