@@ -26,7 +26,6 @@ package com.oracle.svm.core.hub;
 
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Proxy;
 import java.security.ProtectionDomain;
 
 import org.graalvm.nativeimage.Platform;
