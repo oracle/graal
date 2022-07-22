@@ -36,7 +36,6 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.tests.TestCaseCollector;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.DebuggerTester;
@@ -93,7 +92,7 @@ public final class LLVMDebugExprParserTest {
         return filename;
     }
 
-    private static final String LANG_ID = LLVMLanguage.ID;
+    private static final String LANG_ID = "llvm";
 
     private static final String TRACE_EXT = ".txt";
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";

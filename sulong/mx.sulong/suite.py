@@ -175,7 +175,6 @@ suite = {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm",
         "com.oracle.truffle.llvm.tests.pipe",
         "com.oracle.truffle.llvm.tests.harness",
         "truffle:TRUFFLE_TCK",
@@ -247,7 +246,6 @@ suite = {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm",
         "com.oracle.truffle.llvm.tests.pipe",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",

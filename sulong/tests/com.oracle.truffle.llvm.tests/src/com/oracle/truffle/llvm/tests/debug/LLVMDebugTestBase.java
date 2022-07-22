@@ -42,8 +42,6 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
@@ -59,7 +57,7 @@ import static org.junit.Assert.assertEquals;
 
 public abstract class LLVMDebugTestBase {
 
-    private static final String LANG_ID = LLVMLanguage.ID;
+    private static final String LANG_ID = "llvm";
 
     private static final String TRACE_EXT = ".txt";
     public static final String TEST_FOLDER_EXT = ".dir";
@@ -104,7 +102,7 @@ public abstract class LLVMDebugTestBase {
         contextBuilder.option(OPTION_LAZY_PARSING, String.valueOf(false));
         contextBuilder.options(TestEngineConfig.getInstance().getContextOptions());
         if (isCxx()) {
-            contextBuilder.option(SulongEngineOption.LOAD_CXX_LIBRARIES_NAME, "true");
+            contextBuilder.option("llvm.loadC++Libraries", "true");
         }
         setContextOptions(contextBuilder);
         tester = new DebuggerTester(contextBuilder);
