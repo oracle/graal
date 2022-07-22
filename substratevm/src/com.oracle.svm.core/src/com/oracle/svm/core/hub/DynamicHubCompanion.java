@@ -62,7 +62,7 @@ public final class DynamicHubCompanion {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
-        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) || Proxy.isProxyClass(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
+        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
     }
 
     String getPackageName(DynamicHub hub) {
