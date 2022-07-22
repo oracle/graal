@@ -24,12 +24,13 @@ Cloud Shell comes with several JDKs preinstalled, including GraalVM Enterprise J
     ```shell
     csruntimectl java list
 
-    graalvmeejdk-17.0.4                                    /usr/lib64/graalvm/graalvm22-ee-java17
-    openjdk-11.0.15                   /usr/lib/jvm/java-11-openjdk-11.0.15.0.9-2.0.1.el7_9.x86_64
-    openjdk-1.8.0.332                /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.332.b09-1.el7_9.x86_64
+      graalvmeejdk-17.0.4           /usr/lib64/graalvm/graalvm22-ee-java17
+      openjdk-11.0.15               /usr/lib/jvm/java-11-openjdk-11.0.15.0.9-2.0.1.el7_9.x86_64
+    * openjdk-1.8.0.332             /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.332.b09-1.el7_9.x86_64
     ```
+    The JDK marked with asterisk is the current JDK.
 
-3. Set `java` to GraalVM Enterprise:
+3. Set `java` to GraalVM Enterprise JDK:
 
     ```shell
     csruntimectl java set graalvmeejdk-17.0.4
@@ -105,8 +106,21 @@ For OCI users, Apache Maven is pre-installed in Cloud Shell (check the version w
     ctrl+C
     ```
 
-4. Next build a native executable for this Spring Boot application using the Maven profile:
+4. Next build a native executable for this Spring Boot application using the Maven profile.
 
+    ```shell
+    mvn package -Dnative
+    ```
+    At this step, using GraalVM Enterprise version 22.2.0, may get the following error:
+
+    ```shell
+    Fatal error: com.oracle.svm.core.util.VMError$HostedError: The classpath of com.oracle.svm.hosted.NativeImageGeneratorRunner must not contain ".". This can happen implicitly if the builder runs exclusively on the --module-path but specifies the com.oracle.svm.hosted.NativeImageGeneratorRunner main class without --module.
+    ```
+    Starting 22.2, the `native-image` tool, that the Spring AOT plugin invokes in the background, runs on the module path. As a quick workaround, disable the default module path by exporting the `USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM` variable and re-run the Maven package command:
+
+    ```shell
+    export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
+    ```
     ```shell
     mvn package -Dnative
     ```
