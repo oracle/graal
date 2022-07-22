@@ -331,7 +331,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
         public StructuredGraph build() {
             List<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? new ArrayList<>() : null;
-        // @formatter:off
+            // @formatter:off
             return new StructuredGraph(name,
                             rootMethod,
                             entryBCI,
@@ -354,7 +354,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
 
     private StartNode start;
-    private ResolvedJavaMethod rootMethod;
+    private final ResolvedJavaMethod rootMethod;
     private final long graphId;
     private final CompilationIdentifier compilationId;
     private final int entryBCI;
@@ -386,7 +386,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * happens.
      */
     public enum FrameStateVerification {
-
         /**
          * Verify all {@linkplain AbstractStateSplit} nodes that return {@code true} for
          * {@linkplain AbstractStateSplit#hasSideEffect()} have a
@@ -500,7 +499,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert !isSubstitution || profileProvider == null;
         this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
-
         assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
@@ -1067,7 +1065,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void setDuringStage(StageFlag stage) {
-
         assert isBeforeStage(stage) : "Cannot set during stage " + stage + " since the graph is not before that stage";
         currentStage = stage;
     }
@@ -1320,16 +1317,5 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public NodeSourcePosition getCallerContext() {
         return callerContext;
-    }
-
-    /*
-     * TODO BS Is this necessary?
-     * 
-     * In the original PR this was used by HostedMethod#cloneSpecialized. See the comment there.
-     */
-    public StructuredGraph cloneSpecialized(ResolvedJavaMethod specialized) {
-        StructuredGraph copy = (StructuredGraph) this.copy(getDebug());
-        copy.rootMethod = specialized;
-        return copy;
     }
 }

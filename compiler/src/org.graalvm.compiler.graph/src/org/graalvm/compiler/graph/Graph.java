@@ -168,7 +168,7 @@ public class Graph {
     /**
      * The option values used while compiling this graph.
      */
-    private OptionValues options;
+    private final OptionValues options;
 
     /**
      * The {@link DebugContext} used while compiling this graph.
@@ -414,10 +414,6 @@ public class Graph {
 
     public final OptionValues getOptions() {
         return options;
-    }
-
-    public void setOptions(OptionValues options) {
-        this.options = options;
     }
 
     public DebugContext getDebug() {
