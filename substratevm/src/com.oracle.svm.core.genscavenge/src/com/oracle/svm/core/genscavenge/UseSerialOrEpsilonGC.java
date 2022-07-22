@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,50 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.core.genscavenge;
+
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.Optional;
+import com.oracle.svm.core.SubstrateOptions;
 
-/**
- * Used to report valid interruption of compilation.
- */
 @Platforms(Platform.HOSTED_ONLY.class)
-public class InterruptImageBuilding extends RuntimeException {
-    static final long serialVersionUID = 754312906378380L;
-    private final boolean hasMessage;
-
-    /**
-     * Print an error message upon exit.
-     *
-     * @param message reason for interruption.
-     */
-    public InterruptImageBuilding(String message) {
-        super(message);
-        this.hasMessage = true;
-    }
-
-    /**
-     * Used to construct rethrowable InterruptImageBuilding exceptions in
-     * java.util.concurrent.ForkJoinTask#getThrowableException().
-     *
-     * @param cause original exception that got raised in a worker thread.
-     */
-    public InterruptImageBuilding(Throwable cause) {
-        super(cause);
-        this.hasMessage = cause != null && cause.getMessage() != null;
-    }
-
-    /**
-     * Print nothing upon exit.
-     */
-    public InterruptImageBuilding() {
-        this((Throwable) null);
-    }
-
-    public Optional<String> getReason() {
-        return hasMessage ? Optional.of(getMessage()) : Optional.empty();
+class UseSerialOrEpsilonGC implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
     }
 }

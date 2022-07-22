@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,7 +36,6 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
  * This visitor is handed <em>Pointers to Object references</em> and if necessary it promotes the
@@ -53,7 +51,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GreyToBlackObjRefVisitor() {
-        if (Options.GreyToBlackObjRefDemographics.getValue()) {
+        if (SerialGCOptions.GreyToBlackObjRefDemographics.getValue()) {
             counters = new RealCounters();
         } else {
             counters = new NoopCounters();
@@ -123,11 +121,6 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
     public Counters openCounters() {
         return counters.open();
-    }
-
-    public static class Options {
-        @Option(help = "Develop demographics of the object references visited.")//
-        public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false);
     }
 
     public interface Counters extends AutoCloseable {

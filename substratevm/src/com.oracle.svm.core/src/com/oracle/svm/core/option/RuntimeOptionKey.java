@@ -24,20 +24,35 @@
  */
 package com.oracle.svm.core.option;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Defines a runtime {@link Option}, in contrast to a {@link HostedOptionKey hosted option}.
  *
  * @see com.oracle.svm.core.option
  */
-public class RuntimeOptionKey<T> extends OptionKey<T> {
+public class RuntimeOptionKey<T> extends OptionKey<T> implements ValidatableOptionKey {
+    private final Consumer<RuntimeOptionKey<T>> validation;
     private final int flags;
 
     public RuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
+        this(defaultValue, null, flags);
+    }
+
+    public RuntimeOptionKey(T defaultValue, Consumer<RuntimeOptionKey<T>> validation, RuntimeOptionKeyFlag... flags) {
         super(defaultValue);
+        this.validation = validation;
         this.flags = computeFlags(flags);
     }
 
@@ -52,12 +67,49 @@ public class RuntimeOptionKey<T> extends OptionKey<T> {
         RuntimeOptionValues.singleton().update(this, value);
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
+        if (!SubstrateUtil.HOSTED && isImmutable() && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && isDifferentValue(values, newValue)) {
+            T value = (T) values.get(this);
+            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + value + ", new value: " + newValue);
+        }
+        super.update(values, newValue);
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean isDifferentValue(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
+        if (!values.containsKey(this) && !Objects.equals(getDefaultValue(), newValue)) {
+            return true;
+        }
+
+        T value = (T) values.get(this);
+        return !Objects.equals(value, newValue);
+    }
+
+    @Override
     public boolean hasBeenSet() {
         return hasBeenSet(RuntimeOptionValues.singleton());
     }
 
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void validate() {
+        if (validation != null) {
+            validation.accept(this);
+        }
+    }
+
     public boolean shouldCopyToCompilationIsolate() {
-        return (flags & RuntimeOptionKeyFlag.RelevantForCompilationIsolates.ordinal()) != 0;
+        return hasFlag(RuntimeOptionKeyFlag.RelevantForCompilationIsolates);
+    }
+
+    public boolean isImmutable() {
+        return hasFlag(RuntimeOptionKeyFlag.Immutable);
+    }
+
+    private boolean hasFlag(RuntimeOptionKeyFlag immutable) {
+        return (flags & immutable.ordinal()) != 0;
     }
 
     @Fold
@@ -75,6 +127,7 @@ public class RuntimeOptionKey<T> extends OptionKey<T> {
     }
 
     public enum RuntimeOptionKeyFlag {
-        RelevantForCompilationIsolates
+        RelevantForCompilationIsolates,
+        Immutable
     }
 }

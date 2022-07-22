@@ -60,7 +60,7 @@ import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 
 @AutomaticFeature
-class SerialGCFeature implements InternalFeature {
+class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.UseSerialGC.getValue();

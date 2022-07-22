@@ -276,7 +276,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         long optionMaxYoung = SubstrateGCOptions.MaxNewSize.getValue();
         if (optionMaxYoung > 0L) {
             maxYoung = WordFactory.unsigned(optionMaxYoung);
-        } else if (HeapParameters.Options.MaximumYoungGenerationSizePercent.hasBeenSet()) {
+        } else if (GenScavengeGCOptions.MaximumYoungGenerationSizePercent.hasBeenSet()) {
             maxYoung = maxHeap.unsignedDivide(100).multiply(HeapParameters.getMaximumYoungGenerationSizePercent());
         } else {
             maxYoung = maxHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1);

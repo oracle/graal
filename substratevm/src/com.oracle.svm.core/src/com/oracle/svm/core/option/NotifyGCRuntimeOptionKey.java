@@ -24,40 +24,28 @@
  */
 package com.oracle.svm.core.option;
 
-import java.util.Objects;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.heap.Heap;
+
+import java.util.function.Consumer;
 
 /**
- * A runtime option that can only be modified as long as the VM is not fully initialized yet.
+ * Notifies the {@link Heap} implementation after the value of the option has changed.
  */
-public class ImmutableRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public ImmutableRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
+public class NotifyGCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
+    public NotifyGCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
         super(defaultValue, flags);
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-        if (!SubstrateUtil.HOSTED && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && isDifferentValue(values, newValue)) {
-            T value = (T) values.get(this);
-            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + value + ", new value: " + newValue);
-        }
-        super.update(values, newValue);
+    public NotifyGCRuntimeOptionKey(T defaultValue, Consumer<RuntimeOptionKey<T>> validation, RuntimeOptionKeyFlag... flags) {
+        super(defaultValue, validation, flags);
     }
 
-    @SuppressWarnings("unchecked")
-    private boolean isDifferentValue(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-        if (!values.containsKey(this) && !Objects.equals(getDefaultValue(), newValue)) {
-            return true;
+    @Override
+    protected void afterValueUpdate() {
+        super.afterValueUpdate();
+        if (!SubstrateUtil.HOSTED) {
+            Heap.getHeap().optionValueChanged(this);
         }
-
-        T value = (T) values.get(this);
-        return !Objects.equals(value, newValue);
     }
 }

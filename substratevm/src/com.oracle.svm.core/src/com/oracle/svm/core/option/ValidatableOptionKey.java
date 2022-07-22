@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,8 @@
  */
 package com.oracle.svm.core.option;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.heap.Heap;
+public interface ValidatableOptionKey {
+    void validate();
 
-/**
- * Notifies the {@link Heap} implementation after the value of the option has changed.
- */
-public class GCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public GCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
-    }
-
-    @Override
-    protected void afterValueUpdate() {
-        super.afterValueUpdate();
-        if (!SubstrateUtil.HOSTED) {
-            Heap.getHeap().optionValueChanged(this);
-        }
-    }
+    boolean hasBeenSet();
 }
