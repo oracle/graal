@@ -61,6 +61,7 @@ import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -908,6 +909,6 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private void gc() {
-        GCImpl.getGCImpl().maybeCauseUserRequestedCollection();
+        GCImpl.getGCImpl().maybeCauseUserRequestedCollection(GCCause.JavaLangSystemGC, true);
     }
 }

@@ -31,6 +31,7 @@ import java.util.ListIterator;
 
 import org.graalvm.compiler.core.common.util.PhasePlan;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.TargetDescription;
 
@@ -97,6 +98,9 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<
     @Override
     protected final void run(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
         for (LIRPhase<C> phase : phases) {
+            // Notify the runtime that most objects allocated in previous LIR phase are dead and can
+            // be reclaimed. This will lower the chance of allocation failure in the next LIR phase.
+            GraalServices.notifyLowMemoryPoint(false);
             phase.apply(target, lirGenRes, context);
         }
     }
