@@ -56,7 +56,8 @@ import java.lang.annotation.Target;
 public @interface CLibrary {
 
     /**
-     * The name of the library.
+     * The name of the library without the ending e.g. hello. 
+     * The name of the actual file should start with "lib", e.g. <code>libhello.so</code>
      *
      * @since 19.0
      */
