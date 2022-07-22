@@ -208,6 +208,23 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_EXEC:
+            case PROP_EXEC_BOOLEAN:
+            case PROP_EXEC_BYTES:
+            case PROP_PATTERN:
+            case PROP_FLAGS:
+            case PROP_GROUP_COUNT:
+            case PROP_GROUPS:
+            case PROP_IS_BACKTRACKING:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
             case PROP_EXEC:

@@ -41,26 +41,57 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 
 public abstract class TRegexExecutorNode extends Node {
 
-    @CompilationFinal protected TRegexExecNode root;
+    private final RegexSource source;
+    private final int numberOfCaptureGroups;
+    private final int numberOfTransitions;
+    private @Child InputLengthNode lengthNode;
+    private @Child InputReadNode charAtNode;
+    private final BranchProfile bmpProfile = BranchProfile.create();
+    private final BranchProfile astralProfile = BranchProfile.create();
 
-    public void setRoot(TRegexExecNode root) {
-        this.root = root;
+    protected TRegexExecutorNode(RegexAST ast, int numberOfTransitions) {
+        this(ast.getSource(), ast.getNumberOfCaptureGroups(), numberOfTransitions);
+    }
+
+    protected TRegexExecutorNode(TRegexExecutorNode copy) {
+        this(copy.source, copy.numberOfCaptureGroups, copy.numberOfTransitions);
+    }
+
+    protected TRegexExecutorNode(RegexSource source, int numberOfCaptureGroups, int numberOfTransitions) {
+        this.source = source;
+        this.numberOfCaptureGroups = numberOfCaptureGroups;
+        this.numberOfTransitions = numberOfTransitions;
+    }
+
+    public RegexSource getSource() {
+        return source;
+    }
+
+    public final int getNumberOfCaptureGroups() {
+        return numberOfCaptureGroups;
+    }
+
+    public final int getNumberOfTransitions() {
+        return numberOfTransitions;
     }
 
     public Encoding getEncoding() {
-        assert root != null;
-        return root.getEncoding();
+        return source.getEncoding();
     }
 
     public boolean isUTF8() {
@@ -76,11 +107,11 @@ public abstract class TRegexExecutorNode extends Node {
     }
 
     public BranchProfile getBMPProfile() {
-        return root.getBMPProfile();
+        return bmpProfile;
     }
 
     public BranchProfile getAstralProfile() {
-        return root.getAstralProfile();
+        return astralProfile;
     }
 
     /**
@@ -91,8 +122,11 @@ public abstract class TRegexExecutorNode extends Node {
      *         {@link TRegexExecNode#execute(Object, int)}.
      */
     public int getInputLength(TRegexExecutorLocals locals) {
-        assert root != null;
-        return root.inputLength(locals.getInput());
+        if (lengthNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            lengthNode = insert(InputLengthNode.create());
+        }
+        return lengthNode.execute(locals.getInput(), getEncoding());
     }
 
     /**
@@ -141,7 +175,6 @@ public abstract class TRegexExecutorNode extends Node {
 
     @ExplodeLoop
     public int inputReadAndDecode(TRegexExecutorLocals locals, int index) {
-        assert root != null;
         if (getEncoding() == Encodings.UTF_16) {
             locals.setNextIndex(inputIncRaw(index));
             int c = inputReadRaw(locals);
@@ -235,8 +268,11 @@ public abstract class TRegexExecutorNode extends Node {
     }
 
     public int inputReadRaw(TRegexExecutorLocals locals, int index, boolean forward) {
-        assert root != null;
-        return root.inputRead(locals.getInput(), forward ? index : index - 1);
+        if (charAtNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            charAtNode = insert(InputReadNode.create());
+        }
+        return charAtNode.execute(locals.getInput(), forward ? index : index - 1, getEncoding());
     }
 
     public void inputAdvance(TRegexExecutorLocals locals) {
@@ -352,14 +388,18 @@ public abstract class TRegexExecutorNode extends Node {
         return 0;
     }
 
-    protected int getNumberOfCaptureGroups() {
-        assert root != null;
-        return root.getNumberOfCaptureGroups();
+    public boolean isBooleanMatch() {
+        boolean booleanMatch = source.getOptions().isBooleanMatch();
+        CompilerAsserts.partialEvaluationConstant(booleanMatch);
+        return booleanMatch;
     }
 
-    public boolean isBooleanMatch() {
-        return root.isBooleanMatch();
+    public abstract TRegexExecutorNode shallowCopy();
+
+    public void initialize() {
     }
+
+    public abstract String getName();
 
     public abstract boolean isForward();
 
@@ -371,5 +411,4 @@ public abstract class TRegexExecutorNode extends Node {
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 
     public abstract Object execute(TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
-
 }

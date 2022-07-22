@@ -55,7 +55,10 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 @ExportLibrary(InteropLibrary.class)
 public final class RubyFlags extends AbstractConstantKeysObject {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("EXTENDED", "IGNORECASE", "MULTILINE");
+    private static final String PROP_EXTENDED = "EXTENDED";
+    private static final String PROP_IGNORECASE = "IGNORECASE";
+    private static final String PROP_MULTILINE = "MULTILINE";
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXTENDED, PROP_IGNORECASE, PROP_MULTILINE);
 
     private final int value;
     private final Mode mode;
@@ -195,13 +198,25 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_EXTENDED:
+            case PROP_IGNORECASE:
+            case PROP_MULTILINE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "EXTENDED":
+            case PROP_EXTENDED:
                 return isExtended();
-            case "IGNORECASE":
+            case PROP_IGNORECASE:
                 return isIgnoreCase();
-            case "MULTILINE":
+            case PROP_MULTILINE:
                 return isMultiline();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();

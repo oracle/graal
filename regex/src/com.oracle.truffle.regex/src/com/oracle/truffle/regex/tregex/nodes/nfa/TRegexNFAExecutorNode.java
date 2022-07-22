@@ -65,16 +65,36 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     private final boolean trackLastGroup;
     private boolean dfaGeneratorBailedOut;
 
-    public TRegexNFAExecutorNode(NFA nfa, boolean trackLastGroup) {
+    private TRegexNFAExecutorNode(NFA nfa, int numberOfTransitions) {
+        super(nfa.getAst(), numberOfTransitions);
         this.nfa = nfa;
-        nfa.setInitialLoopBack(false);
         this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
+        this.trackLastGroup = nfa.getAst().getOptions().getFlavor().usesLastGroupResultField();
+    }
+
+    private TRegexNFAExecutorNode(TRegexNFAExecutorNode copy) {
+        super(copy);
+        this.nfa = copy.nfa;
+        this.searching = copy.searching;
+        this.trackLastGroup = copy.trackLastGroup;
+        this.dfaGeneratorBailedOut = copy.dfaGeneratorBailedOut;
+    }
+
+    public static TRegexNFAExecutorNode create(NFA nfa) {
+        nfa.setInitialLoopBack(false);
+        int numberOfTransitions = 0;
         for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
             if (nfa.getTransitions()[i] != null) {
                 nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
+                numberOfTransitions++;
             }
         }
-        this.trackLastGroup = trackLastGroup;
+        return new TRegexNFAExecutorNode(nfa, numberOfTransitions);
+    }
+
+    @Override
+    public TRegexNFAExecutorNode shallowCopy() {
+        return new TRegexNFAExecutorNode(this);
     }
 
     public NFA getNFA() {
@@ -83,6 +103,11 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     public void notifyDfaGeneratorBailedOut() {
         dfaGeneratorBailedOut = true;
+    }
+
+    @Override
+    public String getName() {
+        return "nfa";
     }
 
     @Override

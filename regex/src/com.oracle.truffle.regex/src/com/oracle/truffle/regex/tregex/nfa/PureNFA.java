@@ -164,6 +164,10 @@ public final class PureNFA implements StateIndex<PureNFAState> {
         return states.length;
     }
 
+    public int getNumberOfTransitions() {
+        return transitions.length;
+    }
+
     @Override
     public int getId(PureNFAState state) {
         assert states[state.getId()] == state;

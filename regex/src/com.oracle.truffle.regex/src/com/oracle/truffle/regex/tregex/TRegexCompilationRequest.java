@@ -180,7 +180,7 @@ public final class TRegexCompilationRequest {
                     Loggers.LOG_MATCHING_STRATEGY.fine(() -> "regex cannot match, using dummy matcher");
                     return new DeadRegexExecNode(language, source);
                 }
-                return new TRegexExecNode(ast, new TRegexNFAExecutorNode(nfa, ast.getOptions().getFlavor().usesLastGroupResultField()));
+                return new TRegexExecNode(ast, TRegexNFAExecutorNode.create(nfa));
             } catch (UnsupportedRegexException e) {
                 // fall back to backtracking executor
                 Loggers.LOG_MATCHING_STRATEGY.fine(() -> "NFA generator bailout: " + e.getReason() + ", using back-tracking matcher");
@@ -197,15 +197,17 @@ public final class TRegexCompilationRequest {
         debugPureNFA();
         TRegexExecutorNode[] subExecutors = pureNFA.getSubtrees().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_SUB_EXECUTORS
                         : new TRegexExecutorNode[pureNFA.getSubtrees().size()];
+        int totalNumberOfTransitions = 0;
         for (int i = 0; i < pureNFA.getSubtrees().size(); i++) {
             PureNFA subNFA = pureNFA.getSubtrees().get(i);
             if (pureNFA.getASTSubtree(subNFA).isLookAroundAssertion() && pureNFA.getASTSubtree(subNFA).asLookAroundAssertion().isLiteral()) {
-                subExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(subNFA).asLookAroundAssertion(), compilationBuffer);
+                subExecutors[i] = TRegexLiteralLookAroundExecutorNode.create(pureNFA, pureNFA.getASTSubtree(subNFA).asLookAroundAssertion(), compilationBuffer);
             } else {
-                subExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, subNFA, subExecutors, false, compilationBuffer);
+                subExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, subNFA, subNFA.getNumberOfTransitions(), subExecutors, false, compilationBuffer);
             }
+            totalNumberOfTransitions += subExecutors[i].getNumberOfTransitions();
         }
-        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), subExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), totalNumberOfTransitions, subExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
     }
 
     @TruffleBoundary
