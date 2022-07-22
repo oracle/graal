@@ -27,6 +27,7 @@ Choose your operating system and proceed to the installation steps for your spec
 * Oracle Cloud 
   * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-with-OL.md)
   * [OCI DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
+  * [Cloud Shell](oci/cloud-shell.md)
 * [Linux](installation-linux.md)
 * [Linux ARM64](installation-linux-aarch64.md)
 * [macOS](installation-macos.md)
