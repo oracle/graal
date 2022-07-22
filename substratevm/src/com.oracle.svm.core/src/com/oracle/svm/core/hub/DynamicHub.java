@@ -42,7 +42,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URL;
@@ -414,10 +413,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         this.referenceMapIndex = (int) referenceMapIndex;
         this.instantiationFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) | makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, canInstantiateAsInstance));
-
-        if (Proxy.isProxyClass(hostedJavaClass)) {
-            companion.setClassLoaderProxy(PredefinedClassesSupport.isPredefined(hostedJavaClass));
-        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
