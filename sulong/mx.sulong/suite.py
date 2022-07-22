@@ -202,6 +202,26 @@ suite = {
       "testProject" : True,
       "jacoco" : "exclude",
     },
+    "com.oracle.truffle.llvm.tests.api" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.api",
+        "com.oracle.truffle.llvm.tests.pipe",
+        "truffle:TRUFFLE_TCK",
+        "mx:JUNIT",
+      ],
+      "requires" : [
+        "java.logging",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
     "com.oracle.truffle.llvm.tests.interop" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
@@ -1981,6 +2001,7 @@ suite = {
       "subDir" : "tests",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
+        "com.oracle.truffle.llvm.tests.api",
         "com.oracle.truffle.llvm.tests.internal",
         "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.pipe",

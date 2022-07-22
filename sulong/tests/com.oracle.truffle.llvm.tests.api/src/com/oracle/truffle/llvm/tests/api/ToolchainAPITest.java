@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests;
+package com.oracle.truffle.llvm.tests.api;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.llvm.api.Toolchain;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.tck.TruffleRunner;
 
 public class ToolchainAPITest {
@@ -70,7 +69,7 @@ public class ToolchainAPITest {
 
     protected Value load(File file) {
         try {
-            Source source = Source.newBuilder(LLVMLanguage.ID, file).build();
+            Source source = Source.newBuilder("llvm", file).build();
             return runWithPolyglot.getPolyglotContext().eval(source);
         } catch (RuntimeException e) {
             throw e;
