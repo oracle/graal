@@ -365,7 +365,7 @@ class ToolchainConfig(object):
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
         "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
-        "CL": ["graalvm-{name}-clang-cl", "graalvm-clang-cl", "clang-cl"],
+        "CL": ["graalvm-{name}-clang-cl", "graalvm-clang-cl", "clang-cl", "cl"],
         "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "lld-link", "ld64"],
         "BINUTIL": ["graalvm-{name}-binutil"] + _llvm_tool_map + ["llvm-" + i for i in _llvm_tool_map]
     }
