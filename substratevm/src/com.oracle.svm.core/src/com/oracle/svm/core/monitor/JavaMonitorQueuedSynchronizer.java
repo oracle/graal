@@ -118,7 +118,7 @@ abstract class JavaMonitorQueuedSynchronizer {
     // see AbstractQueuedSynchronizer.ConditionNode
     static final class ConditionNode extends Node {
         ConditionNode nextWaiter;
-        protected long notifierTid = 0;
+        long notifierJfrTid;
 
         // see AbstractQueuedSynchronizer.ConditionNode.isReleasable()
         public boolean isReleasable() {
@@ -369,7 +369,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                     lastWaiter = null;
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
-                    first.notifierTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
+                    first.notifierJfrTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
                     enqueue(first);
                     if (!all) {
                         break;
@@ -482,7 +482,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             setCurrentBlocker(null);
             node.clearStatus();
             // waiting is done, emit wait event
-            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierTid, 0L, false);
+            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, 0L, false);
             acquire(node, savedState);
             if (interrupted) {
                 if (cancelled) {
@@ -519,7 +519,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
             node.clearStatus();
             // waiting is done, emit wait event
-            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierTid, time, cancelled);
+            JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, time, cancelled);
             acquire(node, savedState);
             if (cancelled) {
                 unlinkCancelledWaiters(node);
