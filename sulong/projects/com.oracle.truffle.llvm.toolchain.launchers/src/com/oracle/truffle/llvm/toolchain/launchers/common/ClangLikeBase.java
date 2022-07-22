@@ -181,6 +181,13 @@ public abstract class ClangLikeBase extends Driver {
         switch (Arch.getCurrent()) {
             case X86_64:
                 return Arrays.asList("-mno-sse3", "-mno-avx");
+            case AARCH_64:
+                /*
+                 * Avoid NEON intrinsics to be used. There are no perf gains from a Sulong
+                 * perspective and they aren't implemented by Sulong. Usages in C should be guarded
+                 * by `__ARM_NEON` and provide a fallback.
+                 */
+                return Arrays.asList("-Xclang", "-target-feature", "-Xclang", "-neon");
             default:
                 return Collections.emptyList();
         }
