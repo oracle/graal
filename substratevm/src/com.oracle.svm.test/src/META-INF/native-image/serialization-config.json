@@ -22,7 +22,7 @@
       "name":"java.util.HashMap"
     },
     {
-      "name":"ProxyHandler"
+      "name":"com.oracle.svm.test.proxy.ProxyHandler"
     },
     {
       "name":"java.lang.reflect.Proxy"
