@@ -114,17 +114,29 @@ public class Pthread {
     @CFunction
     public static native int pthread_attr_init(pthread_attr_t attr);
 
+    @CFunction(value = "pthread_attr_init", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_init_no_transition(pthread_attr_t attr);
+
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_destroy(pthread_attr_t attr);
 
+    @CFunction(value = "pthread_attr_destroy", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_destroy_no_transition(pthread_attr_t attr);
+
     @CFunction
     public static native int pthread_attr_setdetachstate(pthread_attr_t attr, int detachstate);
+
+    @CFunction(value = "pthread_attr_setdetachstate", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_setdetachstate_no_transition(pthread_attr_t attr, int detachstate);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getguardsize(pthread_attr_t attr, WordPointer guardsize);
 
     @CFunction
     public static native int pthread_attr_setstacksize(pthread_attr_t attr, UnsignedWord stacksize);
+
+    @CFunction(value = "pthread_attr_setstacksize", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_setstacksize_no_transition(pthread_attr_t attr, UnsignedWord stacksize);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getstack(pthread_attr_t attr, WordPointer stackaddr, WordPointer stacksize);
