@@ -63,8 +63,10 @@ define_bisect_default_build_steps(BuildStepsGraalVMStrategy())
 
 
 def _sdk_gate_runner(args, tasks):
-    with Task('SDK UnitTests', tasks, tags=['test']) as t:
-        if t: unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'])
+    with Task('SDK UnitTests', tasks, tags=['test'], report=True) as t:
+        if t:
+            tags = {'task' : t.title}
+            unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'], test_report_tags=tags)
     with Task('Check Copyrights', tasks) as t:
         if t:
             if mx.command_function('checkcopyrights')(['--primary', '--', '--projects', 'src']) != 0:
