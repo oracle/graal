@@ -29,19 +29,15 @@ package com.oracle.svm.core.monitor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
-import com.oracle.svm.core.jfr.JfrTicks;
 
 import jdk.internal.misc.Unsafe;
 
@@ -539,31 +535,19 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
+    @SuppressWarnings("deprecation")
     static boolean compareAndSetReference(Object object, long offset, Node expected, Node newValue) {
-        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            return u.compareAndSetReference(object, offset, expected, newValue);
-        } else {
-            return u.compareAndSetObject(object, offset, expected, newValue);
-        }
+        return U.compareAndSetObject(object, offset, expected, newValue);
     }
 
+    @SuppressWarnings("deprecation")
     static boolean weakCompareAndSetReference(Object object, long offset, Node expected, Node newValue) {
-        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            return u.weakCompareAndSetReference(object, offset, expected, newValue);
-        } else {
-            return u.weakCompareAndSetObject(object, offset, expected, newValue);
-        }
+        return U.weakCompareAndSetObject(object, offset, expected, newValue);
     }
 
+    @SuppressWarnings("deprecation")
     static void putReference(Object object, long offset, Node p) {
-        Target_jdk_internal_misc_Unsafe u = SubstrateUtil.cast(U, Target_jdk_internal_misc_Unsafe.class);
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            u.putReference(object, offset, p);
-        } else {
-            u.putObject(object, offset, p);
-        }
+        U.putObject(object, offset, p);
     }
 
     // Unsafe
@@ -578,31 +562,4 @@ final class Target_java_util_concurrent_locks_LockSupport {
     @Alias
     @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
     public static native void setCurrentBlocker(Object blocker);
-}
-
-@TargetClass(value = Unsafe.class)
-final class Target_jdk_internal_misc_Unsafe {
-    @Alias
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    public native boolean compareAndSetReference(Object o, long offset, Object expected, Object x);
-
-    @Alias
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public native boolean compareAndSetObject(Object o, long offset, Object expected, Object x);
-
-    @Alias
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    public native boolean weakCompareAndSetReference(Object o, long offset, Object expected, Object x);
-
-    @Alias
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public native boolean weakCompareAndSetObject(Object o, long offset, Object expected, Object x);
-
-    @Alias
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    public native void putReference(Object o, long offset, Object x);
-
-    @Alias
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public native void putObject(Object o, long offset, Object x);
 }
