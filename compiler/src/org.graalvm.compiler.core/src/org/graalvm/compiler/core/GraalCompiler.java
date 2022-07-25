@@ -34,6 +34,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -150,7 +151,8 @@ public class GraalCompiler {
                 if (r.verifySourcePositions) {
                     assert r.graph.verifySourcePositions(true);
                 }
-                r.graph.getOptimizationLog().printToFileIfEnabled();
+                StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(r.graph, r.providers, r.graphBuilderSuite);
+                r.graph.getOptimizationLog().printToFileIfEnabled(methodNameFormatter);
                 r.graph.getOptimizationLog().dumpOptimizationTreeIfEnabled();
             } catch (Throwable e) {
                 throw debug.handle(e);

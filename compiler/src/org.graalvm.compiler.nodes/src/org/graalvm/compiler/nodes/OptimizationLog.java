@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -504,16 +505,17 @@ public class OptimizationLog implements CompilationListener {
      * {@code optimization_log/compilation-id.json} in the {@link DebugOptions#getDumpDirectoryName
      * dump directory}. Directories are created if they do not exist.
      *
+     * @param methodNameFormatter a function that formats method names
      * @throws IOException failed to create a directory or the file
      */
-    public void printToFileIfEnabled() throws IOException {
+    public void printToFileIfEnabled(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
         if (!optimizationLogEnabled) {
             return;
         }
         String optimizationLogPath = PathUtilities.getPath(DebugOptions.getDumpDirectoryName(graph.getOptions()), "optimization_log");
         PathUtilities.createDirectories(optimizationLogPath);
         String filePath = PathUtilities.getPath(optimizationLogPath, compilationId + ".json");
-        String json = JSONFormatter.formatJSON(asJsonMap());
+        String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
         PrintStream stream = new PrintStream(PathUtilities.openOutputStream(filePath));
         stream.print(json);
     }
@@ -527,9 +529,9 @@ public class OptimizationLog implements CompilationListener {
         }
     }
 
-    private EconomicMap<String, Object> asJsonMap() {
+    private EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
         EconomicMap<String, Object> map = EconomicMap.create();
-        String compilationMethodName = graph.method().format("%H.%n(%p)");
+        String compilationMethodName = methodNameFormatter.apply(graph.method());
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
         map.put("rootPhase", currentPhase.asJsonMap());

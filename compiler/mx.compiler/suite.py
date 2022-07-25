@@ -1289,6 +1289,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.virtual",
         "org.graalvm.compiler.loop.phases",
+        "org.graalvm.compiler.java",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
@@ -1316,7 +1317,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.lir.aarch64",
-        "org.graalvm.compiler.java",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1424,7 +1424,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
-        "org.graalvm.compiler.java",
       ],
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
