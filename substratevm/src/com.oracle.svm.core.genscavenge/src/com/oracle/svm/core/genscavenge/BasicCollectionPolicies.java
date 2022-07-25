@@ -62,6 +62,11 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
+            return cause == GCCause.JavaLangSystemGC && !SubstrateGCOptions.DisableExplicitGC.getValue();
+        }
+
+        @Override
         public UnsignedWord getCurrentHeapCapacity() {
             return getMaximumHeapSize();
         }

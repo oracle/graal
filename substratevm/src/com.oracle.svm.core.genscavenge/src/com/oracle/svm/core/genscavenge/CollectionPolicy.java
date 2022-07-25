@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,8 @@ public interface CollectionPolicy {
         switch (name) {
             case "Adaptive":
                 return new AdaptiveCollectionPolicy();
+            case "AggressiveShrink":
+                return new AggressiveShrinkCollectionPolicy();
             case "Proportionate":
                 return new ProportionateSpacesPolicy();
             case "BySpaceAndTime":
@@ -107,6 +109,13 @@ public interface CollectionPolicy {
      * called followed by the collection.
      */
     boolean shouldCollectOnAllocation();
+
+    /**
+     * Return true if a user-requested GC (e.g., call to {@link System#gc()} or
+     * {@link org.graalvm.compiler.serviceprovider.GraalServices#notifyLowMemoryPoint(boolean)})
+     * should be performed.
+     */
+    boolean shouldCollectOnRequest(GCCause cause, boolean fullGC);
 
     /**
      * At a safepoint, decides whether to do a complete collection (returning {@code true}) or an
@@ -167,4 +176,5 @@ public interface CollectionPolicy {
 
     /** Called before the end of a collection, in the safepoint operation. */
     void onCollectionEnd(boolean completeCollection, GCCause cause);
+
 }

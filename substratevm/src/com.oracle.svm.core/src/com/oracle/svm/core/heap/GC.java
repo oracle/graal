@@ -33,4 +33,8 @@ public interface GC {
 
     /** Human-readable name. */
     String getName();
+
+    /** Issue an optional GC request. */
+    default void maybeCauseUserRequestedCollection(@SuppressWarnings("unused") GCCause cause, @SuppressWarnings("unused") boolean fullGC) {
+    }
 }
