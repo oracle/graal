@@ -69,7 +69,7 @@ final class PinnedObjectImpl implements PinnedObject {
     static class PinnedObjectFeature implements Feature {
         @Override
         public boolean isInConfiguration(IsInConfigurationAccess access) {
-            return SubstrateOptions.UseSerialGC.getValue();
+            return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
         }
 
         @Override

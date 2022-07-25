@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,32 @@
  */
 package com.oracle.svm.core.option;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import org.graalvm.collections.UnmodifiableMapCursor;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.nativeimage.hosted.Feature;
 
-/**
- * Notifies the {@link Heap} implementation after the value of the option has changed.
- */
-public class GCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public GCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
+@AutomaticFeature
+public class ValidateImageBuildOptionsFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        UnmodifiableMapCursor<OptionKey<?>, Object> cursor = RuntimeOptionValues.singleton().getMap().getEntries();
+        while (cursor.advance()) {
+            validate(cursor.getKey());
+        }
+
+        cursor = HostedOptionValues.singleton().getMap().getEntries();
+        while (cursor.advance()) {
+            validate(cursor.getKey());
+        }
     }
 
-    @Override
-    protected void afterValueUpdate() {
-        super.afterValueUpdate();
-        if (!SubstrateUtil.HOSTED) {
-            Heap.getHeap().optionValueChanged(this);
+    private static void validate(OptionKey<?> option) {
+        if (option instanceof ValidatableOptionKey) {
+            ValidatableOptionKey o = (ValidatableOptionKey) option;
+            if (o.hasBeenSet()) {
+                o.validate();
+            }
         }
     }
 }

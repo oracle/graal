@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.heap.Heap;
+import java.util.function.BooleanSupplier;
 
-/**
- * Immutable runtime option that notifies the {@link Heap} implementation once the value of the
- * option was set.
- */
-public class ImmutableGCRuntimeOptionKey<T> extends ImmutableRuntimeOptionKey<T> {
-    public ImmutableGCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
-    }
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class UseSerialOrEpsilonGC implements BooleanSupplier {
     @Override
-    protected void afterValueUpdate() {
-        super.afterValueUpdate();
-        if (!SubstrateUtil.HOSTED) {
-            Heap.getHeap().optionValueChanged(this);
-        }
+    public boolean getAsBoolean() {
+        return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
     }
 }
