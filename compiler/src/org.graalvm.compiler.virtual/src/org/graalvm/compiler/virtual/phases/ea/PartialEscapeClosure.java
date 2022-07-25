@@ -228,7 +228,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return false;
             }
             if (tool.isDeleted()) {
-                effects.addAllocationDelta(1);
+                if (node instanceof VirtualizableAllocation) {
+                    effects.addAllocationDelta(1);
+                }
                 VirtualUtil.trace(node.getOptions(), debug, "deleted virtualizable allocation %s", node);
                 return true;
             }
