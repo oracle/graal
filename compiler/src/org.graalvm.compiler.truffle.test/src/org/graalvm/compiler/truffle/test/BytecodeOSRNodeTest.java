@@ -430,6 +430,21 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Test that we can safely recover from bailing out of OSR compilation while an OSR frame is
+     * currently executing.
+     */
+    @Test
+    public void testCanRecoverFromDisablingInOSRFrame() {
+        // use a non-null default value to make sure it gets copied properly.
+        var frameBuilder = FrameDescriptor.newBuilder();
+        Object defaultValue = new Object();
+        frameBuilder.defaultValue(defaultValue);
+        RootNode rootNode = new Program(new OSRDisablingTransferringNode(frameBuilder), frameBuilder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(42, target.call());
+    }
+
+    /*
      * Test that there is no infinitely recursive OSR calls.
      */
     @Test
@@ -1476,6 +1491,50 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
             }
+        }
+    }
+
+    public static class OSRDisablingTransferringNode extends FrameTransferringNode {
+        @CompilationFinal int staticSlot;
+
+        public OSRDisablingTransferringNode(FrameDescriptor.Builder builder) {
+            super(builder);
+            staticSlot = builder.addSlot(FrameSlotKind.Static, "static", null);
+        }
+
+        @Override
+        public void setRegularState(VirtualFrame frame) {
+            super.setRegularState(frame);
+            frame.setIntStatic(staticSlot, Integer.MIN_VALUE);
+        }
+
+        @Override
+        public void checkRegularState(VirtualFrame frame) {
+            super.checkRegularState(frame);
+            assertEquals(frame.getIntStatic(staticSlot), Integer.MIN_VALUE);
+        }
+
+        @Override
+        public void setOSRState(VirtualFrame frame) {
+            super.setOSRState(frame);
+            frame.setIntStatic(staticSlot, Integer.MAX_VALUE);
+        }
+
+        @Override
+        public void checkOSRState(VirtualFrame frame) {
+            super.checkOSRState(frame);
+            assertEquals(frame.getIntStatic(staticSlot), Integer.MAX_VALUE);
+        }
+
+        @Override
+        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+            // Make sure disabling is done out of compiled code.
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+
+            getGraalOSRMetadata().forceDisable();
+            assertEquals(getGraalOSRMetadata().isDisabled(), true);
+
+            super.restoreParentFrame(osrFrame, parentFrame);
         }
     }
 

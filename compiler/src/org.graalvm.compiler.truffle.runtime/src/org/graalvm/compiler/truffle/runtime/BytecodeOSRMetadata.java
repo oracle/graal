@@ -286,6 +286,13 @@ public final class BytecodeOSRMetadata {
     }
 
     /**
+     * Force disabling of OSR compilation for this method. Used for testing purposes.
+     */
+    public void forceDisable() {
+        markOSRDisabled();
+    }
+
+    /**
      * No concurrency guarantees on this assignment. Other threads might still read an old value and
      * reassign. No way to do better without slowing down the polling path.
      * <p>
