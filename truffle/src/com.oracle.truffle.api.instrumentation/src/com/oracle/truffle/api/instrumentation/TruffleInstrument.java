@@ -53,10 +53,14 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -1164,6 +1168,57 @@ public abstract class TruffleInstrument {
                 throw engineToInstrumentException(t);
             }
         }
+
+        /**
+         * Creates a new thread designed to process instrument tasks in the background. See
+         * {@link #createSystemThread(Runnable, ThreadGroup)} for a detailed description of the
+         * parameters.
+         *
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable) {
+            Objects.requireNonNull(runnable, "Runnable must be non null.");
+            try {
+                return ENGINE.createInstrumentSystemThread(polyglotInstrument, runnable, null);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Creates a new thread designed to process instrument tasks in the background. The thread
+         * must never enter the language context, if it does an {@link IllegalStateException} is
+         * thrown.
+         * <p>
+         * It is recommended to set an
+         * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
+         * uncaught exception handler} for the created thread. For example the thread can throw an
+         * uncaught exception if the engine is closed before the thread is started.
+         * <p>
+         * The instrument that created and started the thread is responsible to stop and join it
+         * during the {@link TruffleInstrument#onDispose(Env) onDispose}, otherwise an
+         * {@link IllegalStateException} is thrown. It's not safe to use the
+         * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
+         * Thread termination as the system thread may be cancelled before executing the executor
+         * worker.<br/>
+         * A typical implementation looks like:
+         * {@link TruffleInstrumentSnippets.SystemThreadInstrument}
+         *
+         * @param runnable the runnable to run on this thread.
+         * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
+         * @throws IllegalStateException if the engine is already closed.
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable, ThreadGroup threadGroup) {
+            Objects.requireNonNull(runnable, "Runnable must be non null.");
+            try {
+                return ENGINE.createInstrumentSystemThread(polyglotInstrument, runnable, threadGroup);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
     }
 
     /**
@@ -1274,4 +1329,47 @@ public abstract class TruffleInstrument {
         }
     }
 
+}
+
+class TruffleInstrumentSnippets {
+    abstract
+    // BEGIN: TruffleInstrumentSnippets.SystemThreadInstrument
+    class SystemThreadInstrument extends TruffleInstrument {
+
+        private final Set<Thread> startedThreads;
+
+        SystemThreadInstrument() {
+            startedThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        }
+
+        @Override
+        protected void onCreate(Env env) {
+            // Create and start a Thread for the asynchronous task.
+            // Remember the Thread reference to stop and join it in
+            // the finalizeContext
+            Thread t = env.createSystemThread(() -> {
+                // asynchronous task
+            });
+            startedThreads.add(t);
+            t.start();
+        }
+
+        @Override
+        protected void onDispose(Env env) {
+            // Stop and join all system threads.
+            boolean interrupted = false;
+            for (Thread threadToJoin : startedThreads) {
+                try {
+                    threadToJoin.interrupt();
+                    threadToJoin.join();
+                } catch (InterruptedException ie) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    // END: TruffleInstrumentSnippets.SystemThreadInstrument
 }

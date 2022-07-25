@@ -109,6 +109,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.EngineAccessor.SystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
@@ -2757,13 +2758,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         boolean cancelInSeparateThread = false;
         synchronized (this) {
             PolyglotThreadInfo info = getCurrentThreadInfo();
-            if (info.isPolyglotThread(this) || (!singleThreaded && isActive(Thread.currentThread())) || closingThread == Thread.currentThread()) {
+            Thread currentThread = Thread.currentThread();
+            if (info.isPolyglotThread(this) || (!singleThreaded && isActive(currentThread)) || closingThread == currentThread || currentThread instanceof SystemThread) {
                 /*
-                 * Polyglot thread must not cancel a context, because cancel waits for polyglot
-                 * threads to complete. Also, it is not allowed to cancel in a thread where a
-                 * multi-threaded context is entered. This would lead to deadlock if more than one
-                 * thread tried to do that as cancel waits for the context not to be entered in all
-                 * other threads.
+                 * Polyglot thread or system thread must not cancel a context, because cancel waits
+                 * for polyglot threads and system threads to complete. Also, it is not allowed to
+                 * cancel in a thread where a multi-threaded context is entered. This would lead to
+                 * deadlock if more than one thread tried to do that as cancel waits for the context
+                 * not to be entered in all other threads.
                  */
                 cancelInSeparateThread = true;
             }

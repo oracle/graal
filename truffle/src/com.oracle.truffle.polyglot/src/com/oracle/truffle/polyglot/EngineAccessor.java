@@ -81,6 +81,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -1720,6 +1721,37 @@ final class EngineAccessor extends Accessor {
         @Override
         public EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull) {
             return PolyglotFastThreadLocals.getEncapsulatingNodeReference(invalidateOnNull);
+        }
+
+        @Override
+        public Thread createSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
+            return new SystemThread((PolyglotInstrument) polyglotInstrument, runnable, threadGroup);
+        }
+    }
+
+    static final class SystemThread extends Thread {
+
+        final String instrumentId;
+        private final PolyglotEngineImpl engine;
+
+        SystemThread(PolyglotInstrument polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
+            super(threadGroup, runnable);
+            instrumentId = polyglotInstrument.getId();
+            engine = polyglotInstrument.engine;
+        }
+
+        @Override
+        @SuppressWarnings("try")
+        public void run() {
+            AbstractPolyglotImpl rootPolyglot = engine.getImpl().getRootImpl();
+            try (ThreadScope threadScope = rootPolyglot.createThreadScope()) {
+                engine.addSystemThread(this);
+                try {
+                    super.run();
+                } finally {
+                    engine.removeSystemThread(this);
+                }
+            }
         }
     }
 
