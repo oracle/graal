@@ -134,7 +134,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
      * virtualized and fed into later {@link VirtualFrameGetNode}.
      */
     private ValueNode maybeNarrowForOSRStaticAccess(VirtualizerTool tool, ValueNode value) {
-        if (!accessKind.isPrimitive() || !isOSRRawStaticAccess(tool, value)) {
+        if (!accessKind.isPrimitive() || !isOSRRawStaticAccess(value)) {
             return value;
         }
         if (accessKind == JavaKind.Boolean) {
@@ -180,7 +180,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
     /*
      * Best effort to guess if a given frame slot is filled by bytecode OSR frame transfer.
      */
-    private boolean isOSRRawStaticAccess(VirtualizerTool tool, ValueNode dataEntry) {
+    private boolean isOSRRawStaticAccess(ValueNode dataEntry) {
         if (!staticAccess) {
             return false;
         }
