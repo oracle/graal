@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import java.util.Arrays;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
@@ -59,6 +60,15 @@ public class GR39979 {
         @SuppressWarnings("static-method")
         @HostAccess.Export
         public Object[] call(Function<Object, Object> fn) {
+            return new Object[]{
+                            fn.apply(null),
+                            fn.apply(0),
+            };
+        }
+
+        @SuppressWarnings({"static-method", "rawtypes", "unchecked"})
+        @HostAccess.Export
+        public Object[] callRaw(Function fn) {
             return new Object[]{
                             fn.apply(null),
                             fn.apply(0),
@@ -93,6 +103,17 @@ public class GR39979 {
         }
     }
 
+    @Test
+    public void testPolyglotFunctionRaw() {
+        try (Context context = Context.newBuilder().build()) {
+            Value applyTest = context.asValue(new ApplyTest());
+            Value expectSingleArgument = context.asValue(new ExpectSingleArgument());
+
+            Value result = applyTest.invokeMember("callRaw", expectSingleArgument);
+            Assert.assertArrayEquals(new Object[]{null, 0}, result.as(Object[].class));
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class ExpectSingleArgument implements TruffleObject {
         @SuppressWarnings("static-method")
@@ -104,7 +125,7 @@ public class GR39979 {
         @SuppressWarnings("static-method")
         @ExportMessage
         Object execute(Object[] args) {
-            Assert.assertEquals(1, args.length);
+            Assert.assertEquals(Arrays.toString(args), 1, args.length);
             return args[0];
         }
     }
@@ -120,7 +141,7 @@ public class GR39979 {
         @SuppressWarnings("static-method")
         @ExportMessage
         Object execute(Object[] args) {
-            Assert.assertEquals(0, args.length);
+            Assert.assertEquals(Arrays.toString(args), 0, args.length);
             return args.length;
         }
     }

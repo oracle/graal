@@ -80,9 +80,7 @@ abstract class PolyglotExecuteNode extends Node {
                 argsArray = (Object[]) functionArgsObject;
             }
         } else {
-            if (paramType == null && functionArgsObject == null) {
-                argsArray = EMPTY;
-            } else if (paramType == null && functionArgsObject instanceof Object[]) {
+            if (paramType == null && functionArgsObject instanceof Object[]) {
                 argsArray = (Object[]) functionArgsObject;
             } else {
                 argsArray = new Object[]{functionArgsObject};
