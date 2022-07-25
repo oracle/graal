@@ -438,6 +438,10 @@ public final class BytecodeOSRMetadata {
         // Forces spawning of a frame state. This ensures we return to the interpreter state after
         // the complete execution of the OSR call.
         forceStateSplit();
+        // Do not use an invalidating deopt here for two reasons:
+        // - The compiler does not propagate the deopt upwards, meaning the return value computed in
+        // compiled code will be restored during the transfer to interpreter.
+        // - This is valid behavior. No need to re-compile.
         CompilerDirectives.transferToInterpreter();
 
         LazyState state = getLazyState();

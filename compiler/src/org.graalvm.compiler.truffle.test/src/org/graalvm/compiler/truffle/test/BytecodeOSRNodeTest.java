@@ -78,18 +78,31 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         "engine.ThrowOnMaxOSRCompilationReAttemptsReached", "true");
     }
 
+    /*
+     * These state checks are surrounded by boundary calls to make sure there are frame states
+     * immediately before and after the check.
+     *
+     * - This makes sure any return value computed before will not be optimized away, and would be
+     * restored on deopt.
+     *
+     * - This also ensures that if a deopt happens, it will not roll-back upwards of the check,
+     * yielding false positives/negatives.
+     */
+
     @TruffleBoundary(allowInlining = false)
     private static void boundaryCall() {
     }
 
     private static void checkInInterpreter() {
+        boundaryCall();
         Assert.assertTrue(CompilerDirectives.inInterpreter());
-        boundaryCall(); // prevents compiler from optimizing the branch away.
+        boundaryCall();
     }
 
     private static void checkInCompiledCode() {
+        boundaryCall();
         Assert.assertTrue(CompilerDirectives.inCompiledCode());
-        boundaryCall(); // prevents compiler from optimizing the branch away.
+        boundaryCall();
     }
 
     /*
@@ -549,10 +562,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
         Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(5));
         Assert.assertTrue(osrMetadata.getOSRCompilations().get(5).isValid());
-    }
-
-    @TruffleBoundary
-    private static void boundary() {
     }
 
     public static class Program extends RootNode {
@@ -1326,21 +1335,18 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
             super.copyIntoOSRFrame(osrFrame, parentFrame, target, targetMetadata);
             // Copying should not trigger a deopt.
-            Assert.assertTrue(CompilerDirectives.inCompiledCode());
+            checkInCompiledCode();
         }
-
-        private static boolean TRUE = true;
 
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-            Assert.assertTrue(CompilerDirectives.inCompiledCode());
-            boundary();
+            checkInCompiledCode();
             super.restoreParentFrame(osrFrame, parentFrame);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Assert.assertFalse(CompilerDirectives.inCompiledCode());
+            checkInInterpreter();
             setRegularState(frame);
             return executeLoop(frame);
         }
