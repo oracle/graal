@@ -310,8 +310,8 @@ public interface OptimizationLog extends CompilationListener {
      * Returns {@code true} iff {@link DebugOptions#OptimizationLog the optimization log} is
      * enabled.
      *
-     * @see OptimizationLog#isOptimizationLogEnabled(OptionValues)
      * @return whether {@link DebugOptions#OptimizationLog the optimization log} is enabled
+     * @see OptimizationLog#isOptimizationLogEnabled(OptionValues)
      */
     boolean isOptimizationLogEnabled();
 

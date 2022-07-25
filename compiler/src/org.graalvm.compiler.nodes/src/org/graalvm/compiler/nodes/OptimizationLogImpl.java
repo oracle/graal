@@ -562,7 +562,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         String compilationMethodName = methodNameFormatter.apply(graph.method());
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
-        map.put("inliningTreeRoot", inliningTreeAsJsonMap());
+        map.put("inliningTreeRoot", inliningTreeAsJsonMap(methodNameFormatter));
         map.put("rootPhase", currentPhase.asJsonMap(methodNameFormatter));
         return map;
     }
@@ -582,28 +582,24 @@ public class OptimizationLogImpl implements OptimizationLog {
         return fullCompilationId.substring(dash + 1);
     }
 
-    /**
-     * Converts the inlining tree to a JSON map if the inlining log is enabled or returns
-     * {@code null}.
-     *
-     * @return the inlining tree as a map convertible to JSON or {@code null}
-     */
-    private EconomicMap<String, Object> inliningTreeAsJsonMap() {
+    private EconomicMap<String, Object> inliningTreeAsJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
         if (graph.getInliningLog() == null) {
             return null;
         }
-        return callsiteAsJsonMap(graph.getInliningLog().getRootCallsite());
+        return callsiteAsJsonMap(graph.getInliningLog().getRootCallsite(), methodNameFormatter);
     }
 
     /**
      * Converts an inlining subtree to a JSON map starting from a callsite.
      *
      * @param callsite the root of the inlining subtree
+     * @param methodNameFormatter a function that formats method names
      * @return inlining subtree as a JSON map
      */
-    private EconomicMap<String, Object> callsiteAsJsonMap(InliningLog.Callsite callsite) {
+    private EconomicMap<String, Object> callsiteAsJsonMap(InliningLog.Callsite callsite,
+                    Function<ResolvedJavaMethod, String> methodNameFormatter) {
         EconomicMap<String, Object> map = EconomicMap.create();
-        map.put("targetMethodName", callsite.target.format("%H.%n(%p)"));
+        map.put("targetMethodName", methodNameFormatter.apply(callsite.target));
         map.put("bci", callsite.getBci());
         List<Object> inlined = null;
         for (InliningLog.Callsite child : callsite.children) {
@@ -612,7 +608,7 @@ public class OptimizationLogImpl implements OptimizationLog {
                     if (inlined == null) {
                         inlined = new ArrayList<>();
                     }
-                    inlined.add(callsiteAsJsonMap(child));
+                    inlined.add(callsiteAsJsonMap(child, methodNameFormatter));
                     break;
                 }
             }
