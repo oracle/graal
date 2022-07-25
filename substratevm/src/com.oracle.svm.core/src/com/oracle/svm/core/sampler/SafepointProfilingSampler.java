@@ -38,7 +38,7 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 public class SafepointProfilingSampler implements ProfilingSampler {
 
     private final boolean collectingActive;
-    private LockFreePrefixTree prefixTree;
+    private LockFreePrefixTree prefixTree = new LockFreePrefixTree();
 
     public SafepointProfilingSampler(boolean collectingActive) {
         this.collectingActive = collectingActive;
@@ -60,10 +60,7 @@ public class SafepointProfilingSampler implements ProfilingSampler {
     }
 
     @Override
-    public synchronized LockFreePrefixTree prefixTree() {
-        if (prefixTree == null) {
-            prefixTree = new LockFreePrefixTree();
-        }
+    public LockFreePrefixTree prefixTree() {
         return prefixTree;
     }
 
@@ -72,7 +69,7 @@ public class SafepointProfilingSampler implements ProfilingSampler {
         SamplingStackVisitor.StackTrace data = new SamplingStackVisitor.StackTrace();
         walkCurrentThread(data, visitor);
         long[] result = data.data;
-        LockFreePrefixTree.Node node = prefixTree().root();
+        LockFreePrefixTree.Node node = prefixTree.root();
         for (int i = data.num - 1; i >= 0; i--) {
             node = node.at(result[i]);
         }
