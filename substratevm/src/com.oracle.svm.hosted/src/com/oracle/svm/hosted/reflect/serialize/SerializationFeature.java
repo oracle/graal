@@ -100,7 +100,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticFeature
 public class SerializationFeature implements Feature {
     static final HashSet<Class<?>> capturingClasses = new HashSet<>();
-    private static SerializationBuilder serializationBuilder;
+    private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
     @Override
