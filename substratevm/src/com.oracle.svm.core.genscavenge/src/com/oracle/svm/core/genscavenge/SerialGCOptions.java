@@ -39,16 +39,16 @@ import com.oracle.svm.core.util.UserError;
 
 /** Options that are only valid for the serial GC (and not for the epsilon GC). */
 public final class SerialGCOptions {
-    @Option(help = "Serial GC only: the garbage collection policy, either Adaptive (default) or BySpaceAndTime.", type = OptionType.User)//
+    @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime. Serial GC only.", type = OptionType.User)//
     public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive", SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: percentage of total collection time that should be spent on young generation collections.", type = OptionType.User)//
+    @Option(help = "Percentage of total collection time that should be spent on young generation collections. Serial GC with collection policy 'BySpaceAndTime' only.", type = OptionType.User)//
     public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: the maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy).", type = OptionType.User)//
+    @Option(help = "The maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy). Serial GC only.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: maximum number of survivor spaces.", type = OptionType.Expert) //
+    @Option(help = "Maximum number of survivor spaces. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(null, SerialGCOptions::serialGCOnly) {
         @Override
         public Integer getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
@@ -64,51 +64,51 @@ public final class SerialGCOptions {
         }
     };
 
-    @Option(help = "Serial GC only: determines if a full GC collects the young generation separately or together with the old generation.", type = OptionType.Expert) //
+    @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation. Serial GC only.", type = OptionType.Expert) //
     public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported.", type = OptionType.Expert) //
+    @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: this number of milliseconds multiplied by the free heap memory in MByte is the time span " +
-                    "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
+    @Option(help = "This number of milliseconds multiplied by the free heap memory in MByte is the time span " +
+                    "for which a soft reference will keep its referent alive after its last access. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: print the shape of the heap before and after each collection, if +VerboseGC.", type = OptionType.Debug)//
+    @Option(help = "Print the shape of the heap before and after each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintHeapShape = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: print summary GC information after application main method returns.", type = OptionType.Debug)//
+    @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: print a time stamp at each collection, if +PrintGC or +VerboseGC.", type = OptionType.Debug)//
+    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: print the time for each of the phases of each collection, if +VerboseGC.", type = OptionType.Debug)//
+    @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: instrument write barriers with counters", type = OptionType.Debug)//
+    @Option(help = "Instrument write barriers with counters. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: verify the remembered set if VerifyHeap is enabled.", type = OptionType.Debug)//
+    @Option(help = "Verify the remembered set if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: verify all object references if VerifyHeap is enabled.", type = OptionType.Debug)//
+    @Option(help = "Verify all object references if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyReferences = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: verify write barriers", type = OptionType.Debug)//
+    @Option(help = "Verify write barriers. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: trace heap chunks during collections, if +VerboseGC and +PrintHeapShape.", type = OptionType.Debug) //
+    @Option(help = "Trace heap chunks during collections, if +VerboseGC and +PrintHeapShape. Serial GC only.", type = OptionType.Debug) //
     public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Serial GC only: develop demographics of the object references visited.", type = OptionType.Debug)//
+    @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
     private SerialGCOptions() {
     }
 
     private static void serialGCOnly(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.UseSerialGC.getValue() && !SubstrateOptions.UseEpsilonGC.getValue()) {
+        if (!SubstrateOptions.UseSerialGC.getValue()) {
             throw new InterruptImageBuilding("The option " + optionKey.getName() + " is garbage collector specific and cannot be specified if the " +
                             Heap.getHeap().getGC().getName() + " is used at runtime.");
         }

@@ -427,7 +427,7 @@ public final class HeapImpl extends Heap {
              * the heap base and the start of the image heap. The gap won't need any memory in the
              * native image file.
              */
-            return NumUtil.safeToInt(GenScavengeGCOptions.AlignedHeapChunkSize.getValue());
+            return NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
         }
         return 0;
     }

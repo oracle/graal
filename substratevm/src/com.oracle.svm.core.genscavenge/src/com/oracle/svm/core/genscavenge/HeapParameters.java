@@ -98,24 +98,24 @@ public final class HeapParameters {
     }
 
     public static int getHeapChunkHeaderPadding() {
-        return HeapChunk.Options.HeapChunkHeaderPadding.getValue();
+        return SerialAndEpsilonGCOptions.HeapChunkHeaderPadding.getValue();
     }
 
     static int getMaximumYoungGenerationSizePercent() {
-        int result = GenScavengeGCOptions.MaximumYoungGenerationSizePercent.getValue();
+        int result = SerialAndEpsilonGCOptions.MaximumYoungGenerationSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumYoungGenerationSizePercent should be in [0 ..100]");
         return result;
     }
 
     static int getMaximumHeapSizePercent() {
-        int result = GenScavengeGCOptions.MaximumHeapSizePercent.getValue();
+        int result = SerialAndEpsilonGCOptions.MaximumHeapSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumHeapSizePercent should be in [0 ..100]");
         return result;
     }
 
     @Fold
     public static UnsignedWord getAlignedHeapChunkSize() {
-        return WordFactory.unsigned(GenScavengeGCOptions.AlignedHeapChunkSize.getValue());
+        return WordFactory.unsigned(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
     }
 
     @Fold
@@ -125,11 +125,11 @@ public final class HeapParameters {
 
     @Fold
     public static UnsignedWord getLargeArrayThreshold() {
-        long largeArrayThreshold = GenScavengeGCOptions.LargeArrayThreshold.getValue();
+        long largeArrayThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
         if (largeArrayThreshold == 0) {
             return getAlignedHeapChunkSize().unsignedDivide(ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD);
         } else {
-            return WordFactory.unsigned(GenScavengeGCOptions.LargeArrayThreshold.getValue());
+            return WordFactory.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
         }
     }
 
@@ -138,11 +138,11 @@ public final class HeapParameters {
      */
 
     public static boolean getZapProducedHeapChunks() {
-        return GenScavengeGCOptions.ZapChunks.getValue() || GenScavengeGCOptions.ZapProducedHeapChunks.getValue();
+        return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapProducedHeapChunks.getValue();
     }
 
     public static boolean getZapConsumedHeapChunks() {
-        return GenScavengeGCOptions.ZapChunks.getValue() || GenScavengeGCOptions.ZapConsumedHeapChunks.getValue();
+        return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapConsumedHeapChunks.getValue();
     }
 
     static {

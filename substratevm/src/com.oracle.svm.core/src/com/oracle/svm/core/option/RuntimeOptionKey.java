@@ -108,8 +108,13 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements ValidatableOpti
         return hasFlag(RuntimeOptionKeyFlag.Immutable);
     }
 
-    private boolean hasFlag(RuntimeOptionKeyFlag immutable) {
-        return (flags & immutable.ordinal()) != 0;
+    private boolean hasFlag(RuntimeOptionKeyFlag flag) {
+        return (flags & flagBit(flag)) != 0;
+    }
+
+    private static int flagBit(RuntimeOptionKeyFlag flag) {
+        assert flag.ordinal() < 32;
+        return 1 << flag.ordinal();
     }
 
     @Fold
@@ -121,13 +126,13 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements ValidatableOpti
         int result = 0;
         for (RuntimeOptionKeyFlag flag : flags) {
             assert flag.ordinal() <= Integer.SIZE - 1;
-            result |= 1 << flag.ordinal();
+            result |= flagBit(flag);
         }
         return result;
     }
 
     public enum RuntimeOptionKeyFlag {
         RelevantForCompilationIsolates,
-        Immutable
+        Immutable,
     }
 }
