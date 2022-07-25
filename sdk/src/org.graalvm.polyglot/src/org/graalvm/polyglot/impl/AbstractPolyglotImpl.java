@@ -338,9 +338,9 @@ public abstract class AbstractPolyglotImpl {
         getNext().resetPreInitializedEngine();
     }
 
-    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding, String path)
                     throws IOException {
-        return getNext().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding);
+        return getNext().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding, path);
     }
 
     public String findLanguage(File file) throws IOException {

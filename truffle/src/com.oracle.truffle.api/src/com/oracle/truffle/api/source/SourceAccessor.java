@@ -150,6 +150,11 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
+        public void setPath(SourceBuilder builder, String path) {
+            builder.path(path);
+        }
+
+        @Override
         public void invalidateAfterPreinitialiation(Source source) {
             ((SourceImpl) source).key.invalidateAfterPreinitialiation();
         }
