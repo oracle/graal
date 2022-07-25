@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -43,9 +43,9 @@ public final class InstanceOfQuickNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        StaticObject receiver = BytecodeNode.popObject(frame, top - 1);
+        StaticObject receiver = EspressoFrame.popObject(frame, top - 1);
         boolean result = StaticObject.notNull(receiver) && instanceOf.execute(receiver.getKlass());
-        BytecodeNode.putInt(frame, top - 1, result ? 1 : 0);
+        EspressoFrame.putInt(frame, top - 1, result ? 1 : 0);
         return stackEffectOf_INSTANCEOF;
     }
 }

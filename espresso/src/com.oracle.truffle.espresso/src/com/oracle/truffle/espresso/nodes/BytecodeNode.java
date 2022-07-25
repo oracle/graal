@@ -228,6 +228,44 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.BCI_SLOT;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.VALUES_START;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.clear;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.createFrameDescriptor;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.dup1;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.dup2;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.dup2x1;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.dup2x2;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.dupx1;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.dupx2;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.getBCI;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.getLocalDouble;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.getLocalFloat;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.getLocalInt;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.getLocalLong;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.getLocalObject;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.getLocalReturnAddress;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.peekObject;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.popDouble;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.popFloat;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.popInt;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.popLong;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.popObject;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.popReturnAddressOrObject;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.putDouble;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.putFloat;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.putInt;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.putLong;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.putObject;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.putReturnAddress;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.setBCI;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalDouble;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalFloat;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalInt;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalLong;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObject;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObjectOrReturnAddress;
+import static com.oracle.truffle.espresso.nodes.EspressoFrame.swapSingle;
 
 import java.util.Arrays;
 import java.util.List;
@@ -334,7 +372,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
-import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -413,7 +450,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         Method method = methodVersion.getMethod();
         this.bs = new BytecodeStream(methodVersion.getCode());
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
-        this.frameDescriptor = EspressoFrame.createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
+        this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(methodVersion);
@@ -498,174 +535,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             noForeignObjects.invalidate();
         }
     }
-
-    private static void setBCI(VirtualFrame frame, int bci) {
-        frame.setIntStatic(EspressoFrame.BCI_SLOT, bci);
-    }
-
-    // region Operand stack accessors
-
-    public static int popInt(VirtualFrame frame, int slot) {
-        int result = frame.getIntStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
-        return result;
-    }
-
-    // Exposed to CheckCastNode.
-    // Exposed to InstanceOfNode and quick nodes, which can produce foreign objects.
-    public static StaticObject peekObject(VirtualFrame frame, int slot) {
-        Object result = frame.getObjectStatic(slot);
-        assert result instanceof StaticObject;
-        return (StaticObject) result;
-    }
-
-    /**
-     * Reads and clear the operand stack slot.
-     */
-    public static StaticObject popObject(VirtualFrame frame, int slot) {
-        // nulls-out the slot, use peekObject to read only
-        Object result = frame.getObjectStatic(slot);
-        clearReference(frame, slot);
-        assert result instanceof StaticObject;
-        return (StaticObject) result;
-    }
-
-    public static float popFloat(VirtualFrame frame, int slot) {
-        float result = frame.getFloatStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
-        return result;
-    }
-
-    public static long popLong(VirtualFrame frame, int slot) {
-        long result = frame.getLongStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
-        return result;
-    }
-
-    public static double popDouble(VirtualFrame frame, int slot) {
-        double result = frame.getDoubleStatic(slot);
-        // Avoid keeping track of popped slots in FrameStates.
-        clearPrimitive(frame, slot);
-        return result;
-    }
-
-    /**
-     * Read and clear the operand stack slot.
-     */
-    private static Object popReturnAddressOrObject(VirtualFrame frame, int slot) {
-        Object result = frame.getObjectStatic(slot);
-        clearReference(frame, slot);
-        assert result instanceof StaticObject || result instanceof ReturnAddress;
-        return result;
-    }
-
-    private static void putReturnAddress(VirtualFrame frame, int slot, int targetBCI) {
-        frame.setObjectStatic(slot, ReturnAddress.create(targetBCI));
-    }
-
-    public static void putObject(VirtualFrame frame, int slot, StaticObject value) {
-        assert value != null : "use putRawObject to store host nulls";
-        frame.setObjectStatic(slot, value);
-    }
-
-    public static void putInt(VirtualFrame frame, int slot, int value) {
-        frame.setIntStatic(slot, value);
-    }
-
-    public static void putFloat(VirtualFrame frame, int slot, float value) {
-        frame.setFloatStatic(slot, value);
-    }
-
-    public static void putLong(VirtualFrame frame, int slot, long value) {
-        frame.setLongStatic(slot + 1, value);
-    }
-
-    public static void putDouble(VirtualFrame frame, int slot, double value) {
-        frame.setDoubleStatic(slot + 1, value);
-    }
-
-    static void clearReference(VirtualFrame frame, int slot) {
-        frame.clearObjectStatic(slot);
-    }
-
-    static void clearPrimitive(VirtualFrame frame, int slot) {
-        frame.clearPrimitiveStatic(slot);
-    }
-
-    static void clear(VirtualFrame frame, int slot) {
-        clearPrimitive(frame, slot);
-        clearReference(frame, slot);
-    }
-
-    // endregion Operand stack accessors
-
-    // region Local accessors
-
-    public static void freeLocal(VirtualFrame frame, int slot) {
-        frame.clear(EspressoFrame.VALUES_START + slot);
-    }
-
-    public static void setLocalObject(Frame frame, int slot, StaticObject value) {
-        assert value != null : "use putRawObject to store host nulls";
-        frame.setObjectStatic(EspressoFrame.VALUES_START + slot, value);
-    }
-
-    public static void setLocalObjectOrReturnAddress(VirtualFrame frame, int slot, Object value) {
-        frame.setObjectStatic(EspressoFrame.VALUES_START + slot, value);
-    }
-
-    public static void setLocalInt(Frame frame, int slot, int value) {
-        frame.setIntStatic(EspressoFrame.VALUES_START + slot, value);
-    }
-
-    public static void setLocalFloat(Frame frame, int slot, float value) {
-        frame.setFloatStatic(EspressoFrame.VALUES_START + slot, value);
-    }
-
-    public static void setLocalLong(Frame frame, int slot, long value) {
-        frame.setLongStatic(EspressoFrame.VALUES_START + slot, value);
-    }
-
-    public static void setLocalDouble(Frame frame, int slot, double value) {
-        frame.setDoubleStatic(EspressoFrame.VALUES_START + slot, value);
-    }
-
-    public static int getLocalInt(Frame frame, int slot) {
-        return frame.getIntStatic(EspressoFrame.VALUES_START + slot);
-    }
-
-    public static StaticObject getLocalObject(Frame frame, int slot) {
-        Object result = frame.getObjectStatic(EspressoFrame.VALUES_START + slot);
-        assert result instanceof StaticObject;
-        return (StaticObject) result;
-    }
-
-    public static Object getRawLocalObject(VirtualFrame frame, int slot) {
-        return frame.getObjectStatic(EspressoFrame.VALUES_START + slot);
-    }
-
-    public static int getLocalReturnAddress(VirtualFrame frame, int slot) {
-        Object result = frame.getObjectStatic(EspressoFrame.VALUES_START + slot);
-        assert result instanceof ReturnAddress;
-        return ((ReturnAddress) result).getBci();
-    }
-
-    public static float getLocalFloat(Frame frame, int slot) {
-        return frame.getFloatStatic(EspressoFrame.VALUES_START + slot);
-    }
-
-    public static long getLocalLong(Frame frame, int slot) {
-        return frame.getLongStatic(EspressoFrame.VALUES_START + slot);
-    }
-
-    public static double getLocalDouble(Frame frame, int slot) {
-        return frame.getDoubleStatic(EspressoFrame.VALUES_START + slot);
-    }
-
-    // endregion Local accessors
 
     @Override
     public void initializeFrame(VirtualFrame frame) {
@@ -761,7 +630,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int startTop = EspressoFrame.VALUES_START + getMethodVersion().getMaxLocals();
+        int startTop = VALUES_START + getMethodVersion().getMaxLocals();
         return executeBodyFromBCI(frame, 0, startTop, 0, false);
     }
 
@@ -779,7 +648,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
         // pop frame cause initializeBody to be skipped on re-entry
         // so force the initialization here
-        if (!frame.isInt(EspressoFrame.BCI_SLOT)) {
+        if (!frame.isInt(BCI_SLOT)) {
             initializeFrame(frame);
         }
 
@@ -1000,13 +869,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         break;
 
                     // TODO(peterssen): Stack shuffling is expensive.
-                    case DUP     : EspressoFrame.dup1(frame, top);       break;
-                    case DUP_X1  : EspressoFrame.dupx1(frame, top);      break;
-                    case DUP_X2  : EspressoFrame.dupx2(frame, top);      break;
-                    case DUP2    : EspressoFrame.dup2(frame, top);       break;
-                    case DUP2_X1 : EspressoFrame.dup2x1(frame, top);     break;
-                    case DUP2_X2 : EspressoFrame.dup2x2(frame, top);     break;
-                    case SWAP    : EspressoFrame.swapSingle(frame, top); break;
+                    case DUP     : dup1(frame, top);       break;
+                    case DUP_X1  : dupx1(frame, top);      break;
+                    case DUP_X2  : dupx2(frame, top);      break;
+                    case DUP2    : dup2(frame, top);       break;
+                    case DUP2_X1 : dup2x1(frame, top);     break;
+                    case DUP2_X2 : dup2x2(frame, top);     break;
+                    case SWAP    : swapSingle(frame, top); break;
 
                     case IADD: putInt(frame, top - 2, popInt(frame, top - 1) + popInt(frame, top - 2)); break;
                     case LADD: putLong(frame, top - 4, popLong(frame, top - 1) + popLong(frame, top - 3)); break;
@@ -1459,7 +1328,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         for (int i = 0; i < stackOverflowErrorInfo.length; i += 3) {
                             if (curBCI >= stackOverflowErrorInfo[i] && curBCI < stackOverflowErrorInfo[i + 1]) {
                                 clearOperandStack(frame, top);
-                                top = EspressoFrame.VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
+                                top = VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
                                 putObject(frame, top, wrappedStackOverflowError.getGuestException());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
@@ -1519,7 +1388,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                     if (handler != null) {
                         clearOperandStack(frame, top);
-                        top = EspressoFrame.VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
+                        top = VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
                         checkNoForeignObjectAssumption(wrappedException.getGuestException());
                         putObject(frame, top, wrappedException.getGuestException());
                         top++;
@@ -1633,7 +1502,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @ExplodeLoop
     private void clearOperandStack(VirtualFrame frame, int top) {
-        int stackStart = EspressoFrame.VALUES_START + getMethodVersion().getMaxLocals();
+        int stackStart = VALUES_START + getMethodVersion().getMaxLocals();
         for (int slot = top - 1; slot >= stackStart; --slot) {
             clear(frame, slot);
         }
@@ -1649,7 +1518,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     public int getBci(Frame frame) {
-        return frame.getIntStatic(EspressoFrame.BCI_SLOT);
+        return getBCI(frame);
     }
 
     @Override
