@@ -46,11 +46,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
-import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -87,6 +83,9 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
@@ -101,7 +100,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticFeature
 public class SerializationFeature implements Feature {
     static final HashSet<Class<?>> capturingClasses = new HashSet<>();
-    private final Set<Class<?>> proxyClasses = ConcurrentHashMap.newKeySet();
     private static SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -235,10 +233,6 @@ public class SerializationFeature implements Feature {
             }
         }
 
-        for (Class<?> proxyClass : proxyClasses) {
-            serializationBuilder.registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
-        }
-
         serializationBuilder.flushConditionalConfiguration(access);
         /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
@@ -252,14 +246,6 @@ public class SerializationFeature implements Feature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         serializationBuilder.afterAnalysis();
-    }
-
-    public void registerProxyClassForSerialization(Class<?> proxyClass) {
-        if (serializationBuilder == null) {
-            proxyClasses.add(proxyClass);
-        } else {
-            serializationBuilder.registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
-        }
     }
 
     @Override
@@ -463,7 +449,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
         Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(new ConditionalElement<>(condition, implementedInterfaces));
-        ImageSingletons.lookup(SerializationFeature.class).registerProxyClassForSerialization(proxyClass);
+        registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
     }
 
     @Override
