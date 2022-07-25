@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.2.0",
+  "mxversion" : "6.4.0",
   "name" : "sdk",
   "version" : "22.3.0",
   "release" : False,
@@ -84,6 +84,7 @@ suite = {
       },
     ]
   },
+  "ignore_suite_commit_info": True,
   "libraries" : {
     "WRK_MULTIARCH": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch.tar.gz"],
