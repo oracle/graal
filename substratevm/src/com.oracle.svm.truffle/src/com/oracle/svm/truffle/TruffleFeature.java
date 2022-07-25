@@ -556,6 +556,10 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         blocklistMethod(metaAccess, Object.class, "toString");
         blocklistMethod(metaAccess, String.class, "valueOf", Object.class);
         blocklistMethod(metaAccess, String.class, "getBytes");
+        blocklistMethod(metaAccess, String.class, "indexOf", int.class);
+        blocklistMethod(metaAccess, String.class, "indexOf", int.class, int.class);
+        blocklistMethod(metaAccess, String.class, "indexOf", String.class);
+        blocklistMethod(metaAccess, String.class, "indexOf", String.class, int.class);
         blocklistMethod(metaAccess, Throwable.class, "fillInStackTrace");
         blocklistMethod(metaAccess, Throwable.class, "initCause", Throwable.class);
         blocklistMethod(metaAccess, Throwable.class, "addSuppressed", Throwable.class);
