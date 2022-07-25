@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -99,7 +100,7 @@ abstract class IntSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        int value = BytecodeNode.popInt(frame, top - 1);
+        int value = EspressoFrame.popInt(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -128,7 +129,7 @@ abstract class BooleanSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        boolean value = BytecodeNode.popInt(frame, top - 1) != 0;
+        boolean value = EspressoFrame.popInt(frame, top - 1) != 0;
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -157,7 +158,7 @@ abstract class CharSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        char value = (char) BytecodeNode.popInt(frame, top - 1);
+        char value = (char) EspressoFrame.popInt(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -186,7 +187,7 @@ abstract class ShortSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        short value = (short) BytecodeNode.popInt(frame, top - 1);
+        short value = (short) EspressoFrame.popInt(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -215,7 +216,7 @@ abstract class ByteSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        byte value = (byte) BytecodeNode.popInt(frame, top - 1);
+        byte value = (byte) EspressoFrame.popInt(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -244,7 +245,7 @@ abstract class LongSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        long value = BytecodeNode.popLong(frame, top - 1);
+        long value = EspressoFrame.popLong(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -273,7 +274,7 @@ abstract class FloatSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        float value = BytecodeNode.popFloat(frame, top - 1);
+        float value = EspressoFrame.popFloat(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -302,7 +303,7 @@ abstract class DoubleSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        double value = BytecodeNode.popDouble(frame, top - 1);
+        double value = EspressoFrame.popDouble(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }
@@ -331,7 +332,7 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
-        StaticObject value = BytecodeNode.popObject(frame, top - 1);
+        StaticObject value = EspressoFrame.popObject(frame, top - 1);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }

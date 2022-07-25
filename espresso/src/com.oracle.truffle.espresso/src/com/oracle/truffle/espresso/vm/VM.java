@@ -58,6 +58,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -123,7 +124,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
@@ -2849,9 +2849,9 @@ public final class VM extends NativeEnv {
                         isPrivileged[0] = true;
                         Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
                         // 2nd argument: `AccessControlContext context`
-                        stackContext = BytecodeNode.getLocalObject(frame, 1);
+                        stackContext = EspressoFrame.getLocalObject(frame, 1);
                         // 3rd argument: Class<?> caller
-                        domainKlass = BytecodeNode.getLocalObject(frame, 2);
+                        domainKlass = EspressoFrame.getLocalObject(frame, 2);
                     } else {
                         domainKlass = m.getDeclaringKlass().mirror();
                     }
