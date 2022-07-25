@@ -73,13 +73,10 @@ public final class GenScavengeGCOptions {
     @Option(help = "Serial and epsilon GC only: bytes that can be allocated before (re-)querying the physical memory size", type = OptionType.Debug) //
     public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L, GenScavengeGCOptions::serialOrEpsilonGCOnly);
 
-    @Option(help = "Serial and epsilon GC only: number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0, GenScavengeGCOptions::serialOrEpsilonGCOnly);
-
     private GenScavengeGCOptions() {
     }
 
-    private static void serialOrEpsilonGCOnly(OptionKey<?> optionKey) {
+    public static void serialOrEpsilonGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue() && !SubstrateOptions.UseEpsilonGC.getValue()) {
             throw new InterruptImageBuilding("The option " + optionKey.getName() + " is garbage collector specific and cannot be specified if the " +
                             Heap.getHeap().getGC().getName() + " is used at runtime.");

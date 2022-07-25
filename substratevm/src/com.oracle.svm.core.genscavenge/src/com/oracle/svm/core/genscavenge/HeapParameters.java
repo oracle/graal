@@ -97,6 +97,10 @@ public final class HeapParameters {
         return WordFactory.unsigned(SerialGCOptions.MaxHeapFree.getValue());
     }
 
+    public static int getHeapChunkHeaderPadding() {
+        return HeapChunk.Options.HeapChunkHeaderPadding.getValue();
+    }
+
     static int getMaximumYoungGenerationSizePercent() {
         int result = GenScavengeGCOptions.MaximumYoungGenerationSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumYoungGenerationSizePercent should be in [0 ..100]");
