@@ -466,7 +466,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         RecursiveBytecodeOSRTestNode osrNode = new RecursiveBytecodeOSRTestNode();
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-        target.call();
+        Assert.assertEquals(RecursiveBytecodeOSRTestNode.RETURN_VALUE, target.call());
     }
 
     // Bytecode programs
@@ -1517,7 +1517,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void checkRegularState(VirtualFrame frame) {
             super.checkRegularState(frame);
-            assertEquals(frame.getIntStatic(staticSlot), Integer.MIN_VALUE);
+            assertEquals(Integer.MIN_VALUE, frame.getIntStatic(staticSlot));
         }
 
         @Override
@@ -1529,7 +1529,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void checkOSRState(VirtualFrame frame) {
             super.checkOSRState(frame);
-            assertEquals(frame.getIntStatic(staticSlot), Integer.MAX_VALUE);
+            assertEquals(Integer.MAX_VALUE, frame.getIntStatic(staticSlot));
         }
 
         @Override
@@ -1538,15 +1538,15 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             getGraalOSRMetadata().forceDisable();
-            assertEquals(getGraalOSRMetadata().isDisabled(), true);
+            assertEquals(true, getGraalOSRMetadata().isDisabled());
 
             super.restoreParentFrame(osrFrame, parentFrame);
         }
     }
 
     public static class RecursiveBytecodeOSRTestNode extends BytecodeOSRTestNode {
-        private static final Object RETURN_VALUE = new Object();
-        private static final Object FAIL_VALUE = new Object();
+        private static final Object RETURN_VALUE = "Success";
+        private static final Object FAIL_VALUE = "No exception thrown";
 
         @Override
         Object execute(VirtualFrame frame) {
