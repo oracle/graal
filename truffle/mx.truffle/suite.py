@@ -69,7 +69,6 @@ suite = {
       },
     ]
   },
-  "ignore_suite_commit_info": True,
   "libraries" : {
 
     # ------------- Libraries -------------
