@@ -148,10 +148,9 @@ local add_jdk_version(name) =
     ]
   },
 
-  ol7:: self.build_base + {
-    local ol7_image = self.ci_resources.infra.docker_image_ol7,
+  ol7:: {
     docker+: {
-      image: ol7_image,
+      image: "buildslave_ol7",
       mount_modules: true,
     },
   },
@@ -164,7 +163,7 @@ local add_jdk_version(name) =
   amd64::   { arch::"amd64",   capabilities+: [self.arch]},
   aarch64:: { arch::"aarch64", capabilities+: [self.arch]},
 
-  linux_amd64::               self.linux               + self.amd64,
+  linux_amd64::               self.linux               + self.amd64   + self.ol7,
   darwin_amd64::              self.darwin              + self.amd64,
   darwin_aarch64::            self.darwin              + self.aarch64 + {
       # only needed until GR-22580 is resolved?
