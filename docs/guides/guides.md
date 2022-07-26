@@ -1,9 +1,11 @@
 ---
 layout: docs
 toc_group: getting-started
-link_title: Guides
+link_title: Using Intellij IDEA
 permalink: /guides/
 ---
+
+# Using GraalVM in Intellij IDEA
 
 Here you will find information about how to:
 * [Run Java Applications on GraalVM from the CLI](#run-java-applications-on-graalvm-from-the-cli)
