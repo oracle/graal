@@ -144,10 +144,9 @@ public final class GuardedAnnotationAccess {
             /*
              * Returning an empty array essentially means that the element doesn't declare any
              * annotations, but we know that it is not true since the reason the annotation parsing
-             * failed is because it at least one annotation referenced a missing class. However,
-             * this allows us to defend against crashing the image builder if the above JDK bug is
-             * encountered in user code or if the user code references types missing from the
-             * classpath.
+             * failed is because some annotation referenced a missing class. However, this allows us
+             * to defend against crashing the image builder if the above JDK bug is encountered in
+             * user code or if the user code references types missing from the classpath.
              */
             return new Annotation[0];
         }
