@@ -46,7 +46,7 @@ public class FieldsScanner {
     }
 
     /**
-     * Determines the offset (in bytes) of a field using {@link Unsafe#objectFieldOffset(Field)}.
+     * Determines the offset (in bytes) of a field using {@code Unsafe#objectFieldOffset(Field)}.
      */
     public static class DefaultCalcOffset implements CalcOffset {
 

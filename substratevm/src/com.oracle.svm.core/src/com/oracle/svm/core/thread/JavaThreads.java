@@ -41,8 +41,8 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -102,7 +102,7 @@ public final class JavaThreads {
 
     /**
      * Returns the unique identifier of this thread. This method is necessary because
-     * {@link Thread#getId()} is a non-final method that can be overridden.
+     * {@code Thread#getId()} is a non-final method that can be overridden.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getThreadId(Thread thread) {

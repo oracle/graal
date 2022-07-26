@@ -36,7 +36,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Used to access the Java event writer class, see {@link jdk.jfr.internal.EventWriter}.
+ * Used to access the Java event writer class, see {@code jdk.jfr.internal.EventWriter}.
  */
 public final class JfrEventWriterAccess {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
