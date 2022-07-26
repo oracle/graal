@@ -30,7 +30,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Hybrid;
-import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -82,28 +81,27 @@ public class HybridLayoutSupport {
             }
         }
 
-        HostedType arrayType;
+        HostedType arrayComponentType;
         boolean arrayTypeIsSet = (annotation.componentType() != void.class);
         if (foundArrayField != null) {
-            arrayType = foundArrayField.getType();
+            arrayComponentType = foundArrayField.getType().getComponentType();
 
-            assert !arrayTypeIsSet || arrayType.equals(metaAccess.lookupJavaType(annotation.componentType()).getArrayClass()) : //
+            assert !arrayTypeIsSet || arrayComponentType.equals(metaAccess.lookupJavaType(annotation.componentType())) : //
             "@Hybrid.componentType must match the type of a @Hybrid.Array field when both are present";
         } else {
             assert arrayTypeIsSet : "@Hybrid.componentType must be set when no @Hybrid.Array field is present (if present, ensure it is reachable)";
-            arrayType = (HostedArrayClass) metaAccess.lookupJavaType(annotation.componentType()).getArrayClass();
+            arrayComponentType = (HostedType) metaAccess.lookupJavaType(annotation.componentType());
         }
-        assert arrayType.isArray();
-        return new HybridInfo(arrayType, foundArrayField, foundTypeIDSlotsField);
+        return new HybridInfo(arrayComponentType, foundArrayField, foundTypeIDSlotsField);
     }
 
     public static class HybridInfo {
-        public final HostedType arrayType;
+        public final HostedType arrayComponentType;
         public final HostedField arrayField;
         public final HostedField typeIDSlotsField;
 
-        public HybridInfo(HostedType arrayType, HostedField arrayField, HostedField typeIDSlotsField) {
-            this.arrayType = arrayType;
+        public HybridInfo(HostedType arrayComponentType, HostedField arrayField, HostedField typeIDSlotsField) {
+            this.arrayComponentType = arrayComponentType;
             this.arrayField = arrayField;
             this.typeIDSlotsField = typeIDSlotsField;
         }

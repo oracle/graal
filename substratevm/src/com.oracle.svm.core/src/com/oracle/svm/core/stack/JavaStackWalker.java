@@ -77,16 +77,16 @@ public final class JavaStackWalker {
      */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static void initWalk(JavaStackWalk walk, Pointer startSP, CodePointer startIP) {
-        initWalk(walk, startSP, WordFactory.nullPointer(), startIP);
+        initWalk(walk, startSP, WordFactory.nullPointer(), startIP, JavaFrameAnchors.getFrameAnchor());
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    public static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP, CodePointer startIP) {
+    private static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP, CodePointer startIP, JavaFrameAnchor anchor) {
         walk.setSP(startSP);
         walk.setPossiblyStaleIP(startIP);
         walk.setStartSP(startSP);
         walk.setStartIP(startIP);
-        walk.setAnchor(JavaFrameAnchors.getFrameAnchor());
+        walk.setAnchor(anchor);
         walk.setEndSP(endSP);
         if (startIP.isNonNull()) {
             // Storing the untethered object in a data structures requires that the caller and all
@@ -97,13 +97,22 @@ public final class JavaStackWalker {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void initWalkStoredContinuation(JavaStackWalk walk, Pointer startSP, Pointer endSP, CodePointer startIP) {
+        /*
+         * StoredContinuations don't need a Java frame anchor because we pin the thread (i.e.,
+         * yielding is not possible) if any native code is called.
+         */
+        initWalk(walk, startSP, endSP, startIP, WordFactory.nullPointer());
+    }
+
     /**
      * See {@link #initWalk(JavaStackWalk, Pointer, CodePointer)}, except that the instruction
      * pointer will be read from the stack later on.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void initWalk(JavaStackWalk walk, Pointer startSP) {
-        initWalk(walk, startSP, WordFactory.nullPointer(), WordFactory.nullPointer());
+        initWalk(walk, startSP, (CodePointer) WordFactory.nullPointer());
         assert walk.getIPCodeInfo().isNull() : "otherwise, the caller would have to be uninterruptible as well";
     }
 
@@ -245,6 +254,7 @@ public final class JavaStackWalker {
 
     }
 
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkCurrentThread(Pointer startSP, StackFrameVisitor visitor) {
         return walkCurrentThread(startSP, visitor, null);
     }
@@ -266,6 +276,7 @@ public final class JavaStackWalker {
         return doWalk(walk, visitor, data);
     }
 
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkThread(IsolateThread thread, StackFrameVisitor visitor) {
         return walkThread(thread, visitor, null);
     }

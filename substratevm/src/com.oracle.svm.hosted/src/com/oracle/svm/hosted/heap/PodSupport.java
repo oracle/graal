@@ -48,7 +48,6 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.Hybrid;
@@ -75,7 +74,7 @@ public interface PodSupport {
 
     static PodSupport singleton() {
         if (!ImageSingletons.contains(PodSupport.class)) {
-            throw UserError.abort("Pods are not available in this native image build. Only SerialGC currently supports pods.");
+            throw UserError.abort("Pods are not available in this native image build.");
         }
         return ImageSingletons.lookup(PodSupport.class);
     }
@@ -115,11 +114,6 @@ final class PodFeature implements PodSupport, Feature {
     private BeforeAnalysisAccess analysisAccess;
     private volatile boolean instantiated = false;
     private boolean sealed = false;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
-    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

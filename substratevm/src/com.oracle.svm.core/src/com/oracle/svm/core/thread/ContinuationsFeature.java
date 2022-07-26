@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -84,6 +85,15 @@ public class ContinuationsFeature implements Feature {
             }
         } else {
             access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationAccess.class);
+        }
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (Continuation.isSupported()) {
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            long offset = access.objectFieldOffset(ipField);
+            ContinuationSupport.singleton().setIpOffset(offset);
         }
     }
 

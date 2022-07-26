@@ -24,19 +24,51 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
+import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 public class ContinuationSupport {
+    private long ipOffset;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ContinuationSupport() {
+    }
+
+    @Fold
+    public static ContinuationSupport singleton() {
+        return ImageSingletons.lookup(ContinuationSupport.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setIpOffset(long value) {
+        assert ipOffset == 0;
+        ipOffset = value;
+    }
+
+    public long getIpOffset() {
+        assert ipOffset != 0;
+        return ipOffset;
+    }
+
     @AlwaysInline("If not inlined, this method could overwrite its own frame.")
     @Uninterruptible(reason = "Copies stack frames containing references.")
     public CodePointer copyFrames(StoredContinuation storedCont, Pointer to) {
+        int wordSize = ConfigurationValues.getTarget().wordSize;
         int totalSize = StoredContinuationAccess.getFramesSizeInBytes(storedCont);
+        assert totalSize % wordSize == 0;
+
         CodePointer storedIP = StoredContinuationAccess.getIP(storedCont);
         Pointer frameData = StoredContinuationAccess.getFramesStart(storedCont);
 
@@ -44,23 +76,32 @@ public class ContinuationSupport {
          * NO CALLS BEYOND THIS POINT! They would overwrite the frames we are copying.
          */
 
-        int offset = 0;
-        for (int next = offset + 32; next < totalSize; next += 32) {
-            Pointer src = frameData.add(offset);
-            Pointer dst = to.add(offset);
-            long l0 = src.readLong(0);
-            long l8 = src.readLong(8);
-            long l16 = src.readLong(16);
-            long l24 = src.readLong(24);
-            dst.writeLong(0, l0);
-            dst.writeLong(8, l8);
-            dst.writeLong(16, l16);
-            dst.writeLong(24, l24);
-            offset = next;
+        int stepSize = 4 * wordSize;
+        Pointer src = frameData;
+        Pointer srcEnd = frameData.add(totalSize);
+        Pointer dst = to;
+        while (src.add(stepSize).belowOrEqual(srcEnd)) {
+            WordBase w0 = src.readWord(0 * wordSize);
+            WordBase w8 = src.readWord(1 * wordSize);
+            WordBase w16 = src.readWord(2 * wordSize);
+            WordBase w24 = src.readWord(3 * wordSize);
+            dst.writeWord(0 * wordSize, w0);
+            dst.writeWord(1 * wordSize, w8);
+            dst.writeWord(2 * wordSize, w16);
+            dst.writeWord(3 * wordSize, w24);
+
+            src = src.add(stepSize);
+            dst = dst.add(stepSize);
         }
-        for (; offset < totalSize; offset++) {
-            to.writeByte(offset, frameData.readByte(offset));
+
+        while (src.belowThan(srcEnd)) {
+            dst.writeWord(WordFactory.zero(), src.readWord(WordFactory.zero()));
+            src = src.add(wordSize);
+            dst = dst.add(wordSize);
         }
+
+        assert src.equal(srcEnd);
+        assert dst.equal(to.add(totalSize));
         return storedIP;
     }
 

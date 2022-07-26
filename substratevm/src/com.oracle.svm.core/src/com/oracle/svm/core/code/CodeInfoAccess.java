@@ -287,6 +287,7 @@ public final class CodeInfoAccess {
         return cast(info).getStackReferenceMapEncoding();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long lookupStackReferenceMapIndex(CodeInfo info, long ip) {
         return CodeInfoDecoder.lookupStackReferenceMapIndex(info, ip);
     }
