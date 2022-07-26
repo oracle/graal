@@ -18,7 +18,7 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 
 ## Install GraalVM Enterprise
 
-For convenience, GraalVM Enterpriise RPMs are available in the Oracle YUM repository. 
+For convenience, GraalVM Enterprise RPMs are available in the Oracle YUM repository. 
 Each RPM is self-contained and will automatically pull in all required dependencies.
 
 That means that OCI customers can use the GraalVM Enterprise environment in their compute instances by installing it with `yum` - a package-management utility for the Linux operating system.
