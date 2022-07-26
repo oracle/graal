@@ -745,11 +745,7 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        if self.gc == 'G1':
-            instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-        else:
-            # --pgo-sampling does not work with G1 for some reason
-            instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
+        instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
