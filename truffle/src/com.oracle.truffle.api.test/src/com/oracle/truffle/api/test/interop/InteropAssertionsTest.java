@@ -1084,7 +1084,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
-    public void getExectuableName() throws UnsupportedMessageException {
+    public void getexecutableName() throws UnsupportedMessageException {
         StackFrameTest stackFrameTest = new StackFrameTest("foo");
         InteropLibrary stackFrameLib = createLibrary(InteropLibrary.class, stackFrameTest);
         assertEquals(stackFrameTest.getExecutableName.get(), stackFrameLib.getExecutableName(stackFrameTest));
