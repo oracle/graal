@@ -1050,6 +1050,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AVX1_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
         AVX1_256ONLY_AVX512F_VL(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
         AVX1_128ONLY_AVX512F_128ONLY(CPUFeature.AVX, null, EVEXFeatureAssertion.AVX512F_128ONLY),
+        AVX1_AVX2_AVX512F_BW(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_ALL),
         AVX1_AVX2_AVX512BW_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
         AVX1_AVX2_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
         AVX2_AVX512BW_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
@@ -1618,6 +1619,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPADDW          = new VexRVMOp("VPADDW",      P_66, M_0F,   WIG, 0xFD, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPADDD          = new VexRVMOp("VPADDD",      P_66, M_0F,   WIG, 0xFE, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexRVMOp VPADDQ          = new VexRVMOp("VPADDQ",      P_66, M_0F,   WIG, 0xD4, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W1);
+        public static final VexRVMOp VPMAXSB         = new VexRVMOp("VPMAXSB",     P_66, M_0F38, WIG, 0x3C, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPMAXSW         = new VexRVMOp("VPMAXSW",     P_66, M_0F,   WIG, 0xEE, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPMAXSD         = new VexRVMOp("VPMAXSD",     P_66, M_0F38, WIG, 0x3D, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexRVMOp VPMAXSQ         = new VexRVMOp("VPMAXSQ",     P_66, M_0F38, W1,  0x3D, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
+        public static final VexRVMOp VPMAXUB         = new VexRVMOp("VPMAXUB",     P_66, M_0F,   W0,  0xDE, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPMAXUW         = new VexRVMOp("VPMAXUW",     P_66, M_0F38, W0,  0x3E, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPMAXUD         = new VexRVMOp("VPMAXUD",     P_66, M_0F38, WIG, 0x3F, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexRVMOp VPMAXUQ         = new VexRVMOp("VPMAXUQ",     P_66, M_0F38, W1,  0x3F, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
+        public static final VexRVMOp VPMINSB         = new VexRVMOp("VPMINSB",     P_66, M_0F38, WIG, 0x38, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPMINSW         = new VexRVMOp("VPMINSW",     P_66, M_0F,   WIG, 0xEA, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPMINSD         = new VexRVMOp("VPMINSD",     P_66, M_0F38, WIG, 0x39, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexRVMOp VPMINSQ         = new VexRVMOp("VPMINSQ",     P_66, M_0F38, W1,  0x39, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
+        public static final VexRVMOp VPMINUB         = new VexRVMOp("VPMINUB",     P_66, M_0F,   W0,  0xDA, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       W0);
+        public static final VexRVMOp VPMINUW         = new VexRVMOp("VPMINUW",     P_66, M_0F38, W0,  0x3A, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       W0);
+        public static final VexRVMOp VPMINUD         = new VexRVMOp("VPMINUD",     P_66, M_0F38, WIG, 0x3B, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexRVMOp VPMINUQ         = new VexRVMOp("VPMINUQ",     P_66, M_0F38, W1,  0x3B, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
         public static final VexRVMOp VPMULHUW        = new VexRVMOp("VPMULHUW",    P_66, M_0F,   WIG, 0xE4, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPMULHW         = new VexRVMOp("VPMULHW",     P_66, M_0F,   WIG, 0xE5, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPMULLW         = new VexRVMOp("VPMULLW",     P_66, M_0F,   WIG, 0xD5, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
