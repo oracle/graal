@@ -26,7 +26,6 @@ package org.graalvm.compiler.core.test.ea;
 
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
