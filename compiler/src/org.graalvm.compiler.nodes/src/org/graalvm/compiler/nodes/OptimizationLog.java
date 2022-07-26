@@ -394,7 +394,7 @@ public class OptimizationLog implements CompilationListener {
             DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
         }
         if (isLogEnabled) {
-            graph.getDebug().log("Performed %s %s at bci %i", optimizationName, eventName, bci);
+            graph.getDebug().log("Performed %s %s at bci %d", optimizationName, eventName, bci);
         }
         if (isDumpEnabled) {
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, eventName);
