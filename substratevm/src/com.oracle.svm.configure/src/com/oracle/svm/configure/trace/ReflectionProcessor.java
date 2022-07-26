@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.configure.config.ProxyConfiguration;
 import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -40,6 +39,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemb
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -105,7 +105,7 @@ class ReflectionProcessor extends AbstractProcessor {
             return;
         }
         ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
-        ConfigurationMemberAccessibility accessibility = ConfigurationMemberAccessibility.QUERIED;
+        ConfigurationMemberAccessibility accessibility = Boolean.TRUE.equals(entry.get("result")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "getDeclaredFields": {
@@ -171,7 +171,9 @@ class ReflectionProcessor extends AbstractProcessor {
                 declaration = "getDeclaredMethod".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getMethod": {
-                accessibility = (function.equals("invokeMethod") || function.equals("findMethodHandle")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
+                accessibility = (accessibility == ConfigurationMemberAccessibility.ACCESSED || function.equals("invokeMethod") || function.equals("findMethodHandle"))
+                                ? ConfigurationMemberAccessibility.ACCESSED
+                                : ConfigurationMemberAccessibility.QUERIED;
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 List<?> parameterTypes = (List<?>) args.get(1);
@@ -191,7 +193,8 @@ class ReflectionProcessor extends AbstractProcessor {
                 declaration = "getDeclaredConstructor".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getConstructor": {
-                accessibility = (function.equals("invokeConstructor") || function.equals("findConstructorHandle")) ? ConfigurationMemberAccessibility.ACCESSED
+                accessibility = (accessibility == ConfigurationMemberAccessibility.ACCESSED || function.equals("invokeConstructor") || function.equals("findConstructorHandle"))
+                                ? ConfigurationMemberAccessibility.ACCESSED
                                 : ConfigurationMemberAccessibility.QUERIED;
                 List<String> parameterTypes = singleElement(args);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
