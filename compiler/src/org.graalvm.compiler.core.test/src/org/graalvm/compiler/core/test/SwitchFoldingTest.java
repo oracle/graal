@@ -42,6 +42,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -512,9 +513,11 @@ public class SwitchFoldingTest extends GraalCompilerTest {
     private void test(String snippet, String ref) {
         StructuredGraph graph = parseEager(snippet, StructuredGraph.AllowAssumptions.YES);
         DebugContext debug = graph.getDebug();
-        debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
+        debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph: Before folding");
         createCanonicalizerPhase().apply(graph, getProviders());
+        debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph: After folding");
         StructuredGraph referenceGraph = parseEager(ref, StructuredGraph.AllowAssumptions.YES);
+        debug.dump(DebugContext.BASIC_LEVEL, referenceGraph, "Reference Graph");
         compareGraphs(referenceGraph, graph);
     }
 
@@ -705,5 +708,87 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         } catch (Exception e) {
             Assert.fail();
         }
+    }
+
+    // Make switch big enough to trigger spawning hash array of the economic map
+    public static int guardSnippet(int k) {
+        if (k == 0) {
+            return 3;
+        } else if (k == 1) {
+            return 4;
+        } else if (k == 2) {
+            return 2;
+        } else if (k == 3) {
+            return 1;
+        } else if (k == 4) {
+            return 7;
+        } else if (k == 5) {
+            return 6;
+        } else if (k == 6) {
+            return 5;
+        } else if (k == 7) {
+            return 8;
+        } else if (k == 8) {
+            return 11;
+        } else if (k == 9) {
+            return 10;
+        } else if (k == 10) {
+            return 9;
+        } else if (k == 11) {
+            return 12;
+        } else {
+            if (k == 0) {
+                // ConvertDeoptToGuard will transform that into a fixed guard
+                GraalDirectives.deoptimizeAndInvalidate();
+                return 0;
+            }
+        }
+        return -1;
+    }
+
+    public static int guardSnippetReference(int k) {
+        switch (k) {
+            case 0:
+                return 3;
+            case 1:
+                return 4;
+            case 2:
+                return 2;
+            case 3:
+                return 1;
+            case 4:
+                return 7;
+            case 5:
+                return 6;
+            case 6:
+                return 5;
+            case 7:
+                return 8;
+            case 8:
+                return 11;
+            case 9:
+                return 10;
+            case 10:
+                return 9;
+            case 11:
+                return 12;
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * Ensures that a duplicate key for a fixed guard gets removed by the switch folding.
+     */
+    @Test
+    public void testTrivialGuard() {
+        StructuredGraph graph = parseEager("guardSnippet", StructuredGraph.AllowAssumptions.YES);
+        DebugContext debug = graph.getDebug();
+        debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph: Before folding");
+        new ConvertDeoptimizeToGuardPhase(createCanonicalizerPhase()).apply(graph, getProviders());
+        debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph: After folding");
+        StructuredGraph referenceGraph = parseEager("guardSnippetReference", StructuredGraph.AllowAssumptions.YES);
+        debug.dump(DebugContext.BASIC_LEVEL, referenceGraph, "Reference Graph");
+        compareGraphs(referenceGraph, graph);
     }
 }
