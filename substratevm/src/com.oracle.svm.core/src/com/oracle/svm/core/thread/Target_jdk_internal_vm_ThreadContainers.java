@@ -29,6 +29,11 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 
+/**
+ * The purpose of the target class is to support debugging and monitoring of threads. Because we
+ * currently don't provide/expose means for doing so, we replace it with an almost empty
+ * implementation.
+ */
 @TargetClass(className = "jdk.internal.vm.ThreadContainers", onlyWith = JDK19OrLater.class)
 @Substitute
 @SuppressWarnings("unused")
