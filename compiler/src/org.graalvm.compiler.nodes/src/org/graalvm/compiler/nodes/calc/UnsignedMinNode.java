@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,7 +28,7 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.NumUtil.Signedness;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Max;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.UMin;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -37,28 +37,28 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
-@NodeInfo(shortName = "Max")
-public class MaxNode extends MinMaxNode<Max> {
+@NodeInfo(shortName = "UnsignedMin")
+public class UnsignedMinNode extends MinMaxNode<UMin> {
 
-    public static final NodeClass<MaxNode> TYPE = NodeClass.create(MaxNode.class);
+    public static final NodeClass<UnsignedMinNode> TYPE = NodeClass.create(UnsignedMinNode.class);
 
-    protected MaxNode(ValueNode x, ValueNode y) {
-        super(TYPE, getArithmeticOpTable(x).getMax(), x, y);
+    protected UnsignedMinNode(ValueNode x, ValueNode y) {
+        super(TYPE, getArithmeticOpTable(x).getUMin(), x, y);
     }
 
     @Override
-    protected BinaryOp<Max> getOp(ArithmeticOpTable table) {
-        return table.getMax();
+    protected BinaryOp<UMin> getOp(ArithmeticOpTable table) {
+        return table.getUMin();
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
-        BinaryOp<Max> op = ArithmeticOpTable.forStamp(x.stamp(view)).getMax();
+        BinaryOp<UMin> op = ArithmeticOpTable.forStamp(x.stamp(view)).getUMin();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return new MaxNode(x, y).maybeCommuteInputs();
+        return new UnsignedMinNode(x, y).maybeCommuteInputs();
     }
 
     @Override
@@ -66,8 +66,8 @@ public class MaxNode extends MinMaxNode<Max> {
         if (!(stamp(NodeView.DEFAULT).isIntegerStamp())) {
             return null;
         }
-        LogicNode condition = IntegerLessThanNode.create(getX(), getY(), NodeView.DEFAULT);
-        return ConditionalNode.create(condition, getY(), getX(), NodeView.DEFAULT);
+        LogicNode condition = IntegerBelowNode.create(getX(), getY(), NodeView.DEFAULT);
+        return ConditionalNode.create(condition, getX(), getY(), NodeView.DEFAULT);
     }
 
     @Override
@@ -75,6 +75,6 @@ public class MaxNode extends MinMaxNode<Max> {
         if (!super.isNarrowable(resultBits)) {
             return false;
         }
-        return super.isNarrowable(resultBits, Signedness.SIGNED);
+        return super.isNarrowable(resultBits, Signedness.UNSIGNED);
     }
 }

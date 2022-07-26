@@ -33,6 +33,11 @@ import jdk.vm.ci.code.CodeUtil;
  */
 public class NumUtil {
 
+    public enum Signedness {
+        SIGNED,
+        UNSIGNED
+    }
+
     public static boolean isShiftCount(int x) {
         return 0 <= x && x < 32;
     }
