@@ -58,28 +58,28 @@ public final class EspressoFrame {
 
     public static void dup1(Frame frame, int top) {
         // value1 -> value1, value1
-        copy(frame, top - 1, top);
+        copyStatic(frame, top - 1, top);
     }
 
     public static void dupx1(Frame frame, int top) {
         // value2, value1 -> value1, value2, value1
-        copy(frame, top - 1, top);
-        copy(frame, top - 2, top - 1);
-        copy(frame, top, top - 2);
+        copyStatic(frame, top - 1, top);
+        copyStatic(frame, top - 2, top - 1);
+        copyStatic(frame, top, top - 2);
     }
 
     public static void dupx2(Frame frame, int top) {
         // value3, value2, value1 -> value1, value3, value2, value1
-        copy(frame, top - 1, top);
-        copy(frame, top - 2, top - 1);
-        copy(frame, top - 3, top - 2);
-        copy(frame, top, top - 3);
+        copyStatic(frame, top - 1, top);
+        copyStatic(frame, top - 2, top - 1);
+        copyStatic(frame, top - 3, top - 2);
+        copyStatic(frame, top, top - 3);
     }
 
     public static void dup2(Frame frame, int top) {
         // {value2, value1} -> {value2, value1}, {value2, value1}
-        copy(frame, top - 2, top);
-        copy(frame, top - 1, top + 1);
+        copyStatic(frame, top - 2, top);
+        copyStatic(frame, top - 1, top + 1);
     }
 
     public static void swapSingle(Frame frame, int top) {
@@ -90,25 +90,25 @@ public final class EspressoFrame {
 
     public static void dup2x1(Frame frame, int top) {
         // value3, {value2, value1} -> {value2, value1}, value3, {value2, value1}
-        copy(frame, top - 2, top);
-        copy(frame, top - 1, top + 1);
-        copy(frame, top - 3, top - 1);
-        copy(frame, top, top - 3);
-        copy(frame, top + 1, top - 2);
+        copyStatic(frame, top - 2, top);
+        copyStatic(frame, top - 1, top + 1);
+        copyStatic(frame, top - 3, top - 1);
+        copyStatic(frame, top, top - 3);
+        copyStatic(frame, top + 1, top - 2);
     }
 
     public static void dup2x2(Frame frame, int top) {
         // {value4, value3}, {value2, value1} -> {value2, value1}, {value4, value3}, {value2,
         // value1}
-        copy(frame, top - 1, top + 1);
-        copy(frame, top - 2, top);
-        copy(frame, top - 3, top - 1);
-        copy(frame, top - 4, top - 2);
-        copy(frame, top, top - 4);
-        copy(frame, top + 1, top - 3);
+        copyStatic(frame, top - 1, top + 1);
+        copyStatic(frame, top - 2, top);
+        copyStatic(frame, top - 3, top - 1);
+        copyStatic(frame, top - 4, top - 2);
+        copyStatic(frame, top, top - 4);
+        copyStatic(frame, top + 1, top - 3);
     }
 
-    private static void copy(Frame frame, int src, int dst) {
+    private static void copyStatic(Frame frame, int src, int dst) {
         frame.copyPrimitiveStatic(src, dst);
         frame.copyObjectStatic(src, dst);
     }
@@ -120,11 +120,9 @@ public final class EspressoFrame {
         return result;
     }
 
-    // Exposed to CheckCastNode.
-    // Exposed to InstanceOfNode and quick nodes, which can produce foreign objects.
     public static StaticObject peekObject(Frame frame, int slot) {
         Object result = frame.getObjectStatic(slot);
-        assert result instanceof StaticObject;
+        assert result != null;
         return (StaticObject) result;
     }
 
@@ -135,7 +133,6 @@ public final class EspressoFrame {
         // nulls-out the slot, use peekObject to read only
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
-        assert result instanceof StaticObject;
         return (StaticObject) result;
     }
 
@@ -172,7 +169,7 @@ public final class EspressoFrame {
     }
 
     public static void putObject(Frame frame, int slot, StaticObject value) {
-        assert value != null : "use putRawObject to store host nulls";
+        assert value != null;
         frame.setObjectStatic(slot, value);
     }
 
@@ -214,7 +211,7 @@ public final class EspressoFrame {
     }
 
     public static void setLocalObject(Frame frame, int localSlot, StaticObject value) {
-        assert value != null : "use putRawObject to store host nulls";
+        assert value != null;
         frame.setObjectStatic(VALUES_START + localSlot, value);
     }
 
@@ -244,7 +241,7 @@ public final class EspressoFrame {
 
     public static StaticObject getLocalObject(Frame frame, int localSlot) {
         Object result = frame.getObjectStatic(VALUES_START + localSlot);
-        assert result instanceof StaticObject;
+        assert result != null;
         return (StaticObject) result;
     }
 
@@ -254,7 +251,7 @@ public final class EspressoFrame {
 
     static int getLocalReturnAddress(Frame frame, int localSlot) {
         Object result = frame.getObjectStatic(VALUES_START + localSlot);
-        assert result instanceof ReturnAddress;
+        assert result != null;
         return ((ReturnAddress) result).getBci();
     }
 
