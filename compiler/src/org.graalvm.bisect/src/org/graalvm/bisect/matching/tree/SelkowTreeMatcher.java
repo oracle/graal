@@ -95,10 +95,10 @@ public class SelkowTreeMatcher implements TreeMatcher {
                 OptimizationTreeNode left = node1.getChildren().get(i - 1);
                 OptimizationTreeNode right = node2.getChildren().get(j - 1);
                 EditScript subtreeScript = new EditScript();
-                delta[i][j] = Math.min(
-                                delta[i - 1][j - 1] + edit(left, right, subtreeScript, depth + 1),
-                                Math.min(delta[i][j - 1] + insertCost(right),
-                                                delta[i - 1][j] + deleteCost(left)));
+                int relabelDelta = delta[i - 1][j - 1] + edit(left, right, subtreeScript, depth + 1);
+                int insertDelta = delta[i][j - 1] + insertCost(right);
+                int deleteDelta = delta[i - 1][j] + deleteCost(left);
+                delta[i][j] = Math.min(relabelDelta, Math.min(insertDelta, deleteDelta));
                 scripts[i][j] = subtreeScript;
             }
         }
