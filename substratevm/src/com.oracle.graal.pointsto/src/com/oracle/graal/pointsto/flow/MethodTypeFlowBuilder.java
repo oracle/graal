@@ -95,6 +95,7 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
@@ -104,6 +105,7 @@ import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.word.WordCastNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -128,8 +130,6 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -195,6 +195,9 @@ public class MethodTypeFlowBuilder {
                  * access, array accesses; many of those dominate each other.
                  */
                 new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
+
+                new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
+                new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
             }
 
             // Do it again after canonicalization changed type checks and field accesses.
@@ -1556,7 +1559,7 @@ public class MethodTypeFlowBuilder {
      * Provide a non-null position. Some flows like newInstance and invoke require a non-null
      * position, for others is just better. The constructed position is best-effort, i.e., it
      * contains at least the method, and a BCI only if the node provides it.
-     * 
+     *
      * This is necessary because {@link Node#getNodeSourcePosition()} doesn't always provide a
      * position, like for example for generated factory methods in FactoryThrowMethodHolder.
      */
