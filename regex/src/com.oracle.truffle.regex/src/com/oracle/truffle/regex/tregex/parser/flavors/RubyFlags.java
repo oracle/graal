@@ -166,7 +166,7 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     @ExplodeLoop
     private static int indexOfUnrolled(String flags, int candidateChar) {
         for (int i = 0; i < flags.length(); i++) {
-            int c = flags.codePointAt(i);
+            int c = flags.charAt(i);
             if (candidateChar == c) {
                 return i;
             }
