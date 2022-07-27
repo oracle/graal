@@ -22,13 +22,25 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+/**
+ * Exposes accessors to the Espresso frame e.g. operand stack, locals and current BCI.
+ */
 public final class EspressoFrame {
 
     private EspressoFrame() {
@@ -245,10 +257,6 @@ public final class EspressoFrame {
         return (StaticObject) result;
     }
 
-    public static Object getRawLocalObject(Frame frame, int localSlot) {
-        return frame.getObjectStatic(VALUES_START + localSlot);
-    }
-
     static int getLocalReturnAddress(Frame frame, int localSlot) {
         Object result = frame.getObjectStatic(VALUES_START + localSlot);
         assert result != null;
@@ -279,5 +287,137 @@ public final class EspressoFrame {
 
     public static int startingStackOffset(int maxLocals) {
         return VALUES_START + maxLocals;
+    }
+
+    @ExplodeLoop
+    public static Object[] popArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
+        int argCount = Signatures.parameterCount(signature);
+
+        int extraParam = hasReceiver ? 1 : 0;
+        final Object[] args = new Object[argCount + extraParam];
+
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+        CompilerAsserts.partialEvaluationConstant(hasReceiver);
+
+        int argAt = top - 1;
+        for (int i = argCount - 1; i >= 0; --i) {
+            Symbol<Type> argType = Signatures.parameterType(signature, i);
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
+                case 'B' : args[i + extraParam] = (byte) popInt(frame, argAt);  break;
+                case 'S' : args[i + extraParam] = (short) popInt(frame, argAt); break;
+                case 'C' : args[i + extraParam] = (char) popInt(frame, argAt);  break;
+                case 'I' : args[i + extraParam] = popInt(frame, argAt);         break;
+                case 'F' : args[i + extraParam] = popFloat(frame, argAt);       break;
+                case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + extraParam] = popObject(frame, argAt);      break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            --argAt;
+
+        }
+        if (hasReceiver) {
+            args[0] = popObject(frame, argAt);
+        }
+        return args;
+    }
+
+    // Effort to prevent double copies. Erases sub-word primitive types.
+    @ExplodeLoop
+    public static Object[] popBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
+        // Use basic types
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+        int argAt = top - 1;
+        for (int i = argCount - 1; i >= 0; --i) {
+            Symbol<Type> argType = Signatures.parameterType(signature, i);
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : // fall through
+                case 'B' : // fall through
+                case 'S' : // fall through
+                case 'C' : // fall through
+                case 'I' : args[i + start] = popInt(frame, argAt);    break;
+                case 'F' : args[i + start] = popFloat(frame, argAt);  break;
+                case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + start] = popObject(frame, argAt); break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            --argAt;
+        }
+        return args;
+    }
+
+    /**
+     * Puts a value in the operand stack. This method follows the JVM spec, where sub-word types (<
+     * int) are always treated as int.
+     *
+     * Returns the number of used slots.
+     *
+     * @param value value to push
+     * @param kind kind to push
+     */
+    public static int putKind(VirtualFrame frame, int top, Object value, JavaKind kind) {
+        // @formatter:off
+        switch (kind) {
+            case Boolean : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
+            case Byte    : putInt(frame, top, (byte) value);              break;
+            case Short   : putInt(frame, top, (short) value);             break;
+            case Char    : putInt(frame, top, (char) value);              break;
+            case Int     : putInt(frame, top, (int) value);               break;
+            case Float   : putFloat(frame, top, (float) value);           break;
+            case Long    : putLong(frame, top, (long) value);             break;
+            case Double  : putDouble(frame, top, (double) value);         break;
+            case Object  : putObject(frame, top, (StaticObject) value);   break;
+            case Void    : /* ignore */                                   break;
+            default      :
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+        return kind.getSlotCount();
+    }
+
+    /**
+     * Puts a value in the operand stack. This method follows the JVM spec, where sub-word types (<
+     * int) are always treated as int.
+     *
+     * Returns the number of used slots.
+     *
+     * @param value value to push
+     * @param type type to push
+     */
+    public static int putType(VirtualFrame frame, int top, Object value, Symbol<Type> type) {
+        // @formatter:off
+        switch (type.byteAt(0)) {
+            case 'Z' : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
+            case 'B' : putInt(frame, top, (byte) value);              break;
+            case 'S' : putInt(frame, top, (short) value);             break;
+            case 'C' : putInt(frame, top, (char) value);              break;
+            case 'I' : putInt(frame, top, (int) value);               break;
+            case 'F' : putFloat(frame, top, (float) value);           break;
+            case 'J' : putLong(frame, top, (long) value);             break;
+            case 'D' : putDouble(frame, top, (double) value);         break;
+            case '[' : // fall through
+            case 'L' : putObject(frame, top, (StaticObject) value);   break;
+            case 'V' : /* ignore */                                   break;
+            default      :
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+        return Types.slotCount(type);
     }
 }
