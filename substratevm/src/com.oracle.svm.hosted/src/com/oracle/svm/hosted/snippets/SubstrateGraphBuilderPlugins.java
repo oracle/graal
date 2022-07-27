@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.snippets;
 
 import java.awt.GraphicsEnvironment;
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -79,6 +80,7 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -90,7 +92,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import com.oracle.svm.util.DirectAnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -143,6 +144,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.DirectAnnotationAccess;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
@@ -181,6 +183,7 @@ public class SubstrateGraphBuilderPlugins {
         registerPlatformPlugins(snippetReflection, plugins);
         registerAWTPlugins(plugins);
         registerSizeOfPlugins(snippetReflection, plugins);
+        registerReferencePlugins(plugins, parsingReason);
         registerReferenceAccessPlugins(plugins);
     }
 
@@ -1015,6 +1018,16 @@ public class SubstrateGraphBuilderPlugins {
                 UnsignedWord result = SizeOf.unsigned(clazz);
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess()));
                 return true;
+            }
+        });
+    }
+
+    private static void registerReferencePlugins(InvocationPlugins plugins, ParsingReason parsingReason) {
+        Registration r = new Registration(plugins, Reference.class);
+        r.register(new StandardGraphBuilderPlugins.ReachabilityFencePlugin() {
+            @Override
+            protected boolean useExplicitReachabilityFence(GraphBuilderContext b) {
+                return parsingReason != ParsingReason.JITCompilation;
             }
         });
     }

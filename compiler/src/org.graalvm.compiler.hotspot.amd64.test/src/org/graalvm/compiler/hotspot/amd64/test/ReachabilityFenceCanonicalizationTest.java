@@ -31,10 +31,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
+import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.ReachabilityFenceNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -78,9 +80,10 @@ public class ReachabilityFenceCanonicalizationTest extends HotSpotGraalCompilerT
         assumeTrue("requires -XX:+UseCompressedOops", runtime().getVMConfig().useCompressedOops);
         assumeTrue("skipping because of oop encoding", AMD64Address.isScaleShiftSupported(runtime().getVMConfig().getOopEncoding().getShift()));
 
+        OptionValues options = new OptionValues(getInitialOptions(), HotSpotGraphBuilderPlugins.Options.ForceExplicitReachabilityFence, true);
         Object[] inputs = new Payload[]{new Payload(), new Payload(), new Payload()};
-        test("uncompressOnlyUsedByReachabilityFences", inputs, false);
-        test("uncompressOnlyUsedByReachabilityFences", inputs, true);
+        test(options, "uncompressOnlyUsedByReachabilityFences", inputs, false);
+        test(options, "uncompressOnlyUsedByReachabilityFences", inputs, true);
     }
 
     @Override
