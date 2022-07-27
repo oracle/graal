@@ -11,8 +11,9 @@ method `report(Class<?> optimizationClass, String eventName, Node node)`, which 
 - the most relevant node in the transformation, i.e., a node that was just replaced/deleted/modified or
   a `LoopBeginNode` in the context of loop transformations like unrolling
 
-At the moment, the node is only used to obtain the bci of the transformation. The `report` method handles the following
-use cases:
+At the moment, the node is only used to obtain the bci of the transformation.
+
+The `report` method handles the following use cases:
 
 | Concern                              | Option                    | Output                                                                                     |
 |--------------------------------------|---------------------------|--------------------------------------------------------------------------------------------|

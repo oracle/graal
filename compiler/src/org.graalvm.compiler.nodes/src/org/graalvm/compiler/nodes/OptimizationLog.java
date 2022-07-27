@@ -59,7 +59,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about
- * optimizations performed in a single compilation and dumps them to a JSON file.
+ * optimizations performed in a single compilation and dumps them to the standard output, a JSON
+ * file and/or IGV.
  */
 public class OptimizationLog implements CompilationListener {
     /**
@@ -72,8 +73,10 @@ public class OptimizationLog implements CompilationListener {
      */
     public interface OptimizationEntry {
         /**
-         * Sets an additional property of the performed optimization to be used in the optimization
-         * log.
+         * Sets an additional property of the performed optimization provided by a supplier to be
+         * used in the optimization log. The supplier is evaluated only if it is needed, i.e., only
+         * if the optimization log is enabled. If the evaluation of the property is trivial, use
+         * {@link #setProperty(String, Object)} instead.
          *
          * @param key the name of the property
          * @param valueSupplier the supplier of the value
@@ -84,7 +87,8 @@ public class OptimizationLog implements CompilationListener {
 
         /**
          * Sets an additional property of the performed optimization to be used in the optimization
-         * log.
+         * log. If the evaluation of the property should be avoided in case the optimization log is
+         * disabled, use {@link #setLazyProperty(String, Supplier)} instead.
          *
          * @param key the name of the property
          * @param value the value of the property
@@ -170,7 +174,8 @@ public class OptimizationLog implements CompilationListener {
 
     /**
      * Represents a node in the tree of optimizations. The tree of optimizations consists of
-     * optimization phases and individual optimizations.
+     * optimization phases and individual optimizations. Extending {@link Node} allows the tree to
+     * be dumped to IGV.
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
     public abstract static class OptimizationTreeNode extends Node {
