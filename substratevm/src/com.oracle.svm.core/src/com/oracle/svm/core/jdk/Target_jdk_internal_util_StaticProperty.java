@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.function.BooleanSupplier;
 
@@ -36,6 +35,8 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.localization.substitutions.Target_java_nio_charset_Charset;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.util.StaticProperty;
+
 /**
  * This class provides JDK-internal access to values that are also available via system properties.
  * However, it must not return values changes by the user. We do not want to query the values during
@@ -43,7 +44,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * same methods also used to initialize the system properties.
  */
 @Substitute
-@TargetClass(className = "jdk.internal.util.StaticProperty")
+@TargetClass(jdk.internal.util.StaticProperty.class)
 @SuppressWarnings("unused")
 final class Target_jdk_internal_util_StaticProperty {
 
@@ -108,14 +109,7 @@ final class Target_jdk_internal_util_StaticProperty {
 
         @Override
         public boolean getAsBoolean() {
-            Method method;
-            try {
-                method = ReflectionUtil.lookupMethod(true, Class.forName("jdk.internal.util.StaticProperty"),
-                                methodName);
-            } catch (ClassNotFoundException e) {
-                return false;
-            }
-            return method != null;
+            return ReflectionUtil.lookupMethod(true, StaticProperty.class, methodName) != null;
         }
     }
 
