@@ -723,23 +723,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case LDC2_W: putPoolConstant(frame, top, bs.readCPI2(curBCI), curOpcode); break;
 
                     case ILOAD:
-                        putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI)));
+                        putInt(frame, top, getLocalInt(frame, bs.readLocalIndex1(curBCI)));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case LLOAD:
-                        putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI)));
+                        putLong(frame, top, getLocalLong(frame, bs.readLocalIndex1(curBCI)));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case FLOAD:
-                        putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI)));
+                        putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex1(curBCI)));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case DLOAD:
-                        putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI)));
+                        putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex1(curBCI)));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case ALOAD:
-                        putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI)));
+                        putObject(frame, top, getLocalObject(frame, bs.readLocalIndex1(curBCI)));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
 
@@ -795,23 +795,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         break;
 
                     case ISTORE:
-                        setLocalInt(frame, bs.readLocalIndex(curBCI), popInt(frame, top - 1));
+                        setLocalInt(frame, bs.readLocalIndex1(curBCI), popInt(frame, top - 1));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case LSTORE:
-                        setLocalLong(frame, bs.readLocalIndex(curBCI), popLong(frame, top - 1));
+                        setLocalLong(frame, bs.readLocalIndex1(curBCI), popLong(frame, top - 1));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case FSTORE:
-                        setLocalFloat(frame, bs.readLocalIndex(curBCI), popFloat(frame, top - 1));
+                        setLocalFloat(frame, bs.readLocalIndex1(curBCI), popFloat(frame, top - 1));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case DSTORE:
-                        setLocalDouble(frame, bs.readLocalIndex(curBCI), popDouble(frame, top - 1));
+                        setLocalDouble(frame, bs.readLocalIndex1(curBCI), popDouble(frame, top - 1));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
                     case ASTORE:
-                        setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), popReturnAddressOrObject(frame, top - 1));
+                        setLocalObjectOrReturnAddress(frame, bs.readLocalIndex1(curBCI), popReturnAddressOrObject(frame, top - 1));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
                         break;
 
