@@ -151,9 +151,10 @@ public class GraalCompiler {
                 if (r.verifySourcePositions) {
                     assert r.graph.verifySourcePositions(true);
                 }
-                StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(r.graph, r.providers, r.graphBuilderSuite);
-                r.graph.getOptimizationLog().printToFileIfEnabled(methodNameFormatter);
-                r.graph.getOptimizationLog().dumpOptimizationTreeIfEnabled();
+                if (r.graph.getOptimizationLog().isOptimizationLogEnabled()) {
+                    StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(r.graph, r.providers, r.graphBuilderSuite);
+                    r.graph.getOptimizationLog().printOptimizationTree(methodNameFormatter);
+                }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }

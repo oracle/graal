@@ -298,8 +298,4 @@ public final class GraalOptions {
 
     @Option(help = "Perform checks that guards and deopts aren't introduced in graphs that should handle exceptions explicitly", type = OptionType.Debug)
     public static final OptionKey<Boolean> StrictDeoptInsertionChecks = new OptionKey<>(false);
-
-    @Option(help = "Dump optimization log for each compilation " +
-            "to optimization_log/<execution-id>/<compilation-id>.json.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> OptimizationLog = new OptionKey<>(false);
 }

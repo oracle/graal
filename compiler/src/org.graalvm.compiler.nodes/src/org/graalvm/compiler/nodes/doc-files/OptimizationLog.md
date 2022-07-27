@@ -14,12 +14,12 @@ method `report(Class<?> optimizationClass, String eventName, Node node)`, which 
 At the moment, the node is only used to obtain the bci of the transformation. The `report` method handles the following
 use cases:
 
-| Concern                              | Option                                 | Output                                                                                      |
-|--------------------------------------|----------------------------------------|---------------------------------------------------------------------------------------------|
-| `log` using a `DebugContext`         | `-Dgraal.Log`, `-Dgraal.MethodFilter`  | log the message `Performed {optimizationName} {eventName} at bci {bci}` at `BASIC_LEVEL`    |
-| `dump` using a `DebugContext`        | `-Dgraal.Dump`                         | dump the graph with the caption `After {optimizationName} {eventName}` at `DETAILED_LEVEL`  |
-| `CounterKey` increment               | `-Dgraal.Count`                        | increment the counter `{optimizationName}_{eventName}`                                      |
-| structured optimization logging      | `-Dgraal.OptimizationLog` (`-Dgraal.TrackNodeSourcePosition`) | tree of optimizations dumped to igv or json file                     |
+| Concern                              | Option                    | Output                                                                                     |
+|--------------------------------------|---------------------------|--------------------------------------------------------------------------------------------|
+| `log` using a `DebugContext`         | `-Dgraal.Log`             | log the message `Performed {optimizationName} {eventName} at bci {bci}` at `BASIC_LEVEL`   |
+| `dump` using a `DebugContext`        | `-Dgraal.Dump`            | dump the graph with the caption `After {optimizationName} {eventName}` at `DETAILED_LEVEL` |
+| `CounterKey` increment               | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                                     |
+| structured optimization logging      | `-Dgraal.OptimizationLog` | tree of optimizations dumped to the standard output, a JSON file or an IGV graph           |
 
 It suffices to insert a line like the one below (from `DeadCodeEliminationPhase`) to solve all of the above concerns.
 The `report` method creates an *optimization entry*.
@@ -30,6 +30,15 @@ graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved",
 
 It is recommended to enable the structured optimization jointly with node source position
 tracking (`-Dgraal.TrackNodeSourcePosition`) so that the bci of nodes can be logged. Otherwise, a warning is emitted.
+
+The value of the option `-Dgraal.OptimizationLog` specifies where the structured optimization log is printed.
+The accepted values are:
+
+- `Directory` - print the structured optimization log to JSON files (`<compile-id>.json`) in a directory. The directory
+  is specified by the option `-Dgraal.OptimizationLogPath`. Directories are created if they do not exist.
+- `Stdout` - print the structured optimization log to the standard output.
+- `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
+- `Disable` - do not collect and print the structured optimization log.
 
 ## Properties
 
@@ -117,14 +126,15 @@ RootPhase
 
 ## JSON output
 
-Run a benchmark with the flag `-Dgraal.OptimizationLog=true` to produce an output. It is a good idea to run it jointly
+Run a benchmark with the flag `-Dgraal.OptimizationLog=Directory` to produce an output and save it to the directory
+specified by the `-Dgraal.OptimizationLogPath` option. It is a good idea to run it jointly
 with `-Dgraal.TrackNodeSourcePosition=true`.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=true -Dgraal.DumpPath=/tmp/dump
+mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
 ```
 
-In the dump directory, we can find many files named `optimization_log/<compilation-id>.json`. Each of them corresponds
+In the `optimization_log` directory, we can find many files named `<compilation-id>.json`. Each of them corresponds
 to one compilation. The structure is the following:
 
 ```json
@@ -173,14 +183,14 @@ a `CanonicalReplacement`:
 
 ## IGV output
 
-Run a benchmark with the flag `-Dgraal.OptimizationLog=true` and a verbosity level at least `4 = DETAILED_LEVEL`,
-e.g. `-Dgraal.Dump=:4`. It is a good idea to run it jointly with `-Dgraal.TrackNodeSourcePosition=true`.
+First, start an IdealGraphVisualizer instance. After that, run a benchmark with the flag `-Dgraal.OptimizationLog=Dump`.
+It is a good idea to run it jointly with `-Dgraal.TrackNodeSourcePosition=true`.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=true -Dgraal.Dump=:4 -Dgraal.PrintGraph=Network
+mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Dump -Dgraal.PrintGraph=Network
 ```
 
-The optimization tree should be at the bottom of each compilation dump in igv.
+Optimization trees for each compilation should now be available in IGV.
 
 ## Overhead of optimization logging
 

@@ -12,7 +12,7 @@ Node source positions allow us to correlate individual optimizations with a posi
 compare the optimizations for equality.
 
 ```sh
-mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=true -Dgraal.DumpPath=/tmp/scrabble_dump
+mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log
 ```
 
 We do not need to specify `-Dgraal.TrackNodeSourcePositions=true`, because it is inserted implicitly by
@@ -20,7 +20,7 @@ the `mx benchmark` infrastructure. The dump path is explicitly specified as an a
 subject to experiment is not a benchmark supported by `mx`, use `mx profrecord` as per
 the [proftool documentation](https://github.com/graalvm/mx/blob/master/README-proftool.md).
 
-The optimization log can be found in `/tmp/scrabble_dump/optimization_log` and the profile in a directory
+The optimization log can be found in the `./scrabble_log` directory and the profile is in a directory
 like `./proftool_scrabble_2022-07-05_140847`.
 
 Before the proftool output can be further processed, it must be converted to a single JSON file.
@@ -33,7 +33,7 @@ Now, we could run the experiment again with a different compiler revision. It is
 experiment again and get a bit different result, which is caused by the inherent nondeterminism of a JIT compiler.
 
 ```sh
-mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=true -Dgraal.DumpPath=/tmp/scrabble_dump2
+mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log2
 ```
 
 Again, convert the profile to JSON:
@@ -62,7 +62,7 @@ Options:
 Use the tool to diff our toy experiments:
 
 ```sh
-mx profbisect --hot-max-limit 1 ./scrabble_prof.json /tmp/scrabble_dump/optimization_log ./scrabble_prof2.json /tmp/scrabble_dump2/optimization_log
+mx profbisect --hot-max-limit 1 ./scrabble_prof.json ./scrabble_log ./scrabble_prof2.json ./scrabble_log2
 ```
 
 At the beginning of the output, we get a summary of the input data:

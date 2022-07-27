@@ -70,6 +70,29 @@ public class DebugOptions {
         Disable;
     }
 
+    /**
+     * Values for the {@link DebugOptions#OptimizationLog} option denoting whether the structured
+     * optimization log is enabled and where it is printed.
+     */
+    public enum OptimizationLogTarget {
+        /**
+         * Print logs to JSON files in a directory.
+         */
+        Directory,
+        /**
+         * Print logs as JSON to the standard output.
+         */
+        Stdout,
+        /**
+         * Dump the optimization tree as an IGV graph.
+         */
+        Dump,
+        /**
+         * Disable the structured optimization log.
+         */
+        Disable
+    }
+
     // @formatter:off
     @Option(help = "Comma separated names of timers that are enabled irrespective of the value for Time option. " +
                    "An empty value enables all timers unconditionally.", type = OptionType.Debug)
@@ -199,6 +222,11 @@ public class DebugOptions {
     @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
     public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
 
+    @Option(help = "file:doc-files/OptimizationLogHelp.txt", type = OptionType.Debug)
+    public static final EnumOptionKey<OptimizationLogTarget> OptimizationLog = new EnumOptionKey<>(OptimizationLogTarget.Disable);
+    @Option(help = "Path to the directory where the optimization log is saved if OptimizationLog is set to Directory. " +
+            "Directories are created if they do no exist.", type = OptionType.Debug)
+    public static final OptionKey<String> OptimizationLogPath = new OptionKey<>(null);
     // @formatter:on
 
     /**

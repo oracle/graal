@@ -25,10 +25,10 @@
 package org.graalvm.compiler.core.test.ea;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.TypeSystemTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.options.OptionKey;
@@ -144,17 +144,17 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
 
     /**
      * Gets a {@link DebugContext} object corresponding to {@code options} but with the option
-     * {@link GraalOptions#OptimizationLog OptimizationLog} enabled, creating a new one if none
+     * {@link DebugOptions#OptimizationLog OptimizationLog} enabled, creating a new one if none
      * currently exists. Debug contexts created by this method will have their
      * {@link DebugDumpHandler}s closed in {@link #afterTest()}.
      *
-     * @return {@link DebugContext} with the {@link GraalOptions#OptimizationLog OptimizationLog}
+     * @return {@link DebugContext} with the {@link DebugOptions#OptimizationLog OptimizationLog}
      *         option enabled
      */
     @Override
     protected DebugContext getDebugContext() {
         EconomicMap<OptionKey<?>, Object> extraOptions = EconomicMap.create();
-        extraOptions.put(GraalOptions.OptimizationLog, true);
+        extraOptions.put(DebugOptions.OptimizationLog, true);
         OptionValues options = new OptionValues(getInitialOptions(), extraOptions);
         return getDebugContext(options, null, null);
     }

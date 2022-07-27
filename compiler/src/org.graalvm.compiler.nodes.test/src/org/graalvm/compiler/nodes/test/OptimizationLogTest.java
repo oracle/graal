@@ -30,6 +30,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -162,7 +163,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
      * position tracking}.
      *
      * @param methodName the name of the method to be parsed
-     * @param enableOptimizationLog the value of the {@link GraalOptions#OptimizationLog} option
+     * @param enableOptimizationLog the value of the {@link DebugOptions#OptimizationLog} option
      * @param setCompilationListener the graph's {@link OptimizationLog} will be set as the
      *            compilation listener iff set
      * @return the parsed graph
@@ -170,7 +171,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
     private StructuredGraph parseGraph(String methodName, boolean enableOptimizationLog, boolean setCompilationListener) {
         ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
         EconomicMap<OptionKey<?>, Object> extraOptions = EconomicMap.create();
-        extraOptions.put(GraalOptions.OptimizationLog, enableOptimizationLog);
+        extraOptions.put(DebugOptions.OptimizationLog, enableOptimizationLog);
         extraOptions.put(GraalOptions.TrackNodeSourcePosition, true);
         OptionValues options = new OptionValues(getInitialOptions(), extraOptions);
         DebugContext debugContext = getDebugContext(options, null, method);

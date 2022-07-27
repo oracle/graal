@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -50,6 +49,7 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.json.JSONFormatter;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -303,7 +303,7 @@ public class OptimizationLog implements CompilationListener {
 
     private static final OptimizationEntryEmpty OPTIMIZATION_ENTRY_EMPTY = new OptimizationEntryEmpty();
     private final StructuredGraph graph;
-    private static final AtomicBoolean nodeSourcePositionWarningEmitted = new AtomicBoolean();
+    private static volatile boolean optionsVerified = false;
     private final String compilationId;
     private final boolean optimizationLogEnabled;
     private PartialEscapeLog partialEscapeLog = null;
@@ -317,21 +317,15 @@ public class OptimizationLog implements CompilationListener {
 
     /**
      * Constructs an optimization log bound with a given graph. Optimization
-     * {@link OptimizationEntry entries} are stored iff {@link GraalOptions#OptimizationLog} is
+     * {@link OptimizationEntry entries} are stored iff {@link DebugOptions#OptimizationLog} is
      * enabled.
      *
      * @param graph the bound graph
      */
     public OptimizationLog(StructuredGraph graph) {
         this.graph = graph;
-        optimizationLogEnabled = GraalOptions.OptimizationLog.getValue(graph.getOptions());
+        optimizationLogEnabled = isOptimizationLogEnabled(graph.getOptions());
         if (optimizationLogEnabled) {
-            if (!GraalOptions.TrackNodeSourcePosition.getValue(graph.getOptions()) &&
-                            !nodeSourcePositionWarningEmitted.getAndSet(true)) {
-                TTY.println(
-                                "Warning: Optimization log without node source position tracking (-Dgraal.%s) yields inferior results",
-                                GraalOptions.TrackNodeSourcePosition.getName());
-            }
             compilationId = parseCompilationId();
             currentPhase = new OptimizationPhaseScope(this, "RootPhase");
             optimizationTree = new Graph("OptimizationTree", graph.getOptions(), graph.getDebug(), false);
@@ -341,16 +335,68 @@ public class OptimizationLog implements CompilationListener {
             currentPhase = null;
             optimizationTree = null;
         }
+        verifyOptionsAndEmitWarnings(graph.getOptions());
     }
 
     /**
-     * Returns {@code true} iff {@link GraalOptions#OptimizationLog optimization log} is enabled.
-     * This option concerns only the detailed JSON optimization log;
-     * {@link DebugContext#counter(CharSequence) counters},
+     * Verifies that node source position tracking is enabled if the optimization log is enabled and
+     * that {@link DebugOptions#OptimizationLogPath} is not set if
+     * {@link DebugOptions#OptimizationLog} is not set to
+     * {@link org.graalvm.compiler.debug.DebugOptions.OptimizationLogTarget#Directory Directory}. If
+     * any of this does not hold, warnings are emitted once per execution.
+     *
+     * @param optionValues the option values
+     */
+    private static void verifyOptionsAndEmitWarnings(OptionValues optionValues) {
+        if (optionsVerified) {
+            return;
+        }
+        DebugOptions.OptimizationLogTarget optimizationLogTarget = DebugOptions.OptimizationLog.getValue(optionValues);
+        boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(optionValues);
+        boolean emitNodeSourcePositionWarning = optimizationLogTarget != DebugOptions.OptimizationLogTarget.Disable && !trackNodeSourcePosition;
+        boolean emitOptimizationLogPathWarning = optimizationLogTarget != DebugOptions.OptimizationLogTarget.Directory && DebugOptions.OptimizationLogPath.hasBeenSet(optionValues);
+        if (emitNodeSourcePositionWarning || emitOptimizationLogPathWarning) {
+            synchronized (OptimizationLog.class) {
+                if (!optionsVerified) {
+                    if (emitNodeSourcePositionWarning) {
+                        TTY.println("Warning: %s without %s yields inferior results",
+                                        DebugOptions.OptimizationLog.getName(),
+                                        GraalOptions.TrackNodeSourcePosition.getName());
+                    }
+                    if (emitOptimizationLogPathWarning) {
+                        TTY.println("Warning: %s is set but %s is not set to %s",
+                                        DebugOptions.OptimizationLogPath.getName(),
+                                        DebugOptions.OptimizationLog.getName(),
+                                        DebugOptions.OptimizationLogTarget.Directory.name());
+                    }
+                    optionsVerified = true;
+                }
+            }
+        } else {
+            optionsVerified = true;
+        }
+    }
+
+    /**
+     * Returns {@code true} iff {@link DebugOptions#OptimizationLog the optimization log} is enabled
+     * according to the provided option values. This option concerns only the structured
+     * optimization log; {@link DebugContext#counter(CharSequence) counters},
      * {@link DebugContext#dump(int, Object, String) dumping} and the textual
      * {@link DebugContext#log(String) log} are controlled by their respective options.
      *
-     * @return whether {@link GraalOptions#OptimizationLog optimization log} is enabled
+     * @param optionValues the option values
+     * @return whether {@link DebugOptions#OptimizationLog optimization log} is enabled
+     */
+    public static boolean isOptimizationLogEnabled(OptionValues optionValues) {
+        return DebugOptions.OptimizationLog.getValue(optionValues) != DebugOptions.OptimizationLogTarget.Disable;
+    }
+
+    /**
+     * Returns {@code true} iff {@link DebugOptions#OptimizationLog the optimization log} is
+     * enabled.
+     *
+     * @see OptimizationLog#isOptimizationLogEnabled(OptionValues)
+     * @return whether {@link DebugOptions#OptimizationLog the optimization log} is enabled
      */
     public boolean isOptimizationLogEnabled() {
         return optimizationLogEnabled;
@@ -501,32 +547,32 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * If the optimization log is enabled, prints the optimization log of this compilation to
-     * {@code optimization_log/compilation-id.json} in the {@link DebugOptions#getDumpDirectoryName
-     * dump directory}. Directories are created if they do not exist.
+     * Prints the optimization log either to the standard output, a JSON file or dumps it. The
+     * destination set by the option {@link DebugOptions#OptimizationLog} and possibly by
+     * {@link DebugOptions#OptimizationLogPath}. Directories are created if they do not exist.
      *
      * @param methodNameFormatter a function that formats method names
      * @throws IOException failed to create a directory or the file
      */
-    public void printToFileIfEnabled(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
-        if (!optimizationLogEnabled) {
+    public void printOptimizationTree(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
+        DebugOptions.OptimizationLogTarget target = DebugOptions.OptimizationLog.getValue(graph.getOptions());
+        assert target != DebugOptions.OptimizationLogTarget.Disable;
+        if (target == DebugOptions.OptimizationLogTarget.Dump) {
+            graph.getDebug().dump(DebugContext.ENABLED_LEVEL, optimizationTree, "Optimization tree");
             return;
         }
-        String optimizationLogPath = PathUtilities.getPath(DebugOptions.getDumpDirectoryName(graph.getOptions()), "optimization_log");
-        PathUtilities.createDirectories(optimizationLogPath);
-        String filePath = PathUtilities.getPath(optimizationLogPath, compilationId + ".json");
-        String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
-        PrintStream stream = new PrintStream(PathUtilities.openOutputStream(filePath));
-        stream.print(json);
-    }
-
-    /**
-     * Dumps the tree of optimizations if the optimization log is enabled.
-     */
-    public void dumpOptimizationTreeIfEnabled() {
-        if (optimizationLogEnabled) {
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, optimizationTree, "Optimization tree");
+        PrintStream stream;
+        if (target == DebugOptions.OptimizationLogTarget.Stdout) {
+            stream = TTY.out;
+        } else {
+            assert target == DebugOptions.OptimizationLogTarget.Directory;
+            String pathOptionValue = DebugOptions.OptimizationLogPath.getValue(graph.getOptions());
+            PathUtilities.createDirectories(pathOptionValue);
+            String filePath = PathUtilities.getPath(pathOptionValue, compilationId + ".json");
+            stream = new PrintStream(PathUtilities.openOutputStream(filePath));
         }
+        String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
+        stream.println(json);
     }
 
     private EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
