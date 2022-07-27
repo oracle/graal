@@ -1176,9 +1176,16 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return pn;
     }
 
-    @KeepOriginal
+    /**
+     * This method is a copy of {@link Class#toString()}. We cannot use {@link KeepOriginal} because
+     * then it would be a native method that cannot be invoked at image build time, which is bad for
+     * debug printing.
+     */
+    @Substitute
     @Override
-    public native String toString();
+    public String toString() {
+        return (isInterface() ? "interface " : (isPrimitive() ? "" : "class ")) + getName();
+    }
 
     @KeepOriginal
     public native String toGenericString();
