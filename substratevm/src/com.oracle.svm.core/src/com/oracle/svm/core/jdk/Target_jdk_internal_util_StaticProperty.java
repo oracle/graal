@@ -125,20 +125,9 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = StaticPropertyNativeEncodingAvailable.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     public static String nativeEncoding() {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("native.encoding");
-    }
-
-    /*
-     * Method nativeEncoding is present in some versions of the JDK17 and not in the other. We need
-     * to check if this method should be substituted by checking if it exists in the running JDK
-     * version.
-     */
-    private static class StaticPropertyNativeEncodingAvailable extends StaticPropertyMethodAvailable {
-        protected StaticPropertyNativeEncodingAvailable() {
-            super("nativeEncoding");
-        }
     }
 
     @Substitute
