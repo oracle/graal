@@ -30,8 +30,8 @@ import org.graalvm.bisect.core.ExperimentId;
  * Indicates that the experiment files had an incorrect format and could not be parsed.
  */
 @SuppressWarnings("serial")
-public class ExperimentParserException extends Exception {
-    ExperimentParserException(String message, ExperimentId experimentId) {
-        super("Failed to parse experiment " + experimentId + ": " + message);
+public class ExperimentParserTypeError extends Exception {
+    ExperimentParserTypeError(String objectName, Class<?> expectedType, Object actualObject, ExperimentId experimentId) {
+        super("Failed to parse experiment " + experimentId + ": " + " expected " + objectName + " to be a " + expectedType.getSimpleName() + " but got " + actualObject.toString());
     }
 }

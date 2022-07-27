@@ -46,6 +46,9 @@ import org.graalvm.util.json.JSONParser;
  */
 public class ExperimentParser {
     private final ExperimentFiles experimentFiles;
+    /**
+     * The compiler level of graal-compiled methods in the output of proftool.
+     */
     private static final int GRAAL_COMPILER_LEVEL = 4;
 
     public ExperimentParser(ExperimentFiles experimentFiles) {
@@ -64,9 +67,9 @@ public class ExperimentParser {
      *
      * @return the parsed experiment
      * @throws IOException failed to read the experiment files
-     * @throws ExperimentParserException the experiment files had an in incorrect format
+     * @throws ExperimentParserTypeError the experiment files had an in incorrect format
      */
-    public Experiment parse() throws IOException, ExperimentParserException {
+    public Experiment parse() throws IOException, ExperimentParserTypeError {
         // parse optimization logs to ExecutedMethodsBuilders
         Map<String, ExecutedMethodBuilder> methodByCompilationId = new HashMap<>();
         for (Reader optimizationLog : experimentFiles.getOptimizationLogs()) {
@@ -102,27 +105,26 @@ public class ExperimentParser {
     }
 
     private ExecutedMethodBuilder parseCompiledMethod(Reader optimizationLog)
-                    throws IOException, ExperimentParserException {
+                    throws IOException, ExperimentParserTypeError {
         JSONParser parser = new JSONParser(optimizationLog);
-        EconomicMap<String, Object> log = expectMap(parser.parse(), "root");
+        EconomicMap<String, Object> log = expectMap(parser.parse(), "the root of a compiled method");
         ExecutedMethodBuilder builder = new ExecutedMethodBuilder();
-        builder.setCompilationId(expectString(log.get("compilationId"), "root.compilationId"));
-        builder.setCompilationMethodName(
-                        expectString(log.get("compilationMethodName"), "root.compilationMethodName"));
-        EconomicMap<String, Object> rootPhase = expectMap(log.get("rootPhase"), "root.rootPhase");
+        builder.setCompilationId(expectString(log, "compilationId", false));
+        builder.setCompilationMethodName(expectString(log, "compilationMethodName", false));
+        EconomicMap<String, Object> rootPhase = expectMap(log.get("rootPhase"), "the root phase of a method");
         builder.setRootPhase(parseOptimizationPhase(rootPhase));
         return builder;
     }
 
-    private OptimizationPhase parseOptimizationPhase(EconomicMap<String, Object> log) throws ExperimentParserException {
-        String phaseName = expectString(log.get("phaseName"), "phase.phaseName");
+    private OptimizationPhase parseOptimizationPhase(EconomicMap<String, Object> log) throws ExperimentParserTypeError {
+        String phaseName = expectString(log, "phaseName", false);
         OptimizationPhaseImpl optimizationPhase = new OptimizationPhaseImpl(phaseName);
-        List<Object> optimizations = expectListNullable(log.get("optimizations"), "phase.optimizations");
+        List<Object> optimizations = expectList(log, "optimizations", true);
         if (optimizations == null) {
             return optimizationPhase;
         }
         for (Object optimization : optimizations) {
-            EconomicMap<String, Object> map = expectMap(optimization, "phase.optimizations[]");
+            EconomicMap<String, Object> map = expectMap(optimization, "optimization");
             Object subphaseName = map.get("phaseName");
             if (subphaseName instanceof String) {
                 optimizationPhase.addChild(parseOptimizationPhase(map));
@@ -133,10 +135,10 @@ public class ExperimentParser {
         return optimizationPhase;
     }
 
-    private Optimization parseOptimization(EconomicMap<String, Object> optimization) throws ExperimentParserException {
-        String optimizationName = expectString(optimization.get("optimizationName"), "optimization.optimizationName");
-        String eventName = expectString(optimization.get("eventName"), "optimization.eventName");
-        int bci = expectInt(optimization.get("bci"), "optimization.bci");
+    private Optimization parseOptimization(EconomicMap<String, Object> optimization) throws ExperimentParserTypeError {
+        String optimizationName = expectString(optimization, "optimizationName", false);
+        String eventName = expectString(optimization, "eventName", false);
+        int bci = expectInteger(optimization, "bci");
         optimization.removeKey("optimizationName");
         optimization.removeKey("eventName");
         optimization.removeKey("bci");
@@ -156,84 +158,72 @@ public class ExperimentParser {
         List<ProftoolMethod> code = new ArrayList<>();
     }
 
-    private ProftoolLog parseProftoolLog(Reader profOutput) throws IOException, ExperimentParserException {
+    private ProftoolLog parseProftoolLog(Reader profOutput) throws IOException, ExperimentParserTypeError {
         JSONParser parser = new JSONParser(profOutput);
         ProftoolLog proftoolLog = new ProftoolLog();
         EconomicMap<String, Object> root = expectMap(parser.parse(), "root");
-        proftoolLog.executionId = expectString(root.get("executionId"), "root.executionId");
-        proftoolLog.totalPeriod = expectLong(root.get("totalPeriod"), "root.totalPeriod");
-        List<Object> codeObjects = expectList(root.get("code"), "root.code");
+        proftoolLog.executionId = expectString(root, "executionId", false);
+        proftoolLog.totalPeriod = expectLong(root, "totalPeriod");
+        List<Object> codeObjects = expectList(root, "code", false);
         for (Object codeObject : codeObjects) {
             EconomicMap<String, Object> code = expectMap(codeObject, "root.code[]");
             ProftoolMethod method = new ProftoolMethod();
-            method.compilationId = expectStringNullable(code.get("compileId"), "root.code[].compileId");
+            method.compilationId = expectString(code, "compileId", true);
             if (method.compilationId != null && method.compilationId.endsWith("%")) {
                 method.compilationId = method.compilationId.substring(0, method.compilationId.length() - 1);
             }
-            method.period = expectLong(code.get("period"), "root.code[].period");
-            method.level = expectIntegerNullable(code.get("level"), "root.code[].level");
+            method.period = expectLong(code, "period");
+            method.level = expectIntegerNullable(code,"level");
             proftoolLog.code.add(method);
         }
         return proftoolLog;
     }
 
-    private String expectString(Object object, String path) throws ExperimentParserException {
-        if (object instanceof String) {
+    private String expectString(EconomicMap<String, Object> map, String key, boolean nullable) throws ExperimentParserTypeError {
+        Object object = map.get(key);
+        if ((nullable && object == null) || object instanceof String) {
             return (String) object;
         }
-        throw new ExperimentParserException("expected " + path + " to be a string", experimentFiles.getExperimentId());
+        throw new ExperimentParserTypeError(key, String.class, object, experimentFiles.getExperimentId());
     }
 
-    private String expectStringNullable(Object object, String path) throws ExperimentParserException {
-        if (object == null) {
-            return null;
-        }
-        return expectString(object, path);
-    }
-
-    private long expectLong(Object object, String path) throws ExperimentParserException {
+    private long expectLong(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
+        Object object = map.get(key);
         if (object instanceof Number) {
             return ((Number) object).longValue();
         }
-        throw new ExperimentParserException("expected " + path + " to be a number", experimentFiles.getExperimentId());
+        throw new ExperimentParserTypeError(key, Long.class, object, experimentFiles.getExperimentId());
     }
 
-    private int expectInt(Object object, String path) throws ExperimentParserException {
-        if (object instanceof Number) {
-            return ((Number) object).intValue();
-        }
-        throw new ExperimentParserException(
-                        "expected " + path + " to be an int",
-                        experimentFiles.getExperimentId());
-    }
-
-    private Integer expectIntegerNullable(Object object, String path) throws ExperimentParserException {
-        if (object == null) {
+    private int expectInteger(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
+        Object object = map.get(key);
+        if (object instanceof Integer) {
             return (Integer) object;
         }
-        return expectInt(object, path);
+        throw new ExperimentParserTypeError(key, Integer.class, object, experimentFiles.getExperimentId());
+    }
+
+    private Integer expectIntegerNullable(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
+        if (map.get(key) == null) {
+            return null;
+        }
+        return expectInteger(map, key);
     }
 
     @SuppressWarnings("unchecked")
-    private EconomicMap<String, Object> expectMap(Object object, String path) throws ExperimentParserException {
+    private EconomicMap<String, Object> expectMap(Object object, String objectName) throws ExperimentParserTypeError {
         if (object instanceof EconomicMap) {
             return (EconomicMap<String, Object>) object;
         }
-        throw new ExperimentParserException("expected " + path + " to be an object", experimentFiles.getExperimentId());
+        throw new ExperimentParserTypeError(objectName, EconomicMap.class, object, experimentFiles.getExperimentId());
     }
 
     @SuppressWarnings("unchecked")
-    private List<Object> expectList(Object object, String path) throws ExperimentParserException {
-        if (object instanceof List) {
+    private List<Object> expectList(EconomicMap<String, Object> map, String key, boolean nullable) throws ExperimentParserTypeError {
+        Object object = map.get(key);
+        if ((nullable && object == null) || object instanceof List) {
             return (List<Object>) object;
         }
-        throw new ExperimentParserException("expected " + path + " to be an array", experimentFiles.getExperimentId());
-    }
-
-    private List<Object> expectListNullable(Object object, String path) throws ExperimentParserException {
-        if (object == null) {
-            return null;
-        }
-        return expectList(object, path);
+        throw new ExperimentParserTypeError(key, List.class, object, experimentFiles.getExperimentId());
     }
 }

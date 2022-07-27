@@ -39,7 +39,7 @@ import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
-import org.graalvm.bisect.parser.experiment.ExperimentParserException;
+import org.graalvm.bisect.parser.experiment.ExperimentParserTypeError;
 import org.graalvm.bisect.util.EconomicMapUtil;
 import org.junit.Test;
 
@@ -130,7 +130,7 @@ public class ExperimentParserTest {
     }
 
     @Test
-    public void testExperimentParser() throws ExperimentParserException, IOException {
+    public void testExperimentParser() throws ExperimentParserTypeError, IOException {
         ExperimentFiles experimentFiles = new ExperimentFilesMock();
         ExperimentParser experimentParser = new ExperimentParser(experimentFiles);
         Experiment experiment = experimentParser.parse();

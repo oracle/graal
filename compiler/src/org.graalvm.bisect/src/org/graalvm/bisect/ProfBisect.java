@@ -46,7 +46,7 @@ import org.graalvm.bisect.parser.args.UnknownArgumentException;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentFilesImpl;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
-import org.graalvm.bisect.parser.experiment.ExperimentParserException;
+import org.graalvm.bisect.parser.experiment.ExperimentParserTypeError;
 import org.graalvm.bisect.util.StdoutWriter;
 import org.graalvm.bisect.util.Writer;
 
@@ -148,7 +148,7 @@ public class ProfBisect {
             System.err.println(
                             "Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId());
             System.exit(1);
-        } catch (ExperimentParserException e) {
+        } catch (ExperimentParserTypeError e) {
             System.err.println(e.getMessage());
             System.exit(1);
         }
