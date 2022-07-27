@@ -65,7 +65,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 public class MidTier extends BaseTier<MidTierContext> {
 
     public MidTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
 
         appendPhase(new LockEliminationPhase());
 
