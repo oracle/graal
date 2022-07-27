@@ -630,7 +630,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int startTop = VALUES_START + getMethodVersion().getMaxLocals();
+        int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
         return executeBodyFromBCI(frame, 0, startTop, 0, false);
     }
 
@@ -648,7 +648,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
         // pop frame cause initializeBody to be skipped on re-entry
         // so force the initialization here
-        if (!frame.isInt(BCI_SLOT)) {
+        if (!frame.isInt(EspressoFrame.BCI_SLOT)) {
             initializeFrame(frame);
         }
 
@@ -1328,7 +1328,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         for (int i = 0; i < stackOverflowErrorInfo.length; i += 3) {
                             if (curBCI >= stackOverflowErrorInfo[i] && curBCI < stackOverflowErrorInfo[i + 1]) {
                                 clearOperandStack(frame, top);
-                                top = VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
+                                top = startingStackOffset(getMethodVersion().getMaxLocals());
                                 putObject(frame, top, wrappedStackOverflowError.getGuestException());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
@@ -1388,7 +1388,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                     if (handler != null) {
                         clearOperandStack(frame, top);
-                        top = VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
+                        top = startingStackOffset(getMethodVersion().getMaxLocals());
                         checkNoForeignObjectAssumption(wrappedException.getGuestException());
                         putObject(frame, top, wrappedException.getGuestException());
                         top++;
@@ -1502,7 +1502,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @ExplodeLoop
     private void clearOperandStack(VirtualFrame frame, int top) {
-        int stackStart = VALUES_START + getMethodVersion().getMaxLocals();
+        int stackStart = startingStackOffset(getMethodVersion().getMaxLocals());
         for (int slot = top - 1; slot >= stackStart; --slot) {
             clear(frame, slot);
         }

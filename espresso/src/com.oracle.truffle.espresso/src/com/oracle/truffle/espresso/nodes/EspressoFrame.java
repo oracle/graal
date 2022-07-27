@@ -41,8 +41,8 @@ public final class EspressoFrame {
      * indexed frame slots}, and contain one slot for the BCI followed by the locals and the stack
      * ("values").
      */
-    static final int BCI_SLOT = 0;
-    static final int VALUES_START = 1;
+    private static final int BCI_SLOT = 0;
+    private static final int VALUES_START = 1;
 
     public static FrameDescriptor createFrameDescriptor(int locals, int stack) {
         int slotCount = locals + stack;
@@ -278,5 +278,9 @@ public final class EspressoFrame {
 
     static int getBCI(Frame frame) {
         return frame.getIntStatic(BCI_SLOT);
+    }
+
+    public static int startingStackOffset(int maxLocals) {
+        return VALUES_START + maxLocals;
     }
 }
