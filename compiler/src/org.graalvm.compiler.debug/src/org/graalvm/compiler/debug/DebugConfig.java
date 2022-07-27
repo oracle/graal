@@ -91,6 +91,11 @@ public interface DebugConfig {
     boolean isTimeEnabled(DebugContext.Scope scope);
 
     /**
+     * @see DebugContext#methodFilterMatchesCurrentMethod()
+     */
+    boolean methodFilterMatchesCurrentMethod(DebugContext.Scope scope);
+
+    /**
      * Handles notification of an exception occurring within a debug scope.
      *
      * @return the exception object that is to be propagated to parent scope. A value of

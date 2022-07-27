@@ -572,7 +572,7 @@ public class CompilationResultBuilder {
         final Formatter formatter;
 
         BasicBlockInfoLogger() {
-            this.isEnable = DebugOptions.PrintBBInfo.getValue(options);
+            this.isEnable = DebugOptions.PrintBBInfo.getValue(options) && debug.methodFilterMatchesCurrentMethod();
             this.formatter = this.isEnable ? new Formatter() : null;
         }
 

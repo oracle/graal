@@ -784,6 +784,14 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
+     * Check if the current method matches the {@link DebugOptions#MethodFilter method filter} debug
+     * option.
+     */
+    public boolean methodFilterMatchesCurrentMethod() {
+        return currentConfig != null && currentConfig.methodFilterMatchesCurrentMethod(currentScope);
+    }
+
+    /**
      * Gets a string composed of the names in the current nesting of debug
      * {@linkplain #scope(Object) scopes} separated by {@code '.'}.
      */
