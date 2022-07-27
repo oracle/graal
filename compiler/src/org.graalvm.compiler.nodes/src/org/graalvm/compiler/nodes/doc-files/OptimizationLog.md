@@ -38,7 +38,8 @@ The accepted values are:
   is specified by the option `-Dgraal.OptimizationLogPath`. Directories are created if they do not exist.
 - `Stdout` - print the structured optimization log to the standard output.
 - `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
-- `Disable` - do not collect and print the structured optimization log.
+
+It is possible to specify multiple comma-separated values (e.g., `-Dgraal.OptimizationLog=Stdout,Dump`).
 
 ## Properties
 

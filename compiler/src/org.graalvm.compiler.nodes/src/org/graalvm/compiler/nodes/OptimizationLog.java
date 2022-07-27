@@ -26,12 +26,14 @@ package org.graalvm.compiler.nodes;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -39,6 +41,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.CompilationListener;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
@@ -330,45 +333,31 @@ public class OptimizationLog implements CompilationListener {
             currentPhase = new OptimizationPhaseScope(this, "RootPhase");
             optimizationTree = new Graph("OptimizationTree", graph.getOptions(), graph.getDebug(), false);
             optimizationTree.add(currentPhase);
+            verifyOptions(graph.getOptions());
         } else {
             compilationId = null;
             currentPhase = null;
             optimizationTree = null;
         }
-        verifyOptionsAndEmitWarnings(graph.getOptions());
     }
 
     /**
-     * Verifies that node source position tracking is enabled if the optimization log is enabled and
-     * that {@link DebugOptions#OptimizationLogPath} is not set if
-     * {@link DebugOptions#OptimizationLog} is not set to
-     * {@link org.graalvm.compiler.debug.DebugOptions.OptimizationLogTarget#Directory Directory}. If
-     * any of this does not hold, warnings are emitted once per execution.
+     * Verifies that node source position tracking is enabled. If not, a warning is emitted once per
+     * execution.
      *
      * @param optionValues the option values
      */
-    private static void verifyOptionsAndEmitWarnings(OptionValues optionValues) {
+    private static void verifyOptions(OptionValues optionValues) {
         if (optionsVerified) {
             return;
         }
-        DebugOptions.OptimizationLogTarget optimizationLogTarget = DebugOptions.OptimizationLog.getValue(optionValues);
         boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(optionValues);
-        boolean emitNodeSourcePositionWarning = optimizationLogTarget != DebugOptions.OptimizationLogTarget.Disable && !trackNodeSourcePosition;
-        boolean emitOptimizationLogPathWarning = optimizationLogTarget != DebugOptions.OptimizationLogTarget.Directory && DebugOptions.OptimizationLogPath.hasBeenSet(optionValues);
-        if (emitNodeSourcePositionWarning || emitOptimizationLogPathWarning) {
+        if (!trackNodeSourcePosition) {
             synchronized (OptimizationLog.class) {
                 if (!optionsVerified) {
-                    if (emitNodeSourcePositionWarning) {
-                        TTY.println("Warning: %s without %s yields inferior results",
-                                        DebugOptions.OptimizationLog.getName(),
-                                        GraalOptions.TrackNodeSourcePosition.getName());
-                    }
-                    if (emitOptimizationLogPathWarning) {
-                        TTY.println("Warning: %s is set but %s is not set to %s",
-                                        DebugOptions.OptimizationLogPath.getName(),
-                                        DebugOptions.OptimizationLog.getName(),
-                                        DebugOptions.OptimizationLogTarget.Directory.name());
-                    }
+                    TTY.println("Warning: %s without %s cannot assign bci to performed optimizations",
+                                    DebugOptions.OptimizationLog.getName(),
+                                    GraalOptions.TrackNodeSourcePosition.getName());
                     optionsVerified = true;
                 }
             }
@@ -388,7 +377,8 @@ public class OptimizationLog implements CompilationListener {
      * @return whether {@link DebugOptions#OptimizationLog optimization log} is enabled
      */
     public static boolean isOptimizationLogEnabled(OptionValues optionValues) {
-        return DebugOptions.OptimizationLog.getValue(optionValues) != DebugOptions.OptimizationLogTarget.Disable;
+        EconomicSet<DebugOptions.OptimizationLogTarget> targets = DebugOptions.OptimizationLog.getValue(optionValues);
+        return targets != null && !targets.isEmpty();
     }
 
     /**
@@ -547,32 +537,43 @@ public class OptimizationLog implements CompilationListener {
     }
 
     /**
-     * Prints the optimization log either to the standard output, a JSON file or dumps it. The
-     * destination set by the option {@link DebugOptions#OptimizationLog} and possibly by
-     * {@link DebugOptions#OptimizationLogPath}. Directories are created if they do not exist.
+     * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
+     * optimization tree to the standard output, a JSON file and/or dumps it. If the optimization
+     * tree is printed to a file, the directory is specified by the
+     * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option. Directories are created
+     * if they do not exist.
      *
      * @param methodNameFormatter a function that formats method names
      * @throws IOException failed to create a directory or the file
      */
     public void printOptimizationTree(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
-        DebugOptions.OptimizationLogTarget target = DebugOptions.OptimizationLog.getValue(graph.getOptions());
-        assert target != DebugOptions.OptimizationLogTarget.Disable;
-        if (target == DebugOptions.OptimizationLogTarget.Dump) {
-            graph.getDebug().dump(DebugContext.ENABLED_LEVEL, optimizationTree, "Optimization tree");
+        EconomicSet<DebugOptions.OptimizationLogTarget> targets = DebugOptions.OptimizationLog.getValue(graph.getOptions());
+        if (targets == null || targets.isEmpty()) {
             return;
         }
-        PrintStream stream;
-        if (target == DebugOptions.OptimizationLogTarget.Stdout) {
-            stream = TTY.out;
-        } else {
-            assert target == DebugOptions.OptimizationLogTarget.Directory;
+        if (targets.contains(DebugOptions.OptimizationLogTarget.Dump)) {
+            graph.getDebug().dump(DebugContext.ENABLED_LEVEL, optimizationTree, "Optimization tree");
+        }
+        List<PrintStream> streams = new ArrayList<>();
+        if (targets.contains(DebugOptions.OptimizationLogTarget.Stdout)) {
+            streams.add(TTY.out);
+        }
+        if (targets.contains(DebugOptions.OptimizationLogTarget.Directory)) {
             String pathOptionValue = DebugOptions.OptimizationLogPath.getValue(graph.getOptions());
+            if (pathOptionValue == null) {
+                throw new GraalError("%s is set to %s but %s is not set",
+                                DebugOptions.OptimizationLog.getName(),
+                                DebugOptions.OptimizationLogTarget.Directory.name(),
+                                DebugOptions.OptimizationLogPath.getName());
+            }
             PathUtilities.createDirectories(pathOptionValue);
             String filePath = PathUtilities.getPath(pathOptionValue, compilationId + ".json");
-            stream = new PrintStream(PathUtilities.openOutputStream(filePath));
+            streams.add(new PrintStream(PathUtilities.openOutputStream(filePath)));
         }
-        String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
-        stream.println(json);
+        if (!streams.isEmpty()) {
+            String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
+            streams.forEach((stream) -> stream.println(json));
+        }
     }
 
     private EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {

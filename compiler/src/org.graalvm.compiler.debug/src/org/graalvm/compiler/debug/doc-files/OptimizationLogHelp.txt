@@ -4,4 +4,4 @@ The accepted values are:
               The directory is specified by OptimizationLogPath.
      Stdout - Print the structured optimization log to the standard output.
        Dump - Dump optimization trees for IdealGraphVisualizer according to the PrintGraph option.
-    Disable - Do not collect and print the structured optimization log.
+It is possible to specify multiple comma-separated values.

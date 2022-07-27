@@ -34,6 +34,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -71,8 +72,8 @@ public class DebugOptions {
     }
 
     /**
-     * Values for the {@link DebugOptions#OptimizationLog} option denoting whether the structured
-     * optimization log is enabled and where it is printed.
+     * Values for the {@link DebugOptions#OptimizationLog} option denoting where the structured
+     * optimization is printed.
      */
     public enum OptimizationLogTarget {
         /**
@@ -86,11 +87,7 @@ public class DebugOptions {
         /**
          * Dump the optimization tree as an IGV graph.
          */
-        Dump,
-        /**
-         * Disable the structured optimization log.
-         */
-        Disable
+        Dump
     }
 
     // @formatter:off
@@ -223,7 +220,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
 
     @Option(help = "file:doc-files/OptimizationLogHelp.txt", type = OptionType.Debug)
-    public static final EnumOptionKey<OptimizationLogTarget> OptimizationLog = new EnumOptionKey<>(OptimizationLogTarget.Disable);
+    public static final EnumMultiOptionKey<OptimizationLogTarget> OptimizationLog = new EnumMultiOptionKey<>(OptimizationLogTarget.class, null);
     @Option(help = "Path to the directory where the optimization log is saved if OptimizationLog is set to Directory. " +
             "Directories are created if they do no exist.", type = OptionType.Debug)
     public static final OptionKey<String> OptimizationLogPath = new OptionKey<>(null);
