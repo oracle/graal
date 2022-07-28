@@ -1086,9 +1086,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_file, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
-        /* We don't (yet?) have a proper start line for the method itself */
-        // pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
-        // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
         /* This probably needs to use the symbol name */
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_linkage_name, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);

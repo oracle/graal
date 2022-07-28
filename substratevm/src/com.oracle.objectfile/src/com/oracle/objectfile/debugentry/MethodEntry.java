@@ -56,9 +56,9 @@ public class MethodEntry extends MemberEntry {
     final String symbolName;
 
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
-                    FileEntry fileEntry, String methodName, ClassEntry ownerType,
+                    FileEntry fileEntry, int line, String methodName, ClassEntry ownerType,
                     TypeEntry valueType, TypeEntry[] paramTypes, DebugLocalInfo[] paramInfos, DebugLocalInfo thisParam) {
-        super(fileEntry, methodName, ownerType, valueType, debugMethodInfo.modifiers());
+        super(fileEntry, line, methodName, ownerType, valueType, debugMethodInfo.modifiers());
         this.paramTypes = paramTypes;
         this.paramInfos = paramInfos;
         this.thisParam = thisParam;

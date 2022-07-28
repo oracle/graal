@@ -290,6 +290,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String methodName = debugMethodInfo.name();
+        int line = debugMethodInfo.line();
         ResolvedJavaType resultType = debugMethodInfo.valueType();
         String resultTypeName = resultType.toJavaName();
         int modifiers = debugMethodInfo.modifiers();
@@ -297,7 +298,7 @@ public class ClassEntry extends StructureTypeEntry {
         DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
         int paramCount = paramInfos.length;
         debugContext.log("typename %s adding %s method %s %s(%s)\n",
-                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
+                typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
         TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
         TypeEntry[] typeEntries = new TypeEntry[paramCount];
         for (int i = 0; i < paramCount; i++) {
@@ -308,8 +309,8 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
-        MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
-                        this, resultTypeEntry, typeEntries, paramInfos, thisParam);
+        MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, line, methodName,
+                this, resultTypeEntry, typeEntries, paramInfos, thisParam);
         indexMethodEntry(methodEntry, debugMethodInfo.idMethod());
 
         return methodEntry;

@@ -181,7 +181,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    public int writeBuiltInUnit(DebugContext context, byte[] buffer, int p) {
+    private int writeBuiltInUnit(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         int lengthPos = pos;
         log(context, "  [0x%08x] <0> builtin unit", pos);
@@ -685,6 +685,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int fileIdx = classEntry.localFilesIdx(fileEntry);
         log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, fileEntry.getFullName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
+        int line = method.getLine();
+        log(context, "  [0x%08x]     line 0x%x", pos, line);
+        pos = writeAttrData2((short)line, buffer, pos);
         TypeEntry returnType = method.getValueType();
         int retTypeIdx = getTypeIndex(returnType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnType.getTypeName());

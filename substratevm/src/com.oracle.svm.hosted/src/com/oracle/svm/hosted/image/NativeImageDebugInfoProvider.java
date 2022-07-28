@@ -889,6 +889,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     protected abstract class NativeImageDebugBaseMethodInfo extends NativeImageDebugFileInfo implements DebugMethodInfo {
         protected final ResolvedJavaMethod method;
+        protected int line;
         protected final List<DebugLocalInfo> paramInfo;
         protected final DebugLocalInfo thisParamInfo;
 
@@ -902,7 +903,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // method references in node source positions. So, we do the translation
             // here just to make sure we use a HostedMethod wherever possible.
             method = promoteAnalysisToHosted(m);
-            this.paramInfo = createParamInfo(method);
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : 0);
+            this.paramInfo = createParamInfo(method, line);
             // We use the target modifiers to decide where to install any first param
             // even though we may have added it according to whether method is static.
             // That's because in a few special cases method is static but the original
@@ -1084,13 +1087,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private List<DebugLocalInfo> createParamInfo(ResolvedJavaMethod method) {
+    private List<DebugLocalInfo> createParamInfo(ResolvedJavaMethod method, int line) {
         Signature signature = method.getSignature();
         int parameterCount = signature.getParameterCount(false);
         List<DebugLocalInfo> paramInfos = new ArrayList<>(parameterCount);
         LocalVariableTable table = method.getLocalVariableTable();
-        LineNumberTable lineNumberTable = method.getLineNumberTable();
-        int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
         int slot = 0;
         ResolvedJavaType ownerType = method.getDeclaringClass();
         if (!method.isStatic()) {
@@ -1136,6 +1137,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         NativeImageDebugHostedMethodInfo(HostedMethod method) {
             super(method);
             this.hostedMethod = method;
+        }
+
+        @Override
+        public int line() {
+            return line;
         }
 
         @Override
@@ -1193,15 +1199,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int addressHi() {
             return hostedMethod.getCodeAddressOffset() + compilation.getTargetCodeSize();
-        }
-
-        @Override
-        public int line() {
-            LineNumberTable lineNumberTable = hostedMethod.getLineNumberTable();
-            if (lineNumberTable != null) {
-                return lineNumberTable.getLineNumber(0);
-            }
-            return -1;
         }
 
         @Override

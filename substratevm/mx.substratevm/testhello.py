@@ -130,6 +130,7 @@ def test():
     spaces_pattern = '[ \t]+'
     maybe_spaces_pattern = '[ \t]*'
     digits_pattern = '[0-9]+'
+    line_number_prefix_pattern = digits_pattern + ':' + spaces_pattern
     package_pattern = '[a-z/]+'
     package_file_pattern = '[a-zA-Z0-9_/]+\\.java'
     varname_pattern = '[a-zA-Z0-9_]+'
@@ -307,9 +308,9 @@ def test():
     exec_string = execute("info func greet")
     rexp = [r'All functions matching regular expression "greet":',
             r"File hello/Hello\.java:",
-            r"%svoid hello.Hello\$NamedGreeter::greet\(void\);"%maybe_spaces_pattern,
+            r"71:%svoid hello.Hello\$NamedGreeter::greet\(void\);"%maybe_spaces_pattern,
             r"File hello/Target_hello_Hello_DefaultGreeter\.java:",
-            r"%svoid hello.Hello\$DefaultGreeter::greet\(void\);"%maybe_spaces_pattern]
+            r"48:%svoid hello.Hello\$DefaultGreeter::greet\(void\);"%maybe_spaces_pattern]
     checker = Checker("info func greet", rexp)
     checker.check(exec_string)
 
@@ -523,10 +524,10 @@ def test():
     exec_string = execute("info func nline")
     rexp = [r"All functions matching regular expression \"nline\":",
             r"File hello/Hello\.java:",
-            r"%svoid hello\.Hello::noInlineFoo\(void\);"%spaces_pattern,
-            r"%svoid hello\.Hello::noInlineHere\(int\);"%spaces_pattern,
-            r"%svoid hello\.Hello::noInlineTest\(void\);"%spaces_pattern,
-            r"%svoid hello\.Hello::noInlineThis\(void\);"%spaces_pattern]
+            r"%svoid hello\.Hello::noInlineFoo\(void\);"%line_number_prefix_pattern,
+            r"%svoid hello\.Hello::noInlineHere\(int\);"%line_number_prefix_pattern,
+            r"%svoid hello\.Hello::noInlineTest\(void\);"%line_number_prefix_pattern,
+            r"%svoid hello\.Hello::noInlineThis\(void\);"%line_number_prefix_pattern]
     checker = Checker('info func nline', rexp)
     checker.check(exec_string)
 
