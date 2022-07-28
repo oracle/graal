@@ -31,6 +31,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
+import org.graalvm.compiler.interpreter.value.InterpreterValueFactory;
+import org.graalvm.compiler.interpreter.value.JVMContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -46,6 +48,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.InterpreterState;
+import org.graalvm.compiler.nodes.util.InterpreterException;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -139,11 +142,15 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
         if (isStatic()) {
             interpreter.storeStaticFieldValue(field(), val);
         } else {
+            JVMContext jvmContext = interpreter.getJVMContext();
             InterpreterValue objectVal = interpreter.interpretExpr(object());
+            if (objectVal.isNull()) {
+                throw new InterpreterException(new NullPointerException());
+            }
             GraalError.guarantee(objectVal instanceof InterpreterValueMutableObject, "StoreFieldNode input doesn't interpret to object");
-            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "StoreFieldNode field doesn't exist on object");
+            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(jvmContext, field()), "StoreFieldNode field doesn't exist on object");
 
-            ((InterpreterValueObject) objectVal).setFieldValue(field(), val);
+            ((InterpreterValueObject) objectVal).setFieldValue(jvmContext, field(), val);
         }
         return next();
     }

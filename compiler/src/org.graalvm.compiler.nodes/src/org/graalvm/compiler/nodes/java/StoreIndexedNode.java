@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.InterpreterState;
+import org.graalvm.compiler.nodes.util.InterpreterException;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -136,11 +137,19 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         InterpreterValue arrayVal = interpreter.interpretExpr(array());
         InterpreterValue newVal = interpreter.interpretExpr(value());
 
+        if (arrayVal.isNull()) {
+            throw new InterpreterException(new NullPointerException());
+        }
+
         GraalError.guarantee(indexVal.isPrimitive() && indexVal.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "StoreIndexedNode index doesn't interpret to int");
         GraalError.guarantee(arrayVal.isArray(), "StoreIndexedNode array did not interpret to an array");
 
-        // TODO: check type of value is compatible?
-        ((InterpreterValueArray) arrayVal).setAtIndex(indexVal.asPrimitiveConstant().asInt(), newVal);
+        try {
+            // TODO: check type of value is compatible?
+            ((InterpreterValueArray) arrayVal).setAtIndex(indexVal.asPrimitiveConstant().asInt(), newVal);
+        } catch (IllegalArgumentException e) {
+            throw new InterpreterException(e);
+        }
 
         return next();
     }

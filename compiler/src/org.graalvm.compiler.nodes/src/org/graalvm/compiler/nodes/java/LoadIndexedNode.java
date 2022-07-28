@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.InterpreterState;
+import org.graalvm.compiler.nodes.util.InterpreterException;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -209,10 +210,18 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         InterpreterValue indexVal = interpreter.interpretExpr(index());
         InterpreterValue arrayVal = interpreter.interpretExpr(array());
 
+        if (arrayVal.isNull()) {
+            throw new InterpreterException(new NullPointerException());
+        }
+
         GraalError.guarantee(indexVal.isPrimitive() && indexVal.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "LoadIndexNode index doesn't interpret to int");
         GraalError.guarantee(arrayVal.isArray(), "LoadIndexNode array did not interpret to an array");
 
-        interpreter.setNodeLookupValue(this, ((InterpreterValueArray) arrayVal).getAtIndex(indexVal.asPrimitiveConstant().asInt()));
+        try {
+            interpreter.setNodeLookupValue(this, ((InterpreterValueArray) arrayVal).getAtIndex(interpreter.getRuntimeValueFactory(), indexVal.asPrimitiveConstant().asInt()));
+        } catch (IllegalArgumentException e) {
+            throw new InterpreterException(e);
+        }
 
         return next();
     }

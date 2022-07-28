@@ -35,6 +35,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValueFactory;
+import org.graalvm.compiler.interpreter.value.JVMContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -55,6 +57,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 import org.graalvm.compiler.nodes.util.InterpreterState;
+import org.graalvm.compiler.nodes.util.InterpreterException;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -238,11 +241,16 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             // TODO: default values?
             fieldVal = interpreter.loadStaticFieldValue(field());
         } else {
+            JVMContext jvmContext = interpreter.getJVMContext();
+            InterpreterValueFactory valueFactory = interpreter.getRuntimeValueFactory();
             InterpreterValue objectVal = interpreter.interpretExpr(object());
+            if (objectVal.isNull()) {
+                throw new InterpreterException(new NullPointerException());
+            }
             GraalError.guarantee(objectVal instanceof InterpreterValueMutableObject, "LoadFieldNode input doesn't interpret to object");
-            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "LoadFieldNode field doesn't exist on object");
+            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(jvmContext, field()), "LoadFieldNode field doesn't exist on object");
 
-            fieldVal = ((InterpreterValueObject) objectVal).getFieldValue(field());
+            fieldVal = ((InterpreterValueObject) objectVal).getFieldValue(jvmContext, valueFactory, field());
         }
 
         interpreter.setNodeLookupValue(this, fieldVal);
