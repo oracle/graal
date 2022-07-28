@@ -585,6 +585,9 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         if (cVal instanceof PrimitiveConstant) {
             return InterpreterValuePrimitive.ofPrimitiveConstant(cVal);
         }
+        if (cVal instanceof JavaConstant && ((JavaConstant) cVal).isNull()) {
+            return InterpreterValue.InterpreterValueNullPointer.INSTANCE;
+        }
         String msg = String.format("cannot interpret constant Value=%s class=%s\n", cVal, cVal.getClass());
         throw GraalError.unimplemented(msg);
     }
