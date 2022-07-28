@@ -88,25 +88,27 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
     static class CallerRootNode extends NamedRootNode {
 
         private final String calleeName;
+        private final boolean setParentFrame;
         @Child DirectCallNode callNode;
 
-        protected CallerRootNode(String name, String calleeName) {
+        protected CallerRootNode(String name, String calleeName, boolean setParentFrame) {
             super(name);
             this.calleeName = calleeName;
+            this.setParentFrame = setParentFrame;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
-                setCallNode(frame.getFrameDescriptor());
+                createCallNode(frame.getFrameDescriptor());
             }
             callNode.call();
             return 42;
         }
 
         @CompilerDirectives.TruffleBoundary
-        private void setCallNode(FrameDescriptor frameDescriptor) {
-            CallTarget callTarget = new RootNodeWithParentFrameDescriptor(frameDescriptor, calleeName).getCallTarget();
+        private void createCallNode(FrameDescriptor frameDescriptor) {
+            CallTarget callTarget = new RootNodeWithParentFrameDescriptor(setParentFrame ? frameDescriptor : null, calleeName).getCallTarget();
             callNode = insert(GraalTruffleRuntime.getRuntime().createDirectCallNode(callTarget));
         }
     }
@@ -115,27 +117,50 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
     public void basicTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        RootCallTarget callTarget = new CallerRootNode(callerName, calleeName).getCallTarget();
-        for (int i = 0; i < COMPILATION_THRESHOLD; i++) {
-            callTarget.call();
-        }
-        List<String> tierTwoCompilation = err.toString().lines().//
-                        filter(s -> s.contains("Tier 2")).//
-                        filter(s -> s.contains("opt queued")).//
-                        collect(Collectors.toList());
+        createBasicAndCompile(callerName, calleeName, true);
+        List<String> tierTwoCompilation = getTierTwoCompilationQueues();
+        int callerIndex = getIndex(tierTwoCompilation, callerName);
+        int calleeIndex = getIndex(tierTwoCompilation, calleeName);
+        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
+        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
+        Assert.assertTrue("Caller should be scheduled before callee", callerIndex < calleeIndex);
+    }
+
+    @Test
+    public void basicNoReorderTest() {
+        final String callerName = "Caller";
+        final String calleeName = "Callee";
+        createBasicAndCompile(callerName, calleeName, false);
+        List<String> tierTwoCompilation = getTierTwoCompilationQueues();
+        int callerIndex = getIndex(tierTwoCompilation, callerName);
+        int calleeIndex = getIndex(tierTwoCompilation, calleeName);
+        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
+        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
+        Assert.assertTrue("Callee should be scheduled before caller", callerIndex > calleeIndex);
+    }
+
+    private static int getIndex(List<String> tierTwoCompilation, String callerName) {
         int callerIndex = -1;
-        int calleeIndex = -1;
         for (int i = 0; i < tierTwoCompilation.size(); i++) {
             String s = tierTwoCompilation.get(i);
             if (s.contains(callerName)) {
                 callerIndex = i;
             }
-            if (s.contains(calleeName)) {
-                calleeIndex = i;
-            }
         }
-        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
-        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
-        Assert.assertTrue("Caller should be scheduled before callee", callerIndex < calleeIndex);
+        return callerIndex;
+    }
+
+    private static void createBasicAndCompile(String callerName, String calleeName, boolean setParentFrame) {
+        RootCallTarget callTarget = new CallerRootNode(callerName, calleeName, setParentFrame).getCallTarget();
+        for (int i = 0; i < COMPILATION_THRESHOLD; i++) {
+            callTarget.call();
+        }
+    }
+
+    private List<String> getTierTwoCompilationQueues() {
+        return err.toString().lines().//
+                        filter(s -> s.contains("Tier 2")).//
+                        filter(s -> s.contains("opt queued")).//
+                        collect(Collectors.toList());
     }
 }
