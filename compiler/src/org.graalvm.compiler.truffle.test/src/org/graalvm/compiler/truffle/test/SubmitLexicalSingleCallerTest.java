@@ -85,16 +85,14 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
         }
     }
 
-    static class CallerRootNode extends NamedRootNode {
+    abstract static class CallerRootNode extends NamedRootNode {
 
         private final String calleeName;
-        private final boolean setParentFrame;
         @Child DirectCallNode callNode;
 
-        protected CallerRootNode(String name, String calleeName, boolean setParentFrame) {
+        protected CallerRootNode(String name, String calleeName) {
             super(name);
             this.calleeName = calleeName;
-            this.setParentFrame = setParentFrame;
         }
 
         @Override
@@ -108,16 +106,41 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
 
         @CompilerDirectives.TruffleBoundary
         private void createCallNode(FrameDescriptor frameDescriptor) {
-            CallTarget callTarget = new RootNodeWithParentFrameDescriptor(setParentFrame ? frameDescriptor : null, calleeName).getCallTarget();
+            CallTarget callTarget = new RootNodeWithParentFrameDescriptor(getParentFrameDescriptor(frameDescriptor), calleeName).getCallTarget();
             callNode = insert(GraalTruffleRuntime.getRuntime().createDirectCallNode(callTarget));
+        }
+
+        protected abstract FrameDescriptor getParentFrameDescriptor(FrameDescriptor frameDescriptor);
+    }
+
+    static class OwnFrameDescriptorCallerRootNode extends CallerRootNode {
+
+        protected OwnFrameDescriptorCallerRootNode(String name, String calleeName) {
+            super(name, calleeName);
+        }
+
+        @Override
+        protected FrameDescriptor getParentFrameDescriptor(FrameDescriptor frameDescriptor) {
+            return frameDescriptor;
         }
     }
 
+    static class NullFrameDescriptorCallerRootNode extends CallerRootNode {
+
+        protected NullFrameDescriptorCallerRootNode(String name, String calleeName) {
+            super(name, calleeName);
+        }
+
+        @Override
+        protected FrameDescriptor getParentFrameDescriptor(FrameDescriptor frameDescriptor) {
+            return null;
+        }
+    }
     @Test
     public void basicTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        createBasicAndCompile(callerName, calleeName, true);
+        compile(new OwnFrameDescriptorCallerRootNode(callerName, calleeName).getCallTarget());
         List<String> tierTwoCompilation = getTierTwoCompilationQueues();
         int callerIndex = getIndex(tierTwoCompilation, callerName);
         int calleeIndex = getIndex(tierTwoCompilation, calleeName);
@@ -130,7 +153,7 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
     public void basicNoReorderTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        createBasicAndCompile(callerName, calleeName, false);
+        compile(new NullFrameDescriptorCallerRootNode(callerName, calleeName).getCallTarget());
         List<String> tierTwoCompilation = getTierTwoCompilationQueues();
         int callerIndex = getIndex(tierTwoCompilation, callerName);
         int calleeIndex = getIndex(tierTwoCompilation, calleeName);
@@ -150,8 +173,7 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
         return callerIndex;
     }
 
-    private static void createBasicAndCompile(String callerName, String calleeName, boolean setParentFrame) {
-        RootCallTarget callTarget = new CallerRootNode(callerName, calleeName, setParentFrame).getCallTarget();
+    private static void compile(RootCallTarget callTarget) {
         for (int i = 0; i < COMPILATION_THRESHOLD; i++) {
             callTarget.call();
         }
