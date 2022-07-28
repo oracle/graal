@@ -1486,7 +1486,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
 
         getLIRGen().append(new AMD64VectorBlend.VexBlendOp(blend, size, getLIRGen().asAllocatable(result), getLIRGen().asAllocatable(zeroValue), getLIRGen().asAllocatable(oneValue),
-                        getLIRGen().asAllocatable(mask)));
+                        getLIRGen().asAllocatable(mask), (AMD64) getAMD64LIRGen().target().arch));
         return result;
     }
 
@@ -1640,7 +1640,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 throw GraalError.shouldNotReachHere();
         }
         AllocatableValue result = getLIRGen().newVariable(LIRKind.combine(a, b));
-        getLIRGen().append(new AMD64VectorFloatCompareOp(vcmpp, size, result, a, b, predicate));
+        getLIRGen().append(new AMD64VectorFloatCompareOp(vcmpp, size, result, a, b, predicate, (AMD64) getLIRGen().target().arch));
         return result;
     }
 
