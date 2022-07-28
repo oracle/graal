@@ -214,6 +214,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
         cmd.addAll(getNativeLinkerOptions());
 
+        /* RISC-V always needs the -latomic option */
+        if (Platform.includedIn(Platform.RISCV64.class)) {
+            cmd.add("-latomic");
+        }
+
         return cmd;
     }
 

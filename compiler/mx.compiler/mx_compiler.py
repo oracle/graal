@@ -620,7 +620,8 @@ graal_unit_test_runs = [
 
 _registers = {
     'amd64': 'rbx,r11,r10,r14,xmm3,xmm2,xmm11,xmm14,k1?',
-    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
+    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3',
+    'riscv64': 'x10,x11,x12,x13,x14,v10,v11,v12,v13'
 }
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())

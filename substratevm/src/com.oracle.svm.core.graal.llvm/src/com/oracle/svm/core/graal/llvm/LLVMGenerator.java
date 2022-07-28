@@ -845,7 +845,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public Value emitReadCallerStackPointer(Stamp wordStamp) {
         LLVMValueRef basePointer = builder.buildFrameAddress(builder.constantInt(0));
-        LLVMValueRef callerSP = builder.buildAdd(builder.buildPtrToInt(basePointer), builder.constantLong(16));
+        LLVMValueRef callerSP = builder.buildAdd(builder.buildPtrToInt(basePointer), builder.constantLong(LLVMTargetSpecific.get().getCallerSPOffset()));
         return new LLVMVariable(callerSP);
     }
 
@@ -1759,7 +1759,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
             assert extendKind.isNotExtended();
             assert memoryOrder != MemoryOrderMode.RELEASE && memoryOrder != MemoryOrderMode.RELEASE_ACQUIRE;
-            LLVMValueRef load = builder.buildLoad(getVal(address), getType(kind));
+            LLVMValueRef load = builder.buildAlignedLoad(getVal(address), getType(kind), kind.getPlatformKind().getSizeInBytes());
             if (memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE) {
                 /*
                  * Ensure subsequent memory operations cannot execute before this load. Additional
@@ -1787,7 +1787,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 castedValue = builder.buildAddrSpaceCast(value, builder.rawPointerType());
             }
             LLVMValueRef castedAddress = builder.buildBitcast(address, builder.pointerType(valueType, LLVMIRBuilder.isObjectType(addressType), false));
-            builder.buildStore(castedValue, castedAddress);
+            builder.buildAlignedStore(castedValue, castedAddress, input.getValueKind().getPlatformKind().getSizeInBytes());
 
             if (memoryOrder == MemoryOrderMode.VOLATILE) {
                 // Guarantee subsequent volatile loads cannot be executed before this
