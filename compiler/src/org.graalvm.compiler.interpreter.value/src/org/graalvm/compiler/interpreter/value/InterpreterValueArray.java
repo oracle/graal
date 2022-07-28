@@ -26,34 +26,71 @@ package org.graalvm.compiler.interpreter.value;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import java.lang.reflect.Array;
 
 public class InterpreterValueArray extends InterpreterValue {
     private final ResolvedJavaType componentType;
     private final int length;
-    private final InterpreterValue[] contents;
+    private final Object contents;
 
-    public InterpreterValueArray(ResolvedJavaType componentType, int length, JavaKind storageKind) {
-        this(componentType, length, storageKind, true);
+    public InterpreterValueArray(JVMContext jvmContext, ResolvedJavaType componentType, Object nativeArray) {
+        this.componentType = componentType;
+        this.contents = nativeArray;
+        this.length = Array.getLength(nativeArray);
     }
 
-    public InterpreterValueArray(ResolvedJavaType componentType, int length, JavaKind storageKind, boolean populateDefault) {
+    public InterpreterValueArray(JVMContext jvmContext, ResolvedJavaType componentType, int length) {
         if (length < 0) {
             throw new IllegalArgumentException("Negative array length");
         }
 
         this.componentType = componentType;
         this.length = length;
-        this.contents = new InterpreterValue[length];
-        if (populateDefault) {
-            populateContentsWithDefaultValues(storageKind);
-        }
+            switch (componentType.getJavaKind()) {
+            case Boolean:
+                contents = new boolean[length];
+                break;
+            case Byte:
+                contents = new byte[length];
+                break;
+            case Char:
+                contents = new char[length];
+                break;
+            case Short:
+                contents = new short[length];
+                break;
+            case Int:
+                contents = new int[length];
+                break;
+            case Long:
+                contents = new long[length];
+                break;
+            case Float:
+                contents = new float[length];
+                break;
+            case Double:
+                contents = new double[length];
+                break;
+            default:
+                try {
+                    Class<?> clazz = getTypeClass(jvmContext, componentType);
+                    contents = (Object[]) Array.newInstance(clazz, length);
+                    break;
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        // no need to populate elements
+        // if (populateDefault) {
+        //     populateContentsWithDefaultValues(storageKind);
+        // }
     }
 
-    private void populateContentsWithDefaultValues(JavaKind storageKind) {
-        for (int i = 0; i < length; i++) {
-            contents[i] = InterpreterValue.createDefaultOfKind(storageKind);
-        }
-    }
+    // private void populateContentsWithDefaultValues(JavaKind storageKind) {
+    //     for (int i = 0; i < length; i++) {
+    //         contents[i] = InterpreterValue.createDefaultOfKind(storageKind);
+    //     }
+    // }
 
     public int getLength() {
         return length;
@@ -80,8 +117,7 @@ public class InterpreterValueArray extends InterpreterValue {
 
     @Override
     public Object asObject() {
-        // TODO: figure out how to do this
-        throw new UnsupportedOperationException();
+        return contents;
     }
 
     @Override
@@ -89,18 +125,19 @@ public class InterpreterValueArray extends InterpreterValue {
         return true;
     }
 
-    public InterpreterValue getAtIndex(int index) {
+    public InterpreterValue getAtIndex(InterpreterValueFactory valueFactory, int index) {
         checkBounds(index);
-        if (contents[index] == null) {
-            throw new IllegalStateException();
-        }
-        return contents[index];
+        return valueFactory.createFromObject(Array.get(contents, index));
     }
 
     public void setAtIndex(int index, InterpreterValue value) {
         checkBounds(index);
         // TODO: should we bother checking type compatbilitity?
-        contents[index] = value;
+        if (componentType.getJavaKind() == JavaKind.Boolean && value.getJavaKind() == JavaKind.Int) {
+            ((boolean[]) contents)[index] = (int) ((Integer) value.asObject()) != 0;
+        } else {
+            Array.set(contents, index, value.asObject());
+        }
     }
 
     private void checkBounds(int index) {

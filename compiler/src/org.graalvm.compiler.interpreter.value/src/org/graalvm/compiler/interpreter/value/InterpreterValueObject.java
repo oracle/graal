@@ -36,11 +36,11 @@ public abstract class InterpreterValueObject extends InterpreterValue {
         this.type = type;
     }
 
-    public abstract boolean hasField(ResolvedJavaField field);
+    public abstract boolean hasField(JVMContext jvmContext, ResolvedJavaField field);
 
-    public abstract void setFieldValue(ResolvedJavaField field, InterpreterValue value);
+    public abstract void setFieldValue(JVMContext jvmContext, ResolvedJavaField field, InterpreterValue value);
 
-    public abstract InterpreterValue getFieldValue(ResolvedJavaField field);
+    public abstract InterpreterValue getFieldValue(JVMContext jvmContext, InterpreterValueFactory valueFactory, ResolvedJavaField field);
 
     @Override
     public boolean isUnwindException() {

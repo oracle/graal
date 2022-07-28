@@ -160,6 +160,18 @@ public final class InterpreterValuePrimitive extends InterpreterValue {
         return ofPrimitiveConstant(JavaConstant.forInt(value));
     }
 
+    public static InterpreterValuePrimitive ofLong(long value) {
+        return ofPrimitiveConstant(JavaConstant.forLong(value));
+    }
+
+    public static InterpreterValuePrimitive ofFloat(float value) {
+        return ofPrimitiveConstant(JavaConstant.forFloat(value));
+    }
+
+    public static InterpreterValuePrimitive ofDouble(float value) {
+        return ofPrimitiveConstant(JavaConstant.forDouble(value));
+    }
+
     public static InterpreterValuePrimitive ofBoolean(boolean value) {
         return value ? TRUE : FALSE;
     }

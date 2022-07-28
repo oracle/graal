@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.interpreter.value;
 
+import java.lang.reflect.Array;
+
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -139,6 +142,17 @@ public abstract class InterpreterValue {
         public Object asObject() {
             // Void is uninstantiable
             throw new UnsupportedOperationException();
+        }
+    }
+
+    protected static Class<?> getTypeClass(JVMContext jvmContext, JavaType type) throws ClassNotFoundException {
+        JavaKind kind = type.getJavaKind();
+        if (kind.isPrimitive()) {
+            return kind.toJavaClass();
+        } else if (type.isArray()) {
+            return Array.newInstance(getTypeClass(jvmContext, type.getComponentType()), 0).getClass();
+        } else {
+            return Class.forName(type.toJavaName(), true, jvmContext.getClassLoader());
         }
     }
 }

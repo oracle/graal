@@ -26,6 +26,8 @@ package org.graalvm.compiler.interpreter.value;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.lang.invoke.MethodHandles;
+
 public interface InterpreterValueFactory {
     InterpreterValueObject createObject(ResolvedJavaType type);
 
