@@ -668,6 +668,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         OptimizedCallTarget callerCallTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
         if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || maybeSubmitCallerForCompilation(callerCallTarget, parentFrameDescriptor)) {
             callerCallNode.forceInlining();
+            /**
+             * TODO BS This call will prevent first tier compilations
+             * 
+             * We need a way to have queue first and second tier compilations at the same time
+             */
             callerCallTarget.lastTierCompile();
             return true;
         }
