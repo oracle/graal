@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.lang.invoke.MethodHandles;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
@@ -106,6 +107,7 @@ import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.nodes.util.InterpreterException;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -813,8 +815,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         // return test(getInitialOptions(), name, args);
         Result result = test(getInitialOptions(), name, args);
         String interpret = System.getProperty("graal.Interpreter");
-        if ("ALL".equals(interpret) ||
-                "PRIM".equals(interpret) && primitiveArgs(args) && result.exception == null) {
+        if (
+                primitiveArgs(args) && result.exception == null) {
             checkAgainstInterpreter(result, false, name, args);
         }
         return result;
@@ -841,12 +843,14 @@ public abstract class GraalCompilerTest extends GraalTest {
 //            for (Node n : methodGraph.getNodes()) {
 //                System.out.println("  node: " + n);
 //            }
-            GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext());
+            GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext(), getClass().getClassLoader(), MethodHandles.lookup());
             Result interpreterResult = null;
             try {
                 interpreterResult = new Result(interpreter.executeGraph(methodGraph, args), null);
             } catch (InvocationTargetException e) {
                 interpreterResult = new Result(null, e.getTargetException());
+            } catch (InterpreterException e) {
+                interpreterResult = new Result(null, e.getCause());
             }
             assertEquals(result, interpreterResult);
         } catch (GraalError ex) {

@@ -69,6 +69,157 @@ public class GraalInterpreterTest extends GraalCompilerTest {
         checkAgainstInterpreter(expect, true, "fact", 17);
     }
 
+    public static class Foo {
+        public int value;
+        public boolean neg;
+
+        static double s1;
+
+        public int getValue() {
+            return value + 1;
+        }
+
+        public int fact1(int n) {
+            if (n < 1) {
+                return neg ? -value : value;
+            } else {
+                return fact1(n - 1) * n;
+            }
+        }
+    }
+
+    public static final int object() {
+        Foo foo = new Foo();
+        foo.value = 17 + 2;
+        return foo.value;
+    }
+
+    @Test
+    public void testReadWriteField() {
+        Result expect = new Result(19, null);
+        checkAgainstInterpreter(expect, true, "object");
+    }
+
+    public static final int callMethod() {
+        Foo foo = new Foo();
+        foo.value = 17 + 22;
+        return foo.getValue();
+    }
+
+    @Test
+    public void testCallMethod() {
+        Result expect = new Result(40, null);
+        checkAgainstInterpreter(expect, true, "callMethod");
+    }
+
+    public static final int twoFoo() {
+        Foo foo1 = new Foo();
+        Foo foo2 = new Foo();
+        foo1.value = 30;
+        foo2.value = 40;
+        return foo1.getValue() + foo2.getValue();
+    }
+
+    @Test
+    public void testTwoInstances() {
+        Result expect = new Result(72, null);
+        checkAgainstInterpreter(expect, true, "twoFoo");
+    }
+
+    public static final int fooFact(int n, int base, boolean neg) {
+        Foo foo = new Foo();
+        foo.value = base;
+        foo.neg = neg;
+        return foo.fact1(n);
+    }
+
+    @Test
+    public void testFooFact0() {
+        Result expect = new Result(-11, null);
+        checkAgainstInterpreter(expect, true, "fooFact", 0, 11, true);
+    }
+
+    public void testFooFact5() {
+        Result expect = new Result(120000, null);
+        checkAgainstInterpreter(expect, true, "fooFact", 5, 1000, false);
+    }
+
+    public static class Bar {
+        public Bar x;
+        public float y;
+        public Bar[] z;
+        public int[] k;
+    }
+
+    public static final float nestedBar(int s) {
+        Bar bar = new Bar();
+        if (s == 0) {
+            bar.x = null;
+            bar.x.y = 12.0f;
+        } else if (s == 1) {
+            bar.x = new Bar();
+            bar.x.y = 12.0f;
+        } else {
+            Bar bar2 = null;
+            bar.x = null;
+        }
+        bar.y = 20f;
+        return bar.y - bar.x.y;
+    }
+
+    @Test
+    public void testNestedBar() {
+        Result expect = new Result(8f, null);
+        checkAgainstInterpreter(expect, true, "nestedBar", 1);
+    }
+
+    @Test
+    public void testNestedBarNull() {
+        Result expect = new Result(null, new NullPointerException());
+        checkAgainstInterpreter(expect, true, "nestedBar", 0);
+    }
+
+    @Test
+    public void testNestedBarNull2() {
+        Result expect = new Result(null, new NullPointerException());
+        checkAgainstInterpreter(expect, true, "nestedBar", 2);
+    }
+
+    public static final int intArray(int s) {
+        Bar bar = new Bar();
+        if (s == 0) {
+            bar.k = new int[3];
+            bar.k[0] = 10;
+            bar.k[1] = 2;
+            bar.k[2] = bar.k[0] - 3;
+            return bar.k[0] + bar.k[1] + bar.k[2];
+        } else if (s == 1) {
+            bar.k = new int[0];
+            bar.k[0] = 30;
+            return 0;
+        } else {
+            return bar.k[0];
+        }
+    }
+
+    @Test
+    public void testIntArray0() {
+        Result expect = new Result(19, null);
+        checkAgainstInterpreter(expect, true, "intArray", 0);
+    }
+
+    @Test
+    public void testIntArray1() {
+        Result expect = new Result(null, new IllegalArgumentException("Invalid array access index"));
+        checkAgainstInterpreter(expect, true, "intArray", 1);
+    }
+
+    @Test
+    public void testIntArray2() {
+        Result expect = new Result(null, new NullPointerException());
+        checkAgainstInterpreter(expect, true, "intArray", 2);
+    }
+
     /**
      * Test exception result.
      */
