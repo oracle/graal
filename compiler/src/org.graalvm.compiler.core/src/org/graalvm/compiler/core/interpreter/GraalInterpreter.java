@@ -37,6 +37,7 @@ import org.graalvm.compiler.interpreter.value.InterpreterValueFactory;
 import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
+import org.graalvm.compiler.interpreter.value.JVMContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -51,6 +52,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -90,6 +92,7 @@ public class GraalInterpreter {
     private final InterpreterStateImpl myState;
     private final InterpreterValueFactory valueFactory;
     private final HighTierContext context;
+    private final JVMContext jvmContext;
     private boolean verbose = false;
 
     /**
@@ -97,9 +100,10 @@ public class GraalInterpreter {
      *
      * @param context
      */
-    public GraalInterpreter(HighTierContext context) {
+    public GraalInterpreter(HighTierContext context, ClassLoader classLoader, MethodHandles.Lookup lookup) {
         this.context = context;
-        this.valueFactory = new InterpreterValueFactoryImpl(context);
+        this.jvmContext = new JVMContextImpl(classLoader, lookup);
+        this.valueFactory = new InterpreterValueFactoryImpl(context, this.jvmContext);
         this.myState = new InterpreterStateImpl();
     }
 
@@ -158,12 +162,12 @@ public class GraalInterpreter {
         }
 
         void addActivation(List<InterpreterValue> args) {
-            activations.add(new ActivationRecord(args));
+            activations.addLast(new ActivationRecord(args));
         }
 
         private ActivationRecord popActivation() {
             checkActivationsNotEmpty();
-            return activations.pop();
+            return activations.pollLast();
         }
 
         @Override
@@ -183,32 +187,32 @@ public class GraalInterpreter {
             if (verbose) {
                 System.out.printf("    local[%s] := %s\n", node, value);
             }
-            activations.peek().setNodeValue(node, value);
+            activations.peekLast().setNodeValue(node, value);
         }
 
         @Override
         public boolean hasNodeLookupValue(Node node) {
             checkActivationsNotEmpty();
-            return activations.peek().hasNodeValue(node);
+            return activations.peekLast().hasNodeValue(node);
         }
 
         @Override
         public InterpreterValue getNodeLookupValue(Node node) {
             checkActivationsNotEmpty();
-            return activations.peek().getNodeValue(node);
+            return activations.peekLast().getNodeValue(node);
         }
 
         @Override
         public void setMergeNodeIncomingIndex(AbstractMergeNode node, int index) {
             checkActivationsNotEmpty();
             // System.out.printf("setMergeIndex(%s,%d)\n", node, index);
-            activations.peek().setMergeIndex(node, index);
+            activations.peekLast().setMergeIndex(node, index);
         }
 
         @Override
         public int getMergeNodeIncomingIndex(AbstractMergeNode node) {
             checkActivationsNotEmpty();
-            return activations.peek().getMergeIndex(node);
+            return activations.peekLast().getMergeIndex(node);
         }
 
         @Override
@@ -225,6 +229,11 @@ public class GraalInterpreter {
         @Override
         public InterpreterValueFactory getRuntimeValueFactory() {
             return valueFactory;
+        }
+
+        @Override
+        public JVMContext getJVMContext() {
+            return jvmContext;
         }
 
         @Override
@@ -246,10 +255,10 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValue getParameter(int index) {
-            if (index < 0 || index >= activations.peek().evaluatedParams.size()) {
+            if (index < 0 || index >= activations.peekLast().evaluatedParams.size()) {
                 throw new IllegalArgumentException("out-of-range parameter index: " + index);
             }
-            return activations.peek().evaluatedParams.get(index);
+            return activations.peekLast().evaluatedParams.get(index);
         }
 
         private InterpreterValue interpretGraph(StructuredGraph graph, List<InterpreterValue> evaluatedParams) {
@@ -366,25 +375,29 @@ public class GraalInterpreter {
 
     private static final class InterpreterValueFactoryImpl implements InterpreterValueFactory {
         private final HighTierContext context;
+        private final JVMContext jvmContext;
 
-        private InterpreterValueFactoryImpl(HighTierContext context) {
+        private InterpreterValueFactoryImpl(HighTierContext context, JVMContext jvmContext) {
             this.context = context;
+            this.jvmContext = jvmContext;
         }
 
         @Override
         public InterpreterValueObject createObject(ResolvedJavaType type) {
-            return new InterpreterValueMutableObject(type, context.getMetaAccessExtensionProvider()::getStorageKind);
+            return new InterpreterValueMutableObject(jvmContext, type);
         }
 
-        private InterpreterValueArray createArray(ResolvedJavaType componentType, int length, boolean populateWithDefaults) {
-            return new InterpreterValueArray(componentType, length,
-                            populateWithDefaults ? context.getMetaAccessExtensionProvider().getStorageKind(componentType) : null,
-                            populateWithDefaults);
+        public InterpreterValueObject createObject(ResolvedJavaType type, Object obj) {
+            return new InterpreterValueMutableObject(type, obj);
+        }
+
+        private InterpreterValueArray createArray(ResolvedJavaType componentType, Object nativeArray) {
+            return new InterpreterValueArray(jvmContext, componentType, nativeArray);
         }
 
         @Override
         public InterpreterValueArray createArray(ResolvedJavaType componentType, int length) {
-            return createArray(componentType, length, true);
+            return new InterpreterValueArray(jvmContext, componentType, length);
         }
 
         @Override
@@ -415,8 +428,7 @@ public class GraalInterpreter {
                 }
                 return createArray(componentType, dimensions[dimensionIndex]);
             }
-            InterpreterValueArray array = new InterpreterValueArray(componentType, dimensions[dimensionIndex],
-                    null, false);
+            InterpreterValueArray array = new InterpreterValueArray(jvmContext, componentType, dimensions[dimensionIndex]);
             for (int i = 0; i < dimensions[dimensionIndex]; i++) {
                 array.setAtIndex(i, createMultiArray(componentType.getComponentType(), dimensions,
                         dimensionIndex + 1));
@@ -434,20 +446,36 @@ public class GraalInterpreter {
                 return InterpreterValuePrimitive.ofPrimitiveConstant(unboxed);
             }
             if (value.getClass().isArray()) {
-                int length = Array.getLength(value);
                 ResolvedJavaType type = context.getMetaAccess().lookupJavaType(value.getClass().getComponentType());
-                InterpreterValueArray createdArray = createArray(type, length, false);
-                for (int i = 0; i < length; i++) {
-                    createdArray.setAtIndex(i, createFromObject(Array.get(value, i)));
-                }
+                InterpreterValueArray createdArray = createArray(type, value);
                 return createdArray;
             }
             ResolvedJavaType resolvedType = context.getMetaAccess().lookupJavaType(value.getClass());
-            InterpreterValueObject createdObject = createObject(resolvedType);
+            InterpreterValueObject createdObject = createObject(resolvedType, value);
             // for (ResolvedJavaField field : resolvedType.getInstanceFields(true)) {
                 // TODO: how to get this field out of object and stick into createdObject
             // }
             return createdObject;
+        }
+    }
+
+    private static final class JVMContextImpl implements JVMContext {
+        private final ClassLoader classLoader;
+        private final MethodHandles.Lookup lookup;
+
+        JVMContextImpl(ClassLoader classLoader, MethodHandles.Lookup lookup) {
+            this.classLoader = classLoader;
+            this.lookup = lookup;
+        }
+
+        @Override
+        public ClassLoader getClassLoader() {
+            return classLoader;
+        }
+
+        @Override
+        public MethodHandles.Lookup getLookup() {
+            return lookup;
         }
     }
 }
