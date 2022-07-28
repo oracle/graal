@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.util;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.JVMContext;
 import org.graalvm.compiler.interpreter.value.InterpreterValueFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -100,4 +101,6 @@ public interface InterpreterState {
 
     /** Get the factory for creating interpreter values. */
     InterpreterValueFactory getRuntimeValueFactory();
+
+    JVMContext getJVMContext();
 }
