@@ -34,6 +34,7 @@ import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 import org.graalvm.compiler.debug.DebugContext;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -97,27 +98,29 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          */
 
         for (ClassEntry classEntry : getPrimaryClasses()) {
-            pos += DW_AR_HEADER_SIZE;
-            /*
-             * Align to 2 * address size.
-             */
-            pos += DW_AR_HEADER_PAD_SIZE;
-            List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-            if (classEntry.includesDeoptTarget()) {
-                /* Deopt targets are in a higher address range so delay emit for them. */
-                for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
-                    if (!classPrimaryEntry.getPrimary().isDeoptTarget()) {
-                        pos += 2 * 8;
+            if (classEntry.isPrimary()) {
+                pos += DW_AR_HEADER_SIZE;
+                /*
+                 * Align to 2 * address size.
+                 */
+                pos += DW_AR_HEADER_PAD_SIZE;
+                List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+                if (classEntry.includesDeoptTarget()) {
+                    /* Deopt targets are in a higher address range so delay emit for them. */
+                    for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
+                        if (!classPrimaryEntry.getPrimary().isDeoptTarget()) {
+                            pos += 2 * 8;
+                        }
                     }
+                } else {
+                    pos += classPrimaryEntries.size() * 2 * 8;
                 }
-            } else {
-                pos += classPrimaryEntries.size() * 2 * 8;
+                pos += 2 * 8;
             }
-            pos += 2 * 8;
         }
         /* Now allow for deopt target ranges. */
         for (ClassEntry classEntry : getPrimaryClasses()) {
-            if (classEntry.includesDeoptTarget()) {
+            if (classEntry.isPrimary() && classEntry.includesDeoptTarget()) {
                 pos += DW_AR_HEADER_SIZE;
                 /*
                  * Align to 2 * address size.
@@ -162,8 +165,15 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
 
         enableLog(context, pos);
 
-        log(context, "  [0x%08x] DEBUG_ARANGES", pos);
+        List<ClassEntry> classEntries = new ArrayList<>();
         for (ClassEntry classEntry : getPrimaryClasses()) {
+            if (classEntry.isPrimary()) {
+                classEntries.add(classEntry);
+            }
+        }
+        classEntries.sort(this::sortByLowPC);
+        log(context, "  [0x%08x] DEBUG_ARANGES", pos);
+        for (ClassEntry classEntry : classEntries) {
             int lastpos = pos;
             int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
             int cuIndex = getCUIndex(classEntry);
@@ -213,61 +223,86 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             pos = writeLong(0, buffer, pos);
         }
         /* now write ranges for deopt targets */
+        classEntries.clear();
         for (ClassEntry classEntry : getPrimaryClasses()) {
-            if (classEntry.includesDeoptTarget()) {
-                int lastpos = pos;
-                int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
-                int cuIndex = getDeoptCUIndex(classEntry);
-                List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-                /*
+            if (classEntry.isPrimary() && classEntry.includesDeoptTarget()) {
+                classEntries.add(classEntry);
+            }
+        }
+        classEntries.sort(this::sortByLowPCDeopt);
+        for (ClassEntry classEntry : classEntries) {
+            assert classEntry.includesDeoptTarget();
+            int lastpos = pos;
+            int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
+            int cuIndex = getDeoptCUIndex(classEntry);
+            List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+            /*
                  * Count only linkage stubs.
                  */
-                for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
-                    Range primary = classPrimaryEntry.getPrimary();
-                    if (primary.isDeoptTarget()) {
-                        length += 2 * 8;
-                    }
+            for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
+                Range primary = classPrimaryEntry.getPrimary();
+                if (primary.isDeoptTarget()) {
+                    length += 2 * 8;
                 }
-                /* we must have seen at least one stub */
-                assert length > DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
-                /*
+            }
+            /* we must have seen at least one stub */
+            assert length > DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
+            /*
                  * Add room for a final null entry.
                  */
-                length += 2 * 8;
-                log(context, "  [0x%08x] %s CU linkage stubs %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
-                pos = writeInt(length, buffer, pos);
-                /* DWARF version is always 2. */
-                pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
-                pos = writeInfoSectionOffset(cuIndex, buffer, pos);
-                /* Address size is always 8. */
-                pos = writeByte((byte) 8, buffer, pos);
-                /* Segment size is always 0. */
+            length += 2 * 8;
+            log(context, "  [0x%08x] %s CU linkage stubs %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
+            pos = writeInt(length, buffer, pos);
+            /* DWARF version is always 2. */
+            pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
+            pos = writeInfoSectionOffset(cuIndex, buffer, pos);
+            /* Address size is always 8. */
+            pos = writeByte((byte) 8, buffer, pos);
+            /* Segment size is always 0. */
+            pos = writeByte((byte) 0, buffer, pos);
+            assert (pos - lastpos) == DW_AR_HEADER_SIZE;
+            /*
+             * Align to 2 * address size.
+             */
+            for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
                 pos = writeByte((byte) 0, buffer, pos);
-                assert (pos - lastpos) == DW_AR_HEADER_SIZE;
-                /*
-                 * Align to 2 * address size.
-                 */
-                for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
-                    pos = writeByte((byte) 0, buffer, pos);
-                }
-                log(context, "  [0x%08x] Address          Length           Name", pos);
-                for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
-                    Range primary = classPrimaryEntry.getPrimary();
-                    /*
-                     * Emit only linkage stubs.
-                     */
-                    if (primary.isDeoptTarget()) {
-                        log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
-                        pos = writeRelocatableCodeOffset(primary.getLo(), buffer, pos);
-                        pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
-                    }
-                }
-                pos = writeLong(0, buffer, pos);
-                pos = writeLong(0, buffer, pos);
             }
+            log(context, "  [0x%08x] Address          Length           Name", pos);
+            for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
+                Range primary = classPrimaryEntry.getPrimary();
+                /*
+                 * Emit only linkage stubs.
+                 */
+                if (primary.isDeoptTarget()) {
+                    log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
+                    pos = writeRelocatableCodeOffset(primary.getLo(), buffer, pos);
+                    pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
+                }
+            }
+            pos = writeLong(0, buffer, pos);
+            pos = writeLong(0, buffer, pos);
         }
         assert pos == size;
     }
+
+    public static int compare(int pc1, int pc2) {
+        if (pc1 < pc2) {
+            return -1;
+        } else if (pc1 > pc2) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    private int sortByLowPC(ClassEntry classEntry1, ClassEntry classEntry2) {
+        return compare(classEntry1.lowpc(), classEntry2.lowpc());
+    }
+
+    private int sortByLowPCDeopt(ClassEntry classEntry1, ClassEntry classEntry2) {
+        return compare(classEntry1.lowpcDeopt(), classEntry2.lowpcDeopt());
+    }
+
 
     /*
      * The debug_aranges section depends on debug_frame section.

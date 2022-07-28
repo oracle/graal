@@ -410,9 +410,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Primary classes only have a line section entry if they have method and an associated
          * file.
          */
-        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-        int lo = findLo(classPrimaryEntries, false);
-        int hi = findHi(classPrimaryEntries, classEntry.includesDeoptTarget(), false);
+        int lo = classEntry.lowpc();
+        int hi = classEntry.hipc();
         // we must have at least one compiled method
         assert hi > 0;
         int abbrevCode = (fileName.length() > 0 ? DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 : DwarfDebugInfo.DW_ABBREV_CODE_class_unit2);
@@ -687,7 +686,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData2((short) fileIdx, buffer, pos);
         int line = method.getLine();
         log(context, "  [0x%08x]     line 0x%x", pos, line);
-        pos = writeAttrData2((short)line, buffer, pos);
+        pos = writeAttrData2((short) line, buffer, pos);
         TypeEntry returnType = method.getValueType();
         int retTypeIdx = getTypeIndex(returnType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnType.getTypeName());
@@ -1269,8 +1268,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert !classPrimaryEntries.isEmpty();
         String fileName = classEntry.getFileName();
         int lineIndex = getLineIndex(classEntry);
-        int lo = findLo(classPrimaryEntries, true);
-        int hi = findHi(classPrimaryEntries, true, true);
+        int lo = classEntry.lowpcDeopt();
+        int hi = classEntry.hipcDeopt();
         // we must have at least one compiled deopt method
         assert hi > 0 : hi;
         int abbrevCode = (fileName.length() > 0 ? DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 : DwarfDebugInfo.DW_ABBREV_CODE_class_unit2);
@@ -1508,46 +1507,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevSectionOffset(0, buffer, pos);
         /* Address size. */
         return writeByte((byte) 8, buffer, pos);
-    }
-
-    private static int findLo(List<PrimaryEntry> classPrimaryEntries, boolean isDeoptTargetCU) {
-        if (!isDeoptTargetCU) {
-            /* First entry is the one we want. */
-            return classPrimaryEntries.get(0).getPrimary().getLo();
-        } else {
-            /* Need the first entry which is a deopt target. */
-            for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-                Range range = primaryEntry.getPrimary();
-                if (range.isDeoptTarget()) {
-                    return range.getLo();
-                }
-            }
-        }
-        /* We should never get here. */
-        assert false : "should not reach";
-        return 0;
-    }
-
-    private static int findHi(List<PrimaryEntry> classPrimaryEntries, boolean includesDeoptTarget, boolean isDeoptTargetCU) {
-        if (isDeoptTargetCU || !includesDeoptTarget) {
-            assert classPrimaryEntries.size() > 0 : "expected to find primary methods";
-            /* Either way the last entry is the one we want. */
-            return classPrimaryEntries.get(classPrimaryEntries.size() - 1).getPrimary().getHi();
-        } else {
-            /* Need the last entry which is not a deopt target. */
-            int hi = 0;
-            for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-                Range range = primaryEntry.getPrimary();
-                if (!range.isDeoptTarget()) {
-                    hi = range.getHi();
-                } else {
-                    return hi;
-                }
-            }
-        }
-        /* We should never get here. */
-        assert false : "should not reach";
-        return 0;
     }
 
     private int writeAttrStrp(String value, byte[] buffer, int p) {

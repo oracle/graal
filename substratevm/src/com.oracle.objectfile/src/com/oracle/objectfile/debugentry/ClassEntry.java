@@ -370,4 +370,48 @@ public class ClassEntry extends StructureTypeEntry {
     public List<MethodEntry> getMethods() {
         return methods;
     }
+
+    public int lowpc() {
+        assert isPrimary();
+        return primaryEntries.get(0).getPrimary().getLo();
+    }
+
+    public int lowpcDeopt() {
+        assert isPrimary();
+        assert includesDeoptTarget();
+        int lowpc = -1;
+        for (PrimaryEntry primaryEntry : primaryEntries) {
+            Range primary = primaryEntry.getPrimary();
+            if (primary.isDeoptTarget()) {
+                lowpc = primary.getLo();
+                break;
+            }
+        }
+        assert lowpc >= 0;
+        return lowpc;
+    }
+
+    public int hipc() {
+        assert isPrimary();
+        if (!includesDeoptTarget()) {
+             return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
+        } else {
+            Range lastPrimary = null;
+            for (PrimaryEntry primaryEntry : primaryEntries) {
+                Range primary = primaryEntry.getPrimary();
+                if (primary.isDeoptTarget()) {
+                    break;
+                }
+                lastPrimary = primary;
+            }
+            assert lastPrimary != null;
+            return lastPrimary.getHi();
+        }
+    }
+
+    public int hipcDeopt() {
+        assert isPrimary();
+        assert includesDeoptTarget();
+        return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
+    }
 }
