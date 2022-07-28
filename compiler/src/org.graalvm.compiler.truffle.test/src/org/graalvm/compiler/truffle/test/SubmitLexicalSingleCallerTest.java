@@ -2,6 +2,7 @@ package org.graalvm.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -50,33 +51,19 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
     }
 
     abstract static class NamedRootNode extends RootNode {
+
+        private final FrameDescriptor parentFrameDescriptor;
         private final String name;
 
-        protected NamedRootNode(String name) {
+        protected NamedRootNode(String name, FrameDescriptor parentFrameDescriptor) {
             super(null);
+            this.parentFrameDescriptor = parentFrameDescriptor;
             this.name = name;
         }
 
         @Override
         public String toString() {
             return name;
-        }
-    }
-
-    static class RootNodeWithParentFrameDescriptor extends NamedRootNode {
-
-        private final FrameDescriptor parentFrameDescriptor;
-        @Child LoopNode loopNode = GraalTruffleRuntime.getRuntime().createLoopNode(new SimpleLoopNode());
-
-        protected RootNodeWithParentFrameDescriptor(FrameDescriptor parentFrameDescriptor, String name) {
-            super(name);
-            this.parentFrameDescriptor = parentFrameDescriptor;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            loopNode.execute(frame);
-            return 42;
         }
 
         @Override
@@ -85,14 +72,29 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
         }
     }
 
-    abstract static class CallerRootNode extends NamedRootNode {
+    static class RootNodeWithLoop extends NamedRootNode {
 
-        private final String calleeName;
+        @Child LoopNode loopNode = GraalTruffleRuntime.getRuntime().createLoopNode(new SimpleLoopNode());
+
+        protected RootNodeWithLoop(String name, FrameDescriptor parentFrameDescriptor) {
+            super(name, parentFrameDescriptor);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            loopNode.execute(frame);
+            return 42;
+        }
+    }
+
+    static class CallerRootNode extends NamedRootNode {
+
+        private final Function<FrameDescriptor, NamedRootNode> rootNodeFactory;
         @Child DirectCallNode callNode;
 
-        protected CallerRootNode(String name, String calleeName) {
-            super(name);
-            this.calleeName = calleeName;
+        protected CallerRootNode(String name, Function<FrameDescriptor, NamedRootNode> rootNodeFactory, FrameDescriptor parentFrameDescriptor) {
+            super(name, parentFrameDescriptor);
+            this.rootNodeFactory = rootNodeFactory;
         }
 
         @Override
@@ -106,41 +108,16 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
 
         @CompilerDirectives.TruffleBoundary
         private void createCallNode(FrameDescriptor frameDescriptor) {
-            CallTarget callTarget = new RootNodeWithParentFrameDescriptor(getParentFrameDescriptor(frameDescriptor), calleeName).getCallTarget();
+            CallTarget callTarget = rootNodeFactory.apply(frameDescriptor).getCallTarget();
             callNode = insert(GraalTruffleRuntime.getRuntime().createDirectCallNode(callTarget));
         }
-
-        protected abstract FrameDescriptor getParentFrameDescriptor(FrameDescriptor frameDescriptor);
     }
 
-    static class OwnFrameDescriptorCallerRootNode extends CallerRootNode {
-
-        protected OwnFrameDescriptorCallerRootNode(String name, String calleeName) {
-            super(name, calleeName);
-        }
-
-        @Override
-        protected FrameDescriptor getParentFrameDescriptor(FrameDescriptor frameDescriptor) {
-            return frameDescriptor;
-        }
-    }
-
-    static class NullFrameDescriptorCallerRootNode extends CallerRootNode {
-
-        protected NullFrameDescriptorCallerRootNode(String name, String calleeName) {
-            super(name, calleeName);
-        }
-
-        @Override
-        protected FrameDescriptor getParentFrameDescriptor(FrameDescriptor frameDescriptor) {
-            return null;
-        }
-    }
     @Test
     public void basicTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        compile(new OwnFrameDescriptorCallerRootNode(callerName, calleeName).getCallTarget());
+        compile(new CallerRootNode(callerName, frameDescriptor -> new RootNodeWithLoop(calleeName, frameDescriptor), null).getCallTarget());
         List<String> tierTwoCompilation = getTierTwoCompilationQueues();
         int callerIndex = getIndex(tierTwoCompilation, callerName);
         int calleeIndex = getIndex(tierTwoCompilation, calleeName);
@@ -153,13 +130,57 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
     public void basicNoReorderTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        compile(new NullFrameDescriptorCallerRootNode(callerName, calleeName).getCallTarget());
+        compile(new CallerRootNode(callerName, frameDescriptor -> new RootNodeWithLoop(calleeName, null), null).getCallTarget());
         List<String> tierTwoCompilation = getTierTwoCompilationQueues();
         int callerIndex = getIndex(tierTwoCompilation, callerName);
         int calleeIndex = getIndex(tierTwoCompilation, calleeName);
         Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
         Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
         Assert.assertTrue("Callee should be scheduled before caller", callerIndex > calleeIndex);
+    }
+
+    @Test
+    public void withIntermediateTest() {
+        final String callerName = "Caller";
+        final String intermediateName = "Intermediate";
+        final String calleeName = "Callee";
+        compile(new CallerRootNode(callerName, frameDescriptor -> {
+            return new CallerRootNode(intermediateName, ignored -> {
+                return new RootNodeWithLoop(calleeName, frameDescriptor);
+            }, null);
+        }, null).getCallTarget());
+        List<String> tierTwoCompilationQueues = getTierTwoCompilationQueues();
+        int callerIndex = getIndex(tierTwoCompilationQueues, callerName);
+        int intermediateIndex = getIndex(tierTwoCompilationQueues, intermediateName);
+        int calleeIndex = getIndex(tierTwoCompilationQueues, calleeName);
+        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
+        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
+        Assert.assertNotEquals("Intermediate not scheduled", -1, intermediateIndex);
+        Assert.assertTrue("Caller should be scheduled before callee", callerIndex < calleeIndex);
+        Assert.assertTrue("Caller should be scheduled before intermediate", callerIndex < intermediateIndex);
+        Assert.assertTrue("Intermediate should be scheduled before callee", intermediateIndex < calleeIndex);
+    }
+
+    @Test
+    public void withIntermediateTangledTest() {
+        final String callerName = "Caller";
+        final String intermediateName = "Intermediate";
+        final String calleeName = "Callee";
+        compile(new CallerRootNode(callerName, callerFD -> {
+            return new CallerRootNode(intermediateName, intermediateFD -> {
+                return new RootNodeWithLoop(calleeName, intermediateFD);
+            }, callerFD);
+        }, null).getCallTarget());
+        List<String> tierTwoCompilationQueues = getTierTwoCompilationQueues();
+        int callerIndex = getIndex(tierTwoCompilationQueues, callerName);
+        int intermediateIndex = getIndex(tierTwoCompilationQueues, intermediateName);
+        int calleeIndex = getIndex(tierTwoCompilationQueues, calleeName);
+        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
+        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
+        Assert.assertNotEquals("Intermediate not scheduled", -1, intermediateIndex);
+        Assert.assertTrue("Caller should be scheduled before callee", callerIndex < calleeIndex);
+        Assert.assertTrue("Caller should be scheduled before intermediate", callerIndex < intermediateIndex);
+        Assert.assertTrue("Intermediate should be scheduled before callee", intermediateIndex < calleeIndex);
     }
 
     private static int getIndex(List<String> tierTwoCompilation, String callerName) {
