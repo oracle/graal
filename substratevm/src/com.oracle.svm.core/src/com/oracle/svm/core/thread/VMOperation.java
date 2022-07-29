@@ -63,7 +63,7 @@ public abstract class VMOperation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean isGC() {
+    public boolean isGC() {
         return false;
     }
 

@@ -255,6 +255,8 @@ public final class VMOperationControl {
         inProgress.executingThread = executingThread;
         inProgress.operation = operation;
         inProgress.queueingThread = queueingThread;
+
+        VMOperationListenerSupport.get().vmOperationChanged(operation);
     }
 
     void enqueue(JavaVMOperation operation) {

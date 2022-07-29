@@ -73,6 +73,7 @@ import org.graalvm.polyglot.nativeapi.types.CBoolPointer;
 import org.graalvm.polyglot.nativeapi.types.CInt16Pointer;
 import org.graalvm.polyglot.nativeapi.types.CInt32Pointer;
 import org.graalvm.polyglot.nativeapi.types.CInt64Pointer;
+import org.graalvm.polyglot.nativeapi.types.CInt64PointerPointer;
 import org.graalvm.polyglot.nativeapi.types.CInt8Pointer;
 import org.graalvm.polyglot.nativeapi.types.CUnsignedBytePointer;
 import org.graalvm.polyglot.nativeapi.types.CUnsignedIntPointer;
@@ -111,6 +112,7 @@ import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CUnsigned;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
+import com.oracle.svm.core.jvmstat.PerfDataSupport;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -335,7 +337,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_context_builder_option(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, @CConst CCharPointer key_utf8, @CConst CCharPointer value_utf8) {
         resetErrorState();
         Context.Builder contextBuilder = fetchHandle(context_builder);
-        contextBuilder.option(CTypeConversion.toJavaString(key_utf8), CTypeConversion.toJavaString(value_utf8));
+        contextBuilder.option(CTypeConversion.utf8ToJavaString(key_utf8), CTypeConversion.utf8ToJavaString(value_utf8));
         return poly_ok;
     }
 
@@ -533,8 +535,8 @@ public final class PolyglotNativeAPI {
         resetErrorState();
         Context c = fetchHandle(context);
         String languageName = CTypeConversion.toJavaString(language_id);
-        String jName = CTypeConversion.toJavaString(name_utf8);
-        String jCode = CTypeConversion.toJavaString(source_utf8);
+        String jName = CTypeConversion.utf8ToJavaString(name_utf8);
+        String jCode = CTypeConversion.utf8ToJavaString(source_utf8);
 
         Source sourceCode = Source.newBuilder(languageName, jCode, jName).build();
         Value evalResult = c.eval(sourceCode);
@@ -663,7 +665,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_value_get_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer utf8_identifier, PolyglotValuePointer result) {
         resetErrorState();
         Value jObject = fetchHandle(value);
-        result.write(createHandle(jObject.getMember(CTypeConversion.toJavaString(utf8_identifier))));
+        result.write(createHandle(jObject.getMember(CTypeConversion.utf8ToJavaString(utf8_identifier))));
         return poly_ok;
     }
 
@@ -680,7 +682,7 @@ public final class PolyglotNativeAPI {
         resetErrorState();
         Value jObject = fetchHandle(value);
         Value jMember = fetchHandle(member);
-        jObject.putMember(CTypeConversion.toJavaString(utf8_identifier), jMember);
+        jObject.putMember(CTypeConversion.utf8ToJavaString(utf8_identifier), jMember);
         return poly_ok;
     }
 
@@ -696,7 +698,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_value_has_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer utf8_identifier, CBoolPointer result) {
         resetErrorState();
         Value jObject = fetchHandle(value);
-        result.write(CTypeConversion.toCBoolean(jObject.hasMember(CTypeConversion.toJavaString(utf8_identifier))));
+        result.write(CTypeConversion.toCBoolean(jObject.hasMember(CTypeConversion.utf8ToJavaString(utf8_identifier))));
         return poly_ok;
     }
 
@@ -1603,7 +1605,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_throw_exception", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Raises an exception in a C callback.",
                     "",
-                    "Invocation of this method does not interrupt control-flow so it is neccesarry to return from a function after ",
+                    "Invocation of this method does not interrupt control-flow so it is necessary to return from a function after ",
                     "the exception has been raised. If this method is called multiple times only the last exception will be thrown in",
                     "in the guest language.",
                     "",
@@ -1612,7 +1614,7 @@ public final class PolyglotNativeAPI {
     })
     public static PolyglotStatus poly_throw_exception(PolyglotIsolateThread thread, @CConst CCharPointer utf8_message) {
         resetErrorState();
-        exceptionsTL.set(new CallbackException(CTypeConversion.toJavaString(utf8_message)));
+        exceptionsTL.set(new CallbackException(CTypeConversion.utf8ToJavaString(utf8_message)));
         return poly_ok;
     }
 
@@ -1862,6 +1864,22 @@ public final class PolyglotNativeAPI {
             this.arguments = arguments;
             this.data = data;
         }
+    }
+
+    @CEntryPoint(name = "poly_perf_data_get_address_of_int64_t", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Gets the address of the int64_t value for a performance data entry of type long. Performance data support must be enabled, see option UsePerfData.",
+                    "",
+                    " @param utf8_key UTF8-encoded, 0 terminated key that identifies the performance data entry.",
+                    " @param result a pointer to which the address of the int64_t value will be written.",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    " @since 22.3",
+    })
+    public static PolyglotStatus poly_perf_data_get_address_of_int64_t(PolyglotIsolateThread thread, CCharPointer utf8Key, CInt64PointerPointer result) {
+        resetErrorState();
+        String key = CTypeConversion.utf8ToJavaString(utf8Key);
+        CInt64Pointer ptr = (CInt64Pointer) ImageSingletons.lookup(PerfDataSupport.class).getLong(key);
+        result.write(ptr);
+        return poly_ok;
     }
 
     private static void writeString(String valueString, CCharPointer buffer, UnsignedWord length, SizeTPointer result, Charset charset) {
