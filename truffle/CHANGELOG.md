@@ -26,6 +26,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Tuned host inlining heuristic for reduced code size. A new host inlining tuning guide is available in the [docs](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md#host-inlining)
 * (GR-35007)(EE-only) The Truffle sandboxing CPU time limits (`sandbox.MaxCPUTime`) are also supported on the native image.
 
+* GR-31304 `Debugger.disableStepping()` and `Debugger.restoreStepping()` added to disable/restore stepping on a dedicated thread on a specific code path.
 
 ## Version 22.2.0
 
