@@ -141,16 +141,6 @@ public class UniverseBuilder {
             for (AnalysisType aType : aUniverse.getTypes()) {
                 makeType(aType);
             }
-            for (AnalysisType aType : aUniverse.getTypes()) {
-                /*
-                 * Set enclosing type lazily to avoid cyclic dependency between interfaces and
-                 * enclosing types. For example, in Scala an interface can extends its inner type.
-                 */
-                if (aType.getEnclosingType() != null) {
-                    lookupType(aType).setEnclosingType(Objects.requireNonNull(lookupType(aType.getEnclosingType())));
-                }
-            }
-
             for (AnalysisField aField : aUniverse.getFields()) {
                 makeField(aField);
             }
