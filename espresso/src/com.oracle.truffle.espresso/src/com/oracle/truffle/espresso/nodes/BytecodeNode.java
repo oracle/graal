@@ -1743,9 +1743,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                     // an Espresso object can never be identical to a foreign object
                     if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
-                        return operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
+                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
+                        return operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
                     }
                     return false;
                 }
@@ -1759,9 +1761,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                     // an Espresso object can never be identical to a foreign object
                     if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
-                        return !operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
+                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
+                        return !operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
                     }
                     return operand1 != operand2;
                 }
