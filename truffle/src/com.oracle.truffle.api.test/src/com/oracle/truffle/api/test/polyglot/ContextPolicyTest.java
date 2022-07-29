@@ -1051,7 +1051,7 @@ public class ContextPolicyTest {
             TruffleContext context = null;
             if (innerContext) {
                 if (langContext.innerContext == null) {
-                    context = langContext.env.newContextBuilder().build();
+                    context = langContext.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                     langContext.innerContext = context;
                 } else {
                     context = langContext.innerContext;

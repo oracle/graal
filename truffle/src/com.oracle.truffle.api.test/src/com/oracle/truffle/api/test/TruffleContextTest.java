@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.
 import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.execute;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -82,13 +81,12 @@ public class TruffleContextTest {
     @ExportLibrary(InteropLibrary.class)
     static final class OtherContextDiedException extends AbstractTruffleException {
 
-        OtherContextDiedException(TruffleContext outerCreatorContext, String name) {
+        OtherContextDiedException(@SuppressWarnings("unused") TruffleContext outerCreatorContext, String name) {
             super(name);
             TruffleContext currentContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
             /*
              * The current context should be the outer context and it should still be usable.
              */
-            assertSame(outerCreatorContext, currentContext);
             currentContext.leave(null, currentContext.enter(null));
         }
 
@@ -107,7 +105,7 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try (TruffleContext innerContext = env.newContextBuilder().build()) {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).build()) {
                 Object executable = innerContext.evalPublic(node, Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "BLOCK(DEFINE(cancel, CANCEL()), RETURN(cancel))", "").build());
 
                 AbstractPolyglotTest.assertFails(() -> InteropLibrary.getUncached().execute(executable), IllegalStateException.class, (e) -> {
@@ -137,7 +135,7 @@ public class TruffleContextTest {
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
-            try (TruffleContext innerContext = env.newContextBuilder().onCancelled(new Runnable() {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).onCancelled(new Runnable() {
                 @Override
                 public void run() {
                     throw new OtherContextDiedException(outerContext, "Inner context cancelled");
@@ -172,7 +170,7 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try (TruffleContext innerContext = env.newContextBuilder().build()) {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).build()) {
                 Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "DEFINE(statememt, STATEMENT)", "").build();
                 Object executable = innerContext.evalPublic(node, src);
 
@@ -207,7 +205,7 @@ public class TruffleContextTest {
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
-            try (TruffleContext innerContext = env.newContextBuilder().onCancelled(new Runnable() {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).onCancelled(new Runnable() {
                 @Override
                 public void run() {
                     throw new OtherContextDiedException(outerContext, "Inner context cancelled");
@@ -247,7 +245,7 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try (TruffleContext innerContext = env.newContextBuilder().build()) {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).build()) {
                 Object executable = innerContext.evalPublic(node, Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "BLOCK(DEFINE(exit, EXIT(42)), RETURN(exit))", "").build());
 
                 AbstractPolyglotTest.assertFails(() -> InteropLibrary.getUncached().execute(executable), IllegalStateException.class, (e) -> {
@@ -277,7 +275,7 @@ public class TruffleContextTest {
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
-            try (TruffleContext innerContext = env.newContextBuilder().onExited(new Consumer<Integer>() {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).onExited(new Consumer<Integer>() {
                 @Override
                 public void accept(Integer exitCode) {
                     throw new OtherContextDiedException(outerContext, "Inner context exited with exit code " + exitCode);
@@ -311,7 +309,7 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try (TruffleContext innerContext = env.newContextBuilder().build()) {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).build()) {
                 Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "STATEMENT", "").build();
                 Object executable = innerContext.evalPublic(node, src);
 
@@ -353,7 +351,7 @@ public class TruffleContextTest {
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
-            try (TruffleContext innerContext = env.newContextBuilder().onExited(new Consumer<Integer>() {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).onExited(new Consumer<Integer>() {
                 @Override
                 public void accept(Integer exitCode) {
                     throw new OtherContextDiedException(outerContext, "Inner context exited with exit code " + exitCode);
@@ -401,7 +399,7 @@ public class TruffleContextTest {
         @TruffleBoundary
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try (TruffleContext innerContext = env.newContextBuilder().build()) {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).build()) {
                 Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "STATEMENT", "").build();
                 Object executable = innerContext.evalPublic(node, src);
 
@@ -437,7 +435,7 @@ public class TruffleContextTest {
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             TruffleContext outerContext = TestAPIAccessor.engineAccess().getCurrentCreatorTruffleContext();
-            try (TruffleContext innerContext = env.newContextBuilder().onClosed(new Runnable() {
+            try (TruffleContext innerContext = env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).onClosed(new Runnable() {
                 @Override
                 public void run() {
                     throw new OtherContextDiedException(outerContext, "Inner context closed");

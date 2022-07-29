@@ -723,7 +723,7 @@ public class LanguageSPITest {
         protected Object executeBoundary() {
             Context outerLangContext = CONTEXT_REF.get(null);
             Object config = new Object();
-            TruffleContext innerContext = outerLangContext.env.newContextBuilder().config("config", config).build();
+            TruffleContext innerContext = outerLangContext.env.newInnerContextBuilder().initializeCreatorContext(true).config("config", config).build();
             Object p = innerContext.enter(null);
             Context innerLangContext = CONTEXT_REF.get(null);
             try {
@@ -1503,7 +1503,8 @@ public class LanguageSPITest {
             TruffleContext c0 = env.newInnerContextBuilder().build();
             prev = c0.enter(null);
             try {
-                c0.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language works
+                c0.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
                 c0.initializePublic(null, ID); // current language works
             } finally {
                 c0.leave(null, prev);
@@ -1514,7 +1515,8 @@ public class LanguageSPITest {
             TruffleContext c1 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID).initializeCreatorContext(true).build();
             prev = c1.enter(null);
             try {
-                c1.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language works
+                c1.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
                 c1.initializePublic(null, ID); // current language works
             } finally {
                 c1.leave(null, prev);
@@ -1525,7 +1527,8 @@ public class LanguageSPITest {
             TruffleContext c2 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID).build();
             prev = c2.enter(null);
             try {
-                c2.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language works
+                c2.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
                 assertFails(() -> c2.initializePublic(null, ID), IllegalArgumentException.class);
             } finally {
                 c2.leave(null, prev);
@@ -1690,7 +1693,7 @@ public class LanguageSPITest {
                 @TruffleBoundary
                 private Object executeBoundary() {
                     Env env = CONTEXT_REF.get(null).env;
-                    TruffleContext innerContext = env.newContextBuilder().build();
+                    TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
                     Object p = innerContext.enter(null);
                     Context innerLangContext = CONTEXT_REF.get(null);
                     innerContext.leave(null, p);
@@ -1947,7 +1950,7 @@ public class LanguageSPITest {
         assertEquals(1, outerLang.parseCalled.size());
         assertEquals(source1.getCharacters(), outerLang.parseCalled.get(0).getCharacters());
 
-        TruffleContext innerContext = env.newContextBuilder().build();
+        TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object prev = innerContext.enter(null);
         MultiContextLanguage innerLang = MultiContextLanguage.REFERENCE.get(null);
         assertNotSame(innerLang, outerLang);
@@ -2007,7 +2010,7 @@ public class LanguageSPITest {
         assertEquals(1, lang.parseCalled.size());
         assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
 
-        TruffleContext innerContext = env.newContextBuilder().build();
+        TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object prev = innerContext.enter(null);
 
         MultiContextLanguage innerLang = OneContextLanguage.get(null);
@@ -2452,14 +2455,14 @@ public class LanguageSPITest {
             @Override
             protected void finalizeContext(LanguageContext context) {
                 if (contextOnFinalize.get()) {
-                    context.env.newContextBuilder().build();
+                    context.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                 }
             }
 
             @Override
             protected void disposeContext(LanguageContext context) {
                 if (contextOnDispose.get()) {
-                    context.env.newContextBuilder().build();
+                    context.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                 }
             }
         });
