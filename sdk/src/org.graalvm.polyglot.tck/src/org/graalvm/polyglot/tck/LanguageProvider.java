@@ -72,7 +72,10 @@ public interface LanguageProvider {
 
     /**
      * Allows language providers to provide language options during the creation of the test
-     * context.
+     * context. {@link LanguageProvider LanguageProviders} are only allowed to set options of the
+     * language they represent (Options starting with {@link #getId()}). Attempts to set options
+     * other than their own language will throw {@link IllegalArgumentException} on test context
+     * creation.
      *
      * @return The {@code (key, value)} pairs of language option to add to the context.
      * @since 22.3

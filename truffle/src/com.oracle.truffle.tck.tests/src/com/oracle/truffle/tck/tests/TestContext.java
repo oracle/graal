@@ -172,7 +172,9 @@ final class TestContext implements Closeable {
                     }
                     Context.Builder builder = Context.newBuilder();
                     knownProviders.forEach((id, provider) -> {
-                        builder.options(provider.additionalOptions());
+                        Map<String, String> languageOptions = provider.additionalOptions();
+                        checkAdditionalOptions(languageOptions, provider.getId());
+                        builder.options(languageOptions);
                     });
                     this.context = builder.allowExperimentalOptions(true).allowAllAccess(true).out(out).err(err).build();
 
@@ -309,6 +311,15 @@ final class TestContext implements Closeable {
 
     private static boolean isHost(LanguageProvider provider) {
         return provider.getClass() == JavaHostLanguageProvider.class;
+    }
+
+    private static void checkAdditionalOptions(Map<String, String> languageOptions, String languageId) {
+        String prefix = languageId + ".";
+        for (String key : languageOptions.keySet()) {
+            if (!key.startsWith(prefix)) {
+                throw new IllegalArgumentException("Provider for language '" + languageId + "' attempts to set option " + key);
+            }
+        }
     }
 
     Value getValue(Object object) {
