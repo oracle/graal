@@ -51,7 +51,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Origina
     private final HostedClass superClass;
     private final HostedInterface[] interfaces;
 
-    private HostedType enclosingType;
     protected HostedArrayClass arrayType;
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
@@ -367,7 +366,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Origina
 
     @Override
     public HostedType getEnclosingType() {
-        return enclosingType;
+        return universe.lookup(wrapped.getEnclosingType());
     }
 
     @Override
@@ -418,10 +417,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Origina
     @Override
     public ResolvedJavaType getHostClass() {
         return universe.lookup(wrapped.getHostClass());
-    }
-
-    public void setEnclosingType(HostedType enclosingType) {
-        this.enclosingType = enclosingType;
     }
 
     @Override

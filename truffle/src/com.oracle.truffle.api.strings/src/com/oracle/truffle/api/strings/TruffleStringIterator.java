@@ -283,9 +283,9 @@ public final class TruffleStringIterator {
             char c = (char) it.readAndIncS1();
             if (it.errorHandling == TruffleString.ErrorHandling.RETURN_NEGATIVE) {
                 if (Encodings.isUTF16Surrogate(c)) {
-                    if (Encodings.isUTF16LowSurrogate(c) && it.hasNext()) {
+                    if (Encodings.isUTF16HighSurrogate(c) && it.hasNext()) {
                         char c2 = (char) it.readFwdS1();
-                        if (Encodings.isUTF16HighSurrogate(c2)) {
+                        if (Encodings.isUTF16LowSurrogate(c2)) {
                             it.rawIndex++;
                             return Character.toCodePoint(c, c2);
                         }
@@ -293,9 +293,9 @@ public final class TruffleStringIterator {
                     return -1;
                 }
             } else {
-                if (Encodings.isUTF16LowSurrogate(c) && it.hasNext()) {
+                if (Encodings.isUTF16HighSurrogate(c) && it.hasNext()) {
                     char c2 = (char) it.readFwdS1();
-                    if (Encodings.isUTF16HighSurrogate(c2)) {
+                    if (Encodings.isUTF16LowSurrogate(c2)) {
                         it.rawIndex++;
                         return Character.toCodePoint(c, c2);
                     }

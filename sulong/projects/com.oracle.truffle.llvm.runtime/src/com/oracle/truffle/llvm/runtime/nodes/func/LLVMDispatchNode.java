@@ -93,18 +93,18 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
         LLVMContext context = LLVMLanguage.getContext();
 
-        if (llvmFunction != null && context != null && context.isAOTCacheStore()) {
-
+        if (context != null && context.isAOTCacheStore()) {
             // We need to pre-initialize an intrinsic function by generating its call target. It
             // cannot be done in the constructor code as it is too early for
             // llvmFunction.getFixedCode() to return the intrinsic.
             // Therefore, the pre-initialization must be postponed to the AOT preparation stage
             // using the AOTInitHelper.
             aotInitHelper = new AOTInitHelper((language, root) -> {
-                //
-                if (llvmFunction.getFixedCode() != null && llvmFunction.getFixedCode().isIntrinsicFunctionSlowPath()) {
-                    LLVMDispatchNode.this.aotFixedIntrinsicFunction = llvmFunction;
-                    llvmFunction.getFixedCode().getIntrinsicSlowPath().cachedCallTarget(type);
+                if (llvmFunction != null) {
+                    if (llvmFunction.getFixedCode() != null && llvmFunction.getFixedCode().isIntrinsicFunctionSlowPath()) {
+                        LLVMDispatchNode.this.aotFixedIntrinsicFunction = llvmFunction;
+                        llvmFunction.getFixedCode().getIntrinsicSlowPath().cachedCallTarget(type);
+                    }
                 }
                 aot = true;
                 // Throw the helper AOT init node away as it is used during the AOT preparation
@@ -115,12 +115,18 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             // Early parsing of the function's signature for the sake of the AOT preparation
             try {
                 nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
-                if (nativeCtxExtKey != null) {
+                /*
+                 * Here, we are interested in native functions only and so it assumed that native
+                 * functions have always at least one argument, the stack argument. Of course, it
+                 * actually parses signatures of other functions, but the result will not be used.
+                 */
+                if (nativeCtxExtKey != null && type.getNumberOfArguments() > 0) {
                     NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(context);
                     signatureSource = nativeContextExtension.getNativeSignatureSourceSkipStackArg(type);
                 }
             } catch (UnsupportedNativeTypeException e) {
                 // ignore it
+                throw new RuntimeException(e);
             }
         } else {
             aotInitHelper = new AOTInitHelper((language, root) -> {

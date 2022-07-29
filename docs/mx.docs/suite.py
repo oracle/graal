@@ -1,6 +1,8 @@
 suite = {
-    "mxversion" : "6.2.0",
+    "mxversion" : "6.4.0",
     "name" : "docs",
+
+    "ignore_suite_commit_info": True,
 
     "externalProjects": {
         "docs": {

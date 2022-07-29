@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,17 +59,17 @@ public final class LLVMArgumentBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    long getArraySize() {
+    public long getArraySize() {
         return bytes.length;
     }
 
     @ExportMessage
-    boolean isArrayElementReadable(long idx) {
+    public boolean isArrayElementReadable(long idx) {
         return Long.compareUnsigned(idx, bytes.length) < 0;
     }
 
     @ExportMessage
-    byte readArrayElement(long idx,
+    public byte readArrayElement(long idx,
                     @Cached BranchProfile oob) {
         if (isArrayElementReadable(idx)) {
             return bytes[(int) idx];

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,16 +35,16 @@ import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
 
 public class DarwinClangLike extends ClangLike {
 
-    protected DarwinClangLike(String[] args, boolean cxx, OS os, String platform) {
-        super(args, cxx, os, platform);
+    protected DarwinClangLike(String[] args, boolean cxx, OS os, Arch arch, String platform) {
+        super(args, cxx, os, arch, platform);
     }
 
     public static void runClangXX(String[] args) {
-        new DarwinClangLike(args, true, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new DarwinClangLike(args, true, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     public static void runClang(String[] args) {
-        new DarwinClangLike(args, false, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new DarwinClangLike(args, false, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     @Override

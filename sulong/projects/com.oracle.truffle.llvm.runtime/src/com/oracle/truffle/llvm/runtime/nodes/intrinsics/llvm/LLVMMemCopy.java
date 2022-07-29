@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,11 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.move.LLVMPrimitiveMoveNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "destination")
@@ -45,6 +48,22 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
 
     public LLVMMemCopy(LLVMMemMoveNode memMove) {
         this.memMove = memMove;
+    }
+
+    public static LLVMExpressionNode createIntrinsic(LLVMExpressionNode[] args, LLVMMemMoveNode memMove, NodeFactory nodeFactory) {
+        LLVMExpressionNode serialMovesReplacement = LLVMPrimitiveMoveNode.createSerialMoves(args, nodeFactory, memMove);
+        if (serialMovesReplacement != null) {
+            return serialMovesReplacement;
+        }
+
+        if (args.length == 6) {
+            return LLVMMemCopyNodeGen.create(memMove, args[1], args[2], args[3], args[5]);
+        } else if (args.length == 5) {
+            // LLVM 7 drops the alignment argument
+            return LLVMMemCopyNodeGen.create(memMove, args[1], args[2], args[3], args[4]);
+        } else {
+            throw new LLVMParserException("Illegal number of arguments to @llvm.memcpy.*: " + args.length);
+        }
     }
 
     @Specialization

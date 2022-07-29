@@ -1531,6 +1531,10 @@ public abstract class Source {
             this.embedderSource = b;
         }
 
+        void path(String path) {
+            this.path = path;
+        }
+
         /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
          * an {@link IOException} if an error loading the source occurred.

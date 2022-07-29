@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.annotate.KeepOriginal;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 
 /**
- * Notifies the {@link Heap} implementation after the value of the option has changed.
+ * The purpose of the target class is to support debugging and monitoring of threads. Because we
+ * currently don't provide/expose means for doing so, we replace it with an almost empty
+ * implementation.
  */
-public class GCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public GCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
+@TargetClass(className = "jdk.internal.vm.ThreadContainers", onlyWith = JDK19OrLater.class)
+@Substitute
+@SuppressWarnings("unused")
+final class Target_jdk_internal_vm_ThreadContainers {
+
+    @Substitute
+    public static Object registerContainer(Target_jdk_internal_vm_ThreadContainer container) {
+        return null;
     }
 
-    @Override
-    protected void afterValueUpdate() {
-        super.afterValueUpdate();
-        if (!SubstrateUtil.HOSTED) {
-            Heap.getHeap().optionValueChanged(this);
-        }
+    @Substitute
+    public static void deregisterContainer(Object key) {
     }
+
+    @KeepOriginal
+    public static native Target_jdk_internal_vm_ThreadContainer root();
+}
+
+@TargetClass(className = "jdk.internal.vm.ThreadContainer", onlyWith = JDK19OrLater.class)
+final class Target_jdk_internal_vm_ThreadContainer {
 }

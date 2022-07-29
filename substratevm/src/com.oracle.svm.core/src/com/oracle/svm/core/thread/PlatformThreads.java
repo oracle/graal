@@ -198,6 +198,34 @@ public abstract class PlatformThreads {
     }
 
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+    public static long getThreadCpuTime(long javaThreadId, boolean includeSystemTime) {
+        if (!ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
+            return -1;
+        }
+        // Accessing the value for the current thread is fast.
+        Thread curThread = PlatformThreads.currentThread.get();
+        if (curThread != null && JavaThreads.getThreadId(curThread) == javaThreadId) {
+            return ThreadCpuTimeSupport.getInstance().getCurrentThreadCpuTime(includeSystemTime);
+        }
+
+        // If the value of another thread is accessed, then we need to do a slow lookup.
+        VMThreads.lockThreadMutexInNativeCode();
+        try {
+            IsolateThread isolateThread = VMThreads.firstThread();
+            while (isolateThread.isNonNull()) {
+                Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
+                if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
+                    return ThreadCpuTimeSupport.getInstance().getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+                }
+                isolateThread = VMThreads.nextThread(isolateThread);
+            }
+            return -1;
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
         VMThreads.lockThreadMutexInNativeCode();
         try {

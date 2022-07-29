@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -42,7 +43,6 @@ import org.graalvm.compiler.nodes.gc.WriteBarrier;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -61,7 +61,6 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 
@@ -70,14 +69,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     /** A LocationIdentity to distinguish card locations from other locations. */
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
-
-    public static class Options {
-        @Option(help = "Instrument write barriers with counters")//
-        public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false);
-
-        @Option(help = "Verify write barriers")//
-        public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false);
-    }
 
     @Fold
     static BarrierSnippetCounters counters() {
@@ -102,7 +93,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
 
-        if (Options.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
+        if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
             /*
              * To increase verification coverage, we do the verification before checking if a
              * barrier is needed at all. And in addition to verifying that the object is in an
@@ -191,7 +182,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 }
 
 class BarrierSnippetCounters {
-    private final Counter.Group counters = new Counter.Group(BarrierSnippets.Options.CountWriteBarriers, "WriteBarriers");
+    private final Counter.Group counters = new Counter.Group(SerialGCOptions.CountWriteBarriers, "WriteBarriers");
     final Counter postWriteBarrier = new Counter(counters, "postWriteBarrier", "post-write barriers");
     final Counter postWriteBarrierAligned = new Counter(counters, "postWriteBarrierAligned", "aligned object path of post-write barriers");
     final Counter postWriteBarrierUnaligned = new Counter(counters, "postWriteBarrierUnaligned", "unaligned object path of post-write barriers");

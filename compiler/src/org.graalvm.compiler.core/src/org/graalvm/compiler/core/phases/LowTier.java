@@ -57,7 +57,7 @@ public class LowTier extends BaseTier<LowTierContext> {
     }
 
     public LowTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         CanonicalizerPhase canonicalizerWithoutGVN = canonicalizer.copyWithoutGVN();
 
         if (Options.ProfileCompiledMethods.getValue(options)) {

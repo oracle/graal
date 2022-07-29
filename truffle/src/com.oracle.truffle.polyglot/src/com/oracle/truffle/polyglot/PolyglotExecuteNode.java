@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,19 +71,21 @@ abstract class PolyglotExecuteNode extends Node {
         // paramType == null => Default conversion of executable value or conversion to
         // unparameterized Function. We allow varargs-like invocation in this case.
         Object[] argsArray;
-        if (functionArgsObject == null) {
-            argsArray = EMPTY;
-        } else if (paramType != null && paramClass.isArray()) {
-            if (paramClass.getComponentType().isPrimitive() && !(functionArgsObject instanceof Object[])) {
+        if (paramType != null && paramClass.isArray()) {
+            if (functionArgsObject == null) {
+                argsArray = EMPTY;
+            } else if (paramClass.getComponentType().isPrimitive() && !(functionArgsObject instanceof Object[])) {
                 argsArray = copyToObjectArray(paramClass.cast(functionArgsObject));
             } else {
                 argsArray = (Object[]) functionArgsObject;
             }
         } else {
-            if (!(paramType == null && functionArgsObject instanceof Object[])) {
-                argsArray = new Object[]{functionArgsObject};
-            } else {
+            if (paramType == null && functionArgsObject == null) {
+                argsArray = EMPTY;
+            } else if (paramType == null && functionArgsObject instanceof Object[]) {
                 argsArray = (Object[]) functionArgsObject;
+            } else {
+                argsArray = new Object[]{functionArgsObject};
             }
         }
 

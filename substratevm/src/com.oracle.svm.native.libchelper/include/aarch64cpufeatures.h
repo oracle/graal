@@ -42,4 +42,6 @@ typedef struct {
   char fSTXR_PREFETCH;
   char fA53MAC;
   char fDMB_ATOMICS;
+  char fPACA;
+  char fSVEBITPERM;
 } CPUFeatures;

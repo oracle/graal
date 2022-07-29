@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -223,6 +224,11 @@ public abstract class CompilationWrapper<T> {
             return performCompilation(initialDebug);
         } catch (Throwable cause) {
             return onCompilationFailure(new Failure(cause, initialDebug));
+        } finally {
+            // Notify the runtime that most objects allocated in the current compilation are dead
+            // and can be reclaimed. If performCompilation includes code installation, the GC pause
+            // should not prolong the time until the compiled code can be executed.
+            GraalServices.notifyLowMemoryPoint(true);
         }
     }
 

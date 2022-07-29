@@ -216,11 +216,11 @@ public class ProgressReporter {
         linkStrategy = showLinks ? new LinkyStrategy() : new LinklessStrategy();
 
         if (SubstrateOptions.useEconomyCompilerConfig(options)) {
-            l().redBold().a("You enabled -Ob for this image build. This will configure some optimizations to reduce image build time.").println();
-            l().redBold().a("This feature should only be used during development and never for deployment.").reset().println();
+            l().magentaBold().a("You enabled -Ob for this image build. This will configure some optimizations to reduce image build time.").println();
+            l().magentaBold().a("This feature should only be used during development and never for deployment.").reset().println();
         }
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
-            l().redBold().a("This build uses the experimental reachability analysis rather than the default points-to analysis.").reset().println();
+            l().magentaBold().a("This build uses the experimental reachability analysis rather than the default points-to analysis.").reset().println();
         }
     }
 
@@ -927,6 +927,11 @@ public class ProgressReporter {
             return getThis();
         }
 
+        final T magentaBold() {
+            colorStrategy.magentaBold(this);
+            return getThis();
+        }
+
         final T redBold() {
             colorStrategy.redBold(this);
             return getThis();
@@ -1271,6 +1276,9 @@ public class ProgressReporter {
         default void blueBold(AbstractPrinter<?> printer) {
         }
 
+        default void magentaBold(AbstractPrinter<?> printer) {
+        }
+
         default void redBold(AbstractPrinter<?> printer) {
         }
 
@@ -1304,6 +1312,11 @@ public class ProgressReporter {
         @Override
         public void blueBold(AbstractPrinter<?> printer) {
             printer.a(ANSI.BLUE_BOLD);
+        }
+
+        @Override
+        public void magentaBold(AbstractPrinter<?> printer) {
+            printer.a(ANSI.MAGENTA_BOLD);
         }
 
         @Override
@@ -1388,5 +1401,6 @@ public class ProgressReporter {
         static final String RED_BOLD = ESCAPE + "[1;31m";
         static final String YELLOW_BOLD = ESCAPE + "[1;33m";
         static final String BLUE_BOLD = ESCAPE + "[1;34m";
+        static final String MAGENTA_BOLD = ESCAPE + "[1;35m";
     }
 }

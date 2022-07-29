@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,12 +31,17 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -142,16 +147,42 @@ public final class LLVMNativePointerSupport extends LLVMNode {
             return true;
         }
 
-        @Specialization(guards = "natives.accepts(receiver.getObject())")
-        boolean doManagedPointer(LLVMManagedPointer receiver, @CachedLibrary(limit = "8") LLVMNativeLibrary natives) {
-            return natives.isPointer(receiver.getObject());
+        @Specialization
+        boolean doManagedPointer(@SuppressWarnings("unused") LLVMManagedPointer receiver, @Cached IsPointerHelper isPointerHelper) {
+            return isPointerHelper.execute(receiver.getObject());
         }
 
-        @Specialization(guards = "natives.accepts(receiver)")
-        boolean doOther(Object receiver, @CachedLibrary(limit = "8") LLVMNativeLibrary natives) {
-            return natives.isPointer(receiver);
+        @Fallback
+        boolean doOther(Object receiver, @Cached IsPointerHelper isPointerHelper) {
+            return isPointerHelper.execute(receiver);
         }
 
+        @GenerateUncached
+        abstract static class IsPointerHelper extends LLVMNode {
+
+            abstract boolean execute(Object receiver);
+
+            @Specialization
+            boolean doLong(@SuppressWarnings("unused") long x) {
+                return true;
+            }
+
+            @Specialization
+            boolean doByteArray(@SuppressWarnings("unused") byte[] x) {
+                return false;
+            }
+
+            @Specialization
+            boolean doFunctionDescriptor(LLVMFunctionDescriptor functionDescriptor) {
+                return functionDescriptor.isPointer();
+            }
+
+            @Fallback
+            @GenerateAOT.Exclude
+            boolean doOther(Object x, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
+                return natives.isPointer(x);
+            }
+        }
     }
 
     @GenerateUncached
@@ -164,14 +195,47 @@ public final class LLVMNativePointerSupport extends LLVMNode {
             return receiver.asNative();
         }
 
-        @Specialization(guards = "natives.accepts(receiver.getObject())")
-        long doManagedPointer(LLVMManagedPointer receiver, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) throws UnsupportedMessageException {
-            return natives.asPointer(receiver.getObject()) + receiver.getOffset();
+        @Specialization
+        long doManagedPointer(LLVMManagedPointer receiver, @Cached AsPointerHelper asPointerHelper) {
+            return asPointerHelper.execute(receiver.getObject()) + receiver.getOffset();
         }
 
-        @Specialization(guards = "natives.accepts(receiver)")
-        long doOther(Object receiver, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) throws UnsupportedMessageException {
-            return natives.asPointer(receiver);
+        @Fallback
+        long doOther(Object receiver, @Cached AsPointerHelper asPointerHelper) {
+            return asPointerHelper.execute(receiver);
+        }
+
+        @GenerateUncached
+        abstract static class AsPointerHelper extends LLVMNode {
+
+            abstract long execute(Object receiver);
+
+            @Specialization
+            long doLong(long x) {
+                return x;
+            }
+
+            @Specialization
+            long doFunctionDescriptor(LLVMFunctionDescriptor functionDescriptor,
+                            @Cached BranchProfile exception) {
+                try {
+                    return functionDescriptor.asPointer(exception);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new LLVMPolyglotException(this, e.getMessage());
+                }
+            }
+
+            @Fallback
+            @GenerateAOT.Exclude
+            long doOther(Object x, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
+                try {
+                    return natives.asPointer(x);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new LLVMPolyglotException(this, e.getMessage());
+                }
+            }
         }
 
     }
@@ -186,16 +250,49 @@ public final class LLVMNativePointerSupport extends LLVMNode {
             return receiver;
         }
 
-        @Specialization(guards = "natives.accepts(receiver.getObject())")
-        LLVMNativePointer doManagedPointer(LLVMManagedPointer receiver, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
-            natives.accepts(receiver.getObject()); // needed until GR-27452 is fixed
-            return natives.toNativePointer(receiver.getObject()).increment(receiver.getOffset());
+        @Specialization
+        LLVMNativePointer doManagedPointer(LLVMManagedPointer receiver, @Cached ToNativePointerHelper toNativePointerHelper) {
+            return toNativePointerHelper.execute(receiver.getObject()).increment(receiver.getOffset());
         }
 
-        @Specialization(guards = "natives.accepts(receiver)")
-        LLVMNativePointer doOther(Object receiver, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
-            natives.accepts(receiver); // needed until GR-27452 is fixed
-            return natives.toNativePointer(receiver);
+        @Fallback
+        LLVMNativePointer doOther(Object receiver, @Cached ToNativePointerHelper toNativePointerHelper) {
+            return toNativePointerHelper.execute(receiver);
+        }
+
+        @GenerateUncached
+        abstract static class ToNativePointerHelper extends LLVMNode {
+
+            abstract LLVMNativePointer execute(Object receiver);
+
+            @Specialization
+            LLVMNativePointer doLong(long x) {
+                return LLVMNativePointer.create(x);
+            }
+
+            @Specialization
+            LLVMNativePointer doByteArray(@SuppressWarnings("unused") byte[] x) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new LLVMPolyglotException(this, "Cannot convert virtual allocation object to native pointer.");
+            }
+
+            @Specialization
+            LLVMNativePointer doFunctionDescriptor(LLVMFunctionDescriptor functionDescriptor,
+                            @Cached BranchProfile exceptionProfile) {
+                try {
+                    return functionDescriptor.asNativePointer(exceptionProfile);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new LLVMPolyglotException(this, e.getMessage());
+                }
+            }
+
+            @Fallback
+            @GenerateAOT.Exclude
+            LLVMNativePointer doOther(Object x, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
+                natives.accepts(x);
+                return natives.toNativePointer(x);
+            }
         }
 
     }

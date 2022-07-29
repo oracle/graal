@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
@@ -58,7 +59,6 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -296,11 +296,25 @@ public class SubstrateOptions {
 
     @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
     @Option(help = "Use a serial GC")//
-    public static final HostedOptionKey<Boolean> UseSerialGC = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> UseSerialGC = new HostedOptionKey<>(true) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                SubstrateOptions.UseEpsilonGC.update(values, false);
+            }
+        }
+    };
 
     @APIOption(name = "epsilon", group = GCGroup.class, customHelp = "Epsilon garbage collector")//
     @Option(help = "Use a no-op GC")//
-    public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                SubstrateOptions.UseSerialGC.update(values, false);
+            }
+        }
+    };
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
@@ -450,12 +464,12 @@ public class SubstrateOptions {
     @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message.  0 implies no message.")//
     public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
-    public static final long getTearDownWarningNanos() {
-        return TearDownWarningNanos.getValue().longValue();
+    public static long getTearDownWarningNanos() {
+        return TearDownWarningNanos.getValue();
     }
 
-    public static final long getTearDownFailureNanos() {
-        return TearDownFailureNanos.getValue().longValue();
+    public static long getTearDownFailureNanos() {
+        return TearDownFailureNanos.getValue();
     }
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
@@ -684,11 +698,11 @@ public class SubstrateOptions {
 
         /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
         @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
-        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new ImmutableRuntimeOptionKey<>(true);
+        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, Immutable);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
-    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new ImmutableRuntimeOptionKey<>(-1, RelevantForCompilationIsolates);
+    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1, Immutable, RelevantForCompilationIsolates);
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
@@ -726,16 +740,16 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Create a heap dump and exit.")//
-    public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new ImmutableRuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
 
     @Option(help = "Enable Java Flight Recorder.")//
-    public static final RuntimeOptionKey<Boolean> FlightRecorder = new ImmutableRuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false, Immutable);
 
     @Option(help = "Start flight recording with options.")//
-    public static final RuntimeOptionKey<String> StartFlightRecording = new ImmutableRuntimeOptionKey<>("");
+    public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("", Immutable);
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
-    public static final RuntimeOptionKey<String> FlightRecorderLogging = new ImmutableRuntimeOptionKey<>("all=warning");
+    public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning", Immutable);
 
     public static String reportsPath() {
         return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();

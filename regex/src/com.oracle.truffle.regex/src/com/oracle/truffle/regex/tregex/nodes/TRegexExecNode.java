@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexFlags;
@@ -80,8 +79,6 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     private final boolean regressionTestMode;
     private final boolean backtrackingMode;
     private final boolean sticky;
-    private final BranchProfile bmpProfile = BranchProfile.create();
-    private final BranchProfile astralProfile = BranchProfile.create();
 
     @Child private RunRegexSearchNode runnerNode;
 
@@ -149,14 +146,6 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
     public int getNumberOfCaptureGroups() {
         return numberOfCaptureGroups;
-    }
-
-    public BranchProfile getBMPProfile() {
-        return bmpProfile;
-    }
-
-    public BranchProfile getAstralProfile() {
-        return astralProfile;
     }
 
     @Override
@@ -356,11 +345,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         if (executor == null) {
             return null;
         }
-        executor.setRoot(this);
-        if (executor instanceof TRegexBacktrackingNFAExecutorNode) {
-            ((TRegexBacktrackingNFAExecutorNode) executor).initialize(this);
-        }
-        return TRegexExecutorEntryNode.create(executor);
+        return TRegexExecutorEntryNode.create(getRegexLanguage(), executor);
     }
 
     @Override

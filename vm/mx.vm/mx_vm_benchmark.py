@@ -746,6 +746,7 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
+        # TODO BS add `--pgo-sampling` here breaks benchmarks with G1
         instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
         #instrument_args += ['-H:+InlineAllExplored'] if self.pgo_inline_explored else []
 

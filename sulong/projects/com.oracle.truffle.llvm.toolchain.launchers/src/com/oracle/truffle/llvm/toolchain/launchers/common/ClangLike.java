@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,15 +34,15 @@ import java.util.List;
 public class ClangLike extends ClangLikeBase {
 
     public static void runClangXX(String[] args) {
-        new ClangLike(args, true, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangLike(args, true, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     public static void runClang(String[] args) {
-        new ClangLike(args, false, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangLike(args, false, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
-    protected ClangLike(String[] args, boolean cxx, OS os, String platform) {
-        super(args, cxx, os, platform);
+    protected ClangLike(String[] args, boolean cxx, OS os, Arch arch, String platform) {
+        super(args, cxx, os, arch, platform);
     }
 
     @Override

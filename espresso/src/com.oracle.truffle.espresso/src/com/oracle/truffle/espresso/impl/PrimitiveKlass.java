@@ -57,18 +57,12 @@ public final class PrimitiveKlass extends Klass {
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
+        assert getMeta().java_lang_Class != null;
+        initializeEspressoClass();
     }
 
     public JavaKind getPrimitiveJavaKind() {
         return primitiveKind;
-    }
-
-    @Override
-    protected ArrayKlass createArrayKlass() {
-        if (getJavaKind() == JavaKind.Void) {
-            return null;
-        }
-        return super.createArrayKlass();
     }
 
     @Override

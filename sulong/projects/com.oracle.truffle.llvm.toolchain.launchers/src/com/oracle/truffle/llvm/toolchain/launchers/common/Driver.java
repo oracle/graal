@@ -116,15 +116,10 @@ public class Driver {
         }
     }
 
-    private static final boolean hasJreDir = System.getProperty("java.specification.version").startsWith("1.");
-
     private static Path getRuntimeDir() {
         Path runtimeDir = HomeFinder.getInstance().getHomeFolder();
         if (runtimeDir == null) {
             throw new IllegalStateException("Could not find GraalVM home");
-        }
-        if (hasJreDir) {
-            runtimeDir = runtimeDir.resolve("jre");
         }
         return runtimeDir;
     }

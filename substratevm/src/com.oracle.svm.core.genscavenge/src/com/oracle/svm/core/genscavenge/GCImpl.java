@@ -149,10 +149,10 @@ public final class GCImpl implements GC {
         }
     }
 
-    @SuppressWarnings("static-method")
-    public void maybeCauseUserRequestedCollection() {
-        if (!SubstrateGCOptions.DisableExplicitGC.getValue()) {
-            HeapImpl.getHeapImpl().getGC().collectCompletely(GCCause.JavaLangSystemGC);
+    @Override
+    public void maybeCauseUserRequestedCollection(GCCause cause, boolean fullGC) {
+        if (policy.shouldCollectOnRequest(cause, fullGC)) {
+            collect(cause, fullGC);
         }
     }
 
@@ -357,7 +357,7 @@ public final class GCImpl implements GC {
     private void printGCBefore(String cause) {
         Log verboseGCLog = Log.log();
         HeapImpl heap = HeapImpl.getHeapImpl();
-        sizeBefore = ((SubstrateGCOptions.PrintGC.getValue() || HeapOptions.PrintHeapShape.getValue()) ? getChunkBytes() : WordFactory.zero());
+        sizeBefore = ((SubstrateGCOptions.PrintGC.getValue() || SerialGCOptions.PrintHeapShape.getValue()) ? getChunkBytes() : WordFactory.zero());
         if (SubstrateGCOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
             verboseGCLog.string("[Heap policy parameters: ").newline();
             verboseGCLog.string("  YoungGenerationSize: ").unsigned(getPolicy().getMaximumYoungGenerationSize()).newline();
@@ -365,7 +365,7 @@ public final class GCImpl implements GC {
             verboseGCLog.string("      MinimumHeapSize: ").unsigned(getPolicy().getMinimumHeapSize()).newline();
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).string("]").newline();
-            if (HeapOptions.PrintHeapShape.getValue()) {
+            if (SerialGCOptions.PrintHeapShape.getValue()) {
                 HeapImpl.getHeapImpl().logImageHeapPartitionBoundaries(verboseGCLog);
             }
         }
@@ -373,13 +373,13 @@ public final class GCImpl implements GC {
             verboseGCLog.string("[");
             verboseGCLog.string("[");
             long startTime = System.nanoTime();
-            if (HeapOptions.PrintGCTimeStamps.getValue()) {
+            if (SerialGCOptions.PrintGCTimeStamps.getValue()) {
                 verboseGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(startTime))).string(" msec: ");
             } else {
                 verboseGCLog.unsigned(startTime);
             }
             verboseGCLog.string(" GC:").string(" before").string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause);
-            if (HeapOptions.PrintHeapShape.getValue()) {
+            if (SerialGCOptions.PrintHeapShape.getValue()) {
                 heap.report(verboseGCLog);
             }
             verboseGCLog.string("]").newline();
@@ -394,7 +394,7 @@ public final class GCImpl implements GC {
                 Log printGCLog = Log.log();
                 UnsignedWord sizeAfter = getChunkBytes();
                 printGCLog.string("[");
-                if (HeapOptions.PrintGCTimeStamps.getValue()) {
+                if (SerialGCOptions.PrintGCTimeStamps.getValue()) {
                     long finishNanos = timers.collection.getClosedTime();
                     printGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 }
@@ -409,7 +409,7 @@ public final class GCImpl implements GC {
             if (SubstrateGCOptions.VerboseGC.getValue()) {
                 verboseGCLog.string(" [");
                 long finishNanos = timers.collection.getClosedTime();
-                if (HeapOptions.PrintGCTimeStamps.getValue()) {
+                if (SerialGCOptions.PrintGCTimeStamps.getValue()) {
                     verboseGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 } else {
                     verboseGCLog.unsigned(finishNanos);
@@ -418,10 +418,10 @@ public final class GCImpl implements GC {
                 verboseGCLog.string("  policy: ");
                 verboseGCLog.string(getPolicy().getName());
                 verboseGCLog.string("  type: ").string(completeCollection ? "complete" : "incremental");
-                if (HeapOptions.PrintHeapShape.getValue()) {
+                if (SerialGCOptions.PrintHeapShape.getValue()) {
                     heap.report(verboseGCLog);
                 }
-                if (!HeapOptions.PrintGCTimes.getValue()) {
+                if (!SerialGCOptions.PrintGCTimes.getValue()) {
                     verboseGCLog.newline();
                     verboseGCLog.string("  collection time: ").unsigned(timers.collection.getMeasuredNanos()).string(" nanoSeconds");
                 } else {
@@ -1167,7 +1167,7 @@ public final class GCImpl implements GC {
             long startTime = System.nanoTime();
             ReferenceHandler.processPendingReferencesInRegularThread();
 
-            if (SubstrateGCOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
+            if (SubstrateGCOptions.VerboseGC.getValue() && SerialGCOptions.PrintGCTimes.getValue()) {
                 long executionTime = System.nanoTime() - startTime;
                 Log.log().string("[GC epilogue reference processing and cleaners: ").signed(executionTime).string("]").newline();
             }
@@ -1349,7 +1349,7 @@ public final class GCImpl implements GC {
     }
 
     private void printGCSummary() {
-        if (!HeapOptions.PrintGCSummary.getValue()) {
+        if (!SerialGCOptions.PrintGCSummary.getValue()) {
             return;
         }
 

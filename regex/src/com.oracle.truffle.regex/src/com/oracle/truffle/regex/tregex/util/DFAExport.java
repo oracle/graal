@@ -59,7 +59,7 @@ import com.oracle.truffle.regex.tregex.matchers.EmptyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.SimpleMatchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.SimpleSequentialMatchers;
 
 public class DFAExport {
 
@@ -131,10 +131,10 @@ public class DFAExport {
             }
             System.out.println(" });");
             System.out.printf("states[%d].setMatchers(new ByteMatcher[] {\n    ", state.getId());
-            printMatcher(((SimpleMatchers) state.getMatchers()).getMatchers()[0]);
-            for (int i = 1; i < state.getMatchers().size(); i++) {
+            printMatcher(((SimpleSequentialMatchers) state.getSequentialMatchers()).getMatchers()[0]);
+            for (int i = 1; i < state.getSequentialMatchers().size(); i++) {
                 System.out.print(",\n    ");
-                printMatcher(((SimpleMatchers) state.getMatchers()).getMatchers()[i]);
+                printMatcher(((SimpleSequentialMatchers) state.getSequentialMatchers()).getMatchers()[i]);
             }
             System.out.println("\n});");
             if (state.isFinalState()) {

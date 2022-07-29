@@ -228,6 +228,8 @@ public abstract class Accessor {
         public abstract void mergeLoadedSources(Source[] sources);
 
         public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
+
+        public abstract void setPath(SourceBuilder builder, String path);
     }
 
     public abstract static class InteropSupport extends Support {

@@ -123,6 +123,14 @@ public class AArch64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fDMB_ATOMICS();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fPACA();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSVEBITPERM();
     }
     // Checkstyle: resume
 }
