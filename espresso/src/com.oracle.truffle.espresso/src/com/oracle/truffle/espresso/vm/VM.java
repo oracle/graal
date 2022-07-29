@@ -496,13 +496,14 @@ public final class VM extends NativeEnv {
 
     @TruffleBoundary(allowInlining = true)
     @VmImpl(isJni = true)
-    public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object) {
+    public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object, @Inject EspressoLanguage lang) {
         /*
          * On SVM + Windows, the System.identityHashCode substitution calls methods blocked for PE
          * (System.currentTimeMillis?).
          */
         if (object.isForeignObject()) {
-            Object foreignObject = object.rawForeignObject(EspressoLanguage.get(null));
+            EspressoLanguage language = lang == null ? EspressoLanguage.get(null) : lang;
+            Object foreignObject = object.rawForeignObject(language);
             InteropLibrary library = InteropLibrary.getUncached(foreignObject);
             if (library.hasIdentity(foreignObject)) {
                 try {

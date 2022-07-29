@@ -446,7 +446,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // In unit tests, Truffle performs additional sanity checks, this assert causes stack
         // overflow.
         // assert InteropLibrary.getUncached().hasIdentity(this);
-        return VM.JVM_IHashCode(mirror());
+        return VM.JVM_IHashCode(mirror(), null /*- path where language is needed is never reached through here. */);
     }
 
     // endregion ### Identity/hashCode
