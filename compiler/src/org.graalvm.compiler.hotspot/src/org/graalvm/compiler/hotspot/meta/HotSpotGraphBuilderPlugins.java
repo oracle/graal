@@ -130,6 +130,9 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
@@ -164,6 +167,11 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * Defines the {@link Plugins} used when running on HotSpot.
  */
 public class HotSpotGraphBuilderPlugins {
+
+    public static class Options {
+        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Expert) //
+        public static final OptionKey<Boolean> ForceExplicitReachabilityFence = new OptionKey<>(false);
+    }
 
     /**
      * Creates a {@link Plugins} object that should be used when running on HotSpot.
@@ -1143,6 +1151,12 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
+        r.register(new StandardGraphBuilderPlugins.ReachabilityFencePlugin() {
+            @Override
+            protected boolean useExplicitReachabilityFence(GraphBuilderContext b) {
+                return Options.ForceExplicitReachabilityFence.getValue(b.getOptions());
+            }
+        });
         r.register(new InlineOnlyInvocationPlugin("refersTo0", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
