@@ -127,9 +127,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             throw debug.handle(t);
         }
 
-        EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graphToEncode, architecture);
-        persistentGraphCache.put(method, encodedGraph);
-        return encodedGraph;
+        return GraphEncoder.encodeSingleGraph(graphToEncode, architecture);
     }
 
     @SuppressWarnings("try")
@@ -234,6 +232,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                 throw debug.handle(ex);
             }
         }
+        persistentGraphCache.put(method, result);
         return result;
     }
 
@@ -265,6 +264,14 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             }
         } else {
             // Assumptions validated, avoid further checks.
+            localGraphCache.put(method, result);
+        }
+
+        // Cached graph from previous compilation may not have source positions, re-parse and store
+        // in compilation-local cache.
+        if (trackNodeSourcePosition && !result.trackNodeSourcePosition()) {
+            result = createGraph(method, intrinsicBytecodeProvider, isSubstitution);
+            assert result.trackNodeSourcePosition();
             localGraphCache.put(method, result);
         }
 
