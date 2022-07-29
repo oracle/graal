@@ -145,7 +145,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                     }
                 }
             });
-            beforeSleep.await();
+            beforeSleep.await(10, TimeUnit.SECONDS);
             context.close(true);
             future.get();
         } finally {

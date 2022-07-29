@@ -218,6 +218,8 @@ innr public final Builder
 intf java.lang.AutoCloseable
 meth public <%0 extends java.lang.Object> {%%0} leaveAndEnter(com.oracle.truffle.api.nodes.Node,java.util.function.Supplier<{%%0}>)
 meth public boolean equals(java.lang.Object)
+meth public boolean initializeInternal(com.oracle.truffle.api.nodes.Node,java.lang.String)
+meth public boolean initializePublic(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public boolean isActive()
 meth public boolean isCancelling()
 meth public boolean isClosed()
@@ -241,13 +243,32 @@ hfds CONTEXT_ASSERT_STACK,EMPTY,creator,polyglotContext
 CLSS public final com.oracle.truffle.api.TruffleContext$Builder
  outer com.oracle.truffle.api.TruffleContext
 meth public com.oracle.truffle.api.TruffleContext build()
+meth public com.oracle.truffle.api.TruffleContext$Builder allowCreateProcess(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowCreateThread(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowHostClassLoading(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowHostClassLookup(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowIO(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowInheritAccess(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowInheritEnvironmentAccess(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowNativeAccess(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder allowPolyglotAccess(boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder arguments(java.lang.String,java.lang.String[])
 meth public com.oracle.truffle.api.TruffleContext$Builder config(java.lang.String,java.lang.Object)
+meth public com.oracle.truffle.api.TruffleContext$Builder environment(java.lang.String,java.lang.String)
+meth public com.oracle.truffle.api.TruffleContext$Builder environment(java.util.Map<java.lang.String,java.lang.String>)
+meth public com.oracle.truffle.api.TruffleContext$Builder err(java.io.OutputStream)
+meth public com.oracle.truffle.api.TruffleContext$Builder forceSharing(java.lang.Boolean)
+meth public com.oracle.truffle.api.TruffleContext$Builder in(java.io.InputStream)
 meth public com.oracle.truffle.api.TruffleContext$Builder initializeCreatorContext(boolean)
 meth public com.oracle.truffle.api.TruffleContext$Builder onCancelled(java.lang.Runnable)
 meth public com.oracle.truffle.api.TruffleContext$Builder onClosed(java.lang.Runnable)
 meth public com.oracle.truffle.api.TruffleContext$Builder onExited(java.util.function.Consumer<java.lang.Integer>)
+meth public com.oracle.truffle.api.TruffleContext$Builder option(java.lang.String,java.lang.String)
+meth public com.oracle.truffle.api.TruffleContext$Builder options(java.util.Map<java.lang.String,java.lang.String>)
+meth public com.oracle.truffle.api.TruffleContext$Builder out(java.io.OutputStream)
+meth public com.oracle.truffle.api.TruffleContext$Builder timeZone(java.time.ZoneId)
 supr java.lang.Object
-hfds config,initializeCreatorContext,onCancelledRunnable,onClosedRunnable,onExitedRunnable,sourceEnvironment
+hfds allowCreateProcess,allowCreateThread,allowEnvironmentAccess,allowHostClassLoading,allowHostLookup,allowIO,allowNativeAccess,allowPolyglotAccess,arguments,config,environment,err,in,inheritAccess,initializeCreatorContext,onCancelled,onClosed,onExited,options,out,permittedLanguages,sharingEnabled,sourceEnvironment,timeZone
 
 CLSS public final com.oracle.truffle.api.TruffleFile
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY
@@ -429,6 +450,7 @@ CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage
 meth public !varargs com.oracle.truffle.api.CallTarget parseInternal(com.oracle.truffle.api.source.Source,java.lang.String[])
 meth public !varargs com.oracle.truffle.api.CallTarget parsePublic(com.oracle.truffle.api.source.Source,java.lang.String[])
+meth public !varargs com.oracle.truffle.api.TruffleContext$Builder newInnerContextBuilder(java.lang.String[])
 meth public !varargs com.oracle.truffle.api.TruffleFile createTempDirectory(com.oracle.truffle.api.TruffleFile,java.lang.String,java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
 meth public !varargs com.oracle.truffle.api.TruffleFile createTempFile(com.oracle.truffle.api.TruffleFile,java.lang.String,java.lang.String,java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
 meth public !varargs com.oracle.truffle.api.io.TruffleProcessBuilder newProcessBuilder(java.lang.String[])
@@ -436,6 +458,7 @@ meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.In
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
 meth public boolean initializeLanguage(com.oracle.truffle.api.nodes.LanguageInfo)
+meth public boolean isAllAccessAllowed()
 meth public boolean isCreateProcessAllowed()
 meth public boolean isCreateThreadAllowed()
 meth public boolean isHostException(java.lang.Throwable)
@@ -443,6 +466,7 @@ meth public boolean isHostFunction(java.lang.Object)
 meth public boolean isHostLookupAllowed()
 meth public boolean isHostObject(java.lang.Object)
 meth public boolean isHostSymbol(java.lang.Object)
+meth public boolean isIOAllowed()
 meth public boolean isMimeTypeSupported(java.lang.String)
 meth public boolean isNativeAccessAllowed()
 meth public boolean isPolyglotBindingsAccessAllowed()
@@ -450,6 +474,7 @@ meth public boolean isPolyglotEvalAllowed()
 meth public boolean isPreInitialization()
 meth public com.oracle.truffle.api.TruffleContext getContext()
 meth public com.oracle.truffle.api.TruffleContext$Builder newContextBuilder()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.TruffleFile getCurrentWorkingDirectory()
 meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile getInternalTruffleFile(java.net.URI)

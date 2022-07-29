@@ -505,7 +505,7 @@ public class ContextPolicyTest {
         remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
         remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
         remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
-        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         context0.eval(source0);
         remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);

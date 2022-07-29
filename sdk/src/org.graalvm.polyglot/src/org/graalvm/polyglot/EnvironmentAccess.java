@@ -56,7 +56,7 @@ public final class EnvironmentAccess {
      *
      * @since 19.1.0
      */
-    public static final EnvironmentAccess NONE = new EnvironmentAccess();
+    public static final EnvironmentAccess NONE = new EnvironmentAccess("NONE");
 
     /**
      * Provides guest languages read access to process environment. The {@code INHERIT} is a default
@@ -65,8 +65,22 @@ public final class EnvironmentAccess {
      *
      * @since 19.1.0
      */
-    public static final EnvironmentAccess INHERIT = new EnvironmentAccess();
+    public static final EnvironmentAccess INHERIT = new EnvironmentAccess("INHERIT");
 
-    private EnvironmentAccess() {
+    private final String name;
+
+    private EnvironmentAccess(String name) {
+        this.name = name;
     }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.3
+     */
+    @Override
+    public String toString() {
+        return name;
+    }
+
 }

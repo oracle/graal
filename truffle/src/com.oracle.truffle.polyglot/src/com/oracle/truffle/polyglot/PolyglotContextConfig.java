@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -72,6 +73,7 @@ final class PolyglotContextConfig {
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
+    final boolean allAccessAllowed;
     final boolean hostLookupAllowed;
     final boolean nativeAccessAllowed;
     final boolean createThreadAllowed;
@@ -79,8 +81,9 @@ final class PolyglotContextConfig {
     final boolean createProcessAllowed;
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
+    final Set<String> onlyLanguages;
     final Set<String> allowedPublicLanguages;
-    private final Map<String, String> originalOptions;
+    final Map<String, String> originalOptions;
     private final Map<String, OptionValuesImpl> optionsById;
     @CompilationFinal FileSystem fileSystem;
     @CompilationFinal FileSystem internalFileSystem;
@@ -88,17 +91,23 @@ final class PolyglotContextConfig {
     final Handler logHandler;
     final PolyglotAccess polyglotAccess;
     final ProcessHandler processHandler;
-    private final EnvironmentAccess environmentAccess;
-    private final Map<String, String> environment;
-    private volatile Map<String, String> configuredEnvironement;
-    private final ZoneId timeZone;
+    final EnvironmentAccess environmentAccess;
+    final Map<String, String> customEnvironment;
+    private volatile Map<String, String> resolvedEnvironment;
+    final ZoneId timeZone;
     final PolyglotLimits limits;
     final ClassLoader hostClassLoader;
     private final List<PolyglotInstrument> configuredInstruments;
     private final Set<PolyglotLanguage> configuredLanguages;
     final HostAccess hostAccess;
+    final Boolean forceCodeSharing;
     final boolean allowValueSharing;
     final boolean useSystemExit;
+    final boolean allowExperimentalOptions;
+    final Map<String, Object> creatorArguments;
+    final Runnable onCancelled;
+    final Consumer<Integer> onExited;
+    final Runnable onClosed;
 
     /**
      * Contains all data of a polyglot context config that can be remembered safely without causing
@@ -184,10 +193,11 @@ final class PolyglotContextConfig {
 
     PolyglotContextConfig(PolyglotEngineImpl engine, FileSystem fs, FileSystem internalFs,
                     PreinitConfig sharableConfig) {
-        this(engine,
+        this(engine, null,
                         System.out,
                         System.err,
                         System.in,
+                        false,
                         false, // never any host lookup should be allowed in context preinit
                         sharableConfig.polyglotAccess, // TODO GR-14657 change this to NONE
                         sharableConfig.nativeAccessAllowed,
@@ -210,31 +220,39 @@ final class PolyglotContextConfig {
                         null,
                         null,
                         sharableConfig.allowValueSharing,
-                        sharableConfig.useSystemExit);
+                        sharableConfig.useSystemExit,
+                        null, null, null, null);
     }
 
-    PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
-                    boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
+    PolyglotContextConfig(PolyglotEngineImpl engine, Boolean forceSharing,
+                    OutputStream out, OutputStream err, InputStream in,
+                    boolean allAccessAllowed, boolean hostLookupAllowed, PolyglotAccess polyglotAccess,
+                    boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> onlyLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing, boolean useSystemExit) {
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing, boolean useSystemExit,
+                    Map<String, Object> creatorArguments, Runnable onCancelled, Consumer<Integer> onExited, Runnable onClosed) {
         assert out != null;
         assert err != null;
         assert in != null;
         assert environmentAccess != null;
+        this.forceCodeSharing = forceSharing;
         this.out = out;
         this.err = err;
         this.in = in;
+        this.allAccessAllowed = allAccessAllowed;
         this.hostLookupAllowed = hostLookupAllowed;
         this.polyglotAccess = polyglotAccess;
         this.nativeAccessAllowed = nativeAccessAllowed;
         this.createThreadAllowed = createThreadAllowed;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;
+        this.allowExperimentalOptions = allowExperimentalOptions;
         this.createProcessAllowed = createProcessAllowed;
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
+        this.onlyLanguages = onlyLanguages;
         this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getLanguages().keySet() : onlyLanguages;
         this.fileSystem = publicFileSystem;
         this.internalFileSystem = internalFileSystem;
@@ -288,10 +306,23 @@ final class PolyglotContextConfig {
         this.configuredLanguages = languages == null ? Collections.emptySet() : languages;
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
-        this.environment = environment == null ? Collections.emptyMap() : environment;
+        this.customEnvironment = environment == null || environment.isEmpty() ? Collections.emptyMap() : new HashMap<>(environment);
         this.hostAccess = hostAccess;
         this.hostClassLoader = hostClassLoader;
         this.useSystemExit = useSystemExit;
+        this.creatorArguments = creatorArguments;
+        this.onCancelled = onCancelled;
+        this.onExited = onExited;
+        this.onClosed = onClosed;
+
+    }
+
+    boolean isCodeSharingForced() {
+        return forceCodeSharing != null && forceCodeSharing;
+    }
+
+    boolean isCodeSharingDisabled() {
+        return forceCodeSharing != null && !forceCodeSharing;
     }
 
     void addConfiguredLanguage(PolyglotEngineImpl engine, Set<PolyglotLanguage> languages, PolyglotLanguage language) {
@@ -307,6 +338,10 @@ final class PolyglotContextConfig {
                 collectDependentLanguages(engine, language.cache.getDependentLanguages(), foundLanguages);
             }
         }
+    }
+
+    boolean isAllowIO() {
+        return !FileSystems.hasNoAccess(fileSystem);
     }
 
     ZoneId getTimeZone() {
@@ -389,24 +424,24 @@ final class PolyglotContextConfig {
     }
 
     Map<String, String> getEnvironment() {
-        Map<String, String> result = configuredEnvironement;
+        Map<String, String> result = resolvedEnvironment;
         if (result == null) {
             synchronized (this) {
-                result = configuredEnvironement;
+                result = resolvedEnvironment;
                 if (result == null) {
                     if (environmentAccess == EnvironmentAccess.NONE) {
-                        result = Collections.unmodifiableMap(environment);
+                        result = Collections.unmodifiableMap(customEnvironment);
                     } else if (PolyglotEngineImpl.ALLOW_ENVIRONMENT_ACCESS && environmentAccess == EnvironmentAccess.INHERIT) {
                         result = System.getenv();  // System.getenv returns unmodifiable map.
-                        if (!environment.isEmpty()) {
+                        if (!customEnvironment.isEmpty()) {
                             result = new HashMap<>(result);
-                            result.putAll(environment);
+                            result.putAll(customEnvironment);
                             result = Collections.unmodifiableMap(result);
                         }
                     } else {
                         throw PolyglotEngineException.unsupported(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
                     }
-                    configuredEnvironement = result;
+                    resolvedEnvironment = result;
                 }
             }
         }

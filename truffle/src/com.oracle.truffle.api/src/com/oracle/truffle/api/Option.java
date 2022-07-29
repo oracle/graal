@@ -104,7 +104,7 @@ public @interface Option {
      * Returns a help message for the option. New lines can be embedded in the message with
      * {@code "%n"}. The generated an option descriptor returns this value as result of
      * {@link OptionDescriptor#getHelp()}.
-     * 
+     *
      * Recommendation:
      * <ul>
      * <li>Include the default value for the option and the end of the text, e.g.
@@ -151,7 +151,7 @@ public @interface Option {
      * Describes in short the syntax of accepted values for this option. This value is used when
      * generating help messages to better explain how to use the option. Combine with the help
      * message to illustrate to users how to correctly use the option. For example:
-     * 
+     *
      * <pre>
      * &#64;Option(name = "Enabled", help = "Enable/Disable the option.", usageSyntax = "true|false")
      * </pre>
@@ -176,7 +176,7 @@ public @interface Option {
      * address - <code>"*.*.*.*"</code>, CSV Person -
      * <code>"&lt;firstName&gt;,&lt;lastName&gt;,&lt;age&gt;"</code>.
      * </ul>
-     * 
+     *
      * @since 22.1
      */
     String usageSyntax() default "";
@@ -194,7 +194,7 @@ public @interface Option {
      */
     @Retention(RetentionPolicy.CLASS)
     @Target(ElementType.TYPE)
-    public @interface Group {
+    @interface Group {
 
         /**
          * A set of group names that are used as prefix for all options of the annotated class. If

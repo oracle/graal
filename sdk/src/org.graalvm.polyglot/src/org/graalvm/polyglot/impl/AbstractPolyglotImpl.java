@@ -560,7 +560,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in,
+                        boolean allowAllAccess,
+                        boolean allowHostLookup,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,

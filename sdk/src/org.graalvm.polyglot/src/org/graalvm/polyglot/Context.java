@@ -984,8 +984,8 @@ public final class Context implements AutoCloseable {
      *            {@link Builder#engine(Engine) engine} was specified then only those languages may
      *            be used that were installed and {@link Engine#newBuilder(String...) permitted} by
      *            the specified engine. Languages are validated when the context is
-     *            {@link Builder#build() built}. If {@link IllegalArgumentException} will be thrown
-     *            when an unknown or a language denied by the engine was used.
+     *            {@link Builder#build() built}. An {@link IllegalArgumentException} will be thrown
+     *            if an unknown or a language denied by the engine was used.
      * @return a builder that can create a context
      * @since 19.0
      */
@@ -1430,8 +1430,8 @@ public final class Context implements AutoCloseable {
          * @since 19.0
          */
         public Builder options(Map<String, String> options) {
-            for (String key : options.keySet()) {
-                option(key, options.get(key));
+            for (var entry : options.entrySet()) {
+                option(entry.getKey(), entry.getValue());
             }
             return this;
         }
@@ -1834,7 +1834,8 @@ public final class Context implements AutoCloseable {
                 contextErr = err;
                 contextIn = in;
             }
-            ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+            ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, allowAllAccess,
+                            hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                             io, hostClassLoading, experimentalOptions,
                             localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,

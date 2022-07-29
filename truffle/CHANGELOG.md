@@ -4,11 +4,28 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.3.0
 
+* GR-40163 Deprecated `TruffleLanguage.Env.newContextBuilder()` and replaced it with a new method `TruffleLanguage.Env.newInnerContextBuilder(String...)`. The new method does no longer inherit all privileges from the parent context and does no longer initialize the creator context by default. The new method also allows to set the permitted languages for the inner context similarly as in the polyglot embedding API. 
+* GR-40163 Changed behavior: Inner contexts do no longer inherit application arguments from the outer context. It is now possible to set application arguments explicitly for inner contexts using `TruffleContext.Builder.arguments(String, String[])`.
+* GR-40163 Changed behavior: Inner contexts do no longer use system exit on exit even if the polyglot embedder specified it with `Context.Builder.useSystemExit(boolean)` for the outer context.
+* GR-40163 Added new capabilities to `TruffleContext`:
+	* Added `TruffleContext.Builder.out(OutputStream)`, `TruffleContext.Builder.err(OutputStream)` and `TruffleContext.Builder.in(InputStream)` to customize streams for inner contexts. 
+	* GR-35358 Added `TruffleContext.Builder.forceSharing(Boolean)` to force or deny code sharing for inner contexts.
+	* GR-36927 Added `TruffleContext.Builder.option(String, String)` to override language options for inner contexts. This is currently only supported if all access privileges have been granted by the embedder.
+	* Added `TruffleContext.Builder.allowInheritAccess(boolean)` which allows to enable access privilege inheritance from the outer context. By default this flag is `false`. 
+	* Access privileges can now be individually granted or denied. Note that an inner context still cannot use any of the privileges that have not been granted to the outer context. For example, if the outer context has no access to IO then the inner context won't have access to IO even if the privilege is set for the inner context. The following new method were added to configure privileges for inner contexts:
+		* `TruffleContext.Builder.allowCreateThreads(boolean)` 
+		* `TruffleContext.Builder.allowNativeAccess(boolean)` 
+		* `TruffleContext.Builder.allowIO(boolean)` 
+		* `TruffleContext.Builder.allowHostClassLoading(boolean)` 
+		* `TruffleContext.Builder.allowHostLookup(boolean)` 
+		* `TruffleContext.Builder.allowCreateProcess(boolean)` 
+		* `TruffleContext.Builder.allowPolyglotAccess(boolean)` 
+		* `TruffleContext.Builder.allowInheritEnvironmentAccess(boolean)` 
+* GR-40163 Added `TruffleContext.initializePublic(Node, String)` and `TruffleContext.initializeInternal(Node, String)` to initialize a public or internal language of an inner context.
 * GR-39354 TruffleStrings: added ErrorHandling parameter to CreateForwardIteratorNode and CreateBackwardIteratorNode.
 * GR-40062 `String.indexOf` methods are no longer considered PE safe and using them will now fail the native-image block list check. Use `TruffleString` instead or put them behind a `@TruffleBoundary`.
 
 * GR-39354 TruffleStrings: added ErrorHandling parameter to ByteLengthOfCodePointNode, CodePointAtIndexNode and CodePointAtByteIndexNode.
-
 * GR-39219 Removed several deprecated APIs:
     * Removed deprecated `FrameSlot` API. The API was deprecated in 22.0.
     * Removed deprecated `CompilerOptions` API. The API was deprecated in 22.1.

@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.api.test;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import static com.oracle.truffle.api.TruffleLanguage.Registration;
 import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.execute;
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -56,7 +56,10 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -66,6 +69,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.NullObject;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 /*
@@ -575,6 +579,72 @@ public class TruffleContextTest {
             assertTrue(pe.asHostException() instanceof IllegalStateException);
             assertEquals("The Context is already closed.", pe.asHostException().getMessage());
         }
+    }
+
+    @Registration
+    static class InitializePublicInnerContextLanguage extends AbstractExecutableTestLanguage {
+
+        @TruffleBoundary
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext innerContext = env.newInnerContextBuilder().build();
+            assertEquals(true, innerContext.initializePublic(null, PublicLanguage.ID));
+            assertFails(() -> innerContext.initializePublic(null, InternalLanguage.ID), IllegalArgumentException.class);
+            innerContext.close();
+            return null;
+        }
+    }
+
+    @Test
+    public void testInitializePublicInnerContext() {
+        try (Context c = Context.create()) {
+            execute(c, InitializePublicInnerContextLanguage.class);
+        }
+    }
+
+    @Registration
+    static class InitializeInternalInnerContextLanguage extends AbstractExecutableTestLanguage {
+
+        @TruffleBoundary
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext innerContext = env.newInnerContextBuilder().build();
+            assertEquals(true, innerContext.initializeInternal(null, PublicLanguage.ID));
+            assertEquals(true, innerContext.initializeInternal(null, InternalLanguage.ID));
+            innerContext.close();
+            return null;
+        }
+    }
+
+    @Test
+    public void testInitializeInternalInnerContext() {
+        try (Context c = Context.create()) {
+            execute(c, InitializeInternalInnerContextLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class PublicLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(PublicLanguage.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+
+    }
+
+    @TruffleLanguage.Registration(internal = true)
+    static class InternalLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(InternalLanguage.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+
     }
 
 }

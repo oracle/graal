@@ -222,7 +222,9 @@ hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTranspo
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT
 fld public final static org.graalvm.polyglot.EnvironmentAccess NONE
+meth public java.lang.String toString()
 supr java.lang.Object
+hfds name
 
 CLSS public final org.graalvm.polyglot.HostAccess
 fld public final static org.graalvm.polyglot.HostAccess ALL

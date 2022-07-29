@@ -123,7 +123,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testCreate() {
         setupEnv();
 
-        TruffleContext tc = languageEnv.newContextBuilder().build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().build();
         assertNotEquals(tc, languageEnv.getContext());
         assertFalse(tc.isEntered());
         assertFalse(tc.isClosed());
@@ -146,7 +146,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testSimpleForceClose() {
         setupEnv();
 
-        TruffleContext tc = languageEnv.newContextBuilder().build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().build();
         assertFalse(tc.isClosed());
         assertFalse(tc.isCancelling());
         tc.closeCancelled(null, "testreason");
@@ -448,8 +448,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testContextHierarchy() {
         setupEnv();
 
-        TruffleContext tc1 = languageEnv.newContextBuilder().build();
-        TruffleContext tc2 = languageEnv.newContextBuilder().build();
+        TruffleContext tc1 = languageEnv.newInnerContextBuilder().build();
+        TruffleContext tc2 = languageEnv.newInnerContextBuilder().build();
 
         assertFalse(tc1.isActive());
         assertFalse(tc1.isEntered());
@@ -527,7 +527,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     @Test
     public void testInitializeCreatorContext() {
         setupEnv();
-        TruffleContext innerContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
+        TruffleContext innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(false).build();
         Object prev = innerContext.enter(null);
         try {
             assertNull(ProxyLanguage.LanguageContext.get(null));
@@ -536,7 +536,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         }
         innerContext.close();
 
-        innerContext = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         prev = innerContext.enter(null);
         try {
             assertNotNull(ProxyLanguage.LanguageContext.get(null));

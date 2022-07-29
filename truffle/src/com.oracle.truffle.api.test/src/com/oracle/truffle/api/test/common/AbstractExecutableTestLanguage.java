@@ -40,108 +40,105 @@
  */
 package com.oracle.truffle.api.test.common;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
+import org.graalvm.polyglot.proxy.ProxyArray;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.TestAPIAccessor;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.ExecutableContext;
 
-public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<AbstractExecutableTestLanguage.ExecutableContext> {
+public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<ExecutableContext> {
 
-    static final String ARG_KEY_PREFIX = "_$arg";
+    private static final String ARGUMENTS = "_$arguments";
 
-    private static void validateAndSetContextArguments(Context ctx, String languageId, Object[] contextArgs) {
-        validateArguments(contextArgs, ctx);
-        for (int i = 0; i < contextArgs.length; i++) {
-            ctx.getBindings(languageId).putMember(ARG_KEY_PREFIX + i, contextArgs[i]);
-        }
+    public static Value execute(Context context, Class<? extends AbstractExecutableTestLanguage> clazz, Object... contextArgs) {
+        String languageId = TestUtils.getDefaultLanguageId(clazz);
+        return evalTestLanguage(context, clazz, Source.create(languageId, ""), contextArgs);
     }
 
-    public static Value evalTestLanguage(Context ctx, Class<? extends AbstractExecutableTestLanguage> clazz, Source source, Object... contextArgs) {
+    public static Value evalTestLanguage(Context context, Class<? extends AbstractExecutableTestLanguage> clazz, Source source, Object... contextArgs) {
         String languageId = TestUtils.getDefaultLanguageId(clazz);
         assertEquals(languageId, source.getLanguage());
-        validateAndSetContextArguments(ctx, languageId, contextArgs);
-        return ctx.eval(source);
+        context.getBindings(languageId).putMember(ARGUMENTS, createHostToGuestArguments(context, contextArgs));
+        return context.eval(source);
     }
 
-    public static Value evalTestLanguage(Context ctx, Class<? extends AbstractExecutableTestLanguage> clazz, CharSequence source, Object... contextArgs) {
+    public static Value evalTestLanguage(Context context, Class<? extends AbstractExecutableTestLanguage> clazz, CharSequence source, Object... contextArgs) {
         String languageId = TestUtils.getDefaultLanguageId(clazz);
-        validateAndSetContextArguments(ctx, languageId, contextArgs);
-        return ctx.eval(languageId, source);
+        return evalTestLanguage(context, clazz, Source.create(languageId, source), contextArgs);
     }
 
-    private static void validateArguments(Object[] args, Context ctx) {
+    private static Object createHostToGuestArguments(Context context, Object[] args) {
         for (Object object : args) {
-            if (!InteropLibrary.isValidValue(object) && !(object instanceof Proxy)) {
+            if (object != null && !InteropLibrary.isValidValue(object) && !(object instanceof Proxy)) {
                 /*
                  * The following check is not precise, because a host object can have no member keys
                  * even if host access is enabled, but as there is no direct way to determine if
                  * host access is enabled, this is the best test we came up with.
                  */
-                Value value = ctx.asValue(object);
+                Value value = context.asValue(object);
                 if (value.isHostObject() && value.getMemberKeys().isEmpty()) {
                     throw new AssertionError("Value " + object + " is of type " + object.getClass().getName() + " which is not a valid interop primitive but host access is not allowed. " +
                                     "Please allow host access or use primitive args only. Add builder.hostAccess(HostAccess.ALL) to enable host access.");
                 }
             }
         }
+        return ProxyArray.fromArray(args);
     }
 
-    public static Value parseTestLanguage(Context ctx, Class<? extends AbstractExecutableTestLanguage> clazz, CharSequence source, Object... contextArgs) {
+    public static Value parseTestLanguage(Context context, Class<? extends AbstractExecutableTestLanguage> clazz, CharSequence source, Object... contextArgs) {
         String languageId = TestUtils.getDefaultLanguageId(clazz);
-        validateAndSetContextArguments(ctx, languageId, contextArgs);
-        return ctx.parse(languageId, source);
+        return parseTestLanguage(context, clazz, Source.create(languageId, source), contextArgs);
     }
 
-    public static Value parseTestLanguage(Context ctx, Class<? extends AbstractExecutableTestLanguage> clazz, Source source, Object... contextArgs) {
+    public static Value parseTestLanguage(Context context, Class<? extends AbstractExecutableTestLanguage> clazz, Source source, Object... contextArgs) {
         String languageId = TestUtils.getDefaultLanguageId(clazz);
         assertEquals(languageId, source.getLanguage());
-        validateAndSetContextArguments(ctx, languageId, contextArgs);
-        return ctx.parse(source);
+        context.getBindings(languageId).putMember(ARGUMENTS, createHostToGuestArguments(context, contextArgs));
+        return context.parse(source);
     }
 
     protected final InteropLibrary interop = InteropLibrary.getFactory().createDispatched(3);
 
     @Override
     protected final ExecutableContext createContext(Env env) {
-        return new ExecutableContext(AbstractExecutableTestLanguage.this.getClass(), env);
+        return new ExecutableContext(getClass(), env);
     }
 
     @Override
     @SuppressWarnings("unused")
     protected final CallTarget parse(ParsingRequest request) throws Exception {
-        ExecutableContext executableContext = TestAPIAccessor.engineAccess().getCurrentContext(AbstractExecutableTestLanguage.this.getClass());
-        Object[] ctxArgs = createArgumentsArray(executableContext);
-        onParse(request, executableContext.env, ctxArgs);
-        String rootNodeName = getRootName(request, executableContext.env, ctxArgs);
+        ExecutableContext executableContext = TestAPIAccessor.engineAccess().getCurrentContext(getClass());
+        Object[] contextArgs = createArgumentsArray(executableContext);
+        onParse(request, executableContext.env, contextArgs);
         com.oracle.truffle.api.source.Source source = request.getSource();
+        String rootNodeName = getRootName(request, executableContext.env, contextArgs);
         SourceSection srcSec = source.hasCharacters() ? source.createSection(0, request.getSource().getLength()) : null;
         return new RootNode(this, null) {
             @Child InteropLibrary interopLibrary = interop;
             private final SourceSection sourceSection = srcSec;
-            @CompilationFinal(dimensions = 1) private final Object[] contextArguments = ctxArgs;
+            @CompilationFinal(dimensions = 1) private final Object[] contextArguments = contextArgs;
 
             @Override
             public Object execute(VirtualFrame frame) {
                 ExecutableContext execCtx = TestAPIAccessor.engineAccess().getCurrentContext(AbstractExecutableTestLanguage.this.getClass());
                 try {
-                    Object returnValue = AbstractExecutableTestLanguage.this.execute(this, execCtx.env, contextArguments,
-                                    frame.getArguments());
+                    Object returnValue = AbstractExecutableTestLanguage.this.execute(this, execCtx.env, contextArguments, frame.getArguments());
 
                     if (returnValue == null) {
                         return NullObject.SINGLETON;
@@ -171,24 +168,43 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
         }.getCallTarget();
     }
 
-    private static Object[] createArgumentsArray(ExecutableContext executableContext) {
-        int argumentsIndex = 0;
-        List<Object> argumentsList = new ArrayList<>();
-        while (executableContext.scope.contains(ARG_KEY_PREFIX + argumentsIndex)) {
-            argumentsList.add(executableContext.scope.get(ARG_KEY_PREFIX + argumentsIndex));
-            argumentsIndex++;
+    private static Object[] createArgumentsArray(ExecutableContext c) {
+        try {
+            Object arguments = c.scope.get(ARGUMENTS);
+            if (arguments == null) {
+                return new Object[0];
+            }
+            InteropLibrary interop = InteropLibrary.getUncached(arguments);
+            int size = (int) interop.getArraySize(arguments);
+            Object[] values = new Object[size];
+            for (int i = 0; i < size; i++) {
+                Object value = interop.readArrayElement(arguments, i);
+                // unbox host null
+                if (c.env.isHostObject(value) && InteropLibrary.getUncached().isNull(value)) {
+                    value = null;
+                }
+                values[i] = value;
+            }
+            return values;
+        } catch (InteropException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
-        return argumentsList.toArray(new Object[argumentsIndex]);
     }
 
-    public static class ExecutableContext {
+    public static final class ExecutableContext {
 
         public final Env env;
         final InteropMapObject scope;
 
         ExecutableContext(Class<? extends AbstractExecutableTestLanguage> clazz, Env env) {
             this.env = env;
-            this.scope = new InteropMapObject(clazz, clazz.getSimpleName() + " scope");
+            this.scope = new InteropMapObject(clazz) {
+                @Override
+                @TruffleBoundary
+                Object toDisplayString(boolean allowSideEffects) {
+                    return clazz.getSimpleName() + ".scope";
+                }
+            };
         }
 
     }
@@ -200,7 +216,7 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
 
     /**
      * Subclasses implement this method to define a particular behavior of the language.
-     * 
+     *
      * @param node root node of the main call target.
      * @param env {@link TruffleLanguage.Env}.
      * @param contextArguments context arguments that can be set only once for a particular source
