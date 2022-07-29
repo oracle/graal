@@ -29,6 +29,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-24927 Truffle DSL now automatically materalizes frames when a `Frame` parameter is used in an uncached instance of a `@Specialization`. For example, if it rewrites itself to an uncached version due to the usage of a `@CachedLibrary`.
 
 * GR-31304 `Debugger.disableStepping()` and `Debugger.restoreStepping()` added to disable/restore stepping on a dedicated thread on a specific code path.
+* (GR-35797) The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
+* GR-39415 Experimental options are on by default in the TCK test Context. Added `LanguageProviders.additionalOptions()` which allows TCK providers to set their language's options in the test context (Attempts to set other languages' options will result in an `IllegalArgumentException` while creation the context).
 
 ## Version 22.2.0
 
