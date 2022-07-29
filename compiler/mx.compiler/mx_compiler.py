@@ -221,15 +221,16 @@ def _nodeCostDump(args, extraVMarguments=None):
     else:
         print(out.data)
 
-def _ctw_jvmci_export_args():
+def _ctw_jvmci_export_args(arg_prefix='--'):
     """
     Gets the VM args needed to export JVMCI API required by CTW.
     """
-    return ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+    args = ['add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
+            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+    return [arg_prefix + arg for arg in args]
 
 def _ctw_system_properties_suffix():
     out = mx.OutputCapture()
