@@ -41,6 +41,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -159,6 +162,8 @@ public final class PolyglotNativeAPI {
 
         PolyglotStatus lastErrorCode = poly_ok;
     }
+
+    private static final ExecutorService closeContextExecutor = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 5L, TimeUnit.SECONDS, new SynchronousQueue<>());
 
     @CEntryPoint(name = "poly_create_engine_builder", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Creates a new context builder that allows to configure an engine instance.",
@@ -492,6 +497,22 @@ public final class PolyglotNativeAPI {
         resetErrorState();
         Context jContext = fetchHandle(context);
         jContext.close(cancel_if_executing);
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_context_close_async", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Request for this context to be closed asynchronously.",
+                    "An attempt to closed this context will later be made via a background thread.",
+                    "Note this call will attempt to close a context; however, it is not guaranteed the closure will be successful.",
+                    "",
+                    " @param context to be closed.",
+                    " @return poly_ok if closure request submitted, poly_generic_error if there is a failure.",
+                    " @since 22.3",
+    })
+    public static PolyglotStatus poly_context_close_async(PolyglotIsolateThread thread, PolyglotContext context) {
+        resetErrorState();
+        Context jContext = fetchHandle(context);
+        closeContextExecutor.execute(() -> jContext.close(true));
         return poly_ok;
     }
 
