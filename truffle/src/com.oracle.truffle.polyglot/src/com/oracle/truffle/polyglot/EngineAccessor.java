@@ -1724,33 +1724,99 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Thread createSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
-            return new SystemThread((PolyglotInstrument) polyglotInstrument, runnable, threadGroup);
-        }
-    }
-
-    static final class SystemThread extends Thread {
-
-        final String instrumentId;
-        private final PolyglotEngineImpl engine;
-
-        SystemThread(PolyglotInstrument polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
-            super(threadGroup, runnable);
-            instrumentId = polyglotInstrument.getId();
-            engine = polyglotInstrument.engine;
+        public Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
+            return new InstrumentSystemThread((PolyglotInstrument) polyglotInstrument, runnable, threadGroup);
         }
 
         @Override
+        public Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
+            return new LanguageSystemThread((PolyglotLanguageContext) polyglotLanguageContext, runnable, threadGroup);
+        }
+    }
+
+    abstract static class SystemThread extends Thread {
+
+        private final PolyglotImpl polyglot;
+
+        SystemThread(Runnable runnable, ThreadGroup threadGroup, PolyglotImpl polyglot) {
+            super(threadGroup, runnable);
+            this.polyglot = polyglot;
+        }
+
+        abstract void beforeExecute();
+
+        abstract void afterExecute();
+
+        @Override
         @SuppressWarnings("try")
-        public void run() {
-            AbstractPolyglotImpl rootPolyglot = engine.getImpl().getRootImpl();
+        public final void run() {
+            AbstractPolyglotImpl rootPolyglot = polyglot.getRootImpl();
             try (ThreadScope threadScope = rootPolyglot.createThreadScope()) {
-                engine.addSystemThread(this);
+                beforeExecute();
                 try {
                     super.run();
                 } finally {
-                    engine.removeSystemThread(this);
+                    afterExecute();
                 }
+            }
+        }
+    }
+
+    static final class InstrumentSystemThread extends SystemThread {
+        final String instrumentId;
+        private final PolyglotEngineImpl engine;
+
+        InstrumentSystemThread(PolyglotInstrument polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
+            super(runnable, threadGroup, polyglotInstrument.engine.impl);
+            this.instrumentId = polyglotInstrument.getId();
+            this.engine = polyglotInstrument.engine;
+            checkClosed();
+        }
+
+        @Override
+        void beforeExecute() {
+            engine.addSystemThread(this);
+            checkClosed();
+        }
+
+        @Override
+        void afterExecute() {
+            engine.removeSystemThread(this);
+        }
+
+        private void checkClosed() {
+            if (engine.closed) {
+                throw new IllegalStateException(String.format("Engine is already closed. Cannot start a new system thread for instrument %s.", instrumentId));
+            }
+        }
+    }
+
+    static final class LanguageSystemThread extends SystemThread {
+
+        final String languageId;
+        private final PolyglotContextImpl polyglotContext;
+
+        LanguageSystemThread(PolyglotLanguageContext polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
+            super(runnable, threadGroup, polyglotLanguageContext.context.engine.impl);
+            this.languageId = polyglotLanguageContext.language.getId();
+            this.polyglotContext = polyglotLanguageContext.context;
+            checkClosed();
+        }
+
+        @Override
+        void beforeExecute() {
+            polyglotContext.addSystemThread(this);
+            checkClosed();
+        }
+
+        @Override
+        void afterExecute() {
+            polyglotContext.removeSystemThread(this);
+        }
+
+        private void checkClosed() {
+            if (polyglotContext.state.isClosed()) {
+                throw new IllegalStateException(String.format("Context is already closed. Cannot start a new system thread for language %s.", languageId));
             }
         }
     }

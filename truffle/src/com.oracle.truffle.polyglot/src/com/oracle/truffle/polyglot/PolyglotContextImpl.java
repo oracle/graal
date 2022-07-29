@@ -63,6 +63,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -109,6 +110,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.EngineAccessor.LanguageSystemThread;
 import com.oracle.truffle.polyglot.EngineAccessor.SystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
@@ -479,6 +481,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     @CompilationFinal private Object hostContextImpl;
 
     final Node uncachedLocation;
+
+    private final Set<LanguageSystemThread> activeSystemThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     /* Constructor for testing. */
     @SuppressWarnings("unused")
@@ -1618,6 +1622,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         finishCleanup();
         checkSubProcessFinished();
+        checkSystemThreadsFinished();
         if (parent == null) {
             engine.polyglotHostService.notifyContextClosed(this, force, invalidResourceLimit, invalidMessage);
         }
@@ -3242,6 +3247,20 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    synchronized void checkSystemThreadsFinished() {
+        if (!activeSystemThreads.isEmpty()) {
+            LanguageSystemThread thread;
+            try {
+                thread = activeSystemThreads.iterator().next();
+            } catch (NoSuchElementException e) {
+                thread = null;
+            }
+            if (thread != null) {
+                throw PolyglotEngineException.illegalState(String.format("The context has an alive system thread %s created by language %s.", thread.getName(), thread.languageId));
+            }
+        }
+    }
+
     static PolyglotContextImpl preinitialize(final PolyglotEngineImpl engine, final PreinitConfig preinitConfig, PolyglotSharingLayer sharableLayer, Set<PolyglotLanguage> languagesToPreinitialize,
                     boolean emitWarning) {
         final FileSystems.PreInitializeContextFileSystem fs = new FileSystems.PreInitializeContextFileSystem();
@@ -3521,5 +3540,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (onClosedRunnable != null) {
             onClosedRunnable.run();
         }
+    }
+
+    synchronized void addSystemThread(LanguageSystemThread thread) {
+        if (!state.isClosed()) {
+            activeSystemThreads.add(thread);
+        }
+    }
+
+    void removeSystemThread(LanguageSystemThread thread) {
+        activeSystemThreads.remove(thread);
     }
 }

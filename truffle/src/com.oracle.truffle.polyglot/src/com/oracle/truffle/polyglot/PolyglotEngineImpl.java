@@ -126,7 +126,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.EngineAccessor.SystemThread;
+import com.oracle.truffle.polyglot.EngineAccessor.InstrumentSystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
@@ -235,7 +235,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final AbstractPolyglotHostService polyglotHostService;
 
-    private final Set<SystemThread> activeServiceThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<InstrumentSystemThread> activeSystemThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, String[] permittedLanguages,
@@ -1232,15 +1232,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             closed = true;
             closingThread = null;
             this.lock.notifyAll();
-            if (!activeServiceThreads.isEmpty()) {
-                SystemThread thread;
+            if (!activeSystemThreads.isEmpty()) {
+                InstrumentSystemThread thread;
                 try {
-                    thread = activeServiceThreads.iterator().next();
+                    thread = activeSystemThreads.iterator().next();
                 } catch (NoSuchElementException e) {
                     thread = null;
                 }
                 if (thread != null) {
-                    throw PolyglotEngineException.illegalState(String.format("The engine has an alive system thread created by instrument %s.", thread.instrumentId));
+                    throw PolyglotEngineException.illegalState(String.format("The engine has an alive system thread %s created by instrument %s.", thread.getName(), thread.instrumentId));
                 }
             }
             if (specializationStatistics != null) {
@@ -2170,18 +2170,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         ensureClosed(false, true, false);
     }
 
-    void addSystemThread(SystemThread thread) {
+    void addSystemThread(InstrumentSystemThread thread) {
         synchronized (lock) {
-            if (closed) {
-                throw new IllegalStateException(String.format("Engine is already closed. Cannot start a new system thread for instrument %s.", thread.instrumentId));
-            } else {
-                activeServiceThreads.add(thread);
+            if (!closed) {
+                activeSystemThreads.add(thread);
             }
         }
     }
 
-    void removeSystemThread(SystemThread thread) {
-        activeServiceThreads.remove(thread);
+    void removeSystemThread(InstrumentSystemThread thread) {
+        activeSystemThreads.remove(thread);
     }
 
     static final class StableLocalLocations {
