@@ -133,7 +133,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public WasmInstance moduleInstantiate(WasmModule module, Object importObject) {
-        final TruffleContext innerTruffleContext = currentContext.environment().newContextBuilder().build();
+        final TruffleContext innerTruffleContext = currentContext.environment().newInnerContextBuilder().initializeCreatorContext(true).build();
         final Object prev = innerTruffleContext.enter(null);
         try {
             final WasmContext instanceContext = WasmContext.get(null);
