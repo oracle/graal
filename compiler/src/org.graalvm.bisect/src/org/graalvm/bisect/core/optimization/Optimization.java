@@ -25,10 +25,10 @@
 package org.graalvm.bisect.core.optimization;
 
 import org.graalvm.bisect.util.Writer;
-import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 /**
- * Represents an optimization in a compiled method at a particular BCI.
+ * Represents an optimization in a compilation unit.
  */
 public interface Optimization extends OptimizationTreeNode {
     /**
@@ -44,21 +44,18 @@ public interface Optimization extends OptimizationTreeNode {
      *
      * @return the map of additional properties
      */
-    EconomicMap<String, Object> getProperties();
+    UnmodifiableEconomicMap<String, Object> getProperties();
 
     /**
-     * Gets the bci of the position where this optimization was performed. The bci can come from a
-     * NodeSourcePosition of a given node or from a FrameState. The value {@link #NO_BCI} means that
-     * no fitting bci could be assigned.
+     * Gets an ordered map that represents the position of a significant node related to this
+     * optimization. It maps method names to byte code indices, starting with the method containing
+     * the significant node and its bci. If the node does not belong the root method in the
+     * compilation unit, the map also contains the method names of the method's callsites mapped to
+     * the byte code indices of their invokes.
      *
-     * @return the byte code index of this optimization
+     * @return an ordered map that represents the position of a significant node
      */
-    int getBCI();
-
-    /**
-     * A special bci value meaning that no byte code index was found.
-     */
-    int NO_BCI = -1;
+    UnmodifiableEconomicMap<String, Integer> getPosition();
 
     /**
      * Writes the representation of this subtree to the destination writer. This is equivalent to

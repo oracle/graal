@@ -29,18 +29,13 @@ import java.util.List;
 import org.graalvm.bisect.util.EconomicMapUtil;
 import org.graalvm.bisect.util.Writer;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
 
 /**
- * Represents an optimization in a compiled method at a particular BCI.
+ * Represents an immutable optimization in a compilation unit.
  */
 public class OptimizationImpl implements Optimization {
-    /**
-     * Gets the bci of the position where this optimization was performed. The bci can come from a
-     * NodeSourcePosition of a given node or from a FrameState. The value {@link #NO_BCI} means that
-     * no fitting bci could be assigned.
-     */
-    private final int bci;
     /**
      * The name of this optimization. Corresponds to the name of the compiler phase or another class
      * which performed this optimization.
@@ -51,15 +46,31 @@ public class OptimizationImpl implements Optimization {
      */
     private final String eventName;
     /**
+     * An ordered map that represents the position of a significant node related to this
+     * optimization. It maps method names to byte code indices, starting with the method containing
+     * the significant node and its bci. If the node does not belong the root method in the
+     * compilation unit, the map also contains the method names of the method's callsites mapped to
+     * the byte code indices of their invokes.
+     */
+    private final UnmodifiableEconomicMap<String, Integer> position;
+    /**
      * The map of additional properties of this optimization, mapped by property name.
      */
-    private final EconomicMap<String, Object> properties;
+    private final UnmodifiableEconomicMap<String, Object> properties;
+    /**
+     * A pre-calculated hash code.
+     */
+    private final int cachedHashCode;
 
-    public OptimizationImpl(String optimizationName, String eventName, int bci, EconomicMap<String, Object> properties) {
+    public OptimizationImpl(String optimizationName,
+                    String eventName,
+                    UnmodifiableEconomicMap<String, Integer> position,
+                    UnmodifiableEconomicMap<String, Object> properties) {
         this.optimizationName = optimizationName;
         this.eventName = eventName;
-        this.bci = bci;
+        this.position = (position == null) ? EconomicMap.emptyMap() : position;
         this.properties = (properties == null) ? EconomicMap.emptyMap() : properties;
+        cachedHashCode = calculateHashCode();
     }
 
     @Override
@@ -79,25 +90,31 @@ public class OptimizationImpl implements Optimization {
     }
 
     @Override
-    public EconomicMap<String, Object> getProperties() {
+    public UnmodifiableEconomicMap<String, Object> getProperties() {
         return properties;
     }
 
     @Override
-    public int getBCI() {
-        return bci;
+    public UnmodifiableEconomicMap<String, Integer> getPosition() {
+        return position;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(getOptimizationName()).append(" ").append(getName()).append(" at bci ").append(getBCI());
-        if (properties.isEmpty()) {
-            return sb.toString();
-        }
-        sb.append(" {");
+    /**
+     * Appends a representation of an {@link EconomicMap} to a {@link StringBuilder}.
+     *
+     * The output format is:
+     *
+     * <pre>
+     * {key1: value1, key2: value2, ...}
+     * </pre>
+     *
+     * @param sb the builder that is extended with the representation
+     * @param map the map that is formatted
+     */
+    private static void formatMap(StringBuilder sb, UnmodifiableEconomicMap<String, ?> map) {
+        sb.append('{');
         boolean first = true;
-        MapCursor<String, Object> cursor = properties.getEntries();
+        UnmodifiableMapCursor<String, ?> cursor = map.getEntries();
         while (cursor.advance()) {
             if (first) {
                 first = false;
@@ -107,6 +124,21 @@ public class OptimizationImpl implements Optimization {
             sb.append(cursor.getKey()).append(": ").append(cursor.getValue());
         }
         sb.append('}');
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getOptimizationName()).append(" ").append(getName());
+        UnmodifiableMapCursor<String, Integer> positionCursor = position.getEntries();
+        if (positionCursor.advance()) {
+            sb.append(" at bci ").append(positionCursor.getValue());
+        }
+        if (properties.isEmpty()) {
+            return sb.toString();
+        }
+        sb.append(" with ");
+        formatMap(sb, properties);
         return sb.toString();
     }
 
@@ -115,13 +147,17 @@ public class OptimizationImpl implements Optimization {
         writer.writeln(toString());
     }
 
-    @Override
-    public int hashCode() {
-        int result = bci;
+    private int calculateHashCode() {
+        int result = EconomicMapUtil.hashCode(position);
         result = 31 * result + optimizationName.hashCode();
         result = 31 * result + eventName.hashCode();
         result = 31 * result + EconomicMapUtil.hashCode(properties);
         return result;
+    }
+
+    @Override
+    public int hashCode() {
+        return cachedHashCode;
     }
 
     @Override
@@ -130,8 +166,9 @@ public class OptimizationImpl implements Optimization {
             return false;
         }
         OptimizationImpl other = (OptimizationImpl) object;
-        return bci == other.bci && optimizationName.equals(other.optimizationName) &&
-                        eventName.equals(other.eventName) && EconomicMapUtil.equals(properties, other.properties);
+        return cachedHashCode == other.cachedHashCode && optimizationName.equals(other.optimizationName) &&
+                        eventName.equals(other.eventName) && EconomicMapUtil.equals(position, other.position) &&
+                        EconomicMapUtil.equals(properties, other.properties);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test.ea;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.test.TypeSystemTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
@@ -35,6 +36,8 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
+
+import static org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
 
 /**
  * Tests that the {@link OptimizationLog} collects virtualized allocations and the number of
@@ -129,7 +132,7 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
             int actualAllocationsRemoved = 0;
             int actualMaterializations = 0;
             for (OptimizationLog.OptimizationEntryImpl entry : entries) {
-                if (entry.getEventName().equals("AllocationVirtualized")) {
+                if (entry.getMap().get(EVENT_NAME_PROPERTY).equals("AllocationVirtualized")) {
                     actualAllocationsRemoved += 1;
                     actualMaterializations += (Integer) entry.getMap().get("materializations");
                 }
@@ -154,7 +157,9 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
     @Override
     protected DebugContext getDebugContext() {
         EconomicMap<OptionKey<?>, Object> extraOptions = EconomicMap.create();
-        extraOptions.put(DebugOptions.OptimizationLog, true);
+        EconomicSet<DebugOptions.OptimizationLogTarget> optimizationLogTargets = EconomicSet.create();
+        optimizationLogTargets.add(DebugOptions.OptimizationLogTarget.Stdout);
+        extraOptions.put(DebugOptions.OptimizationLog, optimizationLogTargets);
         OptionValues options = new OptionValues(getInitialOptions(), extraOptions);
         return getDebugContext(options, null, null);
     }

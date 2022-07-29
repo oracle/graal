@@ -41,11 +41,11 @@ public class OptimizationPhaseTest {
         OptimizationPhaseImpl phaseB = new OptimizationPhaseImpl("B");
         OptimizationPhaseImpl phaseC = new OptimizationPhaseImpl("C");
         OptimizationPhaseImpl phaseD = new OptimizationPhaseImpl("D");
-        Optimization optimization1 = new OptimizationImpl("foo", "bar", 1, null);
-        Optimization optimization2 = new OptimizationImpl("foo", "bar", 2, null);
-        Optimization optimization3 = new OptimizationImpl("foo", "bar", 3, null);
-        Optimization optimization4 = new OptimizationImpl("foo", "bar", 4, null);
-        Optimization optimization5 = new OptimizationImpl("foo", "bar", 5, null);
+        Optimization optimization1 = new OptimizationImpl("foo", "1", null, null);
+        Optimization optimization2 = new OptimizationImpl("foo", "2", null, null);
+        Optimization optimization3 = new OptimizationImpl("foo", "3", null, null);
+        Optimization optimization4 = new OptimizationImpl("foo", "4", null, null);
+        Optimization optimization5 = new OptimizationImpl("foo", "5", null, null);
 
         rootPhase.addChild(optimization1);
         rootPhase.addChild(phaseA);

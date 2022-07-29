@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -47,6 +46,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -63,11 +63,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * file and/or IGV.
  */
 public class OptimizationLog implements CompilationListener {
-    /**
-     * A special bci value meaning that no byte code index was found.
-     */
-    public static final int NO_BCI = -1;
-
     /**
      * Describes the kind and location of one performed optimization in an optimization log.
      */
@@ -104,20 +99,57 @@ public class OptimizationLog implements CompilationListener {
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#eventName}")
     public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
         public static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
+        public static final String OPTIMIZATION_NAME_PROPERTY = "optimizationName";
+        public static final String EVENT_NAME_PROPERTY = "eventName";
+        public static final String POSITION_PROPERTY = "position";
+        /**
+         * A map representation of this optimization entry, mapped by property name.
+         */
         private final EconomicMap<String, Object> map;
-        protected final String eventName;
+        /**
+         * A position of a significant node related to this optimization.
+         */
+        private final NodeSourcePosition position;
 
-        protected OptimizationEntryImpl(String optimizationName, String eventName, int bci) {
+        protected OptimizationEntryImpl(String optimizationName, String eventName, NodeSourcePosition position) {
             super(TYPE);
-            this.eventName = eventName;
+            this.position = position;
             map = EconomicMap.create();
-            map.put("optimizationName", optimizationName);
-            map.put("eventName", eventName);
-            map.put("bci", bci);
+            map.put(OPTIMIZATION_NAME_PROPERTY, optimizationName);
+            map.put(EVENT_NAME_PROPERTY, eventName);
+        }
+
+        /**
+         * Creates an ordered map that represents the position of a significant node related to an
+         * optimization. It maps stable method names to byte code indices, starting with the method
+         * containing the significant node and its bci. If the node does not belong the root method
+         * in the compilation unit, the map also contains the method names of the method's callsites
+         * mapped to the byte code indices of their invokes.
+         *
+         * @param methodNameFormatter a function that formats method names
+         * @param position the position of a significant node related to an optimization
+         * @return an ordered map that represents the position of a significant node
+         */
+        private static EconomicMap<String, Integer> createPositionProperty(Function<ResolvedJavaMethod, String> methodNameFormatter,
+                        NodeSourcePosition position) {
+            if (position == null) {
+                return null;
+            }
+            EconomicMap<String, Integer> map = EconomicMap.create();
+            NodeSourcePosition current = position;
+            while (current != null) {
+                ResolvedJavaMethod method = current.getMethod();
+                map.put(methodNameFormatter.apply(method), current.getBCI());
+                current = current.getCaller();
+            }
+            return map;
         }
 
         @Override
-        public EconomicMap<String, Object> asJsonMap() {
+        public EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+            if (!map.containsKey(POSITION_PROPERTY)) {
+                map.put(POSITION_PROPERTY, createPositionProperty(methodNameFormatter, position));
+            }
             return map;
         }
 
@@ -131,15 +163,6 @@ public class OptimizationLog implements CompilationListener {
         public OptimizationEntry setProperty(String key, Object value) {
             map.put(key, value);
             return this;
-        }
-
-        /**
-         * Gets the name of the event that occurred, which describes this optimization entry.
-         *
-         * @return the name of the event that occurred
-         */
-        public String getEventName() {
-            return eventName;
         }
 
         /**
@@ -190,7 +213,7 @@ public class OptimizationLog implements CompilationListener {
          *
          * @return a representation of the optimization subtree that can be formatted as JSON
          */
-        abstract EconomicMap<String, Object> asJsonMap();
+        abstract EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter);
     }
 
     /**
@@ -259,12 +282,15 @@ public class OptimizationLog implements CompilationListener {
         }
 
         @Override
-        public EconomicMap<String, Object> asJsonMap() {
+        public EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
             EconomicMap<String, Object> map = EconomicMap.create();
             map.put("phaseName", phaseName);
             List<EconomicMap<String, Object>> optimizations = null;
             if (children != null) {
-                optimizations = children.stream().map(OptimizationTreeNode::asJsonMap).collect(Collectors.toList());
+                optimizations = new ArrayList<>();
+                for (OptimizationTreeNode entry : children) {
+                    optimizations.add(entry.asJsonMap(methodNameFormatter));
+                }
             }
             map.put("optimizations", optimizations);
             return map;
@@ -429,45 +455,26 @@ public class OptimizationLog implements CompilationListener {
             return OPTIMIZATION_ENTRY_EMPTY;
         }
 
-        int bci = findBCI(node);
         String optimizationName = getOptimizationName(optimizationClass);
         if (isCountEnabled) {
             DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
         }
         if (isLogEnabled) {
-            graph.getDebug().log("Performed %s %s at bci %d", optimizationName, eventName, bci);
+            if (node.getNodeSourcePosition() == null) {
+                graph.getDebug().log("Performed %s %s", optimizationName, eventName);
+            } else {
+                graph.getDebug().log("Performed %s %s at bci %d", optimizationName, eventName, node.getNodeSourcePosition().getBCI());
+            }
         }
         if (isDumpEnabled) {
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, eventName);
         }
         if (optimizationLogEnabled) {
-            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, bci);
+            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, node.getNodeSourcePosition());
             currentPhase.addChild(optimizationEntry);
             return optimizationEntry;
         }
         return OPTIMIZATION_ENTRY_EMPTY;
-    }
-
-    /**
-     * Returns the bci of a node. First, it tries to get from the {@link FrameState} after the
-     * execution of this node, then it tries to use the node's
-     * {@link org.graalvm.compiler.graph.NodeSourcePosition}. If everything fails, it returns
-     * {@code OptimizationLog#NO_BCI}.
-     *
-     * @param node the node whose bci we want to find
-     * @return the bci of the node ({@code OptimizationLog#NO_BCI} if no fitting bci found)
-     */
-    private static int findBCI(Node node) {
-        if (node instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) node;
-            if (stateSplit.stateAfter() != null) {
-                return stateSplit.stateAfter().bci;
-            }
-        }
-        if (node.getNodeSourcePosition() != null) {
-            return node.getNodeSourcePosition().getBCI();
-        }
-        return OptimizationLog.NO_BCI;
     }
 
     /**
@@ -586,7 +593,7 @@ public class OptimizationLog implements CompilationListener {
         String compilationMethodName = methodNameFormatter.apply(graph.method());
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
-        map.put("rootPhase", currentPhase.asJsonMap());
+        map.put("rootPhase", currentPhase.asJsonMap(methodNameFormatter));
         return map;
     }
 

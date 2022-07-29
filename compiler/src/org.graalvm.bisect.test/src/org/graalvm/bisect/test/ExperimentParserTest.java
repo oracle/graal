@@ -58,19 +58,19 @@ public class ExperimentParserTest {
                             "    \"code\": [\n" +
                             "        {\n" +
                             "            \"compileId\": null,\n" +
-                            "            \"name\": \"flush_icache_stub\",\n" +
+                            "            \"name\": \"stub\",\n" +
                             "            \"level\": null,\n" +
                             "            \"period\": 155671948\n" +
                             "        },\n" +
                             "        {\n" +
                             "            \"compileId\": \"2390\",\n" +
-                            "            \"name\": \"2390: java.util.HashMap$HashIterator.nextNode()\",\n" +
+                            "            \"name\": \"2390: foo.bar.Foo$Bar.methodName()\",\n" +
                             "            \"level\": 4,\n" +
                             "            \"period\": 264224374\n" +
                             "        },\n" +
                             "        {\n" +
                             "            \"compileId\": \"3677%\",\n" +
-                            "            \"name\": \"3677: org.example.singleByteZero(org.example.Blackhole, org.example.CopyBenchmarkSimple$Context)\",\n" +
+                            "            \"name\": \"3677: org.example.myMethod(org.example.Foo, org.example.Class$Context)\"\n," +
                             "            \"level\": 4,\n" +
                             "            \"period\": 158328120602\n" +
                             "        }\n" +
@@ -83,7 +83,7 @@ public class ExperimentParserTest {
             return List.of(
                             new StringReader("{\n" +
                                             "    \"compilationId\": \"2390\",\n" +
-                                            "    \"compilationMethodName\": \"java.util.HashMap$HashIterator.nextNode()\",\n" +
+                                            "    \"compilationMethodName\": \"foo.bar.Foo$Bar.methodName()\",\n" +
                                             "    \"rootPhase\": {\n" +
                                             "        \"phaseName\": \"RootPhase\",\n" +
                                             "        \"optimizations\": [\n" +
@@ -93,7 +93,7 @@ public class ExperimentParserTest {
                                             "                   {\n" +
                                             "                       \"optimizationName\": \"LoopTransformation\",\n" +
                                             "                       \"eventName\": \"PartialUnroll\",\n" +
-                                            "                       \"bci\": 68\n," +
+                                            "                       \"position\": {\"foo.bar.Foo$Bar.innerMethod()\": 30, \"foo.bar.Foo$Bar.methodName()\": 68},\n" +
                                             "                       \"unrollFactor\": 1\n" +
                                             "                   },\n" +
                                             "                   {\n" +
@@ -107,20 +107,20 @@ public class ExperimentParserTest {
                                             "}"),
                             new StringReader("{\n" +
                                             "    \"compilationId\": \"3677\",\n" +
-                                            "    \"compilationMethodName\": \"org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)\",\n" +
+                                            "    \"compilationMethodName\": \"org.example.myMethod(org.example.Foo, org.example.Class$Context)\",\n" +
                                             "    \"rootPhase\": {\n" +
                                             "        \"phaseName\": \"RootPhase\",\n" +
                                             "        \"optimizations\": [\n" +
                                             "            {\n" +
                                             "                \"optimizationName\": \"LoopTransformation\",\n" +
                                             "                \"eventName\": \"PartialUnroll\",\n" +
-                                            "                \"bci\": 2\n," +
+                                            "                \"position\": {\"org.example.myMethod(org.example.Foo, org.example.Class$Context)\": 2},\n" +
                                             "                \"unrollFactor\": 1\n" +
                                             "            },\n" +
                                             "            {\n" +
                                             "                \"optimizationName\": \"LoopTransformation\",\n" +
                                             "                \"eventName\": \"PartialUnroll\",\n" +
-                                            "                \"bci\": -1\n," +
+                                            "                \"position\": null,\n" +
                                             "                \"unrollFactor\": 2\n" +
                                             "            }\n" +
                                             "        ]\n" +
@@ -142,24 +142,33 @@ public class ExperimentParserTest {
         for (ExecutedMethod executedMethod : experiment.getExecutedMethods()) {
             switch (executedMethod.getCompilationId()) {
                 case "2390": {
-                    assertEquals(
-                                    "java.util.HashMap$HashIterator.nextNode()",
+                    assertEquals("foo.bar.Foo$Bar.methodName()",
                                     executedMethod.getCompilationMethodName());
                     OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
                     OptimizationPhaseImpl someTier = new OptimizationPhaseImpl("SomeTier");
                     rootPhase.addChild(someTier);
-                    someTier.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 68, EconomicMapUtil.of("unrollFactor", 1)));
+                    someTier.addChild(new OptimizationImpl("LoopTransformation",
+                                    "PartialUnroll",
+                                    EconomicMapUtil.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
+                                    EconomicMapUtil.of("unrollFactor", 1)));
                     someTier.addChild(new OptimizationPhaseImpl("EmptyPhase"));
                     assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
                 }
                 case "3677": {
-                    assertEquals(
-                                    "org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)",
+                    assertEquals("org.example.myMethod(org.example.Foo, org.example.Class$Context)",
                                     executedMethod.getCompilationMethodName());
                     OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
-                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, EconomicMapUtil.of("unrollFactor", 1)));
-                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", -1, EconomicMapUtil.of("unrollFactor", 2)));
+                    rootPhase.addChild(new OptimizationImpl(
+                                    "LoopTransformation",
+                                    "PartialUnroll",
+                                    EconomicMapUtil.of("org.example.myMethod(org.example.Foo, org.example.Class$Context)", 2),
+                                    EconomicMapUtil.of("unrollFactor", 1)));
+                    rootPhase.addChild(new OptimizationImpl(
+                                    "LoopTransformation",
+                                    "PartialUnroll",
+                                    null,
+                                    EconomicMapUtil.of("unrollFactor", 2)));
                     assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
                 }

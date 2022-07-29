@@ -39,12 +39,12 @@ import org.junit.Test;
 public class SelkowTreeMatcherTest {
     @Test
     public void preferOptimizationInsertionAndDeletion() {
-        Optimization foo = new OptimizationImpl("root", "foo", 0, null);
+        Optimization foo = new OptimizationImpl("root", "foo", null, null);
         OptimizationPhaseImpl root1 = new OptimizationPhaseImpl("RootPhase");
         root1.addChild(foo);
         ExecutedMethodImpl method1 = new ExecutedMethodImpl("1", "foo", root1, 0, null);
 
-        Optimization bar = new OptimizationImpl("root", "bar", 0, null);
+        Optimization bar = new OptimizationImpl("root", "bar", null, null);
         OptimizationPhaseImpl root2 = new OptimizationPhaseImpl("RootPhase");
         root2.addChild(bar);
         ExecutedMethodImpl method2 = new ExecutedMethodImpl("2", "bar", root2, 0, null);
@@ -88,8 +88,8 @@ public class SelkowTreeMatcherTest {
     public void testOperations() {
         OptimizationPhaseImpl toBeDeleted = new OptimizationPhaseImpl("ToBeDeleted");
         OptimizationPhaseImpl toBeRelabeled = new OptimizationPhaseImpl("ToBeRelabeled");
-        Optimization foo1 = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
-        Optimization foo3 = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
+        Optimization foo1 = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
+        Optimization foo3 = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
         toBeRelabeled.addChild(foo1);
         toBeRelabeled.addChild(foo3);
         OptimizationPhaseImpl toBeUnchaged = new OptimizationPhaseImpl("ToBeUnchanged");
@@ -100,9 +100,9 @@ public class SelkowTreeMatcherTest {
         ExecutedMethodImpl method1 = new ExecutedMethodImpl("1", "method1", root1, 0, null);
 
         OptimizationPhaseImpl relabeled = new OptimizationPhaseImpl("Relabeled");
-        Optimization foo1Clone = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
-        Optimization foo2 = new OptimizationImpl("ToBeRelabeled", "foo", 0, EconomicMapUtil.of("prop", 1));
-        Optimization foo3Clone = new OptimizationImpl("ToBeRelabeled", "foo", 0, null);
+        Optimization foo1Clone = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
+        Optimization foo2 = new OptimizationImpl("ToBeRelabeled", "foo", null, EconomicMapUtil.of("prop", 1));
+        Optimization foo3Clone = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
         relabeled.addChild(foo1Clone);
         relabeled.addChild(foo2);
         relabeled.addChild(foo3Clone);

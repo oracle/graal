@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.test;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
@@ -45,6 +46,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import static org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
 
 /**
  * Tests the functionality of the {@link OptimizationLog}.
@@ -116,7 +119,6 @@ public class OptimizationLogTest extends GraalCompilerTest {
         EconomicMap<String, Object> expectedProperties = EconomicMap.create();
         expectedProperties.put("optimizationName", "ReportNode");
         expectedProperties.put("eventName", "StartNodeReported");
-        expectedProperties.put("bci", 0);
         expectedProperties.put("foo", 42);
         expectedProperties.put("bar", 43);
         Assert.assertEquals(expectedProperties.toString(), startNodeLog.getMap().toString());
@@ -125,13 +127,13 @@ public class OptimizationLogTest extends GraalCompilerTest {
         Assert.assertEquals(new ClassTypeSequence(ReportAddNodePhase.class).toString(), reportAddNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportAddNodePhase.getChildren().count());
         OptimizationLog.OptimizationEntryImpl addNodeLog = (OptimizationLog.OptimizationEntryImpl) reportAddNodePhase.getChildren().get(0);
-        Assert.assertEquals("AddNodeReported", addNodeLog.getEventName());
+        Assert.assertEquals("AddNodeReported", addNodeLog.getMap().get(EVENT_NAME_PROPERTY));
 
         OptimizationLog.OptimizationPhaseScope reportReturnNodePhase = (OptimizationLog.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(2);
         Assert.assertEquals(new ClassTypeSequence(ReportReturnNodePhase.class).toString(), reportReturnNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportReturnNodePhase.getChildren().count());
         OptimizationLog.OptimizationEntryImpl returnNodeLog = (OptimizationLog.OptimizationEntryImpl) reportReturnNodePhase.getChildren().get(0);
-        Assert.assertEquals("ReturnNodeReported", returnNodeLog.getEventName());
+        Assert.assertEquals("ReturnNodeReported", returnNodeLog.getMap().get(EVENT_NAME_PROPERTY));
     }
 
     /**
@@ -163,7 +165,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
      * position tracking}.
      *
      * @param methodName the name of the method to be parsed
-     * @param enableOptimizationLog the value of the {@link DebugOptions#OptimizationLog} option
+     * @param enableOptimizationLog whether the {@link DebugOptions#OptimizationLog} should be enabled
      * @param setCompilationListener the graph's {@link OptimizationLog} will be set as the
      *            compilation listener iff set
      * @return the parsed graph
@@ -171,7 +173,11 @@ public class OptimizationLogTest extends GraalCompilerTest {
     private StructuredGraph parseGraph(String methodName, boolean enableOptimizationLog, boolean setCompilationListener) {
         ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
         EconomicMap<OptionKey<?>, Object> extraOptions = EconomicMap.create();
-        extraOptions.put(DebugOptions.OptimizationLog, enableOptimizationLog);
+        EconomicSet<DebugOptions.OptimizationLogTarget> optimizationLogTargets = EconomicSet.create();
+        if (enableOptimizationLog) {
+            optimizationLogTargets.add(DebugOptions.OptimizationLogTarget.Stdout);
+        }
+        extraOptions.put(DebugOptions.OptimizationLog, optimizationLogTargets);
         extraOptions.put(GraalOptions.TrackNodeSourcePosition, true);
         OptionValues options = new OptionValues(getInitialOptions(), extraOptions);
         DebugContext debugContext = getDebugContext(options, null, method);
