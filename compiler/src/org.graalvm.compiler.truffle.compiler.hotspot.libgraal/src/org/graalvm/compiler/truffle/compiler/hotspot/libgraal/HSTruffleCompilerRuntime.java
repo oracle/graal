@@ -78,6 +78,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.hotspot.HotSpotMethodKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -95,6 +96,7 @@ import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -114,7 +116,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     private final ResolvedJavaType classLoaderDelegate;
     private final OptionValues initialOptions;
 
-    private final ConcurrentHashMap<MethodKey, MethodCache> methodCache = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<HotSpotMethodKey, MethodCache> methodCache = new ConcurrentHashMap<>();
 
     HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
         super(env, handle);
@@ -123,7 +125,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     }
 
     private MethodCache getMethodCache(ResolvedJavaMethod method) {
-        MethodKey key = new MethodKey(method);
+        HotSpotMethodKey key = new HotSpotMethodKey((HotSpotResolvedJavaMethod) method);
         return methodCache.computeIfAbsent(key, ignored -> createMethodCache(method));
     }
 
@@ -453,47 +455,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
             if (!success) {
                 LibGraalObjectHandles.remove(serializedExceptionHandle);
             }
-        }
-    }
-
-    /**
-     * Key for an entry in {@link HSTruffleCompilerRuntime#methodCache}. A
-     * {@link ResolvedJavaMethod} cannot be used as it is not guaranteed to be valid across
-     * compilations.
-     */
-    static final class MethodKey {
-        private final String declaringClass;
-        private final String name;
-        private final String descriptor;
-
-        /**
-         * Cached value of {@code HotSpotResolvedJavaMethodImpl.hashCode()} which is a function of
-         * the underlying {@code Method*}.
-         */
-        final int hashCode;
-
-        MethodKey(ResolvedJavaMethod method) {
-            this.declaringClass = method.getDeclaringClass().getName();
-            this.name = method.getName();
-            this.descriptor = method.getSignature().toMethodDescriptor();
-            this.hashCode = method.hashCode();
-        }
-
-        @Override
-        public int hashCode() {
-            return hashCode;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof MethodKey) {
-                MethodKey that = (MethodKey) obj;
-                return this.hashCode == that.hashCode &&
-                                this.name.equals(that.name) &&
-                                this.declaringClass.equals(that.declaringClass) &&
-                                this.descriptor.equals(that.descriptor);
-            }
-            return false;
         }
     }
 

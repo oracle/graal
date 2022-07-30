@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
-import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.str;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 class CompilationCounters {
@@ -61,7 +61,7 @@ class CompilationCounters {
         this.options = options;
     }
 
-    private final Map<ResolvedJavaMethod, Integer> counters = new HashMap<>();
+    private final Map<HotSpotMethodKey, Integer> counters = new HashMap<>();
 
     /**
      * Counts the number of compilations for the {@link ResolvedJavaMethod} of the
@@ -71,20 +71,22 @@ class CompilationCounters {
      * @param method the method about to be compiled
      */
     synchronized void countCompilation(ResolvedJavaMethod method) {
-        Integer val = counters.get(method);
+        HotSpotMethodKey key = new HotSpotMethodKey((HotSpotResolvedJavaMethod) method);
+
+        Integer val = counters.get(key);
         val = val != null ? val + 1 : 1;
-        counters.put(method, val);
+        counters.put(key, val);
         if (val > Options.CompilationCountLimit.getValue(options)) {
             TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", fmt(method),
                             CompilationCounters.Options.CompilationCountLimit.getValue(options));
             TTY.println("==================================== High compilation counters ====================================");
-            SortedSet<Map.Entry<ResolvedJavaMethod, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
-            for (Map.Entry<ResolvedJavaMethod, Integer> e : counters.entrySet()) {
+            SortedSet<Map.Entry<HotSpotMethodKey, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
+            for (Map.Entry<HotSpotMethodKey, Integer> e : counters.entrySet()) {
                 sortedCounters.add(e);
             }
-            for (Map.Entry<ResolvedJavaMethod, Integer> entry : sortedCounters) {
+            for (Map.Entry<HotSpotMethodKey, Integer> entry : sortedCounters) {
                 if (entry.getValue() >= Options.CompilationCountLimit.getValue(options) / 2) {
-                    TTY.out.printf("%d\t%s%n", entry.getValue(), str(entry.getKey()));
+                    TTY.out.printf("%d\t%s%n", entry.getValue(), String.valueOf(entry.getKey()));
                 }
             }
             TTY.flush();
@@ -92,16 +94,16 @@ class CompilationCounters {
         }
     }
 
-    static final class CounterComparator implements Comparator<Map.Entry<ResolvedJavaMethod, Integer>> {
+    static final class CounterComparator implements Comparator<Map.Entry<HotSpotMethodKey, Integer>> {
         @Override
-        public int compare(Entry<ResolvedJavaMethod, Integer> o1, Entry<ResolvedJavaMethod, Integer> o2) {
+        public int compare(Entry<HotSpotMethodKey, Integer> o1, Entry<HotSpotMethodKey, Integer> o2) {
             if (o1.getValue() < o2.getValue()) {
                 return -1;
             }
             if (o1.getValue() > o2.getValue()) {
                 return 1;
             }
-            return str(o1.getKey()).compareTo(str(o2.getKey()));
+            return String.valueOf(o1.getKey()).compareTo(String.valueOf(o2.getKey()));
         }
     }
 }
