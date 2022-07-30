@@ -278,18 +278,18 @@ def gate_body(args, tasks):
                     extra_vm_arguments += args.extra_vm_argument
 
                 # run avrora on the GraalVM binary itself
-                with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal]) as t:
+                with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_basic(extra_vm_arguments)
-                with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal]) as t:
+                with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
 
-                with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
+                with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_ctw(extra_vm_arguments)
 
                 import mx_compiler
                 mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
 
-                with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal]) as t:
+                with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_truffle(extra_vm_arguments)
         else:
             mx.warn("Skipping libgraal tests: component not enabled")
