@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.runtime;
 import java.util.List;
 
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -63,7 +62,7 @@ public class PolyglotInterfaceMappings {
                 }
             }
         } catch (EspressoClassLoadingException e) {
-            throw EspressoError.shouldNotReachHere(e);
+            throw e.asGuestException(context.getMeta());
         }
         resolvedKlasses = EconomicMap.create(temp);
     }
