@@ -327,7 +327,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 kit.startIf(graph.unique(new IntegerEqualsNode(arrayLength, ConstantNode.forInt(0, graph))), BranchProbabilityNode.NOT_LIKELY_PROFILE);
                 kit.elsePart();
 
-                ResolvedJavaMethod cloneMethod = kit.findMethod(Object.class, "clone", false);
+                ResolvedJavaMethod cloneMethod = kit.findMethod(Object.class, "clone");
                 JavaType returnType = cloneMethod.getSignature().getReturnType(null);
                 StampPair returnStampPair = StampFactory.forDeclaredType(null, returnType, false);
 
@@ -448,7 +448,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                     attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, ourAttribute, otherAttribute);
                 } else {
                     /* Just call Object.equals(). Primitive values are already boxed. */
-                    ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", false);
+                    ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", Object.class);
                     ValueNode ourAttributeNonNull = kit.maybeCreateExplicitNullCheck(ourAttribute);
                     attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttributeNonNull, otherAttribute);
                 }
@@ -514,7 +514,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 } else {
                     /* Just call Object.hashCode(). Primitive values are already boxed. */
                     ourAttribute = kit.maybeCreateExplicitNullCheck(ourAttribute);
-                    ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode", false);
+                    ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode");
                     attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttribute);
                 }
 

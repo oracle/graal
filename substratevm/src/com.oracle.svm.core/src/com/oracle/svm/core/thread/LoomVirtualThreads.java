@@ -72,7 +72,7 @@ final class LoomVirtualThreads implements VirtualThreads {
 
     @Override
     public boolean getAndClearInterrupt(Thread thread) {
-        throw unreachable();
+        return cast(thread).getAndClearInterrupt();
     }
 
     @Override
@@ -123,5 +123,10 @@ final class LoomVirtualThreads implements VirtualThreads {
     @Override
     public Executor getScheduler(Thread thread) {
         return cast(thread).scheduler;
+    }
+
+    @Override
+    public void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        VirtualThreadHelper.blockedOn(b);
     }
 }

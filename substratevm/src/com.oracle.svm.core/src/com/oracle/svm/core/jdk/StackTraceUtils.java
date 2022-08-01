@@ -138,10 +138,8 @@ public class StackTraceUtils {
         }
 
         if (LoomSupport.isEnabled() && clazz == Target_jdk_internal_vm_Continuation.class) {
-            // Skip intrinsics in JDK
-            if ("enterSpecial".equals(frameInfo.getSourceMethodName())) {
-                return false;
-            } else if ("doYield".equals(frameInfo.getSourceMethodName())) {
+            String name = frameInfo.getSourceMethodName();
+            if ("enter0".equals(name) || "enterSpecial".equals(name)) {
                 return false;
             }
         }

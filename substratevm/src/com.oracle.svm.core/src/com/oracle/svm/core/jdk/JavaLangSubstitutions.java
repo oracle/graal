@@ -71,6 +71,7 @@ import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -104,11 +105,27 @@ final class Target_java_lang_Object {
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
+    /**
+     * Our monitors do not pin virtual threads, so we must avoid {@code jdk.internal.misc.Blocker}
+     * which expects and asserts that the virtual thread is pinned.
+     */
     @Substitute
-    @TargetElement(name = "wait0", onlyWith = JDK19OrLater.class)
-    private void waitSubstLoom(long timeoutMillis) throws InterruptedException {
-        MonitorSupport.singleton().wait(this, timeoutMillis);
+    @TargetElement(name = "wait", onlyWith = JDK19OrLater.class)
+    private void waitSubstJDK19(long timeoutMillis) throws InterruptedException {
+        try {
+            MonitorSupport.singleton().wait(this, timeoutMillis);
+        } catch (InterruptedException e) {
+            Thread thread = Thread.currentThread();
+            if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread)) {
+                VirtualThreads.singleton().getAndClearInterrupt(thread);
+            }
+            throw e;
+        }
     }
+
+    @Delete
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private native void wait0(long timeoutMillis);
 
     @Substitute
     @TargetElement(name = "notify")

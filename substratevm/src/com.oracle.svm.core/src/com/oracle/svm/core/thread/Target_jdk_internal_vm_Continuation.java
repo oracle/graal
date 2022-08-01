@@ -124,7 +124,11 @@ public final class Target_jdk_internal_vm_Continuation {
     @Substitute
     static void enterSpecial(Target_jdk_internal_vm_Continuation c, boolean isContinue, boolean isVirtualThread) {
         assert isVirtualThread;
-        enter(c, isContinue);
+        if (!isContinue) {
+            assert c.internal == null;
+            c.internal = new Continuation(c::enter0);
+        }
+        c.internal.enter();
     }
 
     @Substitute
@@ -142,21 +146,22 @@ public final class Target_jdk_internal_vm_Continuation {
     private native void finish();
 
     @Substitute
-    private static void enter(Target_jdk_internal_vm_Continuation cont, boolean isContinue) {
-        if (!isContinue) {
-            assert cont.internal == null;
-            cont.internal = new Continuation(cont::enter0);
+    private static void enter(Target_jdk_internal_vm_Continuation c, @SuppressWarnings("unused") boolean isContinue) {
+        try {
+            c.target.run();
+        } finally {
+            c.finish();
         }
-        cont.internal.enter();
     }
 
     @Substitute
     private void enter0() {
-        try {
-            target.run();
-        } finally {
-            finish();
-        }
+        /*
+         * Normally enter would call enter0 and not the other way around, but our internals are
+         * slightly different and we do this so we have "enter" on the bottom of the observable
+         * continuation stack trace as required by tests.
+         */
+        enter(this, false);
     }
 
     @Substitute

@@ -159,12 +159,15 @@ public final class Target_java_lang_Thread {
     volatile int threadStatus;
 
     @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
-    /* private */ /* final */ Object blockerLock;
+    Object blockerLock;
     @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
     Object interruptLock;
 
     @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
     volatile Target_sun_nio_ch_Interruptible blocker;
+
+    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    volatile Target_sun_nio_ch_Interruptible nioBlocker;
 
     /** @see JavaThreads#setCurrentThreadLockHelper */
     @Inject @TargetElement(onlyWith = ContinuationsSupported.class) //
@@ -178,13 +181,23 @@ public final class Target_java_lang_Thread {
     @Alias
     native void setPriority(int newPriority);
 
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static native boolean isSupportedClassLoader(ClassLoader loader);
+
     @Substitute
     public ClassLoader getContextClassLoader() {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && !isSupportedClassLoader(contextClassLoader)) {
+            return ClassLoader.getSystemClassLoader();
+        }
         return contextClassLoader;
     }
 
     @Substitute
     public void setContextClassLoader(ClassLoader cl) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && !isSupportedClassLoader(contextClassLoader)) {
+            throw new UnsupportedOperationException("The context class loader cannot be set");
+        }
         contextClassLoader = cl;
     }
 
@@ -273,6 +286,7 @@ public final class Target_java_lang_Thread {
         return thread;
     }
 
+    /** On HotSpot, a field of C++ class {@code JavaThread}. Loads and stores are unordered. */
     @Inject @TargetElement(onlyWith = ContinuationsSupported.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Thread vthread = null;
@@ -347,7 +361,7 @@ public final class Target_java_lang_Thread {
         /* Non-0 instance field initialization. */
         this.interruptLock = new Object();
 
-        this.name = (name != null) ? name : "<unnamed>";
+        this.name = (name != null) ? name : "";
         this.tid = Target_java_lang_Thread_ThreadIdentifiers.next();
         this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
 
@@ -549,11 +563,16 @@ public final class Target_java_lang_Thread {
         return JavaThreads.getStackTrace(JavaThreads.fromTarget(this));
     }
 
+    /**
+     * Returns null if the stack trace cannot be obtained. In the default implementation, null is
+     * returned if the thread is a virtual thread that is not mounted or the thread is a platform
+     * thread that has terminated.
+     */
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     StackTraceElement[] asyncGetStackTrace() {
-        throw VMError.shouldNotReachHere("only `VirtualThread.asyncGetStackTrace` should be called.");
+        return null;
     }
 
     @Substitute
@@ -576,6 +595,14 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK17OrLater.class)
     private static void clearInterruptEvent() {
     }
+
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native void setInterrupt();
+
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native void clearInterrupt();
 
     /** Current inner-most continuation. */
     @Alias @TargetElement(onlyWith = LoomJDK.class) //
@@ -600,6 +627,23 @@ public final class Target_java_lang_Thread {
     static void setExtentLocalCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).extentLocalCache = cache;
     }
+
+    @Substitute
+    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        JavaThreads.blockedOn(b);
+    }
+
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native Thread.State threadState();
+
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native Target_jdk_internal_vm_ThreadContainer threadContainer();
+
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native long threadId();
 }
 
 @TargetClass(value = Thread.class, innerClass = "Builder", onlyWith = JDK19OrLater.class)

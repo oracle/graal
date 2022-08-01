@@ -143,7 +143,7 @@ final class Target_java_lang_StackWalker {
             Target_jdk_internal_vm_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
             Target_jdk_internal_vm_Continuation topContinuation = Target_jdk_internal_vm_Continuation.getCurrentContinuation(delimitationScope);
             if (topContinuation != null) {
-                JavaStackWalker.initWalk(walk, sp, LoomSupport.getBaseSP(topContinuation));
+                JavaStackWalker.initWalk(walk, sp, LoomSupport.getInternalContinuation(topContinuation).getBaseSP());
             } else {
                 // the delimitation scope is not present in current continuation chain or null
                 JavaStackWalker.initWalk(walk, sp);

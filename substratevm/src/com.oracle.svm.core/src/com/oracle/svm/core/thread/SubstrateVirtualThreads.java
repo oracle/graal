@@ -155,7 +155,7 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
 
     @Override
     public boolean getAndClearInterrupt(Thread thread) {
-        return cast(thread).getAndClearInterrupt();
+        return cast(thread).getAndClearInterrupted();
     }
 
     @Override
@@ -216,5 +216,10 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     @Override
     public Executor getScheduler(Thread thread) {
         return cast(thread).getScheduler();
+    }
+
+    @Override
+    public void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        current().blockedOn(b);
     }
 }

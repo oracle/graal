@@ -29,7 +29,6 @@ import static com.oracle.svm.core.SubstrateOptions.UseSerialGC;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.word.Pointer;
 
 public final class LoomSupport {
     private static final boolean isEnabled;
@@ -55,8 +54,8 @@ public final class LoomSupport {
     static final int FREEZE_PINNED_CS = 2; // critical section
     static final int FREEZE_PINNED_NATIVE = 3;
 
-    public static Pointer getBaseSP(Target_jdk_internal_vm_Continuation cont) {
-        return cont.internal.getBaseSP();
+    public static Continuation getInternalContinuation(Target_jdk_internal_vm_Continuation cont) {
+        return cont.internal;
     }
 
     private LoomSupport() {

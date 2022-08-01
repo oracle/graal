@@ -47,7 +47,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -87,6 +86,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -330,7 +330,7 @@ public abstract class PlatformThreads {
      * not attempt to join itself.
      */
     public void joinAllNonDaemons() {
-        int expectedNonDaemonThreads = Thread.currentThread().isDaemon() ? 0 : 1;
+        int expectedNonDaemonThreads = currentThread.get().isDaemon() ? 0 : 1;
         joinAllNonDaemonsTransition(expectedNonDaemonThreads);
     }
 
@@ -541,7 +541,7 @@ public abstract class PlatformThreads {
         Set<ExecutorService> pools = Collections.newSetFromMap(new IdentityHashMap<>());
         Set<ExecutorService> poolsWithNonDaemons = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread thread : threads) {
-            if (thread == null || thread == Thread.currentThread()) {
+            if (thread == null || thread == currentThread.get()) {
                 continue;
             }
 
@@ -746,7 +746,7 @@ public abstract class PlatformThreads {
                  * As a newly started thread, we might not have been interrupted like the Java
                  * threads that existed when initiating the tear-down, so we self-interrupt.
                  */
-                Thread.currentThread().interrupt();
+                currentThread.get().interrupt();
             }
 
             thread.run();
@@ -823,7 +823,7 @@ public abstract class PlatformThreads {
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
         // Change the Java thread state while parking.
         int oldStatus = getThreadStatus(thread);
-        int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED);
+        int newStatus = MonitorSupport.singleton().getParkedThreadStatus(currentThread.get(), false);
         setThreadStatus(thread, newStatus);
         try {
             /*
@@ -846,7 +846,7 @@ public abstract class PlatformThreads {
 
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
         int oldStatus = getThreadStatus(thread);
-        int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
+        int newStatus = MonitorSupport.singleton().getParkedThreadStatus(currentThread.get(), true);
         setThreadStatus(thread, newStatus);
         try {
             /*
@@ -891,7 +891,7 @@ public abstract class PlatformThreads {
 
     private static void sleep0(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.sleep(long): Should not sleep when it is not okay to block.]");
-        Thread thread = Thread.currentThread();
+        Thread thread = currentThread.get();
         ParkEvent sleepEvent = getCurrentThreadData().ensureSleepParkEvent();
         sleepEvent.reset();
 
@@ -981,7 +981,7 @@ public abstract class PlatformThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static ThreadData getCurrentThreadData() {
-        return (ThreadData) toTarget(Thread.currentThread()).threadData;
+        return (ThreadData) toTarget(currentThread.get()).threadData;
     }
 
     private static class GetStackTraceOperation extends JavaVMOperation {
@@ -1128,6 +1128,20 @@ public abstract class PlatformThreads {
                 lock.unlock();
             }
             readyForTearDown = (attachedCount == 1 && unattachedStartedCount == 0);
+        }
+    }
+
+    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        assert !isVirtual(Thread.currentThread());
+        Target_java_lang_Thread me = toTarget(currentThread.get());
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            synchronized (me.interruptLock) {
+                me.nioBlocker = b;
+            }
+        } else {
+            synchronized (me.blockerLock) {
+                me.blocker = b;
+            }
         }
     }
 }

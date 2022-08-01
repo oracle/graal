@@ -162,7 +162,6 @@ class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueC
             return ThreadStatus.NEW;
         }
     }
-
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)

@@ -265,7 +265,7 @@ public final class JavaThreads {
         }
         tjlt.name = name;
 
-        final Thread parent = PlatformThreads.currentThread.get();
+        final Thread parent = Thread.currentThread();
         final ThreadGroup group = ((groupArg != null) ? groupArg : parent.getThreadGroup());
 
         int priority;
@@ -365,5 +365,13 @@ public final class JavaThreads {
             return toTarget(Thread.currentThread()).lockHelper;
         }
         return PlatformThreads.lockHelper.get();
+    }
+
+    public static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        if (supportsVirtual() && isVirtual(Thread.currentThread())) {
+            VirtualThreads.singleton().blockedOn(b);
+        } else {
+            PlatformThreads.blockedOn(b);
+        }
     }
 }
