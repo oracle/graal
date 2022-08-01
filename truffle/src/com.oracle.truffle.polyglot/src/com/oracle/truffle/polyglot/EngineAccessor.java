@@ -1747,6 +1747,8 @@ final class EngineAccessor extends Accessor {
 
         abstract void afterExecute();
 
+        abstract RuntimeException unwrap(Throwable t);
+
         @Override
         @SuppressWarnings("try")
         public final void run() {
@@ -1758,6 +1760,8 @@ final class EngineAccessor extends Accessor {
                 } finally {
                     afterExecute();
                 }
+            } catch (Throwable t) {
+                throw unwrap(t);
             }
         }
     }
@@ -1784,9 +1788,14 @@ final class EngineAccessor extends Accessor {
             engine.removeSystemThread(this);
         }
 
+        @Override
+        RuntimeException unwrap(Throwable t) {
+            return PolyglotImpl.engineToInstrumentException(t);
+        }
+
         private void checkClosed() {
             if (engine.closed) {
-                throw new IllegalStateException(String.format("Engine is already closed. Cannot start a new system thread for instrument %s.", instrumentId));
+                throw PolyglotEngineException.illegalState(String.format("Engine is already closed. Cannot start a new system thread for instrument %s.", instrumentId));
             }
         }
     }
@@ -1814,9 +1823,14 @@ final class EngineAccessor extends Accessor {
             polyglotContext.removeSystemThread(this);
         }
 
+        @Override
+        RuntimeException unwrap(Throwable t) {
+            return PolyglotImpl.engineToLanguageException(t);
+        }
+
         private void checkClosed() {
             if (polyglotContext.state.isClosed()) {
-                throw new IllegalStateException(String.format("Context is already closed. Cannot start a new system thread for language %s.", languageId));
+                throw PolyglotEngineException.illegalState(String.format("Context is already closed. Cannot start a new system thread for language %s.", languageId));
             }
         }
     }
