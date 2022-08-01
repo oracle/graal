@@ -78,12 +78,20 @@ public final class MutableTruffleString extends AbstractTruffleString {
     private int codePointLength = -1;
     private byte codeRange = (byte) TSCodeRange.getUnknown();
 
-    MutableTruffleString(Object data, int offset, int length, int stride, int encoding) {
+    private MutableTruffleString(Object data, int offset, int length, int stride, int encoding) {
         super(data, offset, length, stride, encoding, 0);
         assert data instanceof byte[] || data instanceof NativePointer;
         if (TruffleString.Encoding.isFixedWidth(encoding)) {
             codePointLength = TruffleString.Encoding.isSupported(encoding) ? length : length / JCodings.getInstance().minLength(TruffleString.Encoding.getJCoding(encoding));
         }
+    }
+
+    private static MutableTruffleString create(Object data, int offset, int length, int stride, int encoding) {
+        MutableTruffleString string = new MutableTruffleString(data, offset, length, stride, encoding);
+        if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
+            string.toJavaStringUncached();
+        }
+        return string;
     }
 
     int codePointLength() {
@@ -165,7 +173,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 array = value;
                 offset = byteOffset;
             }
-            return new MutableTruffleString(array, offset, byteLength >> enc.naturalStride, enc.naturalStride, enc.id);
+            return MutableTruffleString.create(array, offset, byteLength >> enc.naturalStride, enc.naturalStride, enc.id);
         }
 
         /**
@@ -258,7 +266,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 array = nativePointer;
                 offset = byteOffset;
             }
-            return new MutableTruffleString(array, offset, byteLength >> enc.naturalStride, enc.naturalStride, enc.id);
+            return MutableTruffleString.create(array, offset, byteLength >> enc.naturalStride, enc.naturalStride, enc.id);
         }
 
         /**
@@ -493,7 +501,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
             int offset = 0;
             byte[] array = materializeBytesNode.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()), expectedEncoding.id, length,
                             expectedEncoding.naturalStride);
-            return new MutableTruffleString(array, offset, length, expectedEncoding.naturalStride, expectedEncoding.id);
+            return MutableTruffleString.create(array, offset, length, expectedEncoding.naturalStride, expectedEncoding.id);
         }
 
         /**
@@ -627,7 +635,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
             final byte[] array = new byte[byteLength];
             copyToByteArrayNode.execute(a, byteOffset, array, 0, byteLength, expectedEncoding);
             final int stride = expectedEncoding.naturalStride;
-            return new MutableTruffleString(array, 0, byteLength >> stride, stride, expectedEncoding.id);
+            return MutableTruffleString.create(array, 0, byteLength >> stride, stride, expectedEncoding.id);
         }
 
         /**
@@ -859,6 +867,6 @@ public final class MutableTruffleString extends AbstractTruffleString {
         final byte[] array = new byte[byteLength];
         copyToByteArrayNode.execute(a, 0, array, 0, byteLength, expectedEncoding);
         final int stride = targetEncoding.naturalStride;
-        return new MutableTruffleString(array, 0, byteLength >> stride, stride, targetEncoding.id);
+        return MutableTruffleString.create(array, 0, byteLength >> stride, stride, targetEncoding.id);
     }
 }

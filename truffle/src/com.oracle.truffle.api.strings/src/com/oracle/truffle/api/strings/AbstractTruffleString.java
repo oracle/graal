@@ -64,6 +64,7 @@ public abstract class AbstractTruffleString {
 
     static final boolean DEBUG_STRICT_ENCODING_CHECKS = Boolean.getBoolean("truffle.strings.debug-strict-encoding-checks");
     static final boolean DEBUG_NON_ZERO_OFFSET = Boolean.getBoolean("truffle.strings.debug-non-zero-offset-arrays");
+    static final boolean DEBUG_ALWAYS_CREATE_JAVA_STRING = Boolean.getBoolean("truffle.strings.debug-always-create-java-string");
 
     /**
      * String content. This can be one of the following:
