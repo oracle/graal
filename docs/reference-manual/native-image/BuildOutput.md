@@ -94,6 +94,9 @@ The garbage collector used within the generated executable:
 
 For more information see the [docs on Memory Management at Image Run Time](MemoryManagement.md).
 
+#### <a name="glossary-env-args"></a>Environment Arguments
+The list of additional arguments provided through the `$NATIVE_IMAGE_ARGS` environment variable.
+
 #### <a name="glossary-user-specific-features"></a>User-Specific Features
 All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
 GraalVM Native Image deploys a number of internal features, which are excluded from this list.

@@ -164,6 +164,10 @@ public class SubstrateOptions {
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
     private static ValueUpdateHandler<Integer> debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
+    public static String environmentArguments() {
+        return System.getenv("NATIVE_IMAGE_ARGS");
+    }
+
     @Fold
     public static boolean getSourceLevelDebug() {
         return SourceLevelDebug.getValue();

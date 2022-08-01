@@ -286,6 +286,10 @@ public class ProgressReporter {
         String gcName = Heap.getHeap().getGC().getName();
         recordJsonMetric(GeneralInfo.GC, gcName);
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).println();
+        String environmentArguments = SubstrateOptions.environmentArguments();
+        if (environmentArguments != null && !environmentArguments.isEmpty()) {
+            l().a(" ").doclink("Environment arguments", "#glossary-env-args").a(": '").a(environmentArguments).a("'").println();
+        }
     }
 
     public void printFeatures(List<Feature> features) {

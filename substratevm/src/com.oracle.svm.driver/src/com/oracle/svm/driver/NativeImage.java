@@ -1749,16 +1749,20 @@ public class NativeImage {
 
     private List<String> processNativeImageArgs() {
         NativeImageArgsProcessor argsProcessor = new NativeImageArgsProcessor(null);
-        String defaultNativeImageArgs = getUserConfigProperties().get(pKeyNativeImageArgs);
-        if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
-            for (String defaultArg : defaultNativeImageArgs.split(" ")) {
-                argsProcessor.accept(defaultArg);
-            }
-        }
+        processOptionalArguments(argsProcessor, getUserConfigProperties().get(pKeyNativeImageArgs));
+        processOptionalArguments(argsProcessor, SubstrateOptions.environmentArguments());
         for (String arg : config.getBuildArgs()) {
             argsProcessor.accept(arg);
         }
         return argsProcessor.apply(false);
+    }
+
+    private static void processOptionalArguments(NativeImageArgsProcessor argsProcessor, String additionalArgumentsOrNull) {
+        if (additionalArgumentsOrNull != null && !additionalArgumentsOrNull.isEmpty()) {
+            for (String defaultArg : additionalArgumentsOrNull.split(" ")) {
+                argsProcessor.accept(defaultArg);
+            }
+        }
     }
 
     protected String getXmsValue() {
