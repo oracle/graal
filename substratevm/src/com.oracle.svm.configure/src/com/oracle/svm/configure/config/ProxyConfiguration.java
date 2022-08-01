@@ -97,11 +97,6 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         return contains(condition, Arrays.asList(interfaces));
     }
 
-    public static void printJsonSerialization(JsonWriter writer, Set<ConditionalElement<List<String>>> interfaceListsSerializableProxies) throws IOException {
-        List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceListsSerializableProxies);
-        printProxyInterfaces(writer, lists);
-    }
-
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceLists.size());
