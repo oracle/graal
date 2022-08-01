@@ -426,6 +426,7 @@ public class NativeImage {
             if (useJVMCINativeLibrary == null) {
                 useJVMCINativeLibrary = false;
                 ProcessBuilder pb = new ProcessBuilder();
+                sanitizeJVMEnvironment(pb.environment());
                 List<String> command = pb.command();
                 command.add(getJavaExecutable().toString());
                 command.add("-XX:+PrintFlagsFinal");
@@ -1346,6 +1347,7 @@ public class NativeImage {
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
             pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
+            sanitizeJVMEnvironment(pb.environment());
             p = pb.inheritIO().start();
             exitStatus = p.waitFor();
         } catch (IOException | InterruptedException e) {
@@ -1356,6 +1358,13 @@ public class NativeImage {
             }
         }
         return exitStatus;
+    }
+
+    private static void sanitizeJVMEnvironment(Map<String, String> environment) {
+        String[] jvmAffectingEnvironmentVariables = {"JAVA_COMPILER", "_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "CLASSPATH"};
+        for (String affectingEnvironmentVariable : jvmAffectingEnvironmentVariables) {
+            environment.remove(affectingEnvironmentVariable);
+        }
     }
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> new NativeImage(config);
