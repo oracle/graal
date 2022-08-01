@@ -467,14 +467,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(Klass k1, Klass k2) {
-            return Integer.compare(k1.id, k2.id);
+            return Long.compare(k1.id, k2.id);
         }
     };
 
     static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(ObjectKlass.KlassVersion k1, ObjectKlass.KlassVersion k2) {
-            return Integer.compare(k1.getKlass().getId(), k2.getKlass().getId());
+            return Long.compare(k1.getKlass().getId(), k2.getKlass().getId());
         }
     };
 
@@ -488,7 +488,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     protected Symbol<Name> name;
     protected Symbol<Type> type;
 
-    private final int id;
+    private final long id;
 
     @CompilationFinal //
     private ArrayKlass arrayKlass;
@@ -623,11 +623,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         this(context, name, type, modifiers, -1);
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, int possibleID) {
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, long possibleID) {
         super(context);
         this.name = name;
         this.type = type;
-        this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
+        this.id = (possibleID >= 0) ? possibleID : context.getClassLoadingEnv().getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
     }
@@ -873,7 +873,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return fastLookup(this, interfaces) >= 0;
     }
 
-    public final int getId() {
+    public final long getId() {
         return id;
     }
 

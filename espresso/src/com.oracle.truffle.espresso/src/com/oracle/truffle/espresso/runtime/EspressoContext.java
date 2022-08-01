@@ -41,11 +41,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -140,7 +140,7 @@ public final class EspressoContext {
 
     // region Runtime
     private final StringTable strings;
-    private final ClassRegistries registries;
+    @CompilationFinal private ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
     private final ClassHierarchyOracle classHierarchyOracle;
@@ -156,9 +156,7 @@ public final class EspressoContext {
     // endregion Helpers
 
     // region ID
-    private final AtomicInteger klassIdProvider = new AtomicInteger();
-    private final AtomicInteger loaderIdProvider = new AtomicInteger();
-    private final int bootClassLoaderID = getNewLoaderId();
+    @CompilationFinal private long bootClassLoaderID;
     // endregion ID
 
     // region InitControl
@@ -169,6 +167,7 @@ public final class EspressoContext {
     private boolean initialized = false;
     private boolean disposeCalled = false;
     private Classpath bootClasspath;
+    @CompilationFinal private ClassLoadingEnv classLoadingEnv;
     // endregion InitControl
 
     // region JDWP
@@ -237,23 +236,7 @@ public final class EspressoContext {
         return logger;
     }
 
-    public int getNewKlassId() {
-        int id = klassIdProvider.getAndIncrement();
-        if (id < 0) {
-            throw EspressoError.shouldNotReachHere("Exhausted klass IDs");
-        }
-        return id;
-    }
-
-    public int getNewLoaderId() {
-        int id = loaderIdProvider.getAndIncrement();
-        if (id < 0) {
-            throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
-        }
-        return id;
-    }
-
-    public int getBootClassLoaderID() {
+    public long getBootClassLoaderID() {
         return bootClassLoaderID;
     }
 
@@ -261,7 +244,6 @@ public final class EspressoContext {
         this.env = env;
         this.language = language;
 
-        this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics();
@@ -275,6 +257,9 @@ public final class EspressoContext {
         this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
+
+        this.classLoadingEnv = new ClassLoadingEnv(getLanguage(), getLogger(), getTimers());
+        this.bootClassLoaderID = classLoadingEnv.getNewLoaderId();
 
         // null if not specified
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
@@ -443,6 +428,10 @@ public final class EspressoContext {
         return bootClasspath;
     }
 
+    public ClassLoadingEnv getClassLoadingEnv() {
+        return classLoadingEnv;
+    }
+
     public void setBootClassPath(Classpath classPath) {
         this.bootClasspath = classPath;
     }
@@ -521,6 +510,8 @@ public final class EspressoContext {
                 EspressoError.guarantee(getJavaVersion() != null, "Java version");
             }
 
+            this.registries = new ClassRegistries(this);
+
             if (getJavaVersion().modulesEnabled()) {
                 registries.initJavaBaseModule();
                 registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
@@ -533,6 +524,7 @@ public final class EspressoContext {
             try (DebugCloseable metaInit = META_INIT.scope(timers)) {
                 this.meta = new Meta(this);
             }
+            this.classLoadingEnv.setMeta(meta);
             this.metaInitialized = true;
             this.threads = new ThreadsAccess(meta);
             this.blockingSupport = BlockingSupport.create(threads);
