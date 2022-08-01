@@ -45,9 +45,10 @@ public @interface Snippet {
     boolean allowPartialIntrinsicArgumentMismatch() default false;
 
     /**
-     * Determine if this snippet's (defined in the top level snippet method) if nodes can have
-     * missing probabilities. This is sometimes necessary if a snippet inlines complex control flow
-     * from JDK code or it is not possible to attribute a given frequency statically to an if node.
+     * Marks a method as known to be missing injected branch probabilities. Normally snippets are
+     * required to have at least probabilities in their top level method but sometimes this is not
+     * feasible either because the code is outside of our control or there aren't clear
+     * probabilities that could be chosen.
      */
     boolean allowMissingProbabilities() default false;
 

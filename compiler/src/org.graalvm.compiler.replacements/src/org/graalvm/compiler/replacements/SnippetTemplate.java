@@ -1322,22 +1322,6 @@ public class SnippetTemplate {
                     this.memoryAnchor = null;
                 }
             }
-//
-// if (Options.MandatorySnippetProfiles.getValue(options)) {
-// if (!args.info.allowsMissingProfiles) {
-// for (Node n : snippet.getNodes()) {
-// if (n instanceof IfNode) {
-// IfNode ifNode = (IfNode) n;
-// BranchProbabilityData profile = ifNode.getProfileData();
-// if (!ProfileSource.isTrusted(profile.getProfileSource())) {
-// GraalError.shouldNotReachHere(String.format("Node %s in snippet %s has unknown profile %s (nsp
-// %s)", ifNode, snippetGraph, profile,
-// ifNode.getNodeSourcePosition()));
-// }
-// }
-// }
-// }
-// }
 
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
             List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
