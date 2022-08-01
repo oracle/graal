@@ -96,13 +96,19 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
         }
     }
 
-    static class SchemaFactoryClasses extends XMLParsersRegistration {
+    static class SchemaDVFactoryClasses extends XMLParsersRegistration {
 
         @Override
         List<String> xmlParserClasses() {
-            return Arrays.asList(
-                            "com.sun.org.apache.xerces.internal.impl.dv.xs.ExtendedSchemaDVFactoryImpl",
-                            "com.sun.org.apache.xerces.internal.impl.dv.xs.SchemaDVFactoryImpl");
+            return Collections.singletonList("com.sun.org.apache.xerces.internal.impl.dv.xs.SchemaDVFactoryImpl");
+        }
+    }
+
+    static class BuiltinSchemaGrammarClasses extends XMLParsersRegistration {
+
+        @Override
+        List<String> xmlParserClasses() {
+            return Collections.singletonList("com.sun.org.apache.xerces.internal.impl.dv.xs.ExtendedSchemaDVFactoryImpl");
         }
     }
 
