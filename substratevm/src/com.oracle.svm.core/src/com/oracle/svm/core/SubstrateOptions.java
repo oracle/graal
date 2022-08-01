@@ -408,7 +408,7 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
-    @APIOption(name = "--silent")//
+    @APIOption(name = "silent")//
     @Option(help = "Silence build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
 
