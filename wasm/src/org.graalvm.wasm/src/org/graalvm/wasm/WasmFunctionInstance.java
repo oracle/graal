@@ -118,9 +118,12 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         try {
             Object result = callNode.execute(target, arguments);
 
-            // For external calls we have to materialize the multi value stack.
+            // For external calls of a WebAssembly function we have to materialize the multi-value
+            // stack.
+            // At this point the multi-value stack has already been populated, therefore, we don't
+            // have to check the size of the multi-value stack.
             if (result == WasmMultiValueResult.INSTANCE) {
-                final long[] multiValueStack = context.getMultiValueStack();
+                final long[] multiValueStack = context.multiValueStack();
                 final int resultCount = function.resultCount();
                 CompilerAsserts.partialEvaluationConstant(resultCount);
                 assert multiValueStack.length >= resultCount;

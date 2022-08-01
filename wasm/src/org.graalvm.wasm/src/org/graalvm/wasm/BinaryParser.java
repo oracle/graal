@@ -467,6 +467,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte[] blockParamTypes;
                     final byte[] blockResultTypes;
                     readBlockType(multiResult);
+                    // Extract value based on result arity.
                     if (multiResult[1] == SINGLE_RESULT_VALUE) {
                         blockParamTypes = WasmType.VOID_TYPE_ARRAY;
                         blockResultTypes = encapsulateResultType(multiResult[0]);
@@ -474,7 +475,7 @@ public class BinaryParser extends BinaryStreamParser {
                         blockParamTypes = extractBlockParamTypes(multiResult[0]);
                         blockResultTypes = extractBlockResultTypes(multiResult[0]);
                     } else {
-                        throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Multi-value is not enabled.");
+                        throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
                     state.popAll(blockParamTypes);
                     state.enterBlock(blockParamTypes, blockResultTypes);
@@ -486,6 +487,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte[] loopParamTypes;
                     final byte[] loopResultTypes;
                     readBlockType(multiResult);
+                    // Extract value based on result arity.
                     if (multiResult[1] == SINGLE_RESULT_VALUE) {
                         loopParamTypes = WasmType.VOID_TYPE_ARRAY;
                         loopResultTypes = encapsulateResultType(multiResult[0]);
@@ -493,7 +495,7 @@ public class BinaryParser extends BinaryStreamParser {
                         loopParamTypes = extractBlockParamTypes(multiResult[0]);
                         loopResultTypes = extractBlockResultTypes(multiResult[0]);
                     } else {
-                        throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Multi-value is not enabled.");
+                        throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
                     state.popAll(loopParamTypes);
                     state.enterLoop(loopParamTypes, loopResultTypes, loopOffset);
@@ -505,6 +507,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte[] ifParamTypes;
                     final byte[] ifResultTypes;
                     readBlockType(multiResult);
+                    // Extract value based on result arity.
                     if (multiResult[1] == SINGLE_RESULT_VALUE) {
                         ifParamTypes = WasmType.VOID_TYPE_ARRAY;
                         ifResultTypes = encapsulateResultType(multiResult[0]);
@@ -512,7 +515,7 @@ public class BinaryParser extends BinaryStreamParser {
                         ifParamTypes = extractBlockParamTypes(multiResult[0]);
                         ifResultTypes = extractBlockResultTypes(multiResult[0]);
                     } else {
-                        throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Multi-value is not enabled.");
+                        throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
                     state.popAll(ifParamTypes);
                     state.enterIf(ifParamTypes, ifResultTypes, branchOffset);

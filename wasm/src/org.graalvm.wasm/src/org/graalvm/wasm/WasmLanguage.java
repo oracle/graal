@@ -139,7 +139,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     static final class MultiValueStack {
         private long[] stack;
-
+        // Initialize size to 1, so we only create the stack for more than 1 result value.
         private int size = 1;
 
         public long[] stack() {

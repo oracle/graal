@@ -55,6 +55,7 @@ import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
+import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ValidationSuite;
 import org.graalvm.wasm.test.suites.wasi.WasiSuite;
 import org.graalvm.wasm.test.suites.webassembly.EmscriptenSuite;
@@ -84,6 +85,7 @@ import org.junit.runners.Suite;
                 WasmPolyglotTestSuite.class,
                 WasmJsApiSuite.class,
                 ValidationSuite.class,
+                MultiValueValidationSuite.class,
                 WasmLateLinkingSuite.class,
                 WasmImplementationLimitationsSuite.class,
                 ExtraDataSuite.class

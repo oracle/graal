@@ -49,7 +49,6 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -217,10 +216,20 @@ public final class WasmContext {
         return REFERENCE.get(node);
     }
 
-    public long[] getMultiValueStack() {
+    /**
+     * @return The current multi-value stack or null if it has never been resized.
+     */
+    public long[] multiValueStack() {
         return language.multiValueStack().stack();
     }
 
+    /**
+     * Updates the size of the multi-value stack if needed. In case of a resize, the values are not
+     * copied. Therefore, resizing should occur before any call to a function that uses the
+     * multi-value stack.
+     * 
+     * @param expectedSize The minimum expected size.
+     */
     public void resizeMultiValueStack(int expectedSize) {
         language.multiValueStack().resize(expectedSize);
     }

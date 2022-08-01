@@ -152,15 +152,15 @@ public class WasmRootNode extends RootNode {
                     throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
             }
         } else {
-            moveReturnValuesToMultiValueStack(frame, context, resultCount, localCount);
+            moveResultValuesToMultiValueStack(frame, context, resultCount, localCount);
             return WasmMultiValueResult.INSTANCE;
         }
     }
 
     @ExplodeLoop
-    private void moveReturnValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
+    private void moveResultValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        final long[] multiValueStack = context.getMultiValueStack();
+        final long[] multiValueStack = context.multiValueStack();
         for (int i = 0; i < resultCount; i++) {
             final int resultType = function.getResultType(i);
             CompilerAsserts.partialEvaluationConstant(resultType);

@@ -135,6 +135,7 @@ public class ValidationSuite extends WasmFileSuite {
 
                         // The arity `m` must not be larger than 1 (limitiation of MVP).
                         // Validated in: SymbolTable#allocateFunctionType
+                        // Only when multi-value is disabled.
                         binaryCase(
                                         "Function - cannot return more than one value",
                                         "A function can return at most one result.",
@@ -969,10 +970,16 @@ public class ValidationSuite extends WasmFileSuite {
         this.expectedFailureType = failureType;
     }
 
+    protected void addContextOptions(Context.Builder contextBuilder) {
+        contextBuilder.option("wasm.MultiValue", "false");
+    }
+
     @Override
     @Test
     public void test() throws IOException {
-        final Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.MultiValue", "false").build();
+        final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        addContextOptions(contextBuilder);
+        final Context context = contextBuilder.build();
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
         try {
             context.eval(source).getMember("_main").execute();
@@ -996,7 +1003,7 @@ public class ValidationSuite extends WasmFileSuite {
         }
     }
 
-    private static Object[] stringCase(String name, String errorMessage, String textString, Failure.Type failureType) {
+    protected static Object[] stringCase(String name, String errorMessage, String textString, Failure.Type failureType) {
         try {
             return new Object[]{name, errorMessage, compileWat(name, textString + "(func (export \"_main\") (result i32) i32.const 42)"), failureType};
         } catch (final IOException | InterruptedException e) {
@@ -1004,7 +1011,7 @@ public class ValidationSuite extends WasmFileSuite {
         }
     }
 
-    private static Object[] binaryCase(String name, String errorMessage, String hexString, Failure.Type failureType) {
+    protected static Object[] binaryCase(String name, String errorMessage, String hexString, Failure.Type failureType) {
         return new Object[]{name, errorMessage, hexStringToByteArray(hexString), failureType};
     }
 }

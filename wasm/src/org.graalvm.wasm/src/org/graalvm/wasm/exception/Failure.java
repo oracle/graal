@@ -61,6 +61,7 @@ public enum Failure {
     // GraalWasm-specific:
     DUPLICATED_SECTION(Type.MALFORMED, "duplicated section"),
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
+    DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
 
     // TODO(mbovel): replace UNSPECIFIED_INVALID usages with appropriate errors.
     UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
@@ -119,9 +120,13 @@ public enum Failure {
     UNINITIALIZED_ELEMENT(Type.TRAP, "uninitialized element"),
     OUT_OF_BOUNDS_MEMORY_ACCESS(Type.TRAP, "out of bounds memory access"),
     INDIRECT_CALL_TYPE__MISMATCH(Type.TRAP, "indirect call type mismatch"),
+    INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
+    INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
+
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
+    UNSUPPORTED_MULTI_VALUE_TYPE(Type.TRAP, "multi-value has to be provided by an array type"),
 
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),

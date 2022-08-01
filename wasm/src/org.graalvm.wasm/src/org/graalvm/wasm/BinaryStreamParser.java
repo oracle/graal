@@ -292,6 +292,14 @@ public abstract class BinaryStreamParser {
         return offset;
     }
 
+    /**
+     * Reads the block type at the current location. The result is provided as two values. The first
+     * is the actual value of the block type. The second is an indicator if it is a single result
+     * type or a multi-value result.
+     * 
+     * @param result The array used for returning the result.
+     *
+     */
     protected void readBlockType(int[] result) {
         byte type = peek1(data, offset);
         switch (type) {

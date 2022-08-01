@@ -669,7 +669,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                         break;
                     } else {
-                        multiValueResult(frame, stackPointer, result, resultCount, function.typeIndex());
+                        extractMultiValueResult(frame, stackPointer, result, resultCount, function.typeIndex());
                         stackPointer += resultCount;
                         break;
                     }
@@ -805,7 +805,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                         break;
                     } else {
-                        multiValueResult(frame, stackPointer, result, resultCount, expectedFunctionTypeIndex);
+                        extractMultiValueResult(frame, stackPointer, result, resultCount, expectedFunctionTypeIndex);
                         stackPointer += resultCount;
                         break;
                     }
@@ -2904,11 +2904,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
     }
 
+    /**
+     * Extracts the multi value from the multi-value stack of the context or an external source. The
+     * result values are put onto the value stack.
+     * 
+     * @param frame The current frame.
+     * @param stackPointer The current stack pointer.
+     * @param result The result of the function call.
+     * @param resultCount The expected number or result values.
+     * @param functionTypeIndex The function type index of the called function.
+     */
     @ExplodeLoop
-    private void multiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
+    private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
         if (result == WasmMultiValueResult.INSTANCE) {
-            final long[] multiValueStack = instance.context().getMultiValueStack();
+            final long[] multiValueStack = instance.context().multiValueStack();
             for (int i = 0; i < resultCount; i++) {
                 final byte resultType = instance.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
@@ -2916,11 +2926,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     case WasmType.I32_TYPE:
                         pushInt(frame, stackPointer + i, (int) multiValueStack[i]);
                         break;
-                    case WasmType.F32_TYPE:
-                        pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) multiValueStack[i]));
-                        break;
                     case WasmType.I64_TYPE:
                         pushLong(frame, stackPointer + i, multiValueStack[i]);
+                        break;
+                    case WasmType.F32_TYPE:
+                        pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) multiValueStack[i]));
                         break;
                     case WasmType.F64_TYPE:
                         pushDouble(frame, stackPointer + i, Double.longBitsToDouble(multiValueStack[i]));
@@ -2935,43 +2945,38 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             final InteropLibrary lib = InteropLibrary.getUncached();
             if (!lib.hasArrayElements(result)) {
                 enterErrorBranch();
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Multi-value has to be provided by an array type.");
+                throw WasmException.create(Failure.UNSUPPORTED_MULTI_VALUE_TYPE);
             }
             try {
                 final int size = (int) lib.getArraySize(result);
                 if (size != resultCount) {
                     enterErrorBranch();
-                    throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Provided multi-value size does not match function type.");
+                    throw WasmException.create(Failure.INVALID_MULTI_VALUE_ARITY);
                 }
                 for (int i = 0; i < size; i++) {
                     byte resultType = instance.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                     Object value = lib.readArrayElement(result, i);
                     switch (resultType) {
-                        case WasmType.I32_TYPE: {
+                        case WasmType.I32_TYPE:
                             pushInt(frame, stackPointer + i, lib.asInt(value));
                             break;
-                        }
-                        case WasmType.I64_TYPE: {
+                        case WasmType.I64_TYPE:
                             pushLong(frame, stackPointer + i, lib.asLong(value));
                             break;
-                        }
-                        case WasmType.F32_TYPE: {
+                        case WasmType.F32_TYPE:
                             pushFloat(frame, stackPointer + i, lib.asFloat(value));
                             break;
-                        }
-                        case WasmType.F64_TYPE: {
+                        case WasmType.F64_TYPE:
                             pushDouble(frame, stackPointer + i, lib.asDouble(value));
                             break;
-                        }
-                        default: {
+                        default:
                             enterErrorBranch();
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
-                        }
                     }
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                 enterErrorBranch();
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Provided multi-value does not match function type.");
+                throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
             }
         }
     }

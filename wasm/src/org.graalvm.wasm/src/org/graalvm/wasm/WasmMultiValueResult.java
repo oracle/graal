@@ -41,6 +41,10 @@
 
 package org.graalvm.wasm;
 
+/**
+ * Result value for functions with multiple result values. The actual values are passed on the
+ * multi-value stack of the context.
+ */
 public final class WasmMultiValueResult {
     public static final WasmMultiValueResult INSTANCE = new WasmMultiValueResult();
 

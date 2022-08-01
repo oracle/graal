@@ -51,7 +51,7 @@ public final class WasmCodeEntry {
     private final int maxStackSize;
     private final BranchProfile errorBranch = BranchProfile.create();
     @CompilationFinal(dimensions = 1) private final int[] extraData;
-    @CompilationFinal(dimensions = 1) private final byte[] resultTyps;
+    @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
     private final int numLocals;
     private final int resultCount;
 
@@ -62,7 +62,7 @@ public final class WasmCodeEntry {
         this.maxStackSize = maxStackSize;
         this.extraData = extraData;
         this.numLocals = localTypes.length;
-        this.resultTyps = resultTypes;
+        this.resultTypes = resultTypes;
         this.resultCount = resultTypes.length;
     }
 
@@ -99,7 +99,7 @@ public final class WasmCodeEntry {
     }
 
     public byte resultType(int index) {
-        return resultTyps[index];
+        return resultTypes[index];
     }
 
     public void errorBranch() {
