@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
 
 @NodeInfo(shortName = "Max")
 public class MaxNode extends MinMaxNode<Max> {
@@ -62,11 +63,11 @@ public class MaxNode extends MinMaxNode<Max> {
     }
 
     @Override
-    public ValueNode asConditional() {
+    public ValueNode asConditional(LoweringProvider lowerer) {
         if (!(stamp(NodeView.DEFAULT).isIntegerStamp())) {
             return null;
         }
-        LogicNode condition = IntegerLessThanNode.create(getX(), getY(), NodeView.DEFAULT);
+        LogicNode condition = IntegerLessThanNode.create(maybeExtendForCompare(getX(), lowerer, Signedness.SIGNED), maybeExtendForCompare(getY(), lowerer, Signedness.SIGNED), NodeView.DEFAULT);
         return ConditionalNode.create(condition, getY(), getX(), NodeView.DEFAULT);
     }
 

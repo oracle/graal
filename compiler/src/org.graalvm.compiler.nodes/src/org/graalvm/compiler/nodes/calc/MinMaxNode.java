@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.NumUtil.Signedness;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
@@ -41,6 +42,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -266,7 +268,22 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
 
     /**
      * Tries to return a conditional value equivalent to this min/max node. Implementations may
-     * return {@code null} if no simple equivalent conditional form exists.
+     * return {@code null} if no simple equivalent conditional form exists. Implementations that
+     * build a compare node must take {@link LoweringProvider#smallestCompareWidth()} into account.
      */
-    public abstract ValueNode asConditional();
+    public abstract ValueNode asConditional(LoweringProvider lowerer);
+
+    /**
+     * Helper for {@link #asConditional(LoweringProvider)}, extending the value if needed to match
+     * the {@link LoweringProvider#smallestCompareWidth()}.
+     */
+    protected static ValueNode maybeExtendForCompare(ValueNode value, LoweringProvider lowerer, Signedness signedness) {
+        Stamp fromStamp = value.stamp(NodeView.DEFAULT);
+        if (fromStamp instanceof PrimitiveStamp && PrimitiveStamp.getBits(fromStamp) < lowerer.smallestCompareWidth()) {
+            Stamp toStamp = StampFactory.forInteger(lowerer.smallestCompareWidth());
+            boolean zeroExtend = (signedness == Signedness.UNSIGNED);
+            return IntegerConvertNode.convert(value, toStamp, zeroExtend, NodeView.DEFAULT);
+        }
+        return value;
+    }
 }
