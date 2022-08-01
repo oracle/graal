@@ -630,6 +630,7 @@ public class NativeImage {
             buildArgs.add(fallbackExecutorJavaArg);
         }
 
+        buildArgs.add(oH + "+" + SubstrateOptions.BuildOutputSilent.getName());
         buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
         Path imagePathPath;
         try {
@@ -1407,6 +1408,7 @@ public class NativeImage {
             int buildStatus = nativeImage.completeImageBuild();
             if (buildStatus == 2) {
                 /* Perform fallback build */
+                nativeImage.showMessage("Generating fallback image...");
                 build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
                 showWarning("Image '" + nativeImage.imageName +
                                 "' is a fallback image that requires a JDK for execution " +

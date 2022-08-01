@@ -408,6 +408,10 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
+    @APIOption(name = "silent")//
+    @Option(help = "Silence build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
+
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
