@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.concurrent.Executor;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -55,6 +56,7 @@ public final class Target_java_lang_VirtualThread {
     @Alias static int TERMINATED;
     @Alias static int RUNNABLE_SUSPENDED;
     @Alias static int PARKED_SUSPENDED;
+    @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
     // Checkstyle: resume
 
     @Substitute
@@ -74,6 +76,12 @@ public final class Target_java_lang_VirtualThread {
 
     @Alias
     native boolean joinNanos(long nanos) throws InterruptedException;
+
+    @Delete
+    native StackTraceElement[] asyncGetStackTrace();
+
+    @Alias
+    native StackTraceElement[] tryGetStackTrace();
 
     @Substitute
     boolean getAndClearInterrupt() {

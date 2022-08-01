@@ -34,12 +34,12 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -195,19 +195,18 @@ public final class JavaThreads {
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
-    static StackTraceElement[] getStackTrace(Thread thread) {
-        if (thread == Thread.currentThread()) {
-            /*
-             * We can walk our own stack without a VMOperation. Note that it is intentional that we
-             * read the caller stack pointer in this helper method: The Thread.getStackTrace method
-             * itself needs to be included in the result.
-             */
-            return StackTraceUtils.getStackTrace(false, KnownIntrinsics.readCallerStackPointer());
+    public static StackTraceElement[] getStackTrace(boolean filterExceptions, Thread thread) {
+        /*
+         * If our own thread's stack was requested, we can walk it without a VMOperation using a
+         * stack pointer. It is intentional that we use the caller stack pointer: the calling
+         * Thread.getStackTrace method itself needs to be included in the result.
+         */
+        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
+
+        if (supportsVirtual()) { // NOTE: also for platform threads!
+            return VirtualThreads.singleton().getVirtualOrPlatformThreadStackTrace(filterExceptions, thread, callerSP);
         }
-        if (isVirtual(thread)) {
-            return Target_java_lang_Thread.EMPTY_STACK_TRACE;
-        }
-        return PlatformThreads.getStackTrace(thread);
+        return PlatformThreads.getStackTrace(filterExceptions, thread, callerSP);
     }
 
     /** If there is an uncaught exception handler, call it. */

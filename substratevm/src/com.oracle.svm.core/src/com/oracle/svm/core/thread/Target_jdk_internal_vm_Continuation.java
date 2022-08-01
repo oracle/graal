@@ -90,8 +90,8 @@ public final class Target_jdk_internal_vm_Continuation {
     @Substitute
     @NeverInline("access stack pointer")
     private static int isPinned0(Target_jdk_internal_vm_ContinuationScope scope) {
-        Target_java_lang_Thread thread = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
-        Target_jdk_internal_vm_Continuation cont = thread.getContinuation();
+        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
+        Target_jdk_internal_vm_Continuation cont = carrier.cont;
         if (cont != null) {
             while (true) {
                 if (cont.pinCount != 0) {

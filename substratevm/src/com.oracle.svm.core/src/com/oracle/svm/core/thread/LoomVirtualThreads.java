@@ -29,9 +29,16 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -129,4 +136,99 @@ final class LoomVirtualThreads implements VirtualThreads {
     public void blockedOn(Target_sun_nio_ch_Interruptible b) {
         VirtualThreadHelper.blockedOn(b);
     }
+
+    @Override
+    public StackTraceElement[] getVirtualOrPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
+        if (!isVirtual(thread)) {
+            return getPlatformThreadStackTrace(filterExceptions, thread, callerSP);
+        }
+        if (thread == Thread.currentThread()) {
+            return getVirtualThreadStackTrace(filterExceptions, thread, callerSP);
+        }
+        assert !filterExceptions : "exception stack traces can be taken only for the current thread";
+        return asyncGetStackTrace(cast(thread));
+    }
+
+    @Override
+    public StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
+        if (!isVirtual(thread)) {
+            return getPlatformThreadStackTraceAtSafepoint(thread, callerSP);
+        }
+        return getVirtualThreadStackTrace(false, thread, callerSP);
+    }
+
+    private static StackTraceElement[] getVirtualThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
+        Thread carrier = cast(thread).carrierThread;
+        if (carrier == null) {
+            return null;
+        }
+        Pointer endSP = getCarrierSPOrElse(carrier, WordFactory.nullPointer());
+        if (endSP.isNull()) {
+            return null;
+        }
+        if (carrier == PlatformThreads.currentThread.get()) {
+            return StackTraceUtils.getStackTrace(filterExceptions, callerSP, endSP);
+        }
+        assert VMOperation.isInProgressAtSafepoint();
+        return StackTraceUtils.getThreadStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
+    }
+
+    private static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
+        Target_jdk_internal_vm_Continuation cont = JavaThreads.toTarget(carrier).cont;
+        while (cont != null) {
+            if (cont.getScope() == Target_java_lang_VirtualThread.VTHREAD_SCOPE) {
+                return cont.internal.getBaseSP();
+            }
+            cont = cont.getParent();
+        }
+        return other;
+    }
+
+    /** Adapted from {@code VirtualThread.asyncGetStackTrace()}. */
+    private static StackTraceElement[] asyncGetStackTrace(Target_java_lang_VirtualThread thread) {
+        StackTraceElement[] stackTrace;
+        do {
+            if (thread.carrierThread != null) {
+                stackTrace = asyncMountedGetStackTrace(thread);
+            } else {
+                stackTrace = thread.tryGetStackTrace();
+            }
+            if (stackTrace == null) {
+                Thread.yield();
+            }
+        } while (stackTrace == null);
+        return stackTrace;
+    }
+
+    private static StackTraceElement[] asyncMountedGetStackTrace(@SuppressWarnings("unused") Target_java_lang_VirtualThread thread) {
+        return StackTraceUtils.asyncGetStackTrace(Thread.class.cast(thread));
+    }
+
+    private static StackTraceElement[] getPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
+        if (thread == PlatformThreads.currentThread.get()) {
+            Pointer startSP = getCarrierSPOrElse(thread, callerSP);
+            return StackTraceUtils.getStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
+        }
+        assert !filterExceptions : "exception stack traces can be taken only for the current thread";
+        return StackTraceUtils.asyncGetStackTrace(thread);
+    }
+
+    private static StackTraceElement[] getPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
+        Pointer carrierSP = getCarrierSPOrElse(thread, WordFactory.nullPointer());
+        IsolateThread isolateThread = PlatformThreads.getIsolateThread(thread);
+        if (isolateThread == CurrentIsolate.getCurrentThread()) {
+            Pointer startSP = carrierSP.isNonNull() ? carrierSP : callerSP;
+            /*
+             * Internal frames from the VMOperation handling show up in the stack traces, but we are
+             * OK with that.
+             */
+            return StackTraceUtils.getStackTrace(false, startSP, WordFactory.nullPointer());
+        }
+        if (carrierSP.isNonNull()) { // mounted virtual thread, skip its frames
+            CodePointer carrierIP = FrameAccess.singleton().readReturnAddress(carrierSP);
+            return StackTraceUtils.getThreadStackTraceAtSafepoint(carrierSP, WordFactory.nullPointer(), carrierIP);
+        }
+        return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+    }
+
 }

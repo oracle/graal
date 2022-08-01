@@ -59,7 +59,7 @@ public final class Target_java_lang_Thread {
 
     // Checkstyle: stop
     @Alias //
-    static StackTraceElement[] EMPTY_STACK_TRACE;
+    public static StackTraceElement[] EMPTY_STACK_TRACE;
 
     @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class) //
@@ -557,23 +557,13 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     private StackTraceElement[] getStackTrace() {
-        if (LoomSupport.isEnabled() && VirtualThreads.singleton().isVirtual(JavaThreads.fromTarget(this))) {
-            return asyncGetStackTrace();
-        }
-        return JavaThreads.getStackTrace(JavaThreads.fromTarget(this));
+        return JavaThreads.getStackTrace(false, JavaThreads.fromTarget(this));
     }
 
-    /**
-     * Returns null if the stack trace cannot be obtained. In the default implementation, null is
-     * returned if the thread is a virtual thread that is not mounted or the thread is a platform
-     * thread that has terminated.
-     */
-    @SuppressWarnings("static-method")
-    @Substitute
-    @TargetElement(onlyWith = LoomJDK.class)
-    StackTraceElement[] asyncGetStackTrace() {
-        return null;
-    }
+    /** @see com.oracle.svm.core.jdk.StackTraceUtils#asyncGetStackTrace */
+    @Delete
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    native StackTraceElement[] asyncGetStackTrace();
 
     @Substitute
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
@@ -604,13 +594,9 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK19OrLater.class)
     native void clearInterrupt();
 
-    /** Current inner-most continuation. */
+    /** Carrier threads only: the current innermost continuation. */
     @Alias @TargetElement(onlyWith = LoomJDK.class) //
     Target_jdk_internal_vm_Continuation cont;
-
-    @Alias
-    @TargetElement(onlyWith = LoomJDK.class)
-    native Target_jdk_internal_vm_Continuation getContinuation();
 
     @Alias
     @TargetElement(onlyWith = LoomJDK.class)

@@ -36,6 +36,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -696,6 +698,11 @@ final class SubstrateVirtualThread extends Thread {
         } finally {
             releaseInterruptLockMaybeSwitchBack(token);
         }
+    }
+
+    Pointer getBaseSP() {
+        Continuation c = cont;
+        return (c != null) ? c.getBaseSP() : WordFactory.nullPointer();
     }
 }
 

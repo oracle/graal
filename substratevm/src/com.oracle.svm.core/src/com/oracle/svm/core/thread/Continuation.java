@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -46,6 +47,7 @@ import com.oracle.svm.core.util.VMError;
  * Foundation for continuation support via {@link SubstrateVirtualThread} or
  * {@linkplain Target_jdk_internal_vm_Continuation Project Loom}.
  */
+@InternalVMMethod
 public final class Continuation {
     @Fold
     public static boolean isSupported() {

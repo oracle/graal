@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
 import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
@@ -63,6 +62,7 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -779,12 +779,26 @@ public abstract class PlatformThreads {
         }
     }
 
-    static StackTraceElement[] getStackTrace(Thread thread) {
+    static StackTraceElement[] getStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
         assert !isVirtual(thread);
+        if (thread == currentThread.get()) {
+            return StackTraceUtils.getStackTrace(filterExceptions, callerSP, WordFactory.nullPointer());
+        }
+        assert !filterExceptions : "exception stack traces can be taken only for the current thread";
+        return StackTraceUtils.asyncGetStackTrace(thread);
+    }
 
-        GetStackTraceOperation vmOp = new GetStackTraceOperation(thread);
-        vmOp.enqueue();
-        return vmOp.result;
+    public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
+        assert !isVirtual(thread);
+        IsolateThread isolateThread = getIsolateThread(thread);
+        if (isolateThread == CurrentIsolate.getCurrentThread()) {
+            /*
+             * Internal frames from the VMOperation handling show up in the stack traces, but we are
+             * OK with that.
+             */
+            return StackTraceUtils.getStackTrace(false, callerSP, WordFactory.nullPointer());
+        }
+        return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
     }
 
     static Map<Thread, StackTraceElement[]> getAllStackTraces() {
@@ -797,19 +811,6 @@ public abstract class PlatformThreads {
         GetAllThreadsOperation vmOp = new GetAllThreadsOperation();
         vmOp.enqueue();
         return vmOp.result.toArray(new Thread[0]);
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    private static StackTraceElement[] getStackTrace(IsolateThread thread) {
-        if (thread == CurrentIsolate.getCurrentThread()) {
-            /*
-             * Internal frames from the VMOperation handling show up in the stack traces, but we are
-             * OK with that.
-             */
-            return StackTraceUtils.getStackTrace(false, readCallerStackPointer());
-        } else {
-            return StackTraceUtils.getStackTrace(false, thread);
-        }
     }
 
     /** Interruptibly park the current thread. */
@@ -984,25 +985,6 @@ public abstract class PlatformThreads {
         return (ThreadData) toTarget(currentThread.get()).threadData;
     }
 
-    private static class GetStackTraceOperation extends JavaVMOperation {
-        private final Thread thread;
-        private StackTraceElement[] result;
-
-        GetStackTraceOperation(Thread thread) {
-            super(VMOperationInfos.get(GetStackTraceOperation.class, "Get stack trace", SystemEffect.SAFEPOINT));
-            this.thread = thread;
-        }
-
-        @Override
-        protected void operate() {
-            if (thread.isAlive()) {
-                result = getStackTrace(getIsolateThread(thread));
-            } else {
-                result = Target_java_lang_Thread.EMPTY_STACK_TRACE;
-            }
-        }
-    }
-
     private static class GetAllStackTracesOperation extends JavaVMOperation {
         private final Map<Thread, StackTraceElement[]> result;
 
@@ -1014,7 +996,8 @@ public abstract class PlatformThreads {
         @Override
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                result.put(PlatformThreads.fromVMThread(cur), getStackTrace(cur));
+                Thread thread = PlatformThreads.fromVMThread(cur);
+                result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
             }
         }
     }

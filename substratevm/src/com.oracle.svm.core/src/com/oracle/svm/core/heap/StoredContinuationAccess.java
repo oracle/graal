@@ -187,45 +187,63 @@ public final class StoredContinuationAccess {
         StoredContinuation s = (StoredContinuation) holderObject;
         assert baseAddress.equal(Word.objectToUntrackedPointer(holderObject));
 
-        CodePointer startIp = getIP(s);
-        if (startIp.isNull()) {
+        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+        if (!initWalk(s, walk)) {
             return true; // uninitialized, ignore
         }
 
-        Pointer startSp = getFramesStart(s);
-        Pointer endSp = arrayAddress(s).add(getSizeInBytes(s));
-
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        JavaStackWalker.initWalk(walk, startSp, endSp, startIp);
-
         SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
         do {
-            Pointer sp = walk.getSP();
-            CodePointer ip = walk.getPossiblyStaleIP();
-
             UntetheredCodeInfo untetheredCodeInfo = walk.getIPCodeInfo();
             Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
             try {
-                CodeInfo codeInfo = CodeInfoAccess.convert(untetheredCodeInfo);
-                VMError.guarantee(codeInfo.equal(CodeInfoTable.getImageCodeInfo()));
-                VMError.guarantee(Deoptimizer.checkDeoptimized(sp) == null);
-                if (codeInfo.isNull()) {
-                    throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, null);
-                }
-
-                CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
-
-                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
-                long referenceMapIndex = queryResult.getReferenceMapIndex();
-                if (referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP) {
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, holderObject);
-                }
+                CodeInfo codeInfo = CodeInfoAccess.convert(untetheredCodeInfo, tether);
+                walkFrameReferences(walk, codeInfo, queryResult, visitor, holderObject);
             } finally {
                 CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
             }
         } while (JavaStackWalker.continueWalk(walk, queryResult, null));
 
         return true;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean initWalk(StoredContinuation s, JavaStackWalk walk) {
+        CodePointer startIp = getIP(s);
+        if (startIp.isNull()) {
+            return false; // uninitialized
+        }
+
+        initWalk(s, walk, startIp);
+        return true;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void initWalk(StoredContinuation s, JavaStackWalk walk, CodePointer startIp) {
+        Pointer startSp = getFramesStart(s);
+        Pointer endSp = arrayAddress(s).add(getSizeInBytes(s));
+
+        JavaStackWalker.initWalk(walk, startSp, endSp, startIp);
+        walk.setAnchor(WordFactory.nullPointer()); // never use an anchor of this platform thread
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void walkFrameReferences(JavaStackWalk walk, CodeInfo codeInfo, SimpleCodeInfoQueryResult queryResult, ObjectReferenceVisitor visitor, Object holderObject) {
+        Pointer sp = walk.getSP();
+        CodePointer ip = walk.getPossiblyStaleIP();
+        if (codeInfo.isNull()) {
+            throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, null);
+        }
+        VMError.guarantee(codeInfo.equal(CodeInfoTable.getImageCodeInfo()));
+        VMError.guarantee(Deoptimizer.checkDeoptimized(sp) == null);
+
+        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
+
+        NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
+        long referenceMapIndex = queryResult.getReferenceMapIndex();
+        if (referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP) {
+            CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, holderObject);
+        }
     }
 
     private static final class PreemptVisitor extends StackFrameVisitor {
