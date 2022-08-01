@@ -68,17 +68,17 @@ public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements V
             VirtualObjectNode localsVirtual = (VirtualObjectNode) localsAlias;
             VirtualObjectNode primitiveVirtual = (VirtualObjectNode) primitiveAlias;
             if (frameSlotIndex < tagVirtual.entryCount()) {
+                // Simply set kind to illegal. A later phase will clear the slots.
+                JavaKind tagKind = tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
                 boolean success;
                 if (staticAccess) {
-                    // Clear the slot without updating the slot kind.
+                    success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstantWithStaticModifier(accessTag), tagKind, -1);
                     if (primitiveAccess) {
-                        success = tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                        success = success && tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
                     } else {
-                        success = tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1);
+                        success = success && tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1);
                     }
                 } else {
-                    // Simply set kind to illegal. A later phase will clear the slots.
-                    JavaKind tagKind = tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
                     success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagKind, -1) &&
                                     tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1) &&
                                     tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);

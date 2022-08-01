@@ -184,7 +184,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
             if (insertBefore.isAlive()) {
                 StructuredGraph graph = insertBefore.graph();
                 ConstantNode defaultForKind = ConstantNode.defaultForKind(NewFrameNode.asJavaKind(accessTag), graph);
-                graph.addBeforeFixed(insertBefore, graph.add(new VirtualFrameSetNode(frame, index, accessTag, defaultForKind, type, true)));
+                graph.addBeforeFixed(insertBefore, graph.add(new VirtualFrameSetNode(frame, index, accessTag, defaultForKind, type, false, false)));
             }
         }
     }

@@ -540,8 +540,7 @@ public final class BytecodeOSRMetadata {
                 case FrameWithoutBoxing.STATIC_TAG:
                     // Since we do not know the actual value of the slot at this point, we
                     // copy both.
-                    target.setObjectStatic(slot, source.getObjectStatic(slot));
-                    target.setLongStatic(slot, source.getLongStatic(slot));
+                    source.transferStaticSlot(slot, target);
                     break;
                 case FrameWithoutBoxing.ILLEGAL_TAG:
                     target.clear(slot);
