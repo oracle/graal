@@ -997,6 +997,12 @@ meth public !varargs static void registerAsQueried(java.lang.reflect.Executable[
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
 
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeJNIAccess
+meth public !varargs static void register(java.lang.Class<?>[])
+meth public !varargs static void register(java.lang.reflect.Executable[])
+meth public !varargs static void register(java.lang.reflect.Field[])
+supr java.lang.Object
+
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
