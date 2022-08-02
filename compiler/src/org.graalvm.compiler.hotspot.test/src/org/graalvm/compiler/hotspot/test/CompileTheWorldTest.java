@@ -58,6 +58,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         int maxClasses = Integer.MAX_VALUE;
         String methodFilters = null;
         String excludeMethodFilters = null;
+        String scratchDir = "";
         boolean verbose = false;
         try (AutoCloseable c = new TTY.Filter()) {
             CompileTheWorld ctw = new CompileTheWorld(runtime,
@@ -68,6 +69,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
                             maxClasses,
                             methodFilters,
                             excludeMethodFilters,
+                            scratchDir,
                             verbose,
                             harnessOptions,
                             new OptionValues(initialOptions, HighTier.Options.Inline, false,

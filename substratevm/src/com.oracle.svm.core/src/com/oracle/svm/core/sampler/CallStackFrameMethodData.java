@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.sampler;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+/**
+ * Encode method data to identify methods in {@link FrameInfoQueryResult}.
+ */
+public interface CallStackFrameMethodData {
 
-import com.oracle.svm.core.SubstrateOptions;
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class UseSerialGC implements BooleanSupplier {
-    UseSerialGC() {
-    }
-
-    @Override
-    public boolean getAsBoolean() {
-        return SubstrateOptions.UseSerialGC.getValue();
-    }
+    int getMethodId(ResolvedJavaMethod method);
 }

@@ -79,7 +79,7 @@ public class TStringRepeatTest extends TStringTestBase {
                 Assert.assertEquals(codeRange, b.getCodeRangeUncached(encoding));
             }
             byte[] cmp = new byte[array.length * 3];
-            b.copyToByteArrayNodeUncached(0, cmp, 0, cmp.length, encoding);
+            b.copyToByteArrayUncached(0, cmp, 0, cmp.length, encoding);
             for (int i = 0; i < n; i++) {
                 int offset = array.length * i;
                 for (int j = 0; j < array.length; j++) {

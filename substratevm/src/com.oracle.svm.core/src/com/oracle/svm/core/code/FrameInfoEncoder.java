@@ -62,6 +62,8 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.sampler.CallStackFrameMethodData;
+import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -493,7 +495,7 @@ public class FrameInfoEncoder {
     private static int countVirtualObjects(DebugInfo debugInfo) {
         /*
          * We want to know the highest virtual object id in use in this DebugInfo. For that, we have
-         * to recursively visited all VirtualObject in all frames.
+         * to recursively visit all VirtualObject in all frames.
          */
         BitSet visitedVirtualObjects = new BitSet();
         for (BytecodeFrame frame = debugInfo.frame(); frame != null; frame = frame.caller()) {
@@ -528,6 +530,11 @@ public class FrameInfoEncoder {
         ValueInfo[] valueInfos = null;
         if (needLocalValues) {
             SharedMethod method = (SharedMethod) frame.getMethod();
+            if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
+                result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
+                ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, result.methodID);
+            }
+
             if (customization.storeDeoptTargetMethod()) {
                 result.deoptMethod = method;
                 encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(method));
@@ -597,7 +604,7 @@ public class FrameInfoEncoder {
             StackSlot stackSlot = (StackSlot) value;
             result.type = ValueType.StackSlot;
             result.data = stackSlot.getOffset(data.totalFrameSize);
-            result.isCompressedReference = isCompressedReference(stackSlot);
+            result.isCompressedReference = stackSlot.getPlatformKind().getVectorLength() == 1 && isCompressedReference(stackSlot);
             ImageSingletons.lookup(Counters.class).stackValueCount.inc();
 
         } else if (ReservedRegisters.singleton().isAllowedInFrameState(value)) {
@@ -908,6 +915,7 @@ public class FrameInfoEncoder {
                 encodingBuffer.putSV(classIndex);
                 encodingBuffer.putSV(methodIndex);
                 encodingBuffer.putSV(cur.sourceLineNumber);
+                encodingBuffer.putUV(cur.methodID);
             }
         }
         encodingBuffer.putSV(FrameInfoDecoder.NO_CALLER_BCI);

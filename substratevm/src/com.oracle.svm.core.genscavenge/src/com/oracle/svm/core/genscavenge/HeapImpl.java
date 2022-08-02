@@ -61,6 +61,7 @@ import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -278,7 +279,7 @@ public final class HeapImpl extends Heap {
     }
 
     void report(Log log) {
-        report(log, HeapParameters.Options.TraceHeapChunks.getValue());
+        report(log, SerialGCOptions.TraceHeapChunks.getValue());
     }
 
     void report(Log log, boolean traceHeapChunks) {
@@ -400,7 +401,7 @@ public final class HeapImpl extends Heap {
 
     @Fold
     public static boolean usesImageHeapCardMarking() {
-        Boolean enabled = HeapOptions.ImageHeapCardMarking.getValue();
+        Boolean enabled = SerialGCOptions.ImageHeapCardMarking.getValue();
         if (enabled == Boolean.FALSE || enabled == null && !SubstrateOptions.useRememberedSet()) {
             return false;
         } else if (enabled == null) {
@@ -408,7 +409,7 @@ public final class HeapImpl extends Heap {
         }
         UserError.guarantee(CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment(),
                         "Enabling option %s requires a custom image heap alignment at runtime, which cannot be ensured with the current configuration (option %s might be disabled)",
-                        HeapOptions.ImageHeapCardMarking, SubstrateOptions.SpawnIsolates);
+                        SerialGCOptions.ImageHeapCardMarking, SubstrateOptions.SpawnIsolates);
         return true;
     }
 
@@ -427,7 +428,7 @@ public final class HeapImpl extends Heap {
              * the heap base and the start of the image heap. The gap won't need any memory in the
              * native image file.
              */
-            return NumUtil.safeToInt(HeapParameters.Options.AlignedHeapChunkSize.getValue());
+            return NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
         }
         return 0;
     }
@@ -886,7 +887,7 @@ public final class HeapImpl extends Heap {
     }
 }
 
-@TargetClass(value = java.lang.Runtime.class, onlyWith = UseSerialGC.class)
+@TargetClass(value = java.lang.Runtime.class, onlyWith = UseSerialOrEpsilonGC.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_Runtime {
     @Substitute
@@ -908,6 +909,6 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private void gc() {
-        GCImpl.getGCImpl().maybeCauseUserRequestedCollection();
+        GCImpl.getGCImpl().maybeCauseUserRequestedCollection(GCCause.JavaLangSystemGC, true);
     }
 }

@@ -45,8 +45,9 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
     @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("UnitTest", 1);
     @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
+    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
 
-    protected static GCCause[] GCCauses = new GCCause[]{JavaLangSystemGC, UnitTest, TestGCInDeoptimizer};
+    protected static GCCause[] GCCauses = new GCCause[]{JavaLangSystemGC, UnitTest, TestGCInDeoptimizer, HintedGC};
 
     private final int id;
     private final String name;

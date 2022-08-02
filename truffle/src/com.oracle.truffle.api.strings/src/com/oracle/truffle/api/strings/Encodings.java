@@ -229,26 +229,26 @@ final class Encodings {
         switch (nBytes) {
             case 4:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                    return invalidCodepointReturnValue(errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
             case 3:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                    return invalidCodepointReturnValue(errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
             case 2:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                    return invalidCodepointReturnValue(errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j) & 0x3f);
                 break;
             default:
-                return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                return invalidCodepointReturnValue(errorHandling);
         }
         // Checkstyle: resume
         if (utf8IsInvalidCodePoint(codepoint, nBytes)) {
-            return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+            return invalidCodepointReturnValue(errorHandling);
         }
         return codepoint;
     }
@@ -327,6 +327,10 @@ final class Encodings {
 
     static boolean utf8IsInvalidCodePoint(int codepoint, int nBytes) {
         return isUTF16Surrogate(codepoint) || codepoint < UTF_8_MIN_CODEPOINT[nBytes] || codepoint > 0x10ffff;
+    }
+
+    static int invalidCodepointReturnValue(ErrorHandling errorHandling) {
+        return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
     }
 
     static int invalidCodepointReturnValue(int bestEffortValue, ErrorHandling errorHandling) {

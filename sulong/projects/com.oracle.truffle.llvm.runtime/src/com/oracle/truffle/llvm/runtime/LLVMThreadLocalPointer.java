@@ -76,7 +76,7 @@ public class LLVMThreadLocalPointer {
             LLVMGlobalContainer container = contextThreadLocal.getGlobalContainer(Math.abs(offset), bitcodeID);
             return LLVMManagedPointer.create(container);
         } else {
-            LLVMPointer base = contextThreadLocal.getSection(bitcodeID);
+            LLVMPointer base = contextThreadLocal.getSectionBase(bitcodeID);
             if (base == null) {
                 throw new LLVMIllegalSymbolIndexException("Section base for thread local global is null");
             }

@@ -203,6 +203,18 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             return graph.unique(new LoadHubNode(tool.getStampProvider(), object));
         }
 
+        if (object.isConstant() && !object.asJavaConstant().isNull()) {
+            /*
+             * Special case: insufficient canonicalization was run since the last lowering, if we
+             * are loading the hub from a constant we want to still fold it.
+             */
+            Stamp loadHubStamp = tool.getStampProvider().createHubStamp(((ObjectStamp) object.stamp(NodeView.DEFAULT)));
+            ValueNode synonym = LoadHubNode.findSynonym(object, loadHubStamp, tool.getMetaAccess(), tool.getConstantReflection());
+            if (synonym != null) {
+                return synonym;
+            }
+        }
+
         GraalError.guarantee(!object.isConstant() || object.asJavaConstant().isNull(), "Object should either not be a constant or the null constant %s", object);
 
         ObjectLayout objectLayout = getObjectLayout();

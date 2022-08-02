@@ -502,12 +502,6 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMH
     def subgroup(self):
         return "graal-compiler"
 
-    def extraVmArgs(self):
-        if mx_compiler.isJDK8:
-            return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
-        else:
-            return super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
-
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 

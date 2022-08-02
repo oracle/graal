@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -50,13 +53,9 @@ import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * {@link InitializeSymbolsNode} creates the symbol of all defined functions and globals, and put
@@ -71,9 +70,9 @@ import java.util.List;
 public final class InitializeSymbolsNode extends LLVMNode {
 
     private final String moduleName;
+    private final LLVMGlobal imageBase;
 
-    @Child private LLVMAllocateNode allocRoSection;
-    @Child private LLVMAllocateNode allocRwSection;
+    @Child private InitializeGlobalsBlockNode initializeGlobalsBlockNode;
 
     private final BranchProfile exception;
 
@@ -96,7 +95,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private final BitcodeID bitcodeID;
     private final int globalLength;
 
-    public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName, DataSectionFactory dataSectionFactory) {
+    public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName, DataSectionFactory dataSectionFactory, LLVMLanguage language) {
         this.nodeFactory = result.getRuntime().getNodeFactory();
         this.fileScope = result.getRuntime().getFileScope();
         this.globalLength = result.getSymbolTableSize();
@@ -152,8 +151,10 @@ public final class InitializeSymbolsNode extends LLVMNode {
             }
             functions[i] = function;
         }
-        this.allocRoSection = dataSectionFactory.getRoSection().createAllocateNode(nodeFactory, "roglobals_struct", true);
-        this.allocRwSection = dataSectionFactory.getRwSection().createAllocateNode(nodeFactory, "rwglobals_struct", false);
+
+        initializeGlobalsBlockNode = new InitializeGlobalsBlockNode(result, dataSectionFactory, language);
+
+        this.imageBase = result.getRuntime().getFileScope().getGlobalVariable("__ImageBase");
     }
 
     public void initializeSymbolTable(LLVMContext context) {
@@ -161,24 +162,34 @@ public final class InitializeSymbolsNode extends LLVMNode {
         context.registerScope(fileScope);
     }
 
-    public LLVMPointer execute(LLVMContext ctx) {
+    public void execute(LLVMContext ctx) {
         if (LibraryLocator.loggingEnabled()) {
             LibraryLocator.traceStaticInits(ctx, "symbol initializers", moduleName);
         }
 
-        LLVMPointer roBase = allocOrNull(allocRoSection);
-        LLVMPointer rwBase = allocOrNull(allocRwSection);
+        LLVMPointer basePointer = initializeGlobalsBlockNode.allocateGlobalsSectionBlock();
+        LLVMPointer rwBase = initializeGlobalsBlockNode.getRwSectionPointer(basePointer);
+        LLVMPointer roBase = initializeGlobalsBlockNode.getRoSectionPointer(basePointer);
+
+        if (initializeGlobalsBlockNode.hasGlobalsBlock()) {
+            assert basePointer != null;
+            ctx.registerGlobals(bitcodeID.getId(), basePointer, initializeGlobalsBlockNode.getGlobalsBlockSize(), nodeFactory);
+
+            if (roBase != null) {
+                ctx.registerReadOnlyGlobals(bitcodeID.getId(), roBase, initializeGlobalsBlockNode.getRoBlockSize(), nodeFactory);
+            }
+
+            if (imageBase != null) {
+                // On Windows the application may make reference to the undefined external global
+                // called
+                // __ImageBase. This needs to be defined here.
+                ctx.initializeSymbol(imageBase, basePointer);
+            }
+        }
+
         initializeGlobalSymbols(ctx, roBase, rwBase);
         initializeFunctionSymbols(ctx);
         initializeTLGlobalSymbols(ctx);
-
-        if (allocRoSection != null) {
-            ctx.registerReadOnlyGlobals(bitcodeID.getId(), roBase, nodeFactory);
-        }
-        if (allocRwSection != null) {
-            ctx.registerGlobals(bitcodeID.getId(), rwBase, nodeFactory);
-        }
-        return roBase;
     }
 
     public void initializeTLGlobalSymbols(LLVMContext context) {
@@ -238,14 +249,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
             List<LLVMSymbol> list = new ArrayList<>(1);
             list.add(allocSymbol.symbol);
             context.registerSymbolReverseMap(list, pointer);
-        }
-    }
-
-    private static LLVMPointer allocOrNull(LLVMAllocateNode allocNode) {
-        if (allocNode != null) {
-            return allocNode.executeWithTarget();
-        } else {
-            return null;
         }
     }
 

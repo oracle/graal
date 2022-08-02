@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.core.code;
 
-import jdk.internal.loader.BuiltinClassLoader;
+import java.lang.module.ModuleDescriptor;
+import java.util.Optional;
+
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -33,15 +35,13 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
+import jdk.internal.loader.BuiltinClassLoader;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-
-import java.lang.module.ModuleDescriptor;
-import java.util.Optional;
 
 public class FrameInfoQueryResult {
 
@@ -165,6 +165,7 @@ public class FrameInfoQueryResult {
     protected Class<?> sourceClass;
     protected String sourceMethodName;
     protected int sourceLineNumber;
+    protected int methodID;
 
     // Index of sourceClass in CodeInfoDecoder.frameInfoSourceClasses
     protected int sourceClassIndex;
@@ -318,6 +319,13 @@ public class FrameInfoQueryResult {
 
     public String getSourceMethodName() {
         return sourceMethodName;
+    }
+
+    /**
+     * Returns the unique identification number for the method.
+     */
+    public int getMethodID() {
+        return methodID;
     }
 
     public String getSourceFileName() {

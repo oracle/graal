@@ -48,6 +48,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -80,8 +81,37 @@ public final class Meta extends ContextAccessImpl {
         context.setBootstrapMeta(this);
 
         // Core types.
+        // Object and Class (+ Class fields) must be initialized before all other classes in order
+        // to eagerly create the guest Class instances.
         java_lang_Object = knownKlass(Type.java_lang_Object);
+        // Cloneable must be loaded before Serializable.
         java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
+        java_lang_Class = knownKlass(Type.java_lang_Class);
+        java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
+        java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
+        java_lang_Class_componentType = diff() //
+                        .field(VERSION_9_OR_HIGHER, Name.componentType, Type.java_lang_Class)//
+                        .notRequiredField(java_lang_Class);
+        java_lang_Class_classData = diff() //
+                        .field(higher(15), Name.classData, Type.java_lang_Object)//
+                        .notRequiredField(java_lang_Class);
+        HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
+        HIDDEN_SIGNERS = java_lang_Class.requireHiddenField(Name.HIDDEN_SIGNERS);
+        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
+
+        if (getJavaVersion().modulesEnabled()) {
+            java_lang_Class_module = java_lang_Class.requireDeclaredField(Name.module, Type.java_lang_Module);
+        } else {
+            java_lang_Class_module = null;
+        }
+
+        // Ensure that Object, Cloneable, Class and all its super-interfaces have the guest Class
+        // initialized.
+        initializeEspressoClassInHierarchy(java_lang_Cloneable);
+        initializeEspressoClassInHierarchy(java_lang_Class);
+        // From now on, all Klass'es will safely initialize the guest Class.
+
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
         java_lang_Object_array = java_lang_Object.array();
@@ -91,17 +121,14 @@ public final class Meta extends ContextAccessImpl {
                         new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES)).equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
                         "arrays super interfaces must contain java.lang.Cloneable and java.io.Serializable");
 
-        java_lang_Class = knownKlass(Type.java_lang_Class);
-        HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
-        HIDDEN_SIGNERS = java_lang_Class.requireHiddenField(Name.HIDDEN_SIGNERS);
-        java_lang_String = knownKlass(Type.java_lang_String);
         java_lang_Class_array = java_lang_Class.array();
         java_lang_Class_getName = java_lang_Class.requireDeclaredMethod(Name.getName, Signature.String);
         java_lang_Class_getSimpleName = java_lang_Class.requireDeclaredMethod(Name.getSimpleName, Signature.String);
         java_lang_Class_getTypeName = java_lang_Class.requireDeclaredMethod(Name.getTypeName, Signature.String);
         java_lang_Class_forName_String = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
-        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
+
+        java_lang_String = knownKlass(Type.java_lang_String);
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
@@ -515,16 +542,6 @@ public final class Meta extends ContextAccessImpl {
         java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.packageEnabled, Type._boolean_array);
         java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.deflt, Type._boolean);
 
-        java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
-        java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
-        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
-        java_lang_Class_componentType = diff() //
-                        .field(VERSION_9_OR_HIGHER, Name.componentType, Type.java_lang_Class)//
-                        .notRequiredField(java_lang_Class);
-        java_lang_Class_classData = diff() //
-                        .field(higher(15), Name.classData, Type.java_lang_Object)//
-                        .notRequiredField(java_lang_Class);
-
         // Classes and Members that differ from Java 8 to 11
 
         if (getJavaVersion().java9OrLater()) {
@@ -570,15 +587,11 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Module_name = java_lang_Module.requireDeclaredField(Name.name, Type.java_lang_String);
             java_lang_Module_loader = java_lang_Module.requireDeclaredField(Name.loader, Type.java_lang_ClassLoader);
             HIDDEN_MODULE_ENTRY = java_lang_Module.requireHiddenField(Name.HIDDEN_MODULE_ENTRY);
-
-            java_lang_Class_module = java_lang_Class.requireDeclaredField(Name.module, Type.java_lang_Module);
         } else {
             java_lang_Module = null;
             java_lang_Module_name = null;
             java_lang_Module_loader = null;
             HIDDEN_MODULE_ENTRY = null;
-
-            java_lang_Class_module = null;
         }
 
         java_lang_Record = diff() //
@@ -827,6 +840,16 @@ public final class Meta extends ContextAccessImpl {
                         .notRequiredMethod(jdk_internal_module_ModuleLoaderMap_Modules);
 
         interopDispatch = new InteropKlassesDispatch(this);
+    }
+
+    private static void initializeEspressoClassInHierarchy(ObjectKlass klass) {
+        klass.initializeEspressoClass();
+        if (klass.getSuperKlass() != null) {
+            initializeEspressoClassInHierarchy(klass.getSuperKlass());
+        }
+        for (ObjectKlass k : klass.getSuperInterfaces()) {
+            initializeEspressoClassInHierarchy(k);
+        }
     }
 
     /**
@@ -1789,7 +1812,11 @@ public final class Meta extends ContextAccessImpl {
      */
     @TruffleBoundary
     public Klass loadKlassOrNull(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
-        return getRegistries().loadKlass(type, classLoader, protectionDomain);
+        try {
+            return getRegistries().loadKlass(type, classLoader, protectionDomain);
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(this);
+        }
     }
 
     @TruffleBoundary

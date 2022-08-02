@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
@@ -102,13 +103,23 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
             this.toLLVM = toLLVM;
         }
 
-        @Specialization
+        static boolean isLLVMArgumentBuffer(LLVMManagedPointer pointer) {
+            return pointer.getObject() instanceof LLVMArgumentBuffer;
+        }
+
+        @Specialization(guards = "isLLVMArgumentBuffer(pointer)")
+        protected Object doLLVMArgumentBuffer(LLVMManagedPointer pointer, int id,
+                        @Cached BranchProfile profile) {
+            return ((LLVMArgumentBuffer) pointer.getObject()).readArrayElement(id, profile);
+        }
+
+        @Specialization(guards = "!isLLVMArgumentBuffer(pointer)")
         @GenerateAOT.Exclude
-        protected Object doIntrinsic(LLVMManagedPointer value, int id,
+        protected Object doIntrinsic(LLVMManagedPointer pointer, int id,
                         @Cached LLVMAsForeignNode asForeign,
                         @CachedLibrary(limit = "3") InteropLibrary foreignRead,
                         @Cached BranchProfile exception) {
-            Object foreign = asForeign.execute(value);
+            Object foreign = asForeign.execute(pointer);
             try {
                 Object rawValue = foreignRead.readArrayElement(foreign, id);
                 return toLLVM.executeWithTarget(rawValue);

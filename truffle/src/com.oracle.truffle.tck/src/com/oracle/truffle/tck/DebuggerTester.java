@@ -827,7 +827,7 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     private void putEvent(Object event) {
-        trace("Put event " + this + ": " + Thread.currentThread());
+        trace("Put event " + event + " to " + this + ": " + Thread.currentThread());
         if (event instanceof SuspendedEvent) {
             try {
                 if (handler == null) {
@@ -852,6 +852,7 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     private void onSuspend(SuspendedEvent event) {
+        trace("On SUSPEND " + event + " of " + this + ": " + Thread.currentThread());
         if (closed) {
             return;
         }
@@ -888,6 +889,11 @@ public final class DebuggerTester implements AutoCloseable {
 
         ExecutingSource(Function<Context, Value> function) {
             this.function = function;
+        }
+
+        @Override
+        public String toString() {
+            return "ExecutingSource[" + function + "], error = " + error + ", returnValue = " + returnValue;
         }
 
     }
@@ -946,12 +952,12 @@ public final class DebuggerTester implements AutoCloseable {
                     }
                     ExecutingSource s = executingSource;
                     try {
-                        trace("Start executing " + this);
+                        trace("Start executing " + s + " on " + DebuggerTester.this + ": " + Thread.currentThread());
                         s.returnValue = s.function.apply(context).toString();
-                        trace("Done executing " + this);
                     } catch (Throwable e) {
                         s.error = e;
                     } finally {
+                        trace("Done executing " + s + " on " + DebuggerTester.this + ": " + Thread.currentThread());
                         putEvent(s);
                     }
                 }

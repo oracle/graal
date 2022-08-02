@@ -1742,7 +1742,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.subl(rax, 1022);
         masm.cvtsi2sdl(xmm7, rax);
         masm.mulpd(xmm5, xmm0);
-        masm.leaq(r11, recordExternalAddress(crb, lTbl));
+        masm.leaq(tmp4, recordExternalAddress(crb, lTbl));
         masm.movq(xmm4, recordExternalAddress(crb, coeffH));           // 0x00000000, 0xbfd61a00,
                                                                        // 0x00000000, 0xbf5dabe1
         masm.mulsd(xmm3, xmm0);

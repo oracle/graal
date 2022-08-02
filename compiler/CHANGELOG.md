@@ -2,6 +2,10 @@
 
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
+## Version 22.3.0
+* (GR-32382): Added a dedicated Native Image GC policy for libgraal that will adjust the eden space aggressively to
+minimize RSS memory usage.
+
 ## Version 22.2.0
 * (GR-23737): New global value numbering optimization for fixed nodes early in the compilation pipeline.
 Early global value numbering and loop invariant code motion is enabled per default.
@@ -11,9 +15,9 @@ Disable early loop invariant code motion with  `-Dgraal.EarlyLICM=false`.
 * (GR-35033): Enable floating and global value numbering of division nodes early on in the compilation pipeline if
   it is known they will not trap.
 * (GR-38405): Compute all unswitchable invariant then pick the most frequent one.  
-* (GR-38857): Deprecated and disabled the JMX `HotSpotGraalRuntime` management bean. Re-enable the `HotSpotGraalRuntime` 
+* (GR-38857): Deprecated and disabled the JMX `HotSpotGraalRuntime` management bean. Re-enable the `HotSpotGraalRuntime`
   management bean with `-Dgraal.LibGraalManagementDelay=0`.
-  
+
 ## Version 22.1.0
 * (GR-36751): Removed the `DuplicateIrreducibleLoops` option. To disable irreducible loop handling, set
   `-Dgraal.MaxDuplicationFactor` to a value less than or equal to 1. For AOT compilations, the effort
@@ -25,7 +29,7 @@ Disable early loop invariant code motion with  `-Dgraal.EarlyLICM=false`.
 ## Version 21.2.0
 * (GR-29770) Loop safepoint elimination: Not only consider 32bit loops for safepoint removal but also 64bit ones
 that iterate in 32bit ranges.
-* (GR-29341) AVX-512 support: Fix EVEX encoding and feature checks for existing instructions and add AVX-512 
+* (GR-29341) AVX-512 support: Fix EVEX encoding and feature checks for existing instructions and add AVX-512
 alternatives.
 * (GR-31162) Do not de-duplicate ValueAnchorNode. As part of this change, there is a new marker interface
 NodeWithIdentity to mark nodes that have identity.
@@ -38,7 +42,7 @@ NodeWithIdentity to mark nodes that have identity.
 
 ## Version 21.1.0
 * (GR-29126) Unify box optimizations in the compiler. Remove `-Dgraal.ReuseOutOfCacheBoxedValues=false`.
-* (GR-28523) Optimize Box nodes: Optimizes box operations by re-using boxed representations 
+* (GR-28523) Optimize Box nodes: Optimizes box operations by re-using boxed representations
 if the value of the boxed primitive is outside of the cache range of the Int/Long/Short/Char caches.
 Box node optimization is enabled per default. Disable it with `-Dgraal.ReuseOutOfCacheBoxedValues=false`.
 * (GR-29373) Eliminate unneeded STORE_LOAD barriers on sequential volatile writes on x86.

@@ -9,10 +9,10 @@ permalink: /reference-manual/native-image/guides/create-heap-dump/
 
 You can create a heap dump of a running executable to monitor its execution. Just like any other Java heap dump, it can be opened with the [VisualVM](../../../tools/visualvm.md) tool.
 
-You can build a native executable so that it dumps its heap in three ways:
+To enable heap dump support, native executables must be built with the `-H:+AllowVMInspection` option. Heap dumps can then be created in three different ways:
 
 1. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
-2. Build a native executable with the `-H:+AllowVMInspection` option. Then create heap dumps sending `USR1` (other supported signals are `QUIT/BREAK` for stack dumps and `USR2` to dump runtime compilation information).
+2. Create heap dumps sending `USR1` (other supported signals are `QUIT/BREAK` for stack dumps and `USR2` to dump runtime compilation information).
 3. Create a heap dumps programmatically through the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) API.
 
 All three approaches are described below.

@@ -417,6 +417,7 @@ public class FrameInfoDecoder {
                 final int sourceClassIndex = readBuffer.getSVInt();
                 final int sourceMethodNameIndex = readBuffer.getSVInt();
                 final int sourceLineNumber = readBuffer.getSVInt();
+                final int sourceMethodID = readBuffer.getUVInt();
 
                 cur.sourceClassIndex = sourceClassIndex;
                 cur.sourceMethodNameIndex = sourceMethodNameIndex;
@@ -424,6 +425,7 @@ public class FrameInfoDecoder {
                 cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
                 cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
                 cur.sourceLineNumber = sourceLineNumber;
+                cur.methodID = sourceMethodID;
             }
 
             if (prev == null) {

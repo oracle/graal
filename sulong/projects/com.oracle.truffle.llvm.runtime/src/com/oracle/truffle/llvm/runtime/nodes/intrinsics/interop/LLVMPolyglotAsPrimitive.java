@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -83,6 +83,11 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
 
         public static LLVMPolyglotAsPrimitive create(LLVMExpressionNode arg) {
             return AsI8NodeGen.create(arg);
+        }
+
+        @Specialization
+        byte asI8(byte receiver) {
+            return receiver;
         }
 
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")

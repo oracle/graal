@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
+package com.oracle.svm.core.sampler;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.heap.Heap;
+import org.graalvm.collections.LockFreePrefixTree;
 
-/**
- * Immutable runtime option that notifies the {@link Heap} implementation once the value of the
- * option was set.
- */
-public class ImmutableGCRuntimeOptionKey<T> extends ImmutableRuntimeOptionKey<T> {
-    public ImmutableGCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
-    }
+public interface ProfilingSampler {
 
-    @Override
-    protected void afterValueUpdate() {
-        super.afterValueUpdate();
-        if (!SubstrateUtil.HOSTED) {
-            Heap.getHeap().optionValueChanged(this);
-        }
-    }
+    boolean isCollectingActive();
+
+    void registerSampler();
+
+    LockFreePrefixTree prefixTree();
 }

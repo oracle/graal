@@ -917,7 +917,7 @@ public final class Source {
          * @since 19.0
          */
         public Source build() throws IOException {
-            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding);
+            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding, null);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {

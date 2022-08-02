@@ -58,7 +58,23 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 @ExportLibrary(InteropLibrary.class)
 public final class PythonFlags extends AbstractConstantKeysObject {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("ASCII", "DOTALL", "IGNORECASE", "LOCALE", "MULTILINE", "TEMPLATE", "UNICODE", "VERBOSE");
+    private static final String PROP_ASCII = "ASCII";
+    private static final String PROP_DOTALL = "DOTALL";
+    private static final String PROP_IGNORECASE = "IGNORECASE";
+    private static final String PROP_LOCALE = "LOCALE";
+    private static final String PROP_MULTILINE = "MULTILINE";
+    private static final String PROP_TEMPLATE = "TEMPLATE";
+    private static final String PROP_UNICODE = "UNICODE";
+    private static final String PROP_VERBOSE = "VERBOSE";
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(
+                    PROP_ASCII,
+                    PROP_DOTALL,
+                    PROP_IGNORECASE,
+                    PROP_LOCALE,
+                    PROP_MULTILINE,
+                    PROP_TEMPLATE,
+                    PROP_UNICODE,
+                    PROP_VERBOSE);
 
     private final int value;
 
@@ -259,23 +275,40 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_ASCII:
+            case PROP_DOTALL:
+            case PROP_IGNORECASE:
+            case PROP_LOCALE:
+            case PROP_MULTILINE:
+            case PROP_TEMPLATE:
+            case PROP_UNICODE:
+            case PROP_VERBOSE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "ASCII":
+            case PROP_ASCII:
                 return isAscii();
-            case "DOTALL":
+            case PROP_DOTALL:
                 return isDotAll();
-            case "IGNORECASE":
+            case PROP_IGNORECASE:
                 return isIgnoreCase();
-            case "LOCALE":
+            case PROP_LOCALE:
                 return isLocale();
-            case "MULTILINE":
+            case PROP_MULTILINE:
                 return isMultiLine();
-            case "TEMPLATE":
+            case PROP_TEMPLATE:
                 return isTemplate();
-            case "UNICODE":
+            case PROP_UNICODE:
                 return isUnicodeExplicitlySet();
-            case "VERBOSE":
+            case PROP_VERBOSE:
                 return isVerbose();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();

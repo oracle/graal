@@ -211,6 +211,22 @@ public class MaskingOptimizationTest extends GraalCompilerTest {
         test("orAndMask2", 42L);
     }
 
+    long addAndMaskCarry(long r) {
+        long r2 = r;
+        for (int x = 3; x > 1; x--) {
+            for (int y = 1; 2 > y; y++) {
+                r2 += y;
+                r2 &= x;
+            }
+        }
+        return r2;
+    }
+
+    @Test
+    public void test21() {
+        test("addAndMaskCarry", 0L);
+    }
+
     @Override
     protected void checkMidTierGraph(StructuredGraph graph) {
         super.checkMidTierGraph(graph);

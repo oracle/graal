@@ -65,6 +65,7 @@ import org.graalvm.shadowed.org.jcodings.util.CaseInsensitiveBytesHash;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 final class JCodingsImpl implements JCodings {
@@ -173,7 +174,7 @@ final class JCodingsImpl implements JCodings {
             return index * minLength(jCoding);
         }
         int offset = a.byteArrayOffset() + extraOffsetRaw;
-        int end = a.byteArrayOffset() + a.length() - extraOffsetRaw;
+        int end = a.byteArrayOffset() + a.length();
         int cpi = 0;
         int i = 0;
         while (i < a.length() - extraOffsetRaw) {
@@ -207,11 +208,9 @@ final class JCodingsImpl implements JCodings {
         int end = a.byteArrayOffset() + a.length();
         int length = getCodePointLength(jCoding, arrayA, p, end);
         if (length < 1) {
-            return Encodings.invalidCodepointReturnValue(Encodings.invalidCodepoint(), errorHandling);
+            return Encodings.invalidCodepointReturnValue(errorHandling);
         }
-        int codePoint = readCodePoint(jCoding, arrayA, p, end);
-        assert codePoint >= 0;
-        return codePoint;
+        return readCodePoint(jCoding, arrayA, p, end);
     }
 
     @Override
@@ -269,7 +268,7 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, int targetEncoding,
-                    ConditionProfile outOfMemoryProfile,
+                    BranchProfile outOfMemoryProfile,
                     ConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
         final int encoding = a.encoding();
@@ -321,7 +320,8 @@ final class JCodingsImpl implements JCodings {
                     undefinedConversion = true;
                     econvSetReplacement(jCodingDst, econv, replacement);
                 } else if (result.isDestinationBufferFull()) {
-                    if (outOfMemoryProfile.profile(buffer.length == TStringConstants.MAX_ARRAY_SIZE)) {
+                    if (buffer.length == TStringConstants.MAX_ARRAY_SIZE) {
+                        outOfMemoryProfile.enter();
                         throw InternalErrors.outOfMemory();
                     }
                     buffer = Arrays.copyOf(buffer, (int) Math.min(TStringConstants.MAX_ARRAY_SIZE, ((long) buffer.length) << 1));

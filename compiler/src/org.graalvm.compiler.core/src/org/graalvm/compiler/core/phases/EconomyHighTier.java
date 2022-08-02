@@ -31,7 +31,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 public class EconomyHighTier extends BaseTier<HighTierContext> {
 
     public EconomyHighTier() {
-        CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
         appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }

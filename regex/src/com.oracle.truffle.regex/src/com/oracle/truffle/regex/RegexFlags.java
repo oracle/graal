@@ -55,7 +55,24 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 @ExportLibrary(InteropLibrary.class)
 public final class RegexFlags extends AbstractConstantKeysObject implements JsonConvertible {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("source", "ignoreCase", "multiline", "sticky", "global", "unicode", "dotAll", "hasIndices");
+    private static final String PROP_SOURCE = "source";
+    private static final String PROP_IGNORE_CASE = "ignoreCase";
+    private static final String PROP_MULTILINE = "multiline";
+    private static final String PROP_STICKY = "sticky";
+    private static final String PROP_GLOBAL = "global";
+    private static final String PROP_UNICODE = "unicode";
+    private static final String PROP_DOT_ALL = "dotAll";
+    private static final String PROP_HAS_INDICES = "hasIndices";
+
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(
+                    PROP_SOURCE,
+                    PROP_IGNORE_CASE,
+                    PROP_MULTILINE,
+                    PROP_STICKY,
+                    PROP_GLOBAL,
+                    PROP_UNICODE,
+                    PROP_DOT_ALL,
+                    PROP_HAS_INDICES);
 
     private static final int NONE = 0;
     private static final int IGNORE_CASE = 1;
@@ -183,13 +200,13 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(Json.prop("ignoreCase", isIgnoreCase()),
-                        Json.prop("multiline", isMultiline()),
-                        Json.prop("global", isGlobal()),
-                        Json.prop("sticky", isSticky()),
-                        Json.prop("unicode", isUnicode()),
-                        Json.prop("dotAll", isDotAll()),
-                        Json.prop("hasIndices", hasIndices()));
+        return Json.obj(Json.prop(PROP_IGNORE_CASE, isIgnoreCase()),
+                        Json.prop(PROP_MULTILINE, isMultiline()),
+                        Json.prop(PROP_GLOBAL, isGlobal()),
+                        Json.prop(PROP_STICKY, isSticky()),
+                        Json.prop(PROP_UNICODE, isUnicode()),
+                        Json.prop(PROP_DOT_ALL, isDotAll()),
+                        Json.prop(PROP_HAS_INDICES, hasIndices()));
     }
 
     @Override
@@ -198,23 +215,40 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_SOURCE:
+            case PROP_IGNORE_CASE:
+            case PROP_MULTILINE:
+            case PROP_STICKY:
+            case PROP_GLOBAL:
+            case PROP_UNICODE:
+            case PROP_DOT_ALL:
+            case PROP_HAS_INDICES:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "source":
+            case PROP_SOURCE:
                 return getSource();
-            case "ignoreCase":
+            case PROP_IGNORE_CASE:
                 return isIgnoreCase();
-            case "multiline":
+            case PROP_MULTILINE:
                 return isMultiline();
-            case "sticky":
+            case PROP_STICKY:
                 return isSticky();
-            case "global":
+            case PROP_GLOBAL:
                 return isGlobal();
-            case "unicode":
+            case PROP_UNICODE:
                 return isUnicode();
-            case "dotAll":
+            case PROP_DOT_ALL:
                 return isDotAll();
-            case "hasIndices":
+            case PROP_HAS_INDICES:
                 return hasIndices();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();

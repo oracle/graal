@@ -1201,7 +1201,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         if (!Options.TruffleHostInlining.getValue(options)) {
             return;
         }
-        TruffleHostInliningPhase phase = new TruffleHostInliningPhase(highTier.createCanonicalizerPhase());
+        TruffleHostInliningPhase phase = new TruffleHostInliningPhase(CanonicalizerPhase.create());
         ListIterator<BasePhase<? super HighTierContext>> insertionPoint = highTier.findPhase(AbstractInliningPhase.class);
         if (insertionPoint == null) {
             highTier.prependPhase(phase);

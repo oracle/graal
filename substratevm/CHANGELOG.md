@@ -4,14 +4,15 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
-* (GR-39390) (GR-39649) Red Hat added support for the JFR events `JavaMonitorEnter` and `ThreadSleep`.
+* (GR-39390) (GR-39649) (GR-40033) Red Hat added support for the JFR events `JavaMonitorEnter`, `JavaMonitorWait`, and `ThreadSleep`.
 * (GR-39497) Add `-H:BuildOutputJSONFile=<file.json>` option for [JSON build output](https://github.com/oracle/graal/edit/master/docs/reference-manual/native-image/BuildOutput.md#machine-readable-build-output). Please feel free to provide feedback so that we can stabilize the schema/API.
+* (GR-40170) Add `--silent` option to silence the build output.
 
 ## Version 22.2.0
 * (GR-20653) Re-enable the usage of all CPU features for JIT compilation on AMD64.
 * (GR-38413) Add support for `-XX:+ExitOnOutOfMemoryError`.
 * (GR-37606) Add support for URLs and short descriptions to `Feature`. This info is shown as part of the build output.
-* (GR-38965) Heap dumps are now supported in Community Edition. 
+* (GR-38965) Heap dumps are now supported in Community Edition.
 * (GR-38951) Add `-XX:+DumpHeapAndExit` option to dump the initial heap of a native executable.
 * (GR-37582) Run image-builder on module-path per default. Opt-out with env setting `USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false`.
 * (GR-38660) Expose -H:Name=<outfile> as API option -o <outfile>

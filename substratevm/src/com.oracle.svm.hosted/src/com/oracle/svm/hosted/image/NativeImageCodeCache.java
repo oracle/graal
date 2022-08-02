@@ -60,6 +60,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -564,6 +565,10 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
+            if (ImageSingletons.contains(ProfilingSampler.class) && ImageSingletons.lookup(ProfilingSampler.class).isCollectingActive()) {
+                return true;
+            }
+
             CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;
             BytecodeFrame topFrame = infopoint.debugInfo.frame();
 

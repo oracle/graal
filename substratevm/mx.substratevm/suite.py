@@ -246,6 +246,7 @@ suite = {
                     "jdk.internal.perf",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
+                    "jdk.internal.util",
                 ],
                 "java.desktop": [
                     "sun.java2d",

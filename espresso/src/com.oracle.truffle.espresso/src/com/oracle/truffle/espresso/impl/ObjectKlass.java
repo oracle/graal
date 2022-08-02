@@ -104,6 +104,12 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private StaticObject statics;
 
+    static {
+        // Ensures that 'statics' field can be non-volatile. This uses "Unsafe Local DCL + Safe
+        // Singleton" as described in https://shipilev.net/blog/2014/safe-public-construction
+        assert hasFinalInstanceField(StaticObject.class);
+    }
+
     private final Klass hostKlass;
 
     @CompilationFinal //
@@ -206,10 +212,10 @@ public final class ObjectKlass extends Klass {
         if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
             // Protection domain should not be host null, and will be initialized to guest null on
             // mirror creation.
-            getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(mirror(), info.protectionDomain);
+            getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(initializeEspressoClass(), info.protectionDomain);
         }
         if (info.classData != null) {
-            getMeta().java_lang_Class_classData.setObject(mirror(), info.classData);
+            getMeta().java_lang_Class_classData.setObject(initializeEspressoClass(), info.classData);
         }
         if (!info.addedToRegistry()) {
             initSelfReferenceInPool();
@@ -218,6 +224,9 @@ public final class ObjectKlass extends Klass {
         this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         this.initState = LOADED;
+        if (getMeta().java_lang_Class != null) {
+            initializeEspressoClass();
+        }
         assert verifyTables();
     }
 
@@ -298,17 +307,21 @@ public final class ObjectKlass extends Klass {
     }
 
     StaticObject getStaticsImpl() {
-        if (statics == null) {
-            obtainStatics();
+        StaticObject result = this.statics;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            result = createStatics();
         }
-        return statics;
+        return result;
     }
 
-    private synchronized void obtainStatics() {
-        if (statics == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            statics = getAllocator().createStatics(this);
+    private synchronized StaticObject createStatics() {
+        CompilerAsserts.neverPartOfCompilation();
+        StaticObject result = this.statics;
+        if (result == null) {
+            this.statics = result = getAllocator().createStatics(this);
         }
+        return result;
     }
 
     // region InitStatus

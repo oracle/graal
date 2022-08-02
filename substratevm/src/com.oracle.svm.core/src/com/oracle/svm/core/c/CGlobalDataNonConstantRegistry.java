@@ -32,6 +32,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.util.ImageHeapMap;
 
@@ -50,6 +51,7 @@ public class CGlobalDataNonConstantRegistry {
     /**
      * Invoked at runtime via com.oracle.svm.hosted.c.CGlobalDataFeature#getCGlobalDataInfoMethod.
      */
+    @NeverInline("CGlobalDataFeature expects that this call is not inlined")
     public CGlobalDataInfo getCGlobalDataInfo(CGlobalDataImpl<?> cGlobalData) {
         return cGlobalDataInfos.get(cGlobalData);
     }

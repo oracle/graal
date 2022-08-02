@@ -65,7 +65,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self._config_name = config_name
         self.extra_java_args = extra_java_args or []
         self.extra_launcher_args = extra_launcher_args or []
-        self.debug_args = mx.java_debug_args() if config_name == "jvm" else []
+        self.debug_args = mx.java_debug_args() if "jvm" in config_name else []
 
     def name(self):
         return self._name
@@ -976,6 +976,12 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
+            graal_test = mx.distribution('GRAAL_TEST', fatalIfMissing=False)
+            polybench_ee = mx.distribution('POLYBENCH_EE', fatalIfMissing=False)
+            if graal_test and polybench_ee and mx.get_env('ENABLE_POLYBENCH_HPC') == 'yes':
+                # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
+                # are present, the CompileTheWorld benchmark is available.
+                self._benchmarks = ['CompileTheWorld']
             for group in ["interpreter", "compiler", "warmup", "nfi"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
@@ -991,8 +997,29 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if benchmarks is None or len(benchmarks) != 1:
             mx.abort("Must specify one benchmark at a time.")
         vmArgs = self.vmArgs(bmSuiteArgs)
-        benchmark_path = os.path.join(self._get_benchmark_root(), benchmarks[0])
-        return ["--path=" + benchmark_path] + vmArgs
+        benchmark = benchmarks[0]
+        if benchmark == 'CompileTheWorld':
+            # Run CompileTheWorld as a polybench benchmark, using instruction counting to get a stable metric.
+            # The CompileTheWorld class has been reorganized to have separate "prepare" and
+            # "compile" steps such that only the latter is measured by polybench.
+            # PAPI instruction counters are thread-local so CTW is run on the same thread as
+            # the polybench harness (i.e., CompileTheWorld.MultiThreaded=false).
+            import mx_compiler
+            res = mx_compiler._ctw_jvmci_export_args(arg_prefix='--vm.-') + [
+                   '--ctw',
+                   '--vm.cp=' + mx.distribution('GRAAL_ONLY_TEST').path + os.pathsep + mx.distribution('GRAAL_TEST').path,
+                   '--vm.DCompileTheWorld.MaxCompiles=10000',
+                   '--vm.DCompileTheWorld.Classpath=' + mx.library('DACAPO_MR1_BACH').get_path(resolve=True),
+                   '--vm.DCompileTheWorld.Verbose=false',
+                   '--vm.DCompileTheWorld.MultiThreaded=false',
+                   '--vm.Dlibgraal.ShowConfiguration=info',
+                   '--metric=instructions',
+                   '-w', '1',
+                   '-i', '5'] + vmArgs
+        else:
+            benchmark_path = os.path.join(self._get_benchmark_root(), benchmark)
+            res = ["--path=" + benchmark_path] + vmArgs
+        return res
 
     def get_vm_registry(self):
         return _polybench_vm_registry
@@ -1168,6 +1195,13 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 
 class PolyBenchVm(GraalVm):
+    def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
+        super(PolyBenchVm, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
+        if self.debug_args:
+            # The `arg[1:]` is to strip the first '-' from the args since it's
+            # re-added by the subsequent processing of `--vm`
+            self.debug_args = ['--vm.{}'.format(arg[1:]) for arg in self.debug_args]
+
     def run(self, cwd, args):
         return self.run_launcher('polybench', args, cwd)
 

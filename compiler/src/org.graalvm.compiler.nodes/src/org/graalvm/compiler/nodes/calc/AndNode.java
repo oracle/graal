@@ -116,12 +116,24 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
             // 1) the operand has ones only where we know zeros must be in the and result
             // 2) bit carrys can't mess up the pattern (eg bits are packed at the bottom)
             // then we can simply fold the add away because it adds no information
-            long mightBeOne = usingAndOtherStamp.downMask();
-            if (!usingAndOtherStamp.isPositive() || Long.numberOfLeadingZeros(mightBeOne) + Long.highestOneBit(mightBeOne) != 64) {
+            long mightBeOne = usingAndOtherStamp.upMask();
+            // here we check all the bits that might be set are packed and contiguous at the bottom
+            // of the stamp - number of leading zeros + bitCount == number of bits
+            if (Long.numberOfLeadingZeros(mightBeOne) + Long.bitCount(mightBeOne) != 64) {
                 return null;
             }
 
             if (mightBeOne != 0) {
+                // check if the operand stamp has any ones in the range of possible ones
+                // if there are no ones we know there is no possibility of a carry and
+                // no information added so we can fold away the operation
+                //
+                // eg given a ((x << 2) + 15) & 3
+                // we know that the bits in the result of the and that might be one are the lowest
+                // two bits
+                //
+                // we know that x << 2 has no bits set in the lowest two bits so we don't need to
+                // add x << 2 to 15 to know what the result of the & 3 is - we can just do 15 & 3
                 if (!stampY.isUnrestricted() && (stampY.upMask() & mightBeOne) == 0) {
                     return opX;
                 }

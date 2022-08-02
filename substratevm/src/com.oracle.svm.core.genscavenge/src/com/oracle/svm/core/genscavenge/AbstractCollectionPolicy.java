@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.oracle.svm.core.heap.GCCause;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
@@ -92,6 +93,11 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         }
         UnsignedWord edenUsed = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
         return edenUsed.aboveOrEqual(edenSize);
+    }
+
+    @Override
+    public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
+        return cause == GCCause.JavaLangSystemGC && !SubstrateGCOptions.DisableExplicitGC.getValue();
     }
 
     @Fold
@@ -276,7 +282,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         long optionMaxYoung = SubstrateGCOptions.MaxNewSize.getValue();
         if (optionMaxYoung > 0L) {
             maxYoung = WordFactory.unsigned(optionMaxYoung);
-        } else if (HeapParameters.Options.MaximumYoungGenerationSizePercent.hasBeenSet()) {
+        } else if (SerialAndEpsilonGCOptions.MaximumYoungGenerationSizePercent.hasBeenSet()) {
             maxYoung = maxHeap.unsignedDivide(100).multiply(HeapParameters.getMaximumYoungGenerationSizePercent());
         } else {
             maxYoung = maxHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1);
@@ -295,7 +301,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         }
         minHeap = UnsignedUtils.clamp(alignUp(minHeap), minAllSpaces, maxHeap);
 
-        UnsignedWord initialHeap = AbstractCollectionPolicy.INITIAL_HEAP_SIZE;
+        UnsignedWord initialHeap = getInitialHeapSize();
         initialHeap = UnsignedUtils.clamp(alignUp(initialHeap), minHeap, maxHeap);
 
         UnsignedWord initialYoung;
@@ -321,6 +327,10 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         initialEden = minSpaceSize(alignDown(initialEden));
 
         return SizeParameters.get(existing, maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
+    }
+
+    protected UnsignedWord getInitialHeapSize() {
+        return AbstractCollectionPolicy.INITIAL_HEAP_SIZE;
     }
 
     protected static final class SizeParameters {

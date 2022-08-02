@@ -148,7 +148,7 @@ final class HeapChunkProvider {
         } else {
             UnsignedWord freeListBytes = getBytesInUnusedChunks();
             UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeAlignedChunksSize();
-            UnsignedWord maxHeapFree = WordFactory.unsigned(HeapParameters.Options.MaxHeapFree.getValue());
+            UnsignedWord maxHeapFree = WordFactory.unsigned(SerialGCOptions.MaxHeapFree.getValue());
             if (maxHeapFree.aboveThan(0)) {
                 reserveBytes = UnsignedUtils.min(reserveBytes, maxHeapFree);
             }

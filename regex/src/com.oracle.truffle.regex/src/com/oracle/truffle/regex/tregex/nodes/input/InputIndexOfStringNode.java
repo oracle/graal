@@ -44,6 +44,7 @@ import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -73,8 +74,13 @@ public abstract class InputIndexOfStringNode extends Node {
 
     @Specialization(guards = "mask == null")
     public int doString(String input, int fromIndex, int maxIndex, String match, @SuppressWarnings("unused") Object mask, @SuppressWarnings("unused") Encoding encoding) {
-        int result = input.indexOf(match, fromIndex);
+        int result = stringIndexOf(input, fromIndex, match);
         return result >= maxIndex ? -1 : result;
+    }
+
+    @TruffleBoundary
+    private static int stringIndexOf(String input, int fromIndex, String match) {
+        return input.indexOf(match, fromIndex);
     }
 
     @Specialization(guards = "mask != null")

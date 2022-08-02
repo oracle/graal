@@ -142,7 +142,7 @@ public final class HeapVerifier {
          * reasonable state. Now, we can verify the remembered sets without having to worry about
          * basic heap consistency.
          */
-        if (!SubstrateOptions.useRememberedSet() || !HeapOptions.VerifyRememberedSet.getValue()) {
+        if (!SubstrateOptions.useRememberedSet() || !SerialGCOptions.VerifyRememberedSet.getValue()) {
             return true;
         }
 
@@ -326,7 +326,7 @@ public final class HeapVerifier {
 
     // This method is executed exactly once per object in the heap.
     private static boolean verifyReferences(Object obj) {
-        if (!HeapOptions.VerifyReferences.getValue()) {
+        if (!SerialGCOptions.VerifyReferences.getValue()) {
             return true;
         }
 

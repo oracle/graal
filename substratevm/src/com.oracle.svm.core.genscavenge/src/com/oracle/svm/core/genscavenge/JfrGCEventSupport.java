@@ -147,14 +147,7 @@ class JfrGCEventFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (HasJfrSupport.get()) {
-            JfrGCName name;
-            if (SubstrateOptions.UseEpsilonGC.getValue()) {
-                name = JfrGCNames.singleton().addGCName("epsilon");
-            } else {
-                assert SubstrateOptions.UseSerialGC.getValue();
-                name = JfrGCNames.singleton().addGCName("serial");
-            }
-
+            JfrGCName name = JfrGCNames.singleton().addGCName("serial");
             ImageSingletons.add(JfrGCEventSupport.class, new JfrGCEventSupport(name));
         }
     }

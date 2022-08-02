@@ -331,9 +331,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         JavaMonitor lock = ensureLocked(obj);
         JavaMonitorConditionObject condition = lock.getOrCreateCondition(true);
         if (timeoutMillis == 0L) {
-            condition.await();
+            condition.await(obj);
         } else {
-            condition.await(timeoutMillis, TimeUnit.MILLISECONDS);
+            condition.await(obj, timeoutMillis, TimeUnit.MILLISECONDS);
         }
     }
 

@@ -56,15 +56,17 @@ public abstract class ClangLikeBase extends Driver {
     protected final boolean cxx;
     protected final boolean earlyExit;
     protected final OS os;
+    protected final Arch arch;
     protected final String[] args;
     protected final String platform;
     protected final int outputFlagPos;
     protected final boolean nostdincxx;
 
-    protected ClangLikeBase(String[] args, boolean cxx, OS os, String platform) {
+    protected ClangLikeBase(String[] args, boolean cxx, OS os, Arch arch, String platform) {
         super(cxx ? "clang++" : "clang");
         this.cxx = cxx;
         this.os = os;
+        this.arch = arch;
         this.platform = platform;
         boolean mayHaveInputFiles = false;
         boolean mayBeLinkerInvocation = true;
@@ -177,10 +179,17 @@ public abstract class ClangLikeBase extends Driver {
         sulongArgs.addAll(getVectorInstructionSetFlags());
     }
 
-    private static List<String> getVectorInstructionSetFlags() {
-        switch (Arch.getCurrent()) {
+    private List<String> getVectorInstructionSetFlags() {
+        switch (arch) {
             case X86_64:
                 return Arrays.asList("-mno-sse3", "-mno-avx");
+            case AARCH_64:
+                /*
+                 * Avoid NEON intrinsics to be used. There are no perf gains from a Sulong
+                 * perspective and they aren't implemented by Sulong. Usages in C should be guarded
+                 * by `__ARM_NEON` and provide a fallback.
+                 */
+                return Arrays.asList("-Xclang", "-target-feature", "-Xclang", "-neon");
             default:
                 return Collections.emptyList();
         }

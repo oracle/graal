@@ -129,11 +129,13 @@ public class FeatureHandler {
         }
 
         for (String featureName : Options.userEnabledFeatures()) {
+            Class<?> featureClass;
             try {
-                registerFeature(Class.forName(featureName, true, loader.getClassLoader()), specificClassProvider, access);
+                featureClass = Class.forName(featureName, true, loader.getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw UserError.abort("Feature %s class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.", featureName);
             }
+            registerFeature(featureClass, specificClassProvider, access);
         }
         if (NativeImageOptions.PrintFeatures.getValue()) {
             ReportUtils.report("feature information", SubstrateOptions.reportsPath(), "feature_info", "csv", out -> {

@@ -58,6 +58,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 /**
@@ -176,8 +177,8 @@ public final class TruffleStringBuilder {
         @Specialization
         static void append(TruffleStringBuilder sb, byte value,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
-            if (errorProfile.profile(isUTF16Or32(sb.encoding))) {
+                        @Cached BranchProfile errorProfile) {
+            if (isUTF16Or32(sb.encoding)) {
                 throw InternalErrors.unsupportedOperation("appendByte is not supported for UTF-16 and UTF-32, use appendChar and appendInt instead");
             }
             sb.ensureCapacityS0(1, bufferGrowProfile, errorProfile);
@@ -242,19 +243,19 @@ public final class TruffleStringBuilder {
                         @Cached(value = "sb.stride") int cachedCurStride,
                         @Cached(value = "utf16Stride(sb, value)") int cachedNewStride,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
+                        @Cached BranchProfile errorProfile) {
             doAppend(sb, value, cachedCurStride, cachedNewStride, bufferGrowProfile, errorProfile);
         }
 
         @Specialization(replaces = "doCached")
         void doUncached(TruffleStringBuilder sb, char value,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
+                        @Cached BranchProfile errorProfile) {
             doAppend(sb, value, sb.stride, utf16Stride(sb, value), bufferGrowProfile, errorProfile);
         }
 
-        private void doAppend(TruffleStringBuilder sb, char value, int cachedCurStride, int cachedNewStride, ConditionProfile bufferGrowProfile, ConditionProfile errorProfile) {
-            if (errorProfile.profile(!isUTF16(sb.encoding))) {
+        private void doAppend(TruffleStringBuilder sb, char value, int cachedCurStride, int cachedNewStride, ConditionProfile bufferGrowProfile, BranchProfile errorProfile) {
+            if (!isUTF16(sb.encoding)) {
                 throw InternalErrors.unsupportedOperation("appendChar is meant for UTF-16 strings only");
             }
             sb.ensureCapacity(this, 1, cachedCurStride, cachedNewStride, bufferGrowProfile, errorProfile);
@@ -380,12 +381,12 @@ public final class TruffleStringBuilder {
         static void append(TruffleStringBuilder sb, int c, int repeat, boolean allowUTF16Surrogates,
                         @Cached AppendCodePointIntlNode appendCodePointIntlNode,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
+                        @Cached BranchProfile errorProfile) {
             assert !allowUTF16Surrogates || isUTF16Or32(sb.encoding) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
-            if (errorProfile.profile(c < 0 || c > 0x10ffff)) {
+            if (c < 0 || c > 0x10ffff) {
                 throw InternalErrors.invalidCodePoint(c);
             }
-            if (errorProfile.profile(repeat < 1)) {
+            if (repeat < 1) {
                 throw InternalErrors.illegalArgument("number of repetitions must be at least 1");
             }
             appendCodePointIntlNode.execute(sb, c, sb.encoding.id, repeat, allowUTF16Surrogates, bufferGrowProfile, errorProfile);
@@ -417,13 +418,13 @@ public final class TruffleStringBuilder {
 
         abstract void execute(TruffleStringBuilder sb, int c, int encoding, int n, boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile);
+                        BranchProfile errorProfile);
 
         @Specialization(guards = "isAsciiBytesOrLatin1(enc)")
         static void bytes(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") int enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile) {
-            if (errorProfile.profile(c > 0xff)) {
+                        BranchProfile errorProfile) {
+            if (c > 0xff) {
                 throw InternalErrors.invalidCodePoint(c);
             }
             sb.ensureCapacityS0(n, bufferGrowProfile, errorProfile);
@@ -437,8 +438,8 @@ public final class TruffleStringBuilder {
         @Specialization(guards = "isUTF8(enc)")
         static void utf8(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") int enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile) {
-            if (errorProfile.profile(Encodings.isUTF16Surrogate(c))) {
+                        BranchProfile errorProfile) {
+            if (Encodings.isUTF16Surrogate(c)) {
                 throw InternalErrors.invalidCodePoint(c);
             }
             int length = Encodings.utf8EncodedSize(c);
@@ -455,7 +456,7 @@ public final class TruffleStringBuilder {
         @Specialization(guards = {"isUTF16(enc)", "cachedCurStride == sb.stride", "cachedNewStride == utf16Stride(sb, c)"}, limit = TStringOpsNodes.LIMIT_STRIDE)
         void utf16Cached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") int enc, int n, boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile,
+                        BranchProfile errorProfile,
                         @Cached(value = "sb.stride") int cachedCurStride,
                         @Cached(value = "utf16Stride(sb, c)") int cachedNewStride,
                         @Cached ConditionProfile bmpProfile) {
@@ -465,14 +466,14 @@ public final class TruffleStringBuilder {
         @Specialization(guards = "isUTF16(enc)", replaces = "utf16Cached")
         void utf16Uncached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") int enc, int n, boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile,
+                        BranchProfile errorProfile,
                         @Cached ConditionProfile bmpProfile) {
             doUTF16(sb, c, n, allowUTF16Surrogates, bufferGrowProfile, errorProfile, sb.stride, utf16Stride(sb, c), bmpProfile);
         }
 
         private void doUTF16(TruffleStringBuilder sb, int c, int n, boolean allowUTF16Surrogates,
-                        ConditionProfile bufferGrowProfile, ConditionProfile errorProfile, int cachedCurStride, int cachedNewStride, ConditionProfile bmpProfile) {
-            if (errorProfile.profile(!allowUTF16Surrogates && Encodings.isUTF16Surrogate(c))) {
+                        ConditionProfile bufferGrowProfile, BranchProfile errorProfile, int cachedCurStride, int cachedNewStride, ConditionProfile bmpProfile) {
+            if (!allowUTF16Surrogates && Encodings.isUTF16Surrogate(c)) {
                 throw InternalErrors.invalidCodePoint(c);
             }
             sb.ensureCapacity(this, c <= 0xffff ? n : n << 1, cachedCurStride, cachedNewStride, bufferGrowProfile, errorProfile);
@@ -490,7 +491,7 @@ public final class TruffleStringBuilder {
         @Specialization(guards = {"isUTF32(enc)", "cachedCurStride == sb.stride", "cachedNewStride == utf32Stride(sb, c)"}, limit = TStringOpsNodes.LIMIT_STRIDE)
         void utf32Cached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") int enc, int n, boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile,
+                        BranchProfile errorProfile,
                         @Cached(value = "sb.stride") int cachedCurStride,
                         @Cached(value = "utf32Stride(sb, c)") int cachedNewStride) {
             doUTF32(sb, c, n, allowUTF16Surrogates, bufferGrowProfile, errorProfile, cachedCurStride, cachedNewStride);
@@ -499,12 +500,12 @@ public final class TruffleStringBuilder {
         @Specialization(guards = "isUTF32(enc)", replaces = "utf32Cached")
         void utf32Uncached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") int enc, int n, boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile) {
+                        BranchProfile errorProfile) {
             doUTF32(sb, c, n, allowUTF16Surrogates, bufferGrowProfile, errorProfile, sb.stride, utf32Stride(sb, c));
         }
 
-        void doUTF32(TruffleStringBuilder sb, int c, int n, boolean allowUTF16Surrogates, ConditionProfile bufferGrowProfile, ConditionProfile errorProfile, int cachedCurStride, int cachedNewStride) {
-            if (errorProfile.profile(!allowUTF16Surrogates && Encodings.isUTF16Surrogate(c))) {
+        void doUTF32(TruffleStringBuilder sb, int c, int n, boolean allowUTF16Surrogates, ConditionProfile bufferGrowProfile, BranchProfile errorProfile, int cachedCurStride, int cachedNewStride) {
+            if (!allowUTF16Surrogates && Encodings.isUTF16Surrogate(c)) {
                 throw InternalErrors.invalidCodePoint(c);
             }
             sb.ensureCapacity(this, n, cachedCurStride, cachedNewStride, bufferGrowProfile, errorProfile);
@@ -515,21 +516,20 @@ public final class TruffleStringBuilder {
         @Specialization(guards = "isUnsupportedEncoding(enc)")
         static void unsupported(TruffleStringBuilder sb, int c, int enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile) {
+                        BranchProfile errorProfile) {
             JCodings.Encoding jCodingsEnc = JCodings.getInstance().get(enc);
             int length = JCodings.getInstance().getCodePointLength(jCodingsEnc, c);
             if (!(TruffleString.Encoding.is7BitCompatible(enc) && c <= 0x7f)) {
                 sb.updateCodeRange(JCodings.getInstance().isSingleByte(jCodingsEnc) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getValidMultiByte());
             }
-            if (errorProfile.profile(length < 1)) {
+            if (length < 1) {
                 throw InternalErrors.invalidCodePoint(c);
             }
             sb.ensureCapacityS0(length * n, bufferGrowProfile, errorProfile);
             for (int i = 0; i < n; i++) {
                 int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, c, sb.buf, sb.length);
-                if (errorProfile.profile(
-                                ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, sb.buf, sb.length, sb.length + length) != ret ||
-                                                JCodings.getInstance().readCodePoint(jCodingsEnc, sb.buf, sb.length, sb.length + length) != c)) {
+                if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, sb.buf, sb.length, sb.length + length) != ret ||
+                                JCodings.getInstance().readCodePoint(jCodingsEnc, sb.buf, sb.length, sb.length + length) != c) {
                     throw InternalErrors.invalidCodePoint(c);
                 }
                 sb.length += length;
@@ -603,8 +603,8 @@ public final class TruffleStringBuilder {
         void doAppend(TruffleStringBuilder sb, int value,
                         @Cached(value = "sb.stride", allowUncached = true) int cachedStride,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
-            if (errorProfile.profile(!is7BitCompatible(sb.encoding))) {
+                        @Cached BranchProfile errorProfile) {
+            if (!is7BitCompatible(sb.encoding)) {
                 throw InternalErrors.unsupportedOperation("appendIntNumber is supported on ASCII-compatible encodings only");
             }
             int len = NumberConversion.stringLengthInt(value);
@@ -668,8 +668,8 @@ public final class TruffleStringBuilder {
         void doAppend(TruffleStringBuilder sb, long value,
                         @Cached(value = "sb.stride", allowUncached = true) int cachedStride,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
-            if (errorProfile.profile(!is7BitCompatible(sb.encoding))) {
+                        @Cached BranchProfile errorProfile) {
+            if (!is7BitCompatible(sb.encoding)) {
                 throw InternalErrors.unsupportedOperation("appendIntNumber is supported on ASCII-compatible encodings only");
             }
             int len = NumberConversion.stringLengthLong(value);
@@ -900,9 +900,8 @@ public final class TruffleStringBuilder {
         @Specialization
         void append(TruffleStringBuilder sb, String javaString, int fromIndex, int lengthStr,
                         @Cached AppendArrayIntlNode appendArrayIntlNode,
-                        @Cached ConditionProfile stride0Profile,
-                        @Cached ConditionProfile errorProfile) {
-            if (errorProfile.profile(!isUTF16(sb))) {
+                        @Cached ConditionProfile stride0Profile) {
+            if (!isUTF16(sb)) {
                 throw InternalErrors.unsupportedOperation("appendJavaString is supported on UTF-16 only, use appendString for other encodings");
             }
             if (lengthStr == 0) {
@@ -1068,20 +1067,20 @@ public final class TruffleStringBuilder {
                         @Cached(value = "strideA") int cachedStrideA,
                         @Cached(value = "strideNew") int cachedStrideNew,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
+                        @Cached BranchProfile errorProfile) {
             doAppend(this, sb, array, offsetA, lengthA, cachedStrideSB, cachedStrideA, cachedStrideNew, bufferGrowProfile, errorProfile);
         }
 
         @Specialization(replaces = "doCached")
         void doUncached(TruffleStringBuilder sb, Object array, int offsetA, int lengthA, int strideA, int strideNew,
                         @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
+                        @Cached BranchProfile errorProfile) {
             doAppend(this, sb, array, offsetA, lengthA, sb.stride, strideA, strideNew, bufferGrowProfile, errorProfile);
         }
 
         private static void doAppend(Node location, TruffleStringBuilder sb, Object array, int offsetA, int lengthA, int cachedStrideSB, int cachedStrideA, int cachedStrideNew,
                         ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile) {
+                        BranchProfile errorProfile) {
             sb.ensureCapacity(location, lengthA, cachedStrideSB, cachedStrideNew, bufferGrowProfile, errorProfile);
             assert sb.stride == cachedStrideNew;
             TStringOps.arraycopyWithStride(location,
@@ -1090,14 +1089,15 @@ public final class TruffleStringBuilder {
         }
     }
 
-    void ensureCapacityS0(int appendLength, ConditionProfile bufferGrowProfile, ConditionProfile errorProfile) {
+    void ensureCapacityS0(int appendLength, ConditionProfile bufferGrowProfile, BranchProfile errorProfile) {
         assert stride == 0;
         final long newLength = (long) length + appendLength;
         if (bufferGrowProfile.profile(newLength > bufferLength())) {
             long newBufferLength = ((long) bufferLength() << 1) + 2;
             assert newLength >= 0;
             final int maxLength = TStringConstants.MAX_ARRAY_SIZE;
-            if (errorProfile.profile(newLength > maxLength)) {
+            if (newLength > maxLength) {
+                errorProfile.enter();
                 throw InternalErrors.outOfMemory();
             }
             newBufferLength = Math.min(newBufferLength, maxLength);
@@ -1106,7 +1106,7 @@ public final class TruffleStringBuilder {
         }
     }
 
-    void ensureCapacity(Node location, int appendLength, int curStride, int newStride, ConditionProfile bufferGrowProfile, ConditionProfile errorProfile) {
+    void ensureCapacity(Node location, int appendLength, int curStride, int newStride, ConditionProfile bufferGrowProfile, BranchProfile errorProfile) {
         assert curStride == stride;
         assert newStride >= stride;
         final long newLength = (long) length + appendLength;
@@ -1114,7 +1114,8 @@ public final class TruffleStringBuilder {
             long newBufferLength = newLength > bufferLength() ? ((long) bufferLength() << 1) + 2 : bufferLength();
             assert newLength >= 0;
             final int maxLength = TStringConstants.MAX_ARRAY_SIZE >> newStride;
-            if (errorProfile.profile(newLength > maxLength)) {
+            if (newLength > maxLength) {
+                errorProfile.enter();
                 throw InternalErrors.outOfMemory();
             }
             newBufferLength = Math.min(newBufferLength, maxLength);
