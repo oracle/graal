@@ -1021,9 +1021,11 @@ final class EngineAccessor extends Accessor {
                             creatorConfig.allowValueSharing, false,
                             config, onCancelledRunnable, onExitedRunnable, onClosedRunnable);
 
-            impl = new PolyglotContextImpl(creator, innerConfig);
-            impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api);
-            creator.context.addChildContext(impl);
+            synchronized (creator.context) {
+                impl = new PolyglotContextImpl(creator, innerConfig);
+                impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api);
+                creator.context.addChildContext(impl);
+            }
 
             synchronized (impl) {
                 impl.initializeContextLocals();

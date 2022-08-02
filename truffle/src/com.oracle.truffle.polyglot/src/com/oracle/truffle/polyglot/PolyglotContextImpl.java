@@ -697,7 +697,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         EngineAccessor.INSTRUMENT.notifyContextCreated(engine, creatorTruffleContext);
     }
 
-    synchronized void addChildContext(PolyglotContextImpl child) {
+    void addChildContext(PolyglotContextImpl child) {
+        assert Thread.holdsLock(this);
         assert !state.isClosed();
         if (state.isClosing() && !state.shouldCacheThreadInfo()) {
             throw PolyglotEngineException.illegalState("Adding child context into a closing context.");
