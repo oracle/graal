@@ -323,7 +323,6 @@ public final class Target_java_lang_ClassLoader {
         // All classes are already linked at runtime.
     }
 
-
     /**
      * TODO: This substitution should be reverted to a @Delete annotation once GR-38801 is fixed.
      */
