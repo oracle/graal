@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage.hosted;
 
+import java.util.Arrays;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -132,11 +134,8 @@ public final class RuntimeSerialization {
      *
      * @since 22.3
      */
-    @SuppressWarnings("unused")
     public static void registerProxyClass(String... implementedInterfaces) {
-        /*- Requires GR-36043 to be merged first
-         * ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), Arrays.asList(implementedInterfaces));
-         */
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), Arrays.asList(implementedInterfaces));
     }
 
     private RuntimeSerialization() {

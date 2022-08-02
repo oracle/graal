@@ -1012,6 +1012,10 @@ meth public static void registerLambdaCapturingClass(java.lang.String)
 meth public static void registerProxyClass(java.lang.String[])
 supr java.lang.Object
 
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeProxyCreation
+meth public !varargs static void register(java.lang.Class<?>[])
+supr java.lang.Object
+
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
 innr public abstract interface static PLATFORM_JNI
 
