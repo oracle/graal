@@ -46,12 +46,14 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
     T getStartBlock();
 
     /**
-     * True if block {@code a} is dominated by block {@code b} or {@code a} is equal to {@code b}.
+     * True if block {@code b} is dominated by block {@code a} or {@code a} is equal to {@code b}.
      */
-    static boolean isDominatedBy(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+    static boolean dominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+        assert a != null;
+        assert b != null;
         int domNumberA = a.getDominatorNumber();
         int domNumberB = b.getDominatorNumber();
-        return domNumberA >= domNumberB && domNumberA <= b.getMaxChildDominatorNumber();
+        return domNumberB >= domNumberA && domNumberB <= a.getMaxChildDominatorNumber();
     }
 
     /**
@@ -60,15 +62,6 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      */
     static boolean strictlyDominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
         return a != b && dominates(a, b);
-    }
-
-    /**
-     * True if block {@code a} dominates block {@code b}.
-     */
-    static boolean dominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
-        assert a != null;
-        assert b != null;
-        return isDominatedBy(b, a);
     }
 
     /**
