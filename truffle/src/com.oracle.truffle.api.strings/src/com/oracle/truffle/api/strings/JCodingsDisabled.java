@@ -55,7 +55,7 @@ final class JCodingsDisabled implements JCodings {
     }
 
     @Override
-    public Encoding get(int encodingId) {
+    public Encoding get(TruffleString.Encoding encoding) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
@@ -120,14 +120,15 @@ final class JCodingsDisabled implements JCodings {
     }
 
     @Override
-    public long calcStringAttributes(Node location, Object array, int offset, int length, int encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile) {
+    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, int targetEncoding, BranchProfile outOfMemoryProfile, ConditionProfile nativeProfile,
+    public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
+                    BranchProfile outOfMemoryProfile,
+                    ConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
-
 }

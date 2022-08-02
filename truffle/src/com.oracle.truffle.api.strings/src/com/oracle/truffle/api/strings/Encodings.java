@@ -56,26 +56,6 @@ final class Encodings {
 
     @CompilationFinal(dimensions = 1) private static final int[] UTF_8_MIN_CODEPOINT = {0, 0, 0x80, 0x800, 0x10000};
 
-    static int getAscii() {
-        return TruffleString.Encoding.US_ASCII.id;
-    }
-
-    static int getLatin1() {
-        return TruffleString.Encoding.ISO_8859_1.id;
-    }
-
-    static int getUTF8() {
-        return TruffleString.Encoding.UTF_8.id;
-    }
-
-    static int getUTF16() {
-        return TruffleString.Encoding.UTF_16.id;
-    }
-
-    static int getUTF32() {
-        return TruffleString.Encoding.UTF_32.id;
-    }
-
     static boolean isUTF16Surrogate(int c) {
         return (c >> 11) == 0x1b;
     }

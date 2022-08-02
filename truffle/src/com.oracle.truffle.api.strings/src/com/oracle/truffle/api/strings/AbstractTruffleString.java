@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.TStringGuards.is7Bit;
-import static com.oracle.truffle.api.strings.TStringGuards.isBytes;
 import static com.oracle.truffle.api.strings.TStringGuards.isSupportedEncoding;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
@@ -108,15 +107,13 @@ public abstract class AbstractTruffleString {
      */
     int hashCode = 0;
 
-    AbstractTruffleString(Object data, int offset, int length, int stride, int encoding, int flags) {
+    AbstractTruffleString(Object data, int offset, int length, int stride, Encoding encoding, int flags) {
         validateData(data, offset, length, stride);
-        assert 0 <= encoding && encoding <= Byte.MAX_VALUE;
         assert isByte(stride);
-        assert isByte(encoding);
         assert isByte(flags);
-        assert isSupportedEncoding(encoding) || TStringAccessor.ENGINE.requireLanguageWithAllEncodings(Encoding.get(encoding));
+        assert isSupportedEncoding(encoding) || TStringAccessor.ENGINE.requireLanguageWithAllEncodings(encoding);
         this.data = data;
-        this.encoding = (byte) encoding;
+        this.encoding = encoding.id;
         this.offset = offset;
         this.length = length;
         this.stride = (byte) stride;
@@ -327,19 +324,19 @@ public abstract class AbstractTruffleString {
         return data instanceof String;
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding) {
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding) {
         return forwardIterator(a, arrayA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, TruffleString.ErrorHandling errorHandling) {
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
         return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, errorHandling, 0);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding) {
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding) {
         return backwardIterator(a, arrayA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, TruffleString.ErrorHandling errorHandling) {
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
         return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, errorHandling, a.length());
     }
 
@@ -449,11 +446,7 @@ public abstract class AbstractTruffleString {
         }
     }
 
-    static void checkByteLength(int byteLength, TruffleString.Encoding encoding) {
-        checkByteLength(byteLength, encoding.id);
-    }
-
-    static void checkByteLength(int byteLength, int encoding) {
+    static void checkByteLength(int byteLength, Encoding encoding) {
         if (isUTF16(encoding)) {
             TruffleString.checkByteLengthUTF16(byteLength);
         } else if (isUTF32(encoding)) {
@@ -1177,7 +1170,7 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     @Override
     public final String toString() {
-        if (isBytes(encoding) && !is7Bit(TStringInternalNodes.GetCodeRangeNode.getUncached().execute(this))) {
+        if (encoding == Encoding.BYTES.id && !is7Bit(TStringInternalNodes.GetCodeRangeNode.getUncached().execute(this))) {
             StringBuilder sb = new StringBuilder(length);
             TruffleStringIterator it = createCodePointIteratorUncached(TruffleString.Encoding.BYTES);
             while (it.hasNext()) {

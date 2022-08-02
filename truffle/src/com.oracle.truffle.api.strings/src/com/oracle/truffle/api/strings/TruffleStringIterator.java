@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 // Checkstyle: stop
 /**
@@ -101,18 +102,16 @@ public final class TruffleStringIterator {
     final AbstractTruffleString a;
     final Object arrayA;
     final byte codeRangeA;
-    final byte encoding;
-    final byte naturalStride;
+    final Encoding encoding;
     final TruffleString.ErrorHandling errorHandling;
     private int rawIndex;
 
-    TruffleStringIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, TruffleString.ErrorHandling errorHandling, int rawIndex) {
+    TruffleStringIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling, int rawIndex) {
         assert TSCodeRange.isCodeRange(codeRangeA);
         this.a = a;
         this.arrayA = arrayA;
         this.codeRangeA = (byte) codeRangeA;
-        this.encoding = (byte) encoding;
-        this.naturalStride = (byte) TruffleString.Encoding.getNaturalStride(encoding);
+        this.encoding = encoding;
         this.errorHandling = errorHandling;
         this.rawIndex = rawIndex;
     }
@@ -143,7 +142,7 @@ public final class TruffleStringIterator {
      * @since 22.3
      */
     public int getByteIndex() {
-        return rawIndex << naturalStride;
+        return rawIndex << encoding.naturalStride;
     }
 
     /**
