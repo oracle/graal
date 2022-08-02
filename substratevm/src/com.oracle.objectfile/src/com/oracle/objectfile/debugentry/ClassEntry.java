@@ -298,7 +298,7 @@ public class ClassEntry extends StructureTypeEntry {
         DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
         int paramCount = paramInfos.length;
         debugContext.log("typename %s adding %s method %s %s(%s)\n",
-                typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
+                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
         TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
         TypeEntry[] typeEntries = new TypeEntry[paramCount];
         for (int i = 0; i < paramCount; i++) {
@@ -310,7 +310,7 @@ public class ClassEntry extends StructureTypeEntry {
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, line, methodName,
-                this, resultTypeEntry, typeEntries, paramInfos, thisParam);
+                        this, resultTypeEntry, typeEntries, paramInfos, thisParam);
         indexMethodEntry(methodEntry, debugMethodInfo.idMethod());
 
         return methodEntry;
@@ -394,7 +394,7 @@ public class ClassEntry extends StructureTypeEntry {
     public int hipc() {
         assert isPrimary();
         if (!includesDeoptTarget()) {
-             return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
+            return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
         } else {
             Range lastPrimary = null;
             for (PrimaryEntry primaryEntry : primaryEntries) {

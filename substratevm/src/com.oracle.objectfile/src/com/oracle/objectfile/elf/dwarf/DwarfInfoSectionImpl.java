@@ -29,6 +29,7 @@ package com.oracle.objectfile.elf.dwarf;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -372,10 +373,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
 
         /* Note, for a non-primary there are no method definitions to write. */
-
-        /* Write abstract inline methods. */
-
-        pos = writeAbstractInlineMethods(context, classEntry, buffer, pos);
+        /* Nor, by the same token are there any abstract inline methods to write. */
 
         /* Write all static field definitions. */
 
@@ -460,9 +458,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         pos = writeMethodLocations(context, classEntry, false, buffer, pos);
 
-        /* Write abstract inline method locations. */
+        /* Write abstract inline methods. */
 
-        pos = writeAbstractInlineMethods(context, classEntry, buffer, pos);
+        pos = writeAbstractInlineMethods(context, classEntry, false, buffer, pos);
 
         /* Write all static field definitions. */
 
@@ -990,17 +988,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeAbstractInlineMethods(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        int pos = p;
-        for (MethodEntry method : classEntry.getMethods()) {
-            if (method.isInlined()) {
-                setAbstractInlineMethodIndex(method, pos);
-                pos = writeAbstractInlineMethod(context, method, buffer, pos);
-            }
-        }
-        return pos;
-    }
-
     /**
      * Go through the subranges and generate concrete debug entries for inlined methods.
      */
@@ -1025,7 +1012,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 depth--;
             }
             depth = subrange.getDepth();
-            pos = writeInlineSubroutine(context, subrange, depth + 2, buffer, pos);
+            pos = writeInlineSubroutine(context, primaryEntry.getClassEntry(), subrange, depth + 2, buffer, pos);
             HashMap<DebugLocalInfo, List<Range>> varRangeMap = subrange.getVarRangeMap();
             // increment depth to account for parameter and method locations
             depth++;
@@ -1038,6 +1025,55 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             depth--;
         }
         return pos;
+    }
+
+    private int writeAbstractInlineMethods(DebugContext context, ClassEntry classEntry, boolean deoptTargets, byte[] buffer, int p) {
+        HashSet<MethodEntry> inlinedMethods = collectInlinedMethods(context, classEntry, deoptTargets, p);
+        int pos = p;
+        for (MethodEntry methodEntry : inlinedMethods) {
+            setAbstractInlineMethodIndex(classEntry, methodEntry, pos);
+            pos = writeAbstractInlineMethod(context, methodEntry, buffer, pos);
+        }
+        return pos;
+    }
+
+    private HashSet<MethodEntry> collectInlinedMethods(DebugContext context, ClassEntry classEntry, boolean deoptTargets, int p) {
+        HashSet<MethodEntry> methods = new HashSet<>();
+        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+        for (PrimaryEntry primaryEntry : classPrimaryEntries) {
+            Range primary = primaryEntry.getPrimary();
+            if (!primary.isPrimary() || primary.isDeoptTarget() != deoptTargets) {
+                continue;
+            }
+            addInlinedMethods(context, classEntry, primaryEntry, primary, methods, p);
+        }
+
+        return methods;
+    }
+
+    private void addInlinedMethods(DebugContext context, ClassEntry classEntry, PrimaryEntry primaryEntry, Range primary, HashSet<MethodEntry> hashSet, int p) {
+        if (primary.isLeaf()) {
+            return;
+        }
+        verboseLog(context, "  [0x%08x] collect abstract inlined methods %s", p, primary.getFullMethodName());
+        Iterator<Range> iterator = primaryEntry.topDownRangeIterator();
+        while (iterator.hasNext()) {
+            Range subrange = iterator.next();
+            if (subrange.isLeaf()) {
+                // we only generate abstract inline methods for non-leaf entries
+                continue;
+            }
+            // the subrange covers an inline call and references the caller method entry. its
+            // child ranges all reference the same inlined called method. leaf children cover code
+            // for
+            // that inlined method. non-leaf children cover code for recursively inlined methods.
+            // identify the inlined method by looking at the first callee
+            Range callee = subrange.getFirstCallee();
+            MethodEntry methodEntry = callee.getMethodEntry();
+            if (hashSet.add(methodEntry)) {
+                verboseLog(context, "  [0x%08x]   add abstract inlined method %s", p, methodEntry.getSymbolName());
+            }
+        }
     }
 
     private int writeStaticFieldLocations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
@@ -1293,7 +1329,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeAttrData4(lineIndex, buffer, pos);
         }
 
+        /* Write all method locations. */
+
         pos = writeMethodLocations(context, classEntry, true, buffer, pos);
+
+        /* Write abstract inline methods. */
+
+        pos = writeAbstractInlineMethods(context, classEntry, true, buffer, pos);
+
         /*
          * Write a terminating null attribute.
          */
@@ -1447,7 +1490,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeInlineSubroutine(DebugContext context, Range caller, int depth, byte[] buffer, int p) {
+    private int writeInlineSubroutine(DebugContext context, ClassEntry classEntry, Range caller, int depth, byte[] buffer, int p) {
         assert !caller.isLeaf();
         // the supplied range covers an inline call and references the caller method entry. its
         // child ranges all reference the same inlined called method. leaf children cover code for
@@ -1457,7 +1500,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         MethodEntry methodEntry = callee.getMethodEntry();
         String methodKey = methodEntry.getSymbolName();
         /* the abstract index was written in the method's class entry */
-        int specificationIndex = getAbstractInlineMethodIndex(methodEntry);
+        int specificationIndex = getAbstractInlineMethodIndex(classEntry, methodEntry);
 
         int pos = p;
         log(context, "  [0x%08x] concrete inline subroutine [0x%x, 0x%x] %s", pos, caller.getLo(), caller.getHi(), methodKey);

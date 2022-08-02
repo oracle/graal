@@ -237,8 +237,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             int cuIndex = getDeoptCUIndex(classEntry);
             List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
             /*
-                 * Count only linkage stubs.
-                 */
+             * Count only linkage stubs.
+             */
             for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
                 Range primary = classPrimaryEntry.getPrimary();
                 if (primary.isDeoptTarget()) {
@@ -248,8 +248,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             /* we must have seen at least one stub */
             assert length > DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
             /*
-                 * Add room for a final null entry.
-                 */
+             * Add room for a final null entry.
+             */
             length += 2 * 8;
             log(context, "  [0x%08x] %s CU linkage stubs %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
             pos = writeInt(length, buffer, pos);
@@ -302,7 +302,6 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     private int sortByLowPCDeopt(ClassEntry classEntry1, ClassEntry classEntry2) {
         return compare(classEntry1.lowpcDeopt(), classEntry2.lowpcDeopt());
     }
-
 
     /*
      * The debug_aranges section depends on debug_frame section.

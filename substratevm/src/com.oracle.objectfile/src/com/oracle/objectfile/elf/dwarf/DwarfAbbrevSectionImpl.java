@@ -570,18 +570,15 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * Abstract Inline Methods: For any method which has been inlined into another compiled
-         * method there will be a corresponding level 1 DIE that identifies the method declaration
-         * and serves as the target reference for concrete inlined method DIEs. This DIE should
-         * inherit attributes from the method_definition DIE referenced from its specification
-         * attribute without the need to repeat them, including attributes specified in child DIEs
-         * of the method_definition. However, it is actually necessary to replicate the
-         * method_parameter DIEs as children of this DIE because gdb does not carry these attributes
-         * across from the specification DIE.
-         *
-         * Note that an abstract inline method DIE is generated in the compile unit of the class
-         * which declares the inlined method whereas a concrete inlined method DIE is generated in
-         * the compile unit of the class which declares method into which code has been inlined.
+         * Abstract Inline Methods: For any method m' which has been inlined into a top level
+         * compiled method m there will be an abstract_inline_method DIE for m' at level 1 DIE in
+         * the CU to which m belongs. The declaration serves as an abstract_origin for any
+         * corresponding inlined method DIEs appearing as children of m. The abstract_inline_method
+         * DIE should inherit attributes from the method_definition DIE referenced as its
+         * specification attribute without the need to repeat them, including attributes specified
+         * in child DIEs of the method_definition. However, it is actually necessary to replicate
+         * the method_parameter DIEs of the specification as children of the abstract_inline_method
+         * DIE because gdb does not carry these attributes across from the specification DIE.
          *
          * <ul>
          *
@@ -596,9 +593,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * Concrete Inlined Methods: Concrete inlined methods are nested as a tree of children under
-         * the method_location DIE for the method into which they have been inlined. Each inlined
-         * method DIE defines an address range that is a subrange of its parent DIE. A
+         * Concrete Inlined Methods: Concrete inlined method DIEs are nested as a tree of children
+         * under the method_location DIE for the method into which they have been inlined. Each
+         * inlined method DIE defines an address range that is a subrange of its parent DIE. A
          * method_location DIE occurs at depth 1 in a compile unit (class_unit). So, this means that
          * for any method which has been inlined into a compiled method at depth K in the inline
          * frame stack there will be a corresponding level 2+K DIE that identifies the method that
@@ -611,11 +608,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * m2 referencing the abstract entry for m2 with f1 and l1 as file and line and a level 3
          * DIE for the inline code range derived from m3 referencing the abstract entry for m3 with
          * f2 and l2 as file and line.
-         *
-         * Note that a concrete inlined method DIE is generated in the compile unit of the class
-         * which declares the method into which code has been inlined whereas an abstract inlined
-         * method DIE is generated in the compile unit of the class which declares of the inlined
-         * method.
          *
          * <ul>
          *

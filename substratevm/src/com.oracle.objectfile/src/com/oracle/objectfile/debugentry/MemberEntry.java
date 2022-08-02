@@ -41,6 +41,7 @@ public abstract class MemberEntry {
     public MemberEntry(FileEntry fileEntry, String memberName, StructureTypeEntry ownerType, TypeEntry valueType, int modifiers) {
         this(fileEntry, 0, memberName, ownerType, valueType, modifiers);
     }
+
     public MemberEntry(FileEntry fileEntry, int line, String memberName, StructureTypeEntry ownerType, TypeEntry valueType, int modifiers) {
         assert line >= 0;
         this.fileEntry = fileEntry;
