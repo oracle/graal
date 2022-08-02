@@ -107,8 +107,8 @@ public class SourceAPITest {
     public void testCharSequenceNotMaterialized() throws IOException {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         AtomicBoolean materialized = new AtomicBoolean(false);
-        String testString = TestCharSequenceNotMaterializedLanguage.TEST_STRING;
-        Source source = Source.newBuilder(TestCharSequenceNotMaterializedLanguage.ID, new CharSequence() {
+        String testString = CharSequenceNotMaterializedLanguage.TEST_STRING;
+        Source source = Source.newBuilder(CharSequenceNotMaterializedLanguage.ID, new CharSequence() {
 
             public CharSequence subSequence(int start, int end) {
                 return testString.subSequence(start, end);
@@ -130,7 +130,7 @@ public class SourceAPITest {
         }, "testsource").build();
 
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestCharSequenceNotMaterializedLanguage.class, source);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, CharSequenceNotMaterializedLanguage.class, source);
 
             assertEquals(1, source.getLineCount());
             assertTrue(equalsCharSequence(testString, source.getCharacters()));
@@ -140,7 +140,7 @@ public class SourceAPITest {
             assertNotNull(source.getName());
             assertNull(source.getPath());
             assertEquals(6, source.getColumnNumber(5));
-            assertEquals(TestCharSequenceNotMaterializedLanguage.ID, source.getLanguage());
+            assertEquals(CharSequenceNotMaterializedLanguage.ID, source.getLanguage());
             assertEquals(testString.length(), source.getLength());
             assertFalse(source.isInteractive());
             assertFalse(source.isInternal());
@@ -157,9 +157,9 @@ public class SourceAPITest {
     }
 
     @Registration
-    public static final class TestCharSequenceNotMaterializedLanguage extends AbstractExecutableTestLanguage {
+    public static final class CharSequenceNotMaterializedLanguage extends AbstractExecutableTestLanguage {
 
-        static final String ID = TestUtils.getDefaultLanguageId(TestCharSequenceNotMaterializedLanguage.class);
+        static final String ID = TestUtils.getDefaultLanguageId(CharSequenceNotMaterializedLanguage.class);
         static final String TEST_STRING = "testString";
 
         @Override
@@ -206,8 +206,8 @@ public class SourceAPITest {
 
     @Test
     public void testBinarySources() {
-        ByteSequence sequence = TestBinarySourcesLanguage.TEST_SEQUENCE;
-        Source source = Source.newBuilder(TestBinarySourcesLanguage.ID, sequence, null).cached(false).mimeType(TestBinarySourcesLanguage.MIME).buildLiteral();
+        ByteSequence sequence = BinarySourcesLanguage.TEST_SEQUENCE;
+        Source source = Source.newBuilder(BinarySourcesLanguage.ID, sequence, null).cached(false).mimeType(BinarySourcesLanguage.MIME).buildLiteral();
 
         assertTrue(source.hasBytes());
         assertFalse(source.hasCharacters());
@@ -221,22 +221,22 @@ public class SourceAPITest {
         assertFails(() -> source.getLineStartOffset(0), UnsupportedOperationException.class);
         assertFails(() -> source.getReader(), UnsupportedOperationException.class);
 
-        assertEquals(TestBinarySourcesLanguage.MIME, source.getMimeType());
-        assertEquals(TestBinarySourcesLanguage.ID, source.getLanguage());
+        assertEquals(BinarySourcesLanguage.MIME, source.getMimeType());
+        assertEquals(BinarySourcesLanguage.ID, source.getLanguage());
         assertSame(sequence, source.getBytes());
         assertEquals("Unnamed", source.getName());
         assertNull(source.getURL());
         assertEquals("truffle:9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a/Unnamed", source.getURI().toString());
 
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestBinarySourcesLanguage.class, source);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, BinarySourcesLanguage.class, source);
         }
     }
 
-    @Registration(byteMimeTypes = TestBinarySourcesLanguage.MIME)
-    public static final class TestBinarySourcesLanguage extends AbstractExecutableTestLanguage {
+    @Registration(byteMimeTypes = BinarySourcesLanguage.MIME)
+    public static final class BinarySourcesLanguage extends AbstractExecutableTestLanguage {
 
-        static final String ID = TestUtils.getDefaultLanguageId(TestBinarySourcesLanguage.class);
+        static final String ID = TestUtils.getDefaultLanguageId(BinarySourcesLanguage.class);
         static final String MIME = "application/x-TestBinarySourcesLanguage";
         static final ByteSequence TEST_SEQUENCE = ByteSequence.create(new byte[]{1, 2, 3, 4});
 
@@ -283,19 +283,19 @@ public class SourceAPITest {
         assertEquals("application/a", Source.newBuilder("", bytes, "").mimeType("application/a").buildLiteral().getMimeType());
 
         try (Context context = Context.create()) {
-            Source source = Source.newBuilder(TestMimeTypesLanguage.ID, "", "").buildLiteral();
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestMimeTypesLanguage.class, source);
-            source = Source.newBuilder(TestMimeTypesLanguage.ID, "", "").mimeType(TestMimeTypesLanguage.MIME_1).buildLiteral();
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestMimeTypesLanguage.class, source, TestMimeTypesLanguage.MIME_1);
-            source = Source.newBuilder(TestMimeTypesLanguage.ID, "", "").mimeType(TestMimeTypesLanguage.MIME_2).buildLiteral();
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestMimeTypesLanguage.class, source, TestMimeTypesLanguage.MIME_2);
+            Source source = Source.newBuilder(MimeTypesLanguage.ID, "", "").buildLiteral();
+            AbstractExecutableTestLanguage.parseTestLanguage(context, MimeTypesLanguage.class, source);
+            source = Source.newBuilder(MimeTypesLanguage.ID, "", "").mimeType(MimeTypesLanguage.MIME_1).buildLiteral();
+            AbstractExecutableTestLanguage.parseTestLanguage(context, MimeTypesLanguage.class, source, MimeTypesLanguage.MIME_1);
+            source = Source.newBuilder(MimeTypesLanguage.ID, "", "").mimeType(MimeTypesLanguage.MIME_2).buildLiteral();
+            AbstractExecutableTestLanguage.parseTestLanguage(context, MimeTypesLanguage.class, source, MimeTypesLanguage.MIME_2);
         }
     }
 
-    @Registration(characterMimeTypes = {TestMimeTypesLanguage.MIME_1, TestMimeTypesLanguage.MIME_2}, defaultMimeType = TestMimeTypesLanguage.MIME_1)
-    public static final class TestMimeTypesLanguage extends AbstractExecutableTestLanguage {
+    @Registration(characterMimeTypes = {MimeTypesLanguage.MIME_1, MimeTypesLanguage.MIME_2}, defaultMimeType = MimeTypesLanguage.MIME_1)
+    public static final class MimeTypesLanguage extends AbstractExecutableTestLanguage {
 
-        static final String ID = TestUtils.getDefaultLanguageId(TestMimeTypesLanguage.class);
+        static final String ID = TestUtils.getDefaultLanguageId(MimeTypesLanguage.class);
 
         static final String MIME_1 = "text/a";
         static final String MIME_2 = "application/a";
@@ -317,51 +317,51 @@ public class SourceAPITest {
     public void testBuildBinarySources() throws IOException {
         try (Context context = Context.create()) {
             ByteSequence bytes = ByteSequence.create(new byte[8]);
-            Source source = Source.newBuilder(TestBuildBinarySourcesLanguage.ID, bytes, null).mimeType(TestBuildBinarySourcesLanguage.MIME_BINARY).build();
+            Source source = Source.newBuilder(BuildBinarySourcesLanguage.ID, bytes, null).mimeType(BuildBinarySourcesLanguage.MIME_BINARY).build();
             assertTrue(source.hasBytes());
             assertFalse(source.hasCharacters());
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestBuildBinarySourcesLanguage.class, source, true, false);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, BuildBinarySourcesLanguage.class, source, true, false);
 
-            source = Source.newBuilder(TestBuildBinarySourcesLanguage.ID, "", null).content(bytes).mimeType(TestBuildBinarySourcesLanguage.MIME_BINARY).build();
+            source = Source.newBuilder(BuildBinarySourcesLanguage.ID, "", null).content(bytes).mimeType(BuildBinarySourcesLanguage.MIME_BINARY).build();
             assertTrue(source.hasBytes());
             assertFalse(source.hasCharacters());
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestBuildBinarySourcesLanguage.class, source, true, false);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, BuildBinarySourcesLanguage.class, source, true, false);
 
-            source = Source.newBuilder(TestBuildBinarySourcesLanguage.ID, bytes, null).content("").build();
+            source = Source.newBuilder(BuildBinarySourcesLanguage.ID, bytes, null).content("").build();
             assertFalse(source.hasBytes());
             assertTrue(source.hasCharacters());
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestBuildBinarySourcesLanguage.class, source, false, true);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, BuildBinarySourcesLanguage.class, source, false, true);
 
             File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
             file.deleteOnExit();
 
             // mime-type not specified + invalid langauge -> characters
-            source = Source.newBuilder(TestBuildBinarySourcesLanguage.ID, file).build();
+            source = Source.newBuilder(BuildBinarySourcesLanguage.ID, file).build();
             assertFalse(source.hasBytes());
             assertTrue(source.hasCharacters());
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestBuildBinarySourcesLanguage.class, source, false, true);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, BuildBinarySourcesLanguage.class, source, false, true);
 
             // mime-type not specified + invalid langauge -> characters
-            source = Source.newBuilder(TestBuildBinarySourcesLanguage.ID, file).content(bytes).mimeType(TestBuildBinarySourcesLanguage.MIME_BINARY).build();
+            source = Source.newBuilder(BuildBinarySourcesLanguage.ID, file).content(bytes).mimeType(BuildBinarySourcesLanguage.MIME_BINARY).build();
             assertTrue(source.hasBytes());
             assertFalse(source.hasCharacters());
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestBuildBinarySourcesLanguage.class, source, true, false);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, BuildBinarySourcesLanguage.class, source, true, false);
 
-            source = Source.newBuilder(TestBuildBinarySourcesLanguage.ID, file).content("").build();
+            source = Source.newBuilder(BuildBinarySourcesLanguage.ID, file).content("").build();
             assertFalse(source.hasBytes());
             assertTrue(source.hasCharacters());
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestBuildBinarySourcesLanguage.class, source, false, true);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, BuildBinarySourcesLanguage.class, source, false, true);
         }
     }
 
-    @Registration(characterMimeTypes = TestBuildBinarySourcesLanguage.MIME_TEXT, byteMimeTypes = TestBuildBinarySourcesLanguage.MIME_BINARY, defaultMimeType = TestBuildBinarySourcesLanguage.MIME_TEXT)
-    public static final class TestBuildBinarySourcesLanguage extends AbstractExecutableTestLanguage {
+    @Registration(characterMimeTypes = BuildBinarySourcesLanguage.MIME_TEXT, byteMimeTypes = BuildBinarySourcesLanguage.MIME_BINARY, defaultMimeType = BuildBinarySourcesLanguage.MIME_TEXT)
+    public static final class BuildBinarySourcesLanguage extends AbstractExecutableTestLanguage {
 
         static final String MIME_TEXT = "text/a";
 
         static final String MIME_BINARY = "application/a";
 
-        static final String ID = TestUtils.getDefaultLanguageId(TestBuildBinarySourcesLanguage.class);
+        static final String ID = TestUtils.getDefaultLanguageId(BuildBinarySourcesLanguage.class);
 
         @Override
         protected void onParse(ParsingRequest request, Env env, Object[] contextArguments) {
@@ -554,23 +554,23 @@ public class SourceAPITest {
     public void fromTextWithFileURI() {
         File file = new File("some.tjs");
 
-        String text = TestFromTextWithFileURILanguage.CONTENT;
+        String text = FromTextWithFileURILanguage.CONTENT;
 
-        Source source = Source.newBuilder(TestFromTextWithFileURILanguage.ID, text, "another.tjs").uri(file.toURI()).buildLiteral();
+        Source source = Source.newBuilder(FromTextWithFileURILanguage.ID, text, "another.tjs").uri(file.toURI()).buildLiteral();
         assertEquals("The content has been changed", text, source.getCharacters());
         assertNull("Mime type not specified", source.getMimeType());
         assertNull("Null MIME type", source.getMimeType());
         assertEquals("another.tjs", source.getName());
         assertEquals("Using the specified URI", file.toURI(), source.getURI());
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestFromTextWithFileURILanguage.class, source, file.toURI().toString());
+            AbstractExecutableTestLanguage.parseTestLanguage(context, FromTextWithFileURILanguage.class, source, file.toURI().toString());
         }
     }
 
     @Registration
-    public static final class TestFromTextWithFileURILanguage extends AbstractExecutableTestLanguage {
+    public static final class FromTextWithFileURILanguage extends AbstractExecutableTestLanguage {
 
-        static final String ID = TestUtils.getDefaultLanguageId(TestFromTextWithFileURILanguage.class);
+        static final String ID = TestUtils.getDefaultLanguageId(FromTextWithFileURILanguage.class);
 
         static final String CONTENT = "// Hello";
 
@@ -641,10 +641,10 @@ public class SourceAPITest {
 
     @Test
     public void literalSources() throws IOException {
-        final String code = TestLiteralSourcesLanguage.CODE;
-        final String description = TestLiteralSourcesLanguage.DESCRIPTION;
-        final Source literal = Source.newBuilder(TestLiteralSourcesLanguage.ID, code, description).name(description).build();
-        assertEquals(literal.getLanguage(), TestLiteralSourcesLanguage.ID);
+        final String code = LiteralSourcesLanguage.CODE;
+        final String description = LiteralSourcesLanguage.DESCRIPTION;
+        final Source literal = Source.newBuilder(LiteralSourcesLanguage.ID, code, description).name(description).build();
+        assertEquals(literal.getLanguage(), LiteralSourcesLanguage.ID);
         assertEquals(literal.getName(), description);
         assertEquals(literal.getCharacters(), code);
         assertNull(literal.getMimeType());
@@ -654,14 +654,14 @@ public class SourceAPITest {
         assertEquals(literal.getReader().read(buffer), code.length());
         assertEquals(new String(buffer), code);
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestLiteralSourcesLanguage.class, literal);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, LiteralSourcesLanguage.class, literal);
         }
     }
 
     @Registration
-    public static final class TestLiteralSourcesLanguage extends AbstractExecutableTestLanguage {
+    public static final class LiteralSourcesLanguage extends AbstractExecutableTestLanguage {
 
-        static final String ID = TestUtils.getDefaultLanguageId(TestLiteralSourcesLanguage.class);
+        static final String ID = TestUtils.getDefaultLanguageId(LiteralSourcesLanguage.class);
 
         static final String CODE = "test code";
         static final String DESCRIPTION = "test description";
@@ -670,7 +670,7 @@ public class SourceAPITest {
         protected void onParse(ParsingRequest request, Env env, Object[] contextArguments) {
             try {
                 com.oracle.truffle.api.source.Source source = request.getSource();
-                assertEquals(source.getLanguage(), TestLiteralSourcesLanguage.ID);
+                assertEquals(source.getLanguage(), LiteralSourcesLanguage.ID);
                 assertEquals(source.getName(), DESCRIPTION);
                 assertEquals(source.getCharacters(), CODE);
                 assertNull(source.getMimeType());
@@ -748,8 +748,8 @@ public class SourceAPITest {
 
     @Test
     public void testHttpURL() throws IOException, URISyntaxException {
-        URL resource = new URL(TestHttpURLLanguage.RESOURCE);
-        Source s = Source.newBuilder(TestHttpURLLanguage.ID, resource).content("Empty").build();
+        URL resource = new URL(HttpURLLanguage.RESOURCE);
+        Source s = Source.newBuilder(HttpURLLanguage.ID, resource).content("Empty").build();
         // The URL is converted into URI before comparison to skip the expensive hostname
         // normalization.
         assertEquals(resource.toURI(), s.getURL().toURI());
@@ -757,14 +757,14 @@ public class SourceAPITest {
         assertEquals("File.html", s.getName());
         assertEquals("/test/File.html", s.getPath());
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.parseTestLanguage(context, TestHttpURLLanguage.class, s);
+            AbstractExecutableTestLanguage.parseTestLanguage(context, HttpURLLanguage.class, s);
         }
     }
 
     @Registration
-    public static final class TestHttpURLLanguage extends AbstractExecutableTestLanguage {
+    public static final class HttpURLLanguage extends AbstractExecutableTestLanguage {
 
-        static final String ID = TestUtils.getDefaultLanguageId(TestHttpURLLanguage.class);
+        static final String ID = TestUtils.getDefaultLanguageId(HttpURLLanguage.class);
 
         static final String RESOURCE = "http://example.org/test/File.html";
 
