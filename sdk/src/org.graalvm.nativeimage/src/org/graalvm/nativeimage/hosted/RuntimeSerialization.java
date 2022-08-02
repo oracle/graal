@@ -100,6 +100,45 @@ public final class RuntimeSerialization {
         ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
     }
 
+    /**
+     * Makes the class provided via className available for serialization at runtime but uses the
+     * custom TargetConstructor provided via customTargetConstructorClassName for deserialization.
+     * <p>
+     * In some cases an application might explicitly make calls to
+     * {@code ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall)}
+     * where the passed `constructorToCall` differs from what would automatically be used if regular
+     * deserialization of `cl` would happen. This method exists to also support such usecases.
+     *
+     * @since 22.3
+     */
+    public static void registerWithTargetConstructorClass(String className, String customTargetConstructorClassName) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), className, customTargetConstructorClassName);
+    }
+
+    /**
+     * Makes class available for serialization at runtime that is created for the lambda expressions
+     * (a class that has a $deserializeLambda$ method) specified by the lambdaCapturingClassName.
+     *
+     * @since 22.3
+     */
+    public static void registerLambdaCapturingClass(String lambdaCapturingClassName) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClassName);
+    }
+
+    /**
+     * Makes a dynamic proxy class (class that extends {@link java.lang.reflect.Proxy}) available
+     * for serialization at runtime that is specified by the given interfaces the proxy class
+     * implements.
+     *
+     * @since 22.3
+     */
+    @SuppressWarnings("unused")
+    public static void registerProxyClass(String... implementedInterfaces) {
+        /*- Requires GR-36043 to be merged first
+         * ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), Arrays.asList(implementedInterfaces));
+         */
+    }
+
     private RuntimeSerialization() {
     }
 }
