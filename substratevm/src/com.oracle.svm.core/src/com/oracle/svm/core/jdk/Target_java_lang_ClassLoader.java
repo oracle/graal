@@ -323,8 +323,15 @@ public final class Target_java_lang_ClassLoader {
         // All classes are already linked at runtime.
     }
 
-    @Delete
-    private static native Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
+
+    /**
+     * TODO: This substitution should be reverted to a @Delete annotation once GR-38801 is fixed.
+     */
+    @Substitute
+    @SuppressWarnings("unused")
+    private static Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source) {
+        throw VMError.unsupportedFeature("Defining classes at runtime is not supported.");
+    }
 
     @Delete
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
