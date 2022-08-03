@@ -4350,7 +4350,7 @@ public class FlatNodeGenFactory {
                 if (useSpecializationClass(excludes)) {
                     if (plugs != null) {
                         builder.startStatement();
-                        builder.tree(plugs.createSpecializationFieldReference(frameState, excludes, null, null));
+                        builder.tree(plugs.createSpecializationFieldReference(frameState, excludes, null, createSpecializationTypeMirror(specialization), true));
                         builder.string(" = null");
                         builder.end();
                     } else {
@@ -4436,7 +4436,7 @@ public class FlatNodeGenFactory {
         builder.end();
         builder.startStatement();
         if (plugs != null) {
-            builder.tree(plugs.createSpecializationFieldReference(frameState, specialization, null, null));
+            builder.tree(plugs.createSpecializationFieldReference(frameState, specialization, null, createSpecializationTypeMirror(specialization), true));
         } else {
             builder.string("this.", createSpecializationFieldName(specialization));
         }
@@ -4472,7 +4472,7 @@ public class FlatNodeGenFactory {
                 if (specialization.getMaximumNumberOfInstances() > 1) {
                     if (plugs != null) {
                         initBuilder.tree(plugs.createSpecializationFieldReference(frameState, specialization, null,
-                                        new GeneratedTypeMirror("", createSpecializationTypeName(specialization))));
+                                        createSpecializationTypeMirror(specialization), false));
                     } else {
                         initBuilder.string(createSpecializationFieldName(specialization));
                     }
@@ -4644,7 +4644,7 @@ public class FlatNodeGenFactory {
                 String fieldName = createSpecializationFieldName(removeSpecialization);
                 builder.startStatement();
                 if (plugs != null) {
-                    builder.tree(plugs.createSpecializationFieldReference(frameState, removeSpecialization, fieldName, null));
+                    builder.tree(plugs.createSpecializationFieldReference(frameState, removeSpecialization, fieldName, createSpecializationTypeMirror(specialization), true));
                 } else {
                     builder.string("this." + fieldName);
                 }
@@ -4710,9 +4710,9 @@ public class FlatNodeGenFactory {
             CodeTree fieldRefWrite = fieldRef;
             if (plugs != null) {
                 String fieldName = useSpecializationClass ? null : createSpecializationFieldName(specialization);
-                fieldRef = plugs.createSpecializationFieldReference(innerFrameState, specialization, fieldName,
-                                new GeneratedTypeMirror("", createSpecializationTypeName(specialization)));
-                fieldRefWrite = plugs.createSpecializationFieldReference(innerFrameState, specialization, fieldName, null);
+                TypeMirror typeMirror = createSpecializationTypeMirror(specialization);
+                fieldRef = plugs.createSpecializationFieldReference(innerFrameState, specialization, fieldName, typeMirror, false);
+                fieldRefWrite = plugs.createSpecializationFieldReference(innerFrameState, specialization, fieldName, typeMirror, true);
             }
             if (!useSpecializationClass || specialization.getMaximumNumberOfInstances() == 1) {
                 // single instance remove
@@ -4777,6 +4777,10 @@ public class FlatNodeGenFactory {
         builder.end().end();
         builder.tree(createCallExecuteAndSpecialize(forType, frameState));
         return builder.build();
+    }
+
+    private TypeMirror createSpecializationTypeMirror(SpecializationData specialization) {
+        return new GeneratedTypeMirror("", createSpecializationTypeName(specialization));
     }
 
     private CodeTree createCallExecute(ExecutableTypeData forType, ExecutableTypeData targetType, FrameState frameState) {
@@ -5364,7 +5368,7 @@ public class FlatNodeGenFactory {
                 builder.string(localName);
             } else {
                 if (plugs != null) {
-                    builder.tree(plugs.createSpecializationFieldReference(frameState, s, fieldName, new GeneratedTypeMirror("", createSpecializationTypeName(s))));
+                    builder.tree(plugs.createSpecializationFieldReference(frameState, s, fieldName, createSpecializationTypeMirror(s), false));
                 } else {
                     builder.string("this.", createSpecializationFieldName(s));
                 }

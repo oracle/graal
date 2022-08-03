@@ -313,11 +313,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     @Override
-    public CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType) {
+    public CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType, boolean write) {
         boolean specClass = useSpecializationClass.test(s);
         Object refObject = specClass ? s : fieldName;
         boolean isChild = specClass ? true : ElementUtils.isAssignable(fieldType, types.Node);
-        return createArrayReference(frame, refObject, fieldType != null, fieldType, isChild);
+        return createArrayReference(frame, refObject, !write, fieldType, isChild);
     }
 
     @Override

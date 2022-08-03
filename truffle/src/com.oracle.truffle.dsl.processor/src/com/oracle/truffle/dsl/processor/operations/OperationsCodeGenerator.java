@@ -219,7 +219,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilder.add(createSetMetadata(metadata, true));
         }
 
-        CodeTypeElement typWrappedEx = typBuilderImpl.add(GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "WrappedIOException", context.getType(RuntimeException.class)));
+        CodeTypeElement typWrappedEx = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "WrappedIOException", context.getType(RuntimeException.class));
         typWrappedEx.add(new CodeExecutableElement(Set.of(), null, "WrappedIOException", new CodeVariableElement(context.getType(IOException.class), "ex"))).createBuilder().statement("super(ex)");
         typBuilder.add(typWrappedEx);
 

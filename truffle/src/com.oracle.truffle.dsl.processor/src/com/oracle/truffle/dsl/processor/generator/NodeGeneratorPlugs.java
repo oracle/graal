@@ -79,7 +79,7 @@ public interface NodeGeneratorPlugs {
 
     CodeTree transformValueBeforePersist(CodeTree tree);
 
-    CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType);
+    CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType, boolean write);
 
     CodeTree createNodeFieldReference(FrameState frame, NodeExecutionData execution, String nodeFieldName, boolean forRead);
 

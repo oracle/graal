@@ -42,7 +42,9 @@ package com.oracle.truffle.api.operation.test.example;
 
 import java.util.List;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -145,6 +147,25 @@ public final class TestOperations {
             setter.setObject(frame, value);
             return value;
         }
+    }
+
+    @Operation
+    public static final class GlobalCachedReadOp {
+        @Specialization(assumptions = "cachedAssumption")
+        public static Object doCached(final Association assoc,
+                        @Cached(value = "assoc.getAssumption()", allowUncached = true) final Assumption cachedAssumption) {
+            return assoc.getValue();
+        }
+    }
+}
+
+class Association {
+    public Object getValue() {
+        return new Object();
+    }
+
+    public Assumption getAssumption() {
+        return Assumption.ALWAYS_VALID;
     }
 }
 
