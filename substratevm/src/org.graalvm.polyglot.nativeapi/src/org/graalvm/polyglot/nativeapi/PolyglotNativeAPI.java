@@ -1867,7 +1867,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_perf_data_get_address_of_int64_t", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Gets the address of the int64_t value for a performance data entry of type long. Performance data support must be enabled, see option UsePerfData.",
+                    "Gets the address of the int64_t value for a performance data entry of type long. Performance data support must be enabled.",
                     "",
                     " @param utf8_key UTF8-encoded, 0 terminated key that identifies the performance data entry.",
                     " @param result a pointer to which the address of the int64_t value will be written.",
