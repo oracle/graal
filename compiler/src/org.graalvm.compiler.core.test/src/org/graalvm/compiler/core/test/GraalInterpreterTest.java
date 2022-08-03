@@ -69,6 +69,8 @@ public class GraalInterpreterTest extends GraalCompilerTest {
         checkAgainstInterpreter(expect, true, "fact", 17);
     }
 
+    // 这下面加了几个测试 object
+
     public static class Foo {
         public int value;
         public boolean neg;
