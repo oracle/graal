@@ -167,6 +167,8 @@ public class GraalInterpreter {
 
         private ActivationRecord popActivation() {
             checkActivationsNotEmpty();
+            // 原本这里是 pop 方法，是错的，用 pop 方法的话，activations 就变成 queue，但它是个 stack
+            // 下面还有 peek 也改成 peekLast 了
             return activations.pollLast();
         }
 
@@ -375,6 +377,7 @@ public class GraalInterpreter {
 
     private static final class InterpreterValueFactoryImpl implements InterpreterValueFactory {
         private final HighTierContext context;
+        // 加了 jvmContext 参数，创建 InterpterValueMutableObject 和 InterpterValueArray 时要用到
         private final JVMContext jvmContext;
 
         private InterpreterValueFactoryImpl(HighTierContext context, JVMContext jvmContext) {
