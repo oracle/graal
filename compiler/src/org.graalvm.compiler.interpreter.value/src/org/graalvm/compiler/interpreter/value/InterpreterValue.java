@@ -145,13 +145,20 @@ public abstract class InterpreterValue {
         }
     }
 
+    /**
+     * Get the Class&lt;?&gt; type corresponding to the given JavaType.
+     */
     protected static Class<?> getTypeClass(JVMContext jvmContext, JavaType type) throws ClassNotFoundException {
         JavaKind kind = type.getJavaKind();
         if (kind.isPrimitive()) {
+            // For primitive types, JavaKind.toJavaClass() is enough.
             return kind.toJavaClass();
         } else if (type.isArray()) {
+            // For arrays, the element type may be a complex, like int[][], so
+            // we need to call getTypeClass() recursively to get its Class.
             return Array.newInstance(getTypeClass(jvmContext, type.getComponentType()), 0).getClass();
         } else {
+            // For objects, load its class.
             return Class.forName(type.toJavaName(), true, jvmContext.getClassLoader());
         }
     }

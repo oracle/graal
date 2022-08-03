@@ -31,6 +31,9 @@ import java.lang.reflect.Array;
 public class InterpreterValueArray extends InterpreterValue {
     private final ResolvedJavaType componentType;
     private final int length;
+    // NOTE We cannot use Object[] because primitive arrays like int[] cannot be
+    // case into Object[].
+    // 类型不能用 Object[]，因为基础类型的数组不能转换为 Object[]，比如 int[] 不能转换为 Object[]
     private final Object contents;
 
     public InterpreterValueArray(JVMContext jvmContext, ResolvedJavaType componentType, Object nativeArray) {
@@ -80,7 +83,8 @@ public class InterpreterValueArray extends InterpreterValue {
                     throw new RuntimeException(e);
                 }
             }
-        // no need to populate elements
+        // NOTE no need to populate elements because JVM will do it for us.
+        // 没必要初始化数组元素的值，因为 JVM 默认会初始化新创建的数组的所有元素
         // if (populateDefault) {
         //     populateContentsWithDefaultValues(storageKind);
         // }
@@ -133,6 +137,10 @@ public class InterpreterValueArray extends InterpreterValue {
     public void setAtIndex(int index, InterpreterValue value) {
         checkBounds(index);
         // TODO: should we bother checking type compatbilitity?
+        // NOTE Boolean literal values are represented as integers in IR, so
+        // we need to handle this situation.
+        // IR里会把 true/false 表示成整数 1/0，所以在interpter运行时会发生这样的情况：
+        // 给boolean类型的变量赋值整数0或1。这里就是处理这种情况，需要把0或1分别转换成false或true。
         if (componentType.getJavaKind() == JavaKind.Boolean && value.getJavaKind() == JavaKind.Int) {
             ((boolean[]) contents)[index] = (int) ((Integer) value.asObject()) != 0;
         } else {
