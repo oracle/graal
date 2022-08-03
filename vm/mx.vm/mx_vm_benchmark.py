@@ -207,6 +207,7 @@ class NativeImageVM(GraalVm):
         self.use_upx = False
         self.graalvm_edition = None
         self.config = None
+        self.stages = None
         self.ml = None
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
@@ -397,6 +398,7 @@ class NativeImageVM(GraalVm):
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
             self.stages_till_now = []
+            self.successfully_finished_stages = []
             self.config = config
             self.bench_out = bench_out
             self.bench_err = bench_err
@@ -444,6 +446,7 @@ class NativeImageVM(GraalVm):
             self.stderr_file.flush()
 
             if self.exit_code == 0 and (tb is None):
+                self.successfully_finished_stages.append(self.current_stage)
                 if self.current_stage.startswith(self.config.last_stage):
                     self.bench_out('Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
                 else:
@@ -538,77 +541,11 @@ class NativeImageVM(GraalVm):
             if "image" not in self.current_stage and self.config.bmSuite.validateReturnCode(self.exit_code):
                 self.exit_code = 0
 
-    def image_build_statistics_rules(self, benchmark):
-        objects_list = ["total_array_store",
-                          "total_assertion_error_nullary",
-                          "total_assertion_error_object",
-                          "total_class_cast",
-                          "total_division_by_zero",
-                          "total_illegal_argument_exception_argument_is_not_an_array",
-                          "total_illegal_argument_exception_negative_length",
-                          "total_integer_exact_overflow",
-                          "total_long_exact_overflow",
-                          "total_null_pointer",
-                          "total_out_of_bounds"]
-        metric_objects = ["total_devirtualized_invokes"]
-        for obj in objects_list:
-            metric_objects.append(obj + "_after_parse_canonicalization")
-            metric_objects.append(obj + "_before_high_tier")
-            metric_objects.append(obj + "_after_high_tier")
-        rules = []
-        for i in range(0, len(metric_objects)):
-            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
-                "benchmark": benchmark,
-                "metric.name": "image-build-stats",
-                "metric.type": "numeric",
-                "metric.unit": "#",
-                "metric.value": ("<"+metric_objects[i]+">", int),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "metric.object": metric_objects[i].replace("_", "-").replace("total-", ""),
-            }, [metric_objects[i]]))
-        return rules
+    def image_build_rules(self, output, benchmarks, bmSuiteArgs):
+        return self.image_build_general_rules(output, benchmarks, bmSuiteArgs) + self.image_build_analysis_rules(output, benchmarks, bmSuiteArgs) \
+               + self.image_build_statistics_rules(output, benchmarks, bmSuiteArgs) + self.image_build_timers_rules(output, benchmarks, bmSuiteArgs)
 
-    def image_build_timers_rules(self, benchmark):
-        class NativeImageTimeToInt(object):
-            def __call__(self, *args, **kwargs):
-                return int(float(args[0].replace(',', '')))
-
-        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
-                           'write']
-        rules = []
-        for i in range(0, len(measured_phases)):
-            phase = measured_phases[i]
-            value_name = phase + "_time"
-            rules.append(
-                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
-                    "benchmark": benchmark,
-                    "metric.name": "compile-time",
-                    "metric.type": "numeric",
-                    "metric.unit": "ms",
-                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
-                    "metric.object": phase,
-                }, [value_name]))
-            value_name = phase + "_memory"
-            rules.append(
-                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
-                    "benchmark": benchmark,
-                    "metric.name": "analysis-stats",
-                    "metric.type": "numeric",
-                    "metric.unit": "B",
-                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
-                    "metric.object": phase + "_memory",
-                }, [value_name]))
-        return rules
-
-    def rules(self, output, benchmarks, bmSuiteArgs):
+    def image_build_general_rules(self, output, benchmarks, bmSuiteArgs):
         class NativeImageTimeToInt(object):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
@@ -668,7 +605,11 @@ class NativeImageVM(GraalVm):
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": ("<section>", str),
-            }),
+            })
+        ]
+
+    def image_build_analysis_rules(self, output, benchmarks, bmSuiteArgs):
+        return [
             mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
@@ -724,7 +665,86 @@ class NativeImageVM(GraalVm):
                 "metric.iteration": 0,
                 "metric.object": "memory"
             }, ['total_memory_bytes'])
-        ] + self.image_build_statistics_rules(benchmarks[0]) + self.image_build_timers_rules(benchmarks[0])
+        ]
+
+    def image_build_statistics_rules(self, output, benchmarks, bmSuiteArgs):
+        objects_list = ["total_array_store",
+                        "total_assertion_error_nullary",
+                        "total_assertion_error_object",
+                        "total_class_cast",
+                        "total_division_by_zero",
+                        "total_illegal_argument_exception_argument_is_not_an_array",
+                        "total_illegal_argument_exception_negative_length",
+                        "total_integer_exact_overflow",
+                        "total_long_exact_overflow",
+                        "total_null_pointer",
+                        "total_out_of_bounds"]
+        metric_objects = ["total_devirtualized_invokes"]
+        for obj in objects_list:
+            metric_objects.append(obj + "_after_parse_canonicalization")
+            metric_objects.append(obj + "_before_high_tier")
+            metric_objects.append(obj + "_after_high_tier")
+        rules = []
+        for i in range(0, len(metric_objects)):
+            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
+                "benchmark": benchmarks[0],
+                "metric.name": "image-build-stats",
+                "metric.type": "numeric",
+                "metric.unit": "#",
+                "metric.value": ("<" + metric_objects[i] + ">", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": metric_objects[i].replace("_", "-").replace("total-", ""),
+            }, [metric_objects[i]]))
+        return rules
+
+    def image_build_timers_rules(self, output, benchmarks, bmSuiteArgs):
+        class NativeImageTimeToInt(object):
+            def __call__(self, *args, **kwargs):
+                return int(float(args[0].replace(',', '')))
+
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
+                           'write']
+        rules = []
+        for i in range(0, len(measured_phases)):
+            phase = measured_phases[i]
+            value_name = phase + "_time"
+            rules.append(
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
+                    "benchmark": benchmarks[0],
+                    "metric.name": "compile-time",
+                    "metric.type": "numeric",
+                    "metric.unit": "ms",
+                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "metric.object": phase,
+                }, [value_name]))
+            value_name = phase + "_memory"
+            rules.append(
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
+                    "benchmark": benchmarks[0],
+                    "metric.name": "analysis-stats",
+                    "metric.type": "numeric",
+                    "metric.unit": "B",
+                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "metric.object": phase + "_memory",
+                }, [value_name]))
+        return rules
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        rules = super(NativeImageVM, self).rules(output, benchmarks, bmSuiteArgs)
+
+        image_build_finished = 'image' in self.stages.successfully_finished_stages or 'instrument-image' in self.stages.successfully_finished_stages
+        if image_build_finished:
+            rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
+
+        return rules
 
     def run_stage_agent(self, config, stages):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
@@ -817,6 +837,7 @@ class NativeImageVM(GraalVm):
         config = NativeImageVM.BenchmarkConfig(self, self.bmSuite, args)
         self.config = config
         stages = NativeImageVM.Stages(config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
+        self.stages = stages
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
 
         if not os.path.exists(config.output_dir):
