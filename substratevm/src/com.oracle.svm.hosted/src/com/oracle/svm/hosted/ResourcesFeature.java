@@ -45,6 +45,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
@@ -172,8 +173,9 @@ public final class ResourcesFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
-        ImageSingletons.add(ResourcesRegistry.class,
-                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader)));
+        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader));
+        ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
+        ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
