@@ -2454,7 +2454,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private SpecializationData parseCachedLibraries(SpecializationData specialization, DSLExpressionResolver resolver, List<CacheExpression> libraries) {
-
         SpecializationData uncachedSpecialization = null;
         List<CacheExpression> uncachedLibraries = null;
         /*
@@ -2524,7 +2523,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             DSLExpression substituteCachedExpression = null;
             DSLExpression substituteUncachedExpression = null;
-
+            boolean supportsMerge = false;
             // try substitutions
             if (mode == ParseMode.EXPORTED_MESSAGE) {
                 Parameter receiverParameter = specialization.findParameterOrDie(specialization.getNode().getChildExecutions().get(0));
@@ -2553,7 +2552,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
                 if (substituteCachedExpression == null && supportsLibraryMerge(receiverExpression, receiverParameter.getVariableElement())) {
                     substituteCachedExpression = receiverExpression;
-
+                    supportsMerge = true;
                     cachedLibrary.setMergedLibrary(true);
                 }
             }
@@ -2565,7 +2564,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setDefaultExpression(substituteCachedExpression);
                 cachedLibrary.setUncachedExpression(substituteUncachedExpression);
                 cachedLibrary.setAlwaysInitialized(true);
-                continue;
+
+                if (uncachedLibrary != null) {
+                    uncachedLibrary.setDefaultExpression(substituteUncachedExpression);
+                    uncachedLibrary.setUncachedExpression(substituteUncachedExpression);
+                    uncachedLibrary.setMergedLibrary(supportsMerge);
+                    uncachedLibrary.setAlwaysInitialized(true);
+                }
+
             } else {
                 seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, true);
                 cachedLibrary.setDefaultExpression(receiverExpression);
