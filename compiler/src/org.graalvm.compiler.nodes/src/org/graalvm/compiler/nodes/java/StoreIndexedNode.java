@@ -137,6 +137,8 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         InterpreterValue arrayVal = interpreter.interpretExpr(array());
         InterpreterValue newVal = interpreter.interpretExpr(value());
 
+        // Test if array is null.
+        // 测试 array 是否是 null
         if (arrayVal.isNull()) {
             throw new InterpreterException(new NullPointerException());
         }

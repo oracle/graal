@@ -142,8 +142,11 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
         if (isStatic()) {
             interpreter.storeStaticFieldValue(field(), val);
         } else {
+            // 获取 jvmContext 和 valueFactory，valueFactory 是在 getFieldValue 方法里用来把 native object 转换为 InterpterValue
             JVMContext jvmContext = interpreter.getJVMContext();
             InterpreterValue objectVal = interpreter.interpretExpr(object());
+            // Test if object is null
+            // 测试 object 是否是 null
             if (objectVal.isNull()) {
                 throw new InterpreterException(new NullPointerException());
             }
