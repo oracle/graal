@@ -1,7 +1,12 @@
 suite = {
     "name": "vm",
+<<<<<<< HEAD
     "version" : "23.0.0",
     "mxversion" : "6.5.5",
+=======
+    "version" : "22.3.0",
+    "mxversion" : "6.8.0",
+>>>>>>> 17e5caaaf18 (Group ci files in each suite)
     "release" : False,
     "groupId" : "org.graalvm",
 
