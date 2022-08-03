@@ -102,5 +102,6 @@ public interface InterpreterState {
     /** Get the factory for creating interpreter values. */
     InterpreterValueFactory getRuntimeValueFactory();
 
+    // 获取 JVMContext，在 LoadFieldNode , StoreFieldNode, LoadIndexedNode, StoreIndexedNode 里会用到
     JVMContext getJVMContext();
 }
