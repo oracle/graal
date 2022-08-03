@@ -41,13 +41,15 @@
 
 package com.oracle.truffle.api.strings;
 
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
+
 final class Stride {
 
     static boolean isStride(int stride) {
         return 0 <= stride && stride <= 2;
     }
 
-    static int fromCodeRange(int codeRange, int encoding) {
+    static int fromCodeRange(int codeRange, Encoding encoding) {
         if (TStringGuards.isUTF16(encoding)) {
             return fromCodeRangeUTF16(codeRange);
         } else if (TStringGuards.isUTF32(encoding)) {
