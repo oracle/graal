@@ -96,8 +96,7 @@ public final class EspressoFrame {
 
     public static void swapSingle(Frame frame, int top) {
         // value2, value1 -> value1, value2
-        frame.swapPrimitiveStatic(top - 1, top - 2);
-        frame.swapObjectStatic(top - 1, top - 2);
+        swapStatic(frame, top);
     }
 
     public static void dup2x1(Frame frame, int top) {
@@ -120,9 +119,12 @@ public final class EspressoFrame {
         copyStatic(frame, top + 1, top - 3);
     }
 
+    private static void swapStatic(Frame frame, int top) {
+        frame.swapStatic(top - 1, top - 2);
+    }
+
     private static void copyStatic(Frame frame, int src, int dst) {
-        frame.copyPrimitiveStatic(src, dst);
-        frame.copyObjectStatic(src, dst);
+        frame.copyStatic(src, dst);
     }
 
     public static int popInt(Frame frame, int slot) {
@@ -228,6 +230,7 @@ public final class EspressoFrame {
     }
 
     static void setLocalObjectOrReturnAddress(Frame frame, int localSlot, Object value) {
+        assert value instanceof StaticObject || value instanceof ReturnAddress;
         frame.setObjectStatic(VALUES_START + localSlot, value);
     }
 
