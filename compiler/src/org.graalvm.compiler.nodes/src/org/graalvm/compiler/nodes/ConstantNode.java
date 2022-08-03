@@ -585,6 +585,8 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         if (cVal instanceof PrimitiveConstant) {
             return InterpreterValuePrimitive.ofPrimitiveConstant(cVal);
         }
+        // Test if the constant is null
+        // 这里加上判断常量 cVal 是否是 null，为了支持 object 要加上这个判断，因为任何 object 变量都可能是 null
         if (cVal instanceof JavaConstant && ((JavaConstant) cVal).isNull()) {
             return InterpreterValue.InterpreterValueNullPointer.INSTANCE;
         }
