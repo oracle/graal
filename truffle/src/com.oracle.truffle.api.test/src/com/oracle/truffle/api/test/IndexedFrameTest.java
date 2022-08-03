@@ -697,6 +697,7 @@ public class IndexedFrameTest {
 
     private static final String STATIC_COPY_OF_NON_STATIC_PRIMITIVE = "Unexpected copy of static primitive value";
     private static final String STATIC_COPY_OF_NON_STATIC_OBJECT = "Unexpected copy of static object value";
+    private static final String STATIC_COPY_OF_NON_STATIC = "Unexpected copy of static value";
 
     @Test
     public void testCopyNonStaticSlotWithStaticAPI() {
@@ -720,10 +721,22 @@ public class IndexedFrameTest {
                 assertErrorMessage(STATIC_COPY_OF_NON_STATIC_PRIMITIVE, e);
             }
             try {
+                frame.copyStatic(0, 1);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_COPY_OF_NON_STATIC, e);
+            }
+            try {
                 frame.copyObjectStatic(2, 3);
                 fail(ASSERTION_ERROR_EXPECTED);
             } catch (AssertionError e) {
                 assertErrorMessage(STATIC_COPY_OF_NON_STATIC_OBJECT, e);
+            }
+            try {
+                frame.copyStatic(2, 3);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_COPY_OF_NON_STATIC, e);
             }
             try {
                 frame.copyPrimitiveStatic(0, 4);
@@ -732,10 +745,22 @@ public class IndexedFrameTest {
                 assertErrorMessage(STATIC_COPY_OF_NON_STATIC_PRIMITIVE, e);
             }
             try {
+                frame.copyStatic(0, 4);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_COPY_OF_NON_STATIC, e);
+            }
+            try {
                 frame.copyPrimitiveStatic(4, 0);
                 fail(ASSERTION_ERROR_EXPECTED);
             } catch (AssertionError e) {
                 assertErrorMessage(STATIC_COPY_OF_NON_STATIC_PRIMITIVE, e);
+            }
+            try {
+                frame.copyStatic(4, 0);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_COPY_OF_NON_STATIC, e);
             }
             try {
                 frame.copyObjectStatic(2, 4);
@@ -744,10 +769,22 @@ public class IndexedFrameTest {
                 assertErrorMessage(STATIC_COPY_OF_NON_STATIC_OBJECT, e);
             }
             try {
+                frame.copyStatic(2, 4);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_COPY_OF_NON_STATIC, e);
+            }
+            try {
                 frame.copyObjectStatic(4, 2);
                 fail(ASSERTION_ERROR_EXPECTED);
             } catch (AssertionError e) {
                 assertErrorMessage(STATIC_COPY_OF_NON_STATIC_OBJECT, e);
+            }
+            try {
+                frame.copyStatic(4, 2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_COPY_OF_NON_STATIC, e);
             }
         });
     }
@@ -800,6 +837,148 @@ public class IndexedFrameTest {
         });
     }
 
+    private static final String STATIC_SWAP_OF_NON_STATIC_PRIMITIVE = "Unexpected swap of static primitive value";
+    private static final String STATIC_SWAP_OF_NON_STATIC_OBJECT = "Unexpected swap of static object value";
+    private static final String STATIC_SWAP_OF_NON_STATIC = "Unexpected swap of static value";
+
+    @Test
+    public void testSwapNonStaticSlotWithStaticAPI() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlot(FrameSlotKind.Int, null, null);
+        builder.addSlot(FrameSlotKind.Int, null, null);
+        builder.addSlot(FrameSlotKind.Object, null, null);
+        builder.addSlot(FrameSlotKind.Object, null, null);
+        builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setInt(0, 42);
+            frame.setObject(2, new Object());
+            frame.setIntStatic(4, 0);
+            try {
+                frame.swapPrimitiveStatic(0, 1);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC_PRIMITIVE, e);
+            }
+            try {
+                frame.swapStatic(0, 1);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC, e);
+            }
+            try {
+                frame.swapObjectStatic(2, 3);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC_OBJECT, e);
+            }
+            try {
+                frame.swapStatic(2, 3);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC, e);
+            }
+            try {
+                frame.swapPrimitiveStatic(0, 4);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC_PRIMITIVE, e);
+            }
+            try {
+                frame.swapStatic(0, 4);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC, e);
+            }
+            try {
+                frame.swapPrimitiveStatic(4, 0);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC_PRIMITIVE, e);
+            }
+            try {
+                frame.swapStatic(4, 0);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC, e);
+            }
+            try {
+                frame.swapObjectStatic(2, 4);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC_OBJECT, e);
+            }
+            try {
+                frame.swapStatic(2, 4);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC, e);
+            }
+            try {
+                frame.swapObjectStatic(4, 2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC_OBJECT, e);
+            }
+            try {
+                frame.swapStatic(4, 2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(STATIC_SWAP_OF_NON_STATIC, e);
+            }
+        });
+    }
+
+    @Test
+    public void testSwapStaticSlotWithNonStaticAPI() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlot(FrameSlotKind.Int, null, null);
+        builder.addSlot(FrameSlotKind.Object, null, null);
+        builder.addSlot(FrameSlotKind.Static, null, null);
+        builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setInt(0, 42);
+            frame.setObject(1, new Object());
+            frame.setIntStatic(2, 0);
+            frame.setObjectStatic(3, new Object());
+            try {
+                frame.swap(0, 2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(NON_STATIC_READ_OF_STATIC_SLOT, e);
+            }
+            try {
+                frame.swap(1, 2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(NON_STATIC_READ_OF_STATIC_SLOT, e);
+            }
+            try {
+                frame.swap(2, 3);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(NON_STATIC_READ_OF_STATIC_SLOT, e);
+            }
+            try {
+                frame.swap(2, 0);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(NON_STATIC_READ_OF_STATIC_SLOT, e);
+            }
+            try {
+                frame.swap(2, 1);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage(NON_STATIC_READ_OF_STATIC_SLOT, e);
+            }
+        });
+    }
+
     @Test
     public void testClearNonStaticSlotWithStaticAPI() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
@@ -818,10 +997,22 @@ public class IndexedFrameTest {
                 assertErrorMessage("Unexpected clear of static primitive value", e);
             }
             try {
+                frame.clearStatic((0));
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected clear of static value", e);
+            }
+            try {
                 frame.clearObjectStatic(1);
                 fail(ASSERTION_ERROR_EXPECTED);
             } catch (AssertionError e) {
                 assertErrorMessage("Unexpected clear of static object value", e);
+            }
+            try {
+                frame.clearStatic(1);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected clear of static value", e);
             }
         });
     }
@@ -876,6 +1067,7 @@ public class IndexedFrameTest {
             } catch (IndexOutOfBoundsException e) {
                 assertIndexOutOfBounds(1, e);
             }
+
             try {
                 frame.setIntStatic(0, 0);
                 frame.copyPrimitiveStatic(0, 1);
@@ -904,6 +1096,7 @@ public class IndexedFrameTest {
             } catch (IndexOutOfBoundsException e) {
                 assertIndexOutOfBounds(-1, e);
             }
+
             try {
                 frame.setObjectStatic(0, null);
                 frame.copyObjectStatic(0, 1);
@@ -932,6 +1125,115 @@ public class IndexedFrameTest {
             } catch (IndexOutOfBoundsException e) {
                 assertIndexOutOfBounds(-1, e);
             }
+
+            try {
+                frame.copyStatic(0, 1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.copyStatic(1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.copyStatic(0, -1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+            try {
+                frame.copyStatic(-1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+
+            try {
+                frame.setIntStatic(0, 0);
+                frame.swapPrimitiveStatic(0, 1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.setIntStatic(0, 0);
+                frame.swapPrimitiveStatic(1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.setIntStatic(0, 0);
+                frame.swapPrimitiveStatic(0, -1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+            try {
+                frame.setIntStatic(0, 0);
+                frame.swapPrimitiveStatic(-1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+
+            try {
+                frame.setObjectStatic(0, null);
+                frame.swapObjectStatic(0, 1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.setObjectStatic(0, null);
+                frame.swapObjectStatic(1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.setObjectStatic(0, null);
+                frame.swapObjectStatic(0, -1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+            try {
+                frame.setObjectStatic(0, null);
+                frame.swapObjectStatic(-1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+
+            try {
+                frame.swapStatic(0, 1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.swapStatic(1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+            try {
+                frame.swapStatic(0, -1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+            try {
+                frame.swapStatic(-1, 0);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+
             try {
                 frame.clearPrimitiveStatic(-1);
                 fail(OUT_OF_BOUNDS_EXPECTED);
@@ -944,6 +1246,7 @@ public class IndexedFrameTest {
             } catch (IndexOutOfBoundsException e) {
                 assertIndexOutOfBounds(1, e);
             }
+
             try {
                 frame.clearObjectStatic(-1);
                 fail(OUT_OF_BOUNDS_EXPECTED);
@@ -952,6 +1255,19 @@ public class IndexedFrameTest {
             }
             try {
                 frame.clearObjectStatic(1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(1, e);
+            }
+
+            try {
+                frame.clearStatic(-1);
+                fail(OUT_OF_BOUNDS_EXPECTED);
+            } catch (IndexOutOfBoundsException e) {
+                assertIndexOutOfBounds(-1, e);
+            }
+            try {
+                frame.clearStatic(1);
                 fail(OUT_OF_BOUNDS_EXPECTED);
             } catch (IndexOutOfBoundsException e) {
                 assertIndexOutOfBounds(1, e);
@@ -1088,6 +1404,44 @@ public class IndexedFrameTest {
     }
 
     @Test
+    public void testStaticPrimitiveSwapAfterStaticObjectWrite() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlot(FrameSlotKind.Static, null, null);
+        builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setObjectStatic(0, DEFAULT);
+            try {
+                frame.swapPrimitiveStatic(0, 1);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected swap of static primitive value", e);
+            }
+        });
+    }
+
+    @Test
+    public void testStaticObjectSwapAfterStaticPrimitiveWrite() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlot(FrameSlotKind.Static, null, null);
+        builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setIntStatic(0, 0);
+            try {
+                frame.swapObjectStatic(0, 1);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected swap of static object value", e);
+            }
+        });
+    }
+
+    @Test
     public void testStaticPrimitiveClearAfterStaticObjectWrite() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
         builder.addSlot(FrameSlotKind.Static, null, null);
@@ -1218,7 +1572,6 @@ public class IndexedFrameTest {
             frame.copyPrimitiveStatic(slot1, slot2);
             assertEquals((byte) 1, frame.getByteStatic(slot1));
             assertEquals((byte) 1, frame.getByteStatic(slot2));
-            assertEquals((byte) 1, frame.getByteStatic(slot2));
 
             frame.clearPrimitiveStatic(slot1);
             frame.copyPrimitiveStatic(slot1, slot2);
@@ -1255,6 +1608,133 @@ public class IndexedFrameTest {
                 fail(ASSERTION_ERROR_EXPECTED);
             } catch (AssertionError e) {
                 assertErrorMessage("Unexpected read of static object value", e);
+            }
+        });
+    }
+
+    @Test
+    public void testStaticCopy() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot1 = builder.addSlot(FrameSlotKind.Static, null, null);
+        int slot2 = builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setIntStatic(slot1, 1);
+            frame.setLongStatic(slot2, 2L);
+            assertEquals(1, frame.getIntStatic(slot1));
+            assertEquals(2L, frame.getLongStatic(slot2));
+            frame.copyStatic(slot1, slot2);
+            assertEquals(1, frame.getIntStatic(slot1));
+            assertEquals(1, frame.getIntStatic(slot2));
+
+            frame.setObjectStatic(slot1, "foo");
+            frame.copyStatic(slot1, slot2);
+            assertEquals("foo", frame.getObjectStatic(slot2));
+
+            frame.clearStatic(slot1);
+            frame.copyStatic(slot1, slot2);
+            try {
+                frame.getObjectStatic(slot2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected read of static object value", e);
+            }
+        });
+    }
+
+    @Test
+    public void testStaticPrimitiveSwap() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot1 = builder.addSlot(FrameSlotKind.Static, null, null);
+        int slot2 = builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setByteStatic(slot1, (byte) 1);
+            frame.setBooleanStatic(slot2, false);
+            assertEquals((byte) 1, frame.getByteStatic(slot1));
+            assertFalse(frame.getBooleanStatic(slot2));
+            frame.swapPrimitiveStatic(slot1, slot2);
+            assertFalse(frame.getBooleanStatic(slot1));
+            assertEquals((byte) 1, frame.getByteStatic(slot2));
+
+            frame.clearPrimitiveStatic(slot1);
+            frame.swapPrimitiveStatic(slot1, slot2);
+
+            assertEquals((byte) 1, frame.getByteStatic(slot1));
+            try {
+                frame.getBooleanStatic(slot2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected read of static boolean value", e);
+            }
+        });
+    }
+
+    @Test
+    public void testStaticObjectSwap() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot1 = builder.addSlot(FrameSlotKind.Static, null, null);
+        int slot2 = builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setObjectStatic(slot1, "foo");
+            frame.setObjectStatic(slot2, "bar");
+            assertEquals("foo", frame.getObjectStatic(slot1));
+            assertEquals("bar", frame.getObjectStatic(slot2));
+            frame.swapObjectStatic(slot1, slot2);
+            assertEquals("bar", frame.getObjectStatic(slot1));
+            assertEquals("foo", frame.getObjectStatic(slot2));
+
+            frame.clearObjectStatic(slot1);
+            frame.swapObjectStatic(slot1, slot2);
+
+            assertEquals("foo", frame.getObjectStatic(slot1));
+            try {
+                frame.getObjectStatic(slot2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected read of static object value", e);
+            }
+        });
+    }
+
+    @Test
+    public void testStaticSwap() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot1 = builder.addSlot(FrameSlotKind.Static, null, null);
+        int slot2 = builder.addSlot(FrameSlotKind.Static, null, null);
+
+        FrameDescriptor descriptor = builder.build();
+
+        testWithFrames(descriptor, frame -> {
+            frame.setByteStatic(slot1, (byte) 1);
+            frame.setBooleanStatic(slot2, false);
+            assertEquals((byte) 1, frame.getByteStatic(slot1));
+            assertFalse(frame.getBooleanStatic(slot2));
+            frame.swapStatic(slot1, slot2);
+            assertFalse(frame.getBooleanStatic(slot1));
+            assertEquals((byte) 1, frame.getByteStatic(slot2));
+
+            frame.setObjectStatic(slot1, "foo");
+            frame.swapStatic(slot1, slot2);
+            assertEquals("foo", frame.getObjectStatic(slot2));
+            assertEquals((byte) 1, frame.getByteStatic(slot1));
+
+            frame.clearStatic(slot1);
+            frame.swapStatic(slot1, slot2);
+
+            assertEquals("foo", frame.getObjectStatic(slot1));
+            try {
+                frame.getByteStatic(slot2);
+                fail(ASSERTION_ERROR_EXPECTED);
+            } catch (AssertionError e) {
+                assertErrorMessage("Unexpected read of static byte value", e);
             }
         });
     }
