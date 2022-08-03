@@ -1224,7 +1224,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             case DSTORE: setLocalDouble(frame, bs.readLocalIndex2(curBCI), popDouble(frame, top - 1)); break;
                             case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex2(curBCI), popReturnAddressOrObject(frame, top - 1)); break;
                             case IINC: setLocalInt(frame, bs.readLocalIndex2(curBCI), getLocalInt(frame, bs.readLocalIndex2(curBCI)) + bs.readIncrement2(curBCI)); break;
-                    // @formatter:on
+                            // @formatter:on
                             case RET: {
                                 int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex2(curBCI));
                                 livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
