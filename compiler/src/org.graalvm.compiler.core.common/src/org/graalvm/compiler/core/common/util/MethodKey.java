@@ -22,31 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot;
+package org.graalvm.compiler.core.common.util;
 
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Key type for a map from {@link HotSpotResolvedJavaMethod} objects to some value. A
- * {@link HotSpotResolvedJavaMethod} object cannot be used in a map that outlives a single
- * compilation as it is not guaranteed to be valid after the compilation.
+ * Key type for a map when {@link ResolvedJavaMethod} cannot be used due to the
+ * {@link ResolvedJavaMethod} keys potentially becoming invalid while the map is still in use. For
+ * example, a JVMCI implementation can scope the validity of a {@link ResolvedJavaMethod} to a
+ * single compilation such that VM resources held by the {@link ResolvedJavaMethod} object can be
+ * released once compilation ends.
  */
-public final class HotSpotMethodKey {
+public final class MethodKey {
+
     private final String declaringClass;
     private final String name;
     private final String descriptor;
-
-    /**
-     * Cached value of {@code HotSpotResolvedJavaMethodImpl.hashCode()} which is a function of the
-     * underlying {@code Method*}.
-     */
     private final int hashCode;
 
-    public HotSpotMethodKey(HotSpotResolvedJavaMethod method) {
+    /**
+     * Creates a key representing {@code method}.
+     */
+    public MethodKey(ResolvedJavaMethod method) {
         this.declaringClass = method.getDeclaringClass().getName();
         this.name = method.getName();
         this.descriptor = method.getSignature().toMethodDescriptor();
         this.hashCode = method.hashCode();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDeclaringClass() {
+        return declaringClass;
+    }
+
+    public String getDescriptor() {
+        return descriptor;
     }
 
     @Override
@@ -56,8 +69,8 @@ public final class HotSpotMethodKey {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof HotSpotMethodKey) {
-            HotSpotMethodKey that = (HotSpotMethodKey) obj;
+        if (obj instanceof MethodKey) {
+            MethodKey that = (MethodKey) obj;
             return this.hashCode == that.hashCode &&
                             this.name.equals(that.name) &&
                             this.declaringClass.equals(that.declaringClass) &&

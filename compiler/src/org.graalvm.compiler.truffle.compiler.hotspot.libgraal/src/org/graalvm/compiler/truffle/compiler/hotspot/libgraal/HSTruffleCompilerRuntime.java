@@ -78,7 +78,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.hotspot.HotSpotMethodKey;
+import org.graalvm.compiler.core.common.util.MethodKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -96,7 +96,6 @@ import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -116,7 +115,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     private final ResolvedJavaType classLoaderDelegate;
     private final OptionValues initialOptions;
 
-    final ConcurrentHashMap<HotSpotMethodKey, MethodCache> methodCache = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<MethodKey, MethodCache> methodCache = new ConcurrentHashMap<>();
 
     HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
         super(env, handle);
@@ -125,8 +124,14 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     }
 
     private MethodCache getMethodCache(ResolvedJavaMethod method) {
-        HotSpotMethodKey key = new HotSpotMethodKey((HotSpotResolvedJavaMethod) method);
-        return methodCache.computeIfAbsent(key, ignored -> createMethodCache(method));
+        MethodKey key = new MethodKey(method);
+        MethodCache cache = methodCache.get(key);
+        if (cache == null) {
+            // Probing cache first avoids allocation of a capturing lambda
+            // if there is already an entry in the cache.
+            cache = methodCache.computeIfAbsent(key, ignored -> createMethodCache(method));
+        }
+        return cache;
     }
 
     private MethodCache createMethodCache(ResolvedJavaMethod method) {
