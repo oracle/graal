@@ -147,21 +147,16 @@ public class PointstoAnalyzerTester {
 
     /**
      * Run the analysis and check the results.
-     * 
+     *
      * @param expectPass true if the analysis is expected to be successfully finished, false if the
      *            analysis is supposed to fail.
      */
     public void runAnalysisAndAssert(boolean expectPass) {
-        PointsToAnalyzer pointstoAnalyzer = PointsToAnalyzer.createAnalyzer(arguments);
+        PointsToAnalyzer pointstoAnalyzer = null;
         UnsupportedFeatureException unsupportedFeatureException = null;
         try {
             try {
-                int ret = pointstoAnalyzer.run();
-                if (expectPass) {
-                    assertEquals("Analysis return code is expected to 0", 0, ret);
-                } else {
-                    assertNotEquals("The analysis is expected to fail, but succeeded", 0, ret);
-                }
+                pointstoAnalyzer = runAnalysis(expectPass);
             } catch (UnsupportedFeatureException e) {
                 unsupportedFeatureException = e;
             }

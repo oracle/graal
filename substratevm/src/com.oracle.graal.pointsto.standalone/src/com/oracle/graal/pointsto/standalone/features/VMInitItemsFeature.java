@@ -109,6 +109,6 @@ public class VMInitItemsFeature implements Feature {
             finalVMInvokedMethodList.addAll(Arrays.asList(SYSTEM_LEVEL_VM_INVOKE_METHODS));
         }
         ClassLoader classLoader = access.getApplicationClassLoader();
-        MethodConfigReader.forMethodList(bigbang.getDebug(), finalVMInvokedMethodList, bigbang, classLoader, m -> bigbang.addRootMethod(m, true));
+        MethodConfigReader.forMethodList(bigbang.getDebug(), finalVMInvokedMethodList, bigbang, classLoader, m -> bigbang.addRootMethod(m, true, "VMinit"));
     }
 }

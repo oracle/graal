@@ -1,0 +1,3 @@
+Specify a list of methods that are taken as safe to call for eager class initialization. This configuration overrides the
+automatic analyzing results, i.e. a method is safe if it is analyzed to be unsafe but is set in the configuration file.
+Each line of the file represents a safe method. See MethodFilter option for method format details.

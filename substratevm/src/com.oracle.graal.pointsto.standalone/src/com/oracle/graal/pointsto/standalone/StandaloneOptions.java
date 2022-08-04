@@ -54,4 +54,7 @@ public class StandaloneOptions {
 
     @Option(help = "Print the unresolved class warnings, disabled by default.")//
     public static final OptionKey<Boolean> PrintUnresolvedElementWarning = new OptionKey<>(false);
+
+    @Option(help = "Enable eager class initialization analysis.")//
+    public static final OptionKey<Boolean> EnableClassInitializationAnalyze = new OptionKey<>(false);
 }

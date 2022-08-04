@@ -65,12 +65,14 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
-import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.standalone.phases.StandaloneClassInitializationPlugin;
 import com.oracle.graal.pointsto.phases.PointsToMethodHandlePlugin;
+import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureImpl;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureManager;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
 import com.oracle.graal.pointsto.standalone.features.StandaloneServiceLoaderFeature;
+import com.oracle.graal.pointsto.standalone.features.ClassInitializationAnalyzingFeature;
 import com.oracle.graal.pointsto.standalone.features.VMInitItemsFeature;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
@@ -211,7 +213,13 @@ public final class PointsToAnalyzer {
             bigbang.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
 
             GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-            NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin(StandaloneOptions.PrintUnresolvedElementWarning.getValue(options));
+            NoClassInitializationPlugin classInitializationPlugin;
+            boolean printUnresolvedElementWarning = StandaloneOptions.PrintUnresolvedElementWarning.getValue(options);
+            if (StandaloneOptions.EnableClassInitializationAnalyze.getValue(options)) {
+                classInitializationPlugin = new StandaloneClassInitializationPlugin(aConstantReflection, printUnresolvedElementWarning);
+            } else {
+                classInitializationPlugin = new NoClassInitializationPlugin(printUnresolvedElementWarning);
+            }
             plugins.setClassInitializationPlugin(classInitializationPlugin);
             plugins.appendNodePlugin(new PointsToMethodHandlePlugin(aProviders, aProviders.getSnippetReflection(), aUniverse, new Providers(originalProviders), classInitializationPlugin,
                             ex -> AnalysisError.shouldNotReachHere(ex)));
@@ -339,6 +347,9 @@ public final class PointsToAnalyzer {
         // -H:+DumpAnalysisReports
         standaloneAnalysisFeatureManager.registerFeature("com.oracle.graal.pointsto.standalone.features.DashboardDumpDelegate$Feature");
         standaloneAnalysisFeatureManager.registerFeature(VMInitItemsFeature.class);
+        if (StandaloneOptions.EnableClassInitializationAnalyze.getValue(options)) {
+            standaloneAnalysisFeatureManager.registerFeature(ClassInitializationAnalyzingFeature.class);
+        }
     }
 
     /**

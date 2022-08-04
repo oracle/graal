@@ -24,37 +24,27 @@
  */
 package com.oracle.svm.core.classinitialization;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
+import com.oracle.svm.common.ClassInitializationNode;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(size = NodeSize.SIZE_16, cycles = NodeCycles.CYCLES_2, cyclesRationale = "Class initialization only runs at most once at run time, so the amortized cost is only the is-initialized check")
 @NodeIntrinsicFactory
-public class EnsureClassInitializedNode extends WithExceptionNode implements Canonicalizable, StateSplit, SingleMemoryKill, Lowerable {
+public class EnsureClassInitializedNode extends ClassInitializationNode implements Canonicalizable, Lowerable {
 
     public static final NodeClass<EnsureClassInitializedNode> TYPE = NodeClass.create(EnsureClassInitializedNode.class);
-
-    @Input private ValueNode hub;
-    @Input(InputType.State) private FrameState stateAfter;
 
     public static boolean intrinsify(GraphBuilderContext b, ValueNode hub) {
         b.add(new EnsureClassInitializedNode(b.nullCheckedValue(hub)));
@@ -62,47 +52,11 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Can
     }
 
     public EnsureClassInitializedNode(ValueNode hub, FrameState stateAfter) {
-        super(TYPE, StampFactory.forVoid());
-        this.hub = hub;
-        assert StampTool.isPointerNonNull(hub) : "Hub must already be null-checked";
-        this.stateAfter = stateAfter;
+        super(TYPE, hub, stateAfter);
     }
 
     public EnsureClassInitializedNode(ValueNode hub) {
         this(hub, null);
-    }
-
-    public ValueNode getHub() {
-        return hub;
-    }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
-    }
-
-    @Override
-    public FrameState stateAfter() {
-        return stateAfter;
-    }
-
-    @Override
-    public void setStateAfter(FrameState stateAfter) {
-        updateUsages(this.stateAfter, stateAfter);
-        this.stateAfter = stateAfter;
-    }
-
-    @Override
-    public boolean hasSideEffect() {
-        return true;
-    }
-
-    public ResolvedJavaType constantTypeOrNull(ConstantReflectionProvider constantReflection) {
-        if (hub.isConstant()) {
-            return constantReflection.asJavaType(hub.asConstant());
-        } else {
-            return null;
-        }
     }
 
     @Override

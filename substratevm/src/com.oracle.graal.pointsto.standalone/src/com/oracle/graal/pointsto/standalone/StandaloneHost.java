@@ -26,26 +26,30 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import java.util.Comparator;
-import java.util.concurrent.ConcurrentHashMap;
-
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.standalone.plugins.StandaloneGraphBuilderPhase;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.standalone.plugins.StandaloneGraphBuilderPhase;
-import com.oracle.graal.pointsto.util.AnalysisError;
-
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.util.Comparator;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class StandaloneHost extends HostVM {
     private final ConcurrentHashMap<AnalysisType, Class<?>> typeToClass = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Class<?>, AnalysisType> classToType = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<AnalysisMethod, ResolvedJavaField> sideEffectReasons = new ConcurrentHashMap<>();
     private String imageName;
 
     public StandaloneHost(OptionValues options, ClassLoader classLoader) {
@@ -64,6 +68,13 @@ public class StandaloneHost extends HostVM {
     public AnalysisType lookupType(Class<?> clazz) {
         assert clazz != null : "Class must not be null";
         return classToType.get(clazz);
+    }
+
+    @Override
+    public void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+        for (Node n : graph.getNodes()) {
+            checkClassInitializerSideEffect(method, n);
+        }
     }
 
     @Override
@@ -100,5 +111,19 @@ public class StandaloneHost extends HostVM {
     @Override
     public Comparator<? super ResolvedJavaType> getTypeComparator() {
         return null;
+    }
+
+    @Override
+    protected boolean isUnsafeFieldAccessing(AnalysisMethod method, ResolvedJavaField field) {
+        if (super.isUnsafeFieldAccessing(method, field)) {
+            sideEffectReasons.put(method, field);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public ResolvedJavaField lookupSideEffectField(AnalysisMethod m) {
+        return sideEffectReasons.get(m);
     }
 }
