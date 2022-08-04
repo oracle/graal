@@ -41,13 +41,15 @@
 package com.oracle.truffle.api.test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
@@ -63,12 +65,12 @@ public class LanguageSystemThreadTest {
     @Test
     public void testCreateSystemThread() {
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(context, TestCreateSystemThreadLanguage.class, "");
+            AbstractExecutableTestLanguage.evalTestLanguage(context, CreateSystemThreadLanguage.class, "");
         }
     }
 
     @Registration
-    public static final class TestCreateSystemThreadLanguage extends AbstractExecutableTestLanguage {
+    public static final class CreateSystemThreadLanguage extends AbstractExecutableTestLanguage {
 
         @Override
         @TruffleBoundary
@@ -90,10 +92,12 @@ public class LanguageSystemThreadTest {
     public void testNonTerminatedSystemThread() {
         try (Engine engine = Engine.create()) {
             Context context1 = Context.newBuilder().engine(engine).build();
-            long threadId = AbstractExecutableTestLanguage.evalTestLanguage(context1, TestNonTerminatedSystemThreadLanguage.class, "").asLong();
-            AbstractPolyglotTest.assertFails((Runnable) context1::close, IllegalStateException.class, (e) -> {
+            long threadId = AbstractExecutableTestLanguage.evalTestLanguage(context1, NonTerminatedSystemThreadLanguage.class, "").asLong();
+            AbstractPolyglotTest.assertFails((Runnable) context1::close, PolyglotException.class, (e) -> {
+                Assert.assertTrue(e.isInternalError());
                 Assert.assertEquals(
-                                "The context has an alive system thread Forgotten thread created by language com_oracle_truffle_api_test_languagesystemthreadtest_testnonterminatedsystemthreadlanguage.",
+                                String.format("java.lang.IllegalStateException: The context has an alive system thread Forgotten thread created by language %s.",
+                                                TestUtils.getDefaultLanguageId(NonTerminatedSystemThreadLanguage.class)),
                                 e.getMessage());
             });
             try (Context context2 = Context.newBuilder().engine(engine).build()) {
@@ -103,7 +107,7 @@ public class LanguageSystemThreadTest {
     }
 
     @Registration
-    public static final class TestNonTerminatedSystemThreadLanguage extends AbstractExecutableTestLanguage {
+    public static final class NonTerminatedSystemThreadLanguage extends AbstractExecutableTestLanguage {
 
         @Override
         @TruffleBoundary
@@ -112,7 +116,7 @@ public class LanguageSystemThreadTest {
             Thread t1 = env.createSystemThread(() -> {
                 systemThreadActive.countDown();
                 try {
-                    GlobalTestData.INSTANCE.await();
+                    park();
                 } catch (InterruptedException ie) {
                     // pass
                 }
@@ -124,121 +128,6 @@ public class LanguageSystemThreadTest {
         }
     }
 
-    @Test
-    public void testCreateSystemThreadAfterDispose() {
-        try (Engine engine = Engine.create()) {
-            try (Context context1 = Context.newBuilder().engine(engine).build()) {
-                AbstractExecutableTestLanguage.evalTestLanguage(context1, StoreEnvLanguage.class, "");
-            }
-            try (Context context2 = Context.newBuilder().engine(engine).build()) {
-                Value errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context2, TestCreateSystemThreadAfterDisposeLanguage.class, "");
-                Assert.assertTrue(errorMessage.isString());
-                Assert.assertEquals("Context is already closed. Cannot start a new system thread for language com_oracle_truffle_api_test_languagesystemthreadtest_storeenvlanguage.",
-                                errorMessage.asString());
-            }
-        }
-    }
-
-    @Registration
-    public static final class StoreEnvLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            GlobalTestData.INSTANCE.objectInClosedContext = env;
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class TestCreateSystemThreadAfterDisposeLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try {
-                ((TruffleLanguage.Env) GlobalTestData.INSTANCE.objectInClosedContext).createSystemThread(() -> {
-                });
-                return null;
-            } catch (IllegalStateException ise) {
-                return ise.getMessage();
-            }
-        }
-    }
-
-    @Test
-    public void testStartSystemThreadAfterDispose() {
-        try (Engine engine = Engine.create()) {
-            try (Context context1 = Context.newBuilder().engine(engine).build()) {
-                AbstractExecutableTestLanguage.evalTestLanguage(context1, StoreThreadLanguage.class, "");
-            }
-            try (Context context2 = Context.newBuilder().engine(engine).build()) {
-                Value errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context2, TestStartSystemThreadAfterDisposeLanguage.class, "");
-                Assert.assertTrue(errorMessage.isString());
-                Assert.assertEquals("Context is already closed. Cannot start a new system thread for language com_oracle_truffle_api_test_languagesystemthreadtest_storethreadlanguage.",
-                                errorMessage.asString());
-            }
-        }
-    }
-
-    @Registration
-    public static final class StoreThreadLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            GlobalTestData.INSTANCE.objectInClosedContext = env.createSystemThread(() -> {
-            });
-            return null;
-        }
-    }
-
-    @Registration
-    public static final class TestStartSystemThreadAfterDisposeLanguage extends AbstractExecutableTestLanguage {
-
-        @Override
-        @TruffleBoundary
-        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            AtomicReference<Throwable> throwableRef = new AtomicReference<>();
-            Thread thread = (Thread) GlobalTestData.INSTANCE.objectInClosedContext;
-            thread.setUncaughtExceptionHandler((t, e) -> {
-                throwableRef.set(e);
-            });
-            thread.start();
-            thread.join();
-            Throwable throwable = throwableRef.get();
-            return throwable != null ? throwable.getMessage() : null;
-        }
-    }
-
-    private static long threadId(Thread thread) {
-        return thread.getId();
-    }
-
-    private static final class GlobalTestData {
-
-        static final GlobalTestData INSTANCE = new GlobalTestData();
-
-        private final Set<Long> blockedThreads = new HashSet<>();
-
-        Object objectInClosedContext;
-
-        private GlobalTestData() {
-        }
-
-        synchronized void await() throws InterruptedException {
-            Thread current = Thread.currentThread();
-            long id = threadId(current);
-            blockedThreads.add(id);
-            while (blockedThreads.contains(id)) {
-                wait();
-            }
-        }
-
-        synchronized void release(long tid) {
-            blockedThreads.remove(tid);
-            notifyAll();
-        }
-    }
-
     @Registration
     public static final class ReleaseThreadLanguage extends AbstractExecutableTestLanguage {
 
@@ -246,8 +135,169 @@ public class LanguageSystemThreadTest {
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             long tid = (long) frameArguments[0];
-            GlobalTestData.INSTANCE.release(tid);
+            unpark(tid);
             return null;
+        }
+    }
+
+    @Test
+    public void testCreateSystemThreadAfterDispose() {
+        try (Context context = Context.newBuilder().build()) {
+            Value errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context, CreateSystemThreadAfterDisposeLanguage.class, "");
+            Assert.assertTrue(errorMessage.isString());
+            Assert.assertEquals(
+                            String.format("Context is already closed. Cannot start a new system thread for language %s.", TestUtils.getDefaultLanguageId(CreateSystemThreadAfterDisposeLanguage.class)),
+                            errorMessage.asString());
+        }
+    }
+
+    @Registration
+    public static final class CreateSystemThreadAfterDisposeLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext truffleContext = env.newContextBuilder().initializeCreatorContext(true).build();
+            ExecutableContext executableContext = null;
+            Object prev = truffleContext.enter(node);
+            try {
+                executableContext = TestAPIAccessor.engineAccess().getCurrentContext(getClass());
+                truffleContext.closeCancelled(node, "close");
+            } catch (ThreadDeath t) {
+                try {
+                    executableContext.env.createSystemThread(() -> {
+                    });
+                } catch (IllegalStateException e) {
+                    return e.getMessage();
+                }
+            } finally {
+                truffleContext.leave(node, prev);
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testStartSystemThreadAfterDispose() {
+        try (Context context = Context.newBuilder().build()) {
+            Value errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context, StartSystemThreadAfterDisposeLanguage.class, "");
+            Assert.assertTrue(errorMessage.isString());
+            Assert.assertEquals(
+                            String.format("Context is already closed. Cannot start a new system thread for language %s.", TestUtils.getDefaultLanguageId(StartSystemThreadAfterDisposeLanguage.class)),
+                            errorMessage.asString());
+        }
+    }
+
+    @Registration
+    public static final class StartSystemThreadAfterDisposeLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            AtomicReference<Throwable> throwableRef = new AtomicReference<>();
+            TruffleContext truffleContext = env.newContextBuilder().initializeCreatorContext(true).build();
+            Object prev = truffleContext.enter(node);
+            Thread systemThread = null;
+            try {
+                ExecutableContext executableContext = TestAPIAccessor.engineAccess().getCurrentContext(getClass());
+                systemThread = executableContext.env.createSystemThread(() -> {
+                });
+                systemThread.setUncaughtExceptionHandler((t, e) -> {
+                    throwableRef.set(e);
+                });
+                truffleContext.closeCancelled(node, "close");
+            } catch (ThreadDeath t) {
+                systemThread.start();
+                systemThread.join();
+                return throwableRef.get() != null ? throwableRef.get().getMessage() : null;
+            } finally {
+                truffleContext.leave(node, prev);
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testEnterInSystemThread() {
+        try (Context context1 = Context.newBuilder().build()) {
+            String errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context1, EnterInSystemThread.class, "").asString();
+            Assert.assertEquals("Context cannot be entered on system threads.", errorMessage);
+        }
+    }
+
+    @Registration
+    public static final class EnterInSystemThread extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext context = env.getContext();
+            AtomicReference<Throwable> throwableRef = new AtomicReference<>();
+            Thread t = env.createSystemThread(() -> {
+                try {
+                    context.enter(null);
+                    Assert.fail("Should not reach here");
+                } catch (Throwable exception) {
+                    throwableRef.set(exception);
+                }
+            });
+            t.start();
+            t.join();
+            return throwableRef.get().getMessage();
+        }
+    }
+
+    @Test
+    public void testCreateSystemThreadNotEntered() {
+        try (Context context1 = Context.newBuilder().build()) {
+            String errorMessage = AbstractExecutableTestLanguage.evalTestLanguage(context1, CreateSystemThreadNotEnteredLanguage.class, "").asString();
+            Assert.assertEquals("There is no current context available.", errorMessage);
+        }
+    }
+
+    @Registration
+    public static final class CreateSystemThreadNotEnteredLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            AtomicReference<Throwable> throwableRef = new AtomicReference<>();
+            Thread t = env.createSystemThread(() -> {
+                try {
+                    env.createSystemThread(() -> {
+                    });
+                    Assert.fail("Should not reach here");
+                } catch (Throwable exception) {
+                    throwableRef.set(exception);
+                }
+            });
+            t.start();
+            t.join();
+            return throwableRef.get().getMessage();
+        }
+    }
+
+    private static long threadId(Thread thread) {
+        return thread.getId();
+    }
+
+    private static final Set<Long> blockedThreads = new HashSet<>();
+
+    private static void park() throws InterruptedException {
+        Thread current = Thread.currentThread();
+        long id = threadId(current);
+        synchronized (blockedThreads) {
+            blockedThreads.add(id);
+            while (blockedThreads.contains(id)) {
+                blockedThreads.wait();
+            }
+        }
+    }
+
+    private static void unpark(long tid) {
+        synchronized (blockedThreads) {
+            blockedThreads.remove(tid);
+            blockedThreads.notifyAll();
         }
     }
 }

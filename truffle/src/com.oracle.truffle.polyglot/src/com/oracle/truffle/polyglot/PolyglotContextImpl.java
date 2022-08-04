@@ -57,13 +57,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -482,7 +482,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     final Node uncachedLocation;
 
-    private final Set<LanguageSystemThread> activeSystemThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<LanguageSystemThread> activeSystemThreads = Collections.newSetFromMap(new HashMap<>());
 
     /* Constructor for testing. */
     @SuppressWarnings("unused")
@@ -793,6 +793,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         Object[] prev = null;
         try {
             Thread current = Thread.currentThread();
+            if (current instanceof SystemThread) {
+                throw new IllegalStateException("Context cannot be entered on system threads.");
+            }
             boolean needsInitialization = false;
             synchronized (this) {
                 PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
@@ -3237,27 +3240,20 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    synchronized void checkSubProcessFinished() {
+    private synchronized void checkSubProcessFinished() {
         ProcessHandlers.ProcessDecorator[] processes = subProcesses.toArray(new ProcessHandlers.ProcessDecorator[subProcesses.size()]);
         for (ProcessHandlers.ProcessDecorator process : processes) {
             if (process.isAlive()) {
-                throw PolyglotEngineException.illegalState(String.format("The context has an alive sub-process %s created by %s.",
+                throw new IllegalStateException(String.format("The context has an alive sub-process %s created by %s.",
                                 process.getCommand(), process.getOwner().language.getId()));
             }
         }
     }
 
-    synchronized void checkSystemThreadsFinished() {
+    private synchronized void checkSystemThreadsFinished() {
         if (!activeSystemThreads.isEmpty()) {
-            LanguageSystemThread thread;
-            try {
-                thread = activeSystemThreads.iterator().next();
-            } catch (NoSuchElementException e) {
-                thread = null;
-            }
-            if (thread != null) {
-                throw PolyglotEngineException.illegalState(String.format("The context has an alive system thread %s created by language %s.", thread.getName(), thread.languageId));
-            }
+            LanguageSystemThread thread = activeSystemThreads.iterator().next();
+            throw new IllegalStateException(String.format("The context has an alive system thread %s created by language %s.", thread.getName(), thread.languageId));
         }
     }
 
@@ -3548,7 +3544,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    void removeSystemThread(LanguageSystemThread thread) {
+    synchronized void removeSystemThread(LanguageSystemThread thread) {
         activeSystemThreads.remove(thread);
     }
 }

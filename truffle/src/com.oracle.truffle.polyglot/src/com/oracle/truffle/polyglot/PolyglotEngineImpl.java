@@ -66,11 +66,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -235,7 +233,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final AbstractPolyglotHostService polyglotHostService;
 
-    private final Set<InstrumentSystemThread> activeSystemThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<InstrumentSystemThread> activeSystemThreads = Collections.newSetFromMap(new HashMap<>());
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, String[] permittedLanguages,
@@ -1150,12 +1148,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     void ensureClosed(boolean force, boolean inShutdownHook, boolean initiatedByContext) {
         synchronized (this.lock) {
             Thread currentThread = Thread.currentThread();
+            boolean interrupted = false;
             while (closingThread != null && closingThread != currentThread) {
                 try {
                     this.lock.wait();
                 } catch (InterruptedException ie) {
-                    currentThread.interrupt();
+                    interrupted = true;
                 }
+            }
+            if (interrupted) {
+                currentThread.interrupt();
             }
             if (closed) {
                 return;
@@ -1233,15 +1235,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             closingThread = null;
             this.lock.notifyAll();
             if (!activeSystemThreads.isEmpty()) {
-                InstrumentSystemThread thread;
-                try {
-                    thread = activeSystemThreads.iterator().next();
-                } catch (NoSuchElementException e) {
-                    thread = null;
-                }
-                if (thread != null) {
-                    throw PolyglotEngineException.illegalState(String.format("The engine has an alive system thread %s created by instrument %s.", thread.getName(), thread.instrumentId));
-                }
+                InstrumentSystemThread thread = activeSystemThreads.iterator().next();
+                throw new IllegalStateException(String.format("The engine has an alive system thread %s created by instrument %s.", thread.getName(), thread.instrumentId));
             }
             if (specializationStatistics != null) {
                 StringWriter logMessage = new StringWriter();
@@ -2179,7 +2174,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     void removeSystemThread(InstrumentSystemThread thread) {
-        activeSystemThreads.remove(thread);
+        synchronized (lock) {
+            activeSystemThreads.remove(thread);
+        }
     }
 
     static final class StableLocalLocations {

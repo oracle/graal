@@ -183,7 +183,7 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
 
     public static class ExecutableContext {
 
-        final Env env;
+        public final Env env;
         final InteropMapObject scope;
 
         ExecutableContext(Class<? extends AbstractExecutableTestLanguage> clazz, Env env) {

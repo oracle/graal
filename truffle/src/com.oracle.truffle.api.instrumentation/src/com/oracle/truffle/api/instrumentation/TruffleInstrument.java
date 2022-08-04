@@ -1174,6 +1174,7 @@ public abstract class TruffleInstrument {
          * {@link #createSystemThread(Runnable, ThreadGroup)} for a detailed description of the
          * parameters.
          *
+         * @see #createSystemThread(Runnable, ThreadGroup)
          * @since 22.3
          */
         @TruffleBoundary
@@ -1189,7 +1190,9 @@ public abstract class TruffleInstrument {
         /**
          * Creates a new thread designed to process instrument tasks in the background. The thread
          * must never enter the language context, if it does an {@link IllegalStateException} is
-         * thrown.
+         * thrown. Creating or terminating a system thread does not notify languages or
+         * {@link ThreadsListener}s. Creating a system thread does not cause a transition to
+         * multi-threaded access.
          * <p>
          * It is recommended to set an
          * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
@@ -1208,6 +1211,7 @@ public abstract class TruffleInstrument {
          * @param runnable the runnable to run on this thread.
          * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
          * @throws IllegalStateException if the engine is already closed.
+         * @see #createSystemThread(Runnable)
          * @since 22.3
          */
         @TruffleBoundary

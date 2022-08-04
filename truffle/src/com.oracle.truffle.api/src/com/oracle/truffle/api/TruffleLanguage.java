@@ -1801,21 +1801,22 @@ public abstract class TruffleLanguage<C> {
          * {@link #createSystemThread(Runnable, ThreadGroup)} for a detailed description of the
          * parameters.
          *
+         * @see #createSystemThread(Runnable, ThreadGroup)
          * @since 22.3
          */
         @TruffleBoundary
         public Thread createSystemThread(Runnable runnable) {
-            try {
-                return LanguageAccessor.engineAccess().createLanguageSystemThread(polyglotLanguageContext, runnable, null);
-            } catch (Throwable t) {
-                throw engineToLanguageException(t);
-            }
+            return createSystemThread(runnable, null);
         }
 
         /**
          * Creates a new thread designed to process language internal tasks in the background. The
-         * thread must never enter the language context, if it does an {@link IllegalStateException}
-         * is thrown.
+         * created thread must never enter the language context, if it does an
+         * {@link IllegalStateException} is thrown. Creating or terminating a system thread does not
+         * notify {@link TruffleLanguage#initializeThread(Object, Thread) languages} or instruments'
+         * thread-listeners. Creating a system thread does not cause a transition to multi-threaded
+         * access. The caller must be entered in a context to create a system thread, if not an
+         * {@link IllegalStateException} is thrown.
          * <p>
          * It is recommended to set an
          * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
@@ -1833,6 +1834,7 @@ public abstract class TruffleLanguage<C> {
          * @param runnable the runnable to run on this thread.
          * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
          * @throws IllegalStateException if the context is already closed.
+         * @see #createSystemThread(Runnable)
          * @since 22.3
          */
         @TruffleBoundary
