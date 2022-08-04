@@ -38,8 +38,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.junit.Assert;
 
-import com.oracle.svm.util.ModuleSupport;
-
 public class NativeImageResourceUtils {
 
     public static final String RESOURCE_DIR = "/resources";
@@ -48,12 +46,6 @@ public class NativeImageResourceUtils {
 
     // Register resources.
     public static final class TestFeature implements Feature {
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, TestFeature.class, false, "org.graalvm.sdk", "org.graalvm.nativeimage.impl");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, TestFeature.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.configure");
-        }
-
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             // Remove leading / for the resource patterns
