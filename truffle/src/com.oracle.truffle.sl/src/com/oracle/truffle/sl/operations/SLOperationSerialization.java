@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.sl.operations;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationNodes;
@@ -70,7 +69,7 @@ public class SLOperationSerialization {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-        nodes.serialize(outputStream, new OperationSerializationCallback() {
+        nodes.serialize(OperationConfig.COMPLETE, outputStream, new OperationSerializationCallback() {
             public void serialize(OperationSerializationCallback.Context context, DataOutputStream buffer, Object object) throws IOException {
                 if (object instanceof SLNull) {
                     buffer.writeByte(CODE_SL_NULL);
@@ -101,9 +100,11 @@ public class SLOperationSerialization {
         return byteArrayOutputStream.toByteArray();
     }
 
-    private static byte[] readByteArray(DataInputStream buffer) throws IOException {
-        int len = buffer.readInt();
-        return buffer.readNBytes(len);
+    private static byte[] readByteArray(ByteBuffer buffer) {
+        int len = buffer.getInt();
+        byte[] dest = new byte[len];
+        buffer.get(dest);
+        return dest;
     }
 
     private static void writeByteArray(DataOutputStream buffer, byte[] data) throws IOException {
@@ -112,20 +113,19 @@ public class SLOperationSerialization {
     }
 
     public static OperationNodes deserializeNodes(byte[] inputData) throws IOException {
-        ByteArrayInputStream byteArrayOutputStream = new ByteArrayInputStream(inputData);
-        DataInputStream outputStream = new DataInputStream(byteArrayOutputStream);
+        ByteBuffer buf = ByteBuffer.wrap(inputData);
 
-        return SLOperationsBuilder.deserialize(OperationConfig.DEFAULT, outputStream, new OperationDeserializationCallback() {
-            public Object deserialize(OperationDeserializationCallback.Context context, DataInputStream buffer) throws IOException {
+        return SLOperationsBuilder.deserialize(OperationConfig.DEFAULT, buf, new OperationDeserializationCallback() {
+            public Object deserialize(OperationDeserializationCallback.Context context, ByteBuffer buffer) throws IOException {
                 byte tag;
-                switch (tag = buffer.readByte()) {
+                switch (tag = buffer.get()) {
                     case CODE_SL_NULL:
                         return SLNull.SINGLETON;
                     case CODE_STRING: {
                         return TruffleString.fromByteArrayUncached(readByteArray(buffer), SLLanguage.STRING_ENCODING);
                     }
                     case CODE_LONG:
-                        return buffer.readLong();
+                        return buffer.getLong();
                     case CODE_BIG_INT: {
                         return new SLBigNumber(new BigInteger(readByteArray(buffer)));
                     }

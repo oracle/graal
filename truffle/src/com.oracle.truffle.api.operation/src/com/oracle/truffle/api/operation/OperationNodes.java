@@ -43,7 +43,6 @@ package com.oracle.truffle.api.operation;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -52,12 +51,12 @@ import com.oracle.truffle.api.operation.serialization.OperationSerializationCall
 import com.oracle.truffle.api.source.Source;
 
 public abstract class OperationNodes {
-    protected final Consumer<? extends OperationBuilder> parse;
+    protected final OperationParser<? extends OperationBuilder> parse;
     @CompilationFinal(dimensions = 1) protected OperationNode[] nodes;
     @CompilationFinal(dimensions = 1) protected Source[] sources;
     @CompilationFinal private boolean hasInstrumentation;
 
-    protected OperationNodes(Consumer<? extends OperationBuilder> parse) {
+    protected OperationNodes(OperationParser<? extends OperationBuilder> parse) {
         this.parse = parse;
     }
 
@@ -94,7 +93,7 @@ public abstract class OperationNodes {
     }
 
     @SuppressWarnings("hiding")
-    protected abstract void reparseImpl(OperationConfig config, Consumer<?> parse, OperationNode[] nodes);
+    protected abstract void reparseImpl(OperationConfig config, OperationParser<? extends OperationBuilder> parse, OperationNode[] nodes);
 
     void reparse(OperationConfig config) {
         CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");
@@ -112,7 +111,7 @@ public abstract class OperationNodes {
     }
 
     @SuppressWarnings("unused")
-    public void serialize(DataOutputStream buffer, OperationSerializationCallback callback) throws IOException {
+    public void serialize(OperationConfig config, DataOutputStream buffer, OperationSerializationCallback callback) throws IOException {
         throw new UnsupportedOperationException("Serialization not supported");
     }
 }
