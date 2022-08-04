@@ -29,6 +29,7 @@ import java.awt.GraphicsEnvironment;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -37,7 +38,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 
@@ -97,11 +97,11 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
     private static void handlePreferencesClassReachable(DuringAnalysisAccess access) {
 
-        JNIRuntimeAccess.register(method(access, "java.lang.System", "setProperty", String.class, String.class));
-        JNIRuntimeAccess.register(method(access, "java.lang.System", "loadLibrary", String.class));
+        RuntimeJNIAccess.register(method(access, "java.lang.System", "setProperty", String.class, String.class));
+        RuntimeJNIAccess.register(method(access, "java.lang.System", "loadLibrary", String.class));
 
-        JNIRuntimeAccess.register(java.awt.GraphicsEnvironment.class);
-        JNIRuntimeAccess.register(method(access, "java.awt.GraphicsEnvironment", "isHeadless"));
+        RuntimeJNIAccess.register(GraphicsEnvironment.class);
+        RuntimeJNIAccess.register(method(access, "java.awt.GraphicsEnvironment", "isHeadless"));
 
         NativeLibraries nativeLibraries = getNativeLibraries(access);
 
@@ -163,13 +163,13 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
         nativeLibraries.addDynamicNonJniLibrary("freetype");
 
-        JNIRuntimeAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigInfo"));
-        JNIRuntimeAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigInfo", "fcVersion", "cacheDirs"));
-        JNIRuntimeAccess.register(clazz(access, "sun.font.FontConfigManager$FcCompFont"));
-        JNIRuntimeAccess.register(fields(access, "sun.font.FontConfigManager$FcCompFont", "fcName", "firstFont", "allFonts"));
-        JNIRuntimeAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigFont"));
-        JNIRuntimeAccess.register(constructor(access, "sun.font.FontConfigManager$FontConfigFont"));
-        JNIRuntimeAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigFont", "familyName", "styleStr", "fullName", "fontFile"));
+        RuntimeJNIAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigInfo"));
+        RuntimeJNIAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigInfo", "fcVersion", "cacheDirs"));
+        RuntimeJNIAccess.register(clazz(access, "sun.font.FontConfigManager$FcCompFont"));
+        RuntimeJNIAccess.register(fields(access, "sun.font.FontConfigManager$FcCompFont", "fcName", "firstFont", "allFonts"));
+        RuntimeJNIAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigFont"));
+        RuntimeJNIAccess.register(constructor(access, "sun.font.FontConfigManager$FontConfigFont"));
+        RuntimeJNIAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigFont", "familyName", "styleStr", "fullName", "fontFile"));
     }
 
     private static void registerColorProfiles(DuringAnalysisAccess duringAnalysisAccess) {

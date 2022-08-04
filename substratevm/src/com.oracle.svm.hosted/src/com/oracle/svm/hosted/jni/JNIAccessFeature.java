@@ -66,7 +66,6 @@ import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
 import com.oracle.svm.core.jni.access.JNIAccessibleField;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
@@ -149,6 +148,8 @@ public class JNIAccessFeature implements Feature {
         }
     }
 
+    private JNIRuntimeAccessibilitySupportImpl runtimeAccessibilitySupport;
+
     private boolean sealed = false;
     private final Map<String, JNICallTrampolineMethod> trampolineMethods = new ConcurrentHashMap<>();
     private final Map<SimpleSignature, JNIJavaCallWrapperMethod> javaCallWrapperMethods = new ConcurrentHashMap<>();
@@ -186,17 +187,16 @@ public class JNIAccessFeature implements Feature {
 
         JNIReflectionDictionary.create();
 
-        JNIRuntimeAccessibilitySupportImpl registry = new JNIRuntimeAccessibilitySupportImpl();
-        ImageSingletons.add(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport.class, registry);
-        ImageSingletons.add(RuntimeJNIAccessSupport.class, registry);
+        runtimeAccessibilitySupport = new JNIRuntimeAccessibilitySupportImpl();
+        ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeAccessibilitySupport);
 
-        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(registry, access.getImageClassLoader());
+        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(runtimeAccessibilitySupport, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
 
     private class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
-                    implements JNIRuntimeAccess.JNIRuntimeAccessibilitySupport, RuntimeJNIAccessSupport {
+                    implements RuntimeJNIAccessSupport {
 
         @Override
         public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
@@ -247,7 +247,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static ConditionalConfigurationRegistry getConditionalConfigurationRegistry() {
-        return (ConditionalConfigurationRegistry) ImageSingletons.lookup(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport.class);
+        return singleton().runtimeAccessibilitySupport;
     }
 
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
