@@ -71,6 +71,7 @@ import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureIm
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureManager;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
 import com.oracle.graal.pointsto.standalone.features.StandaloneServiceLoaderFeature;
+import com.oracle.graal.pointsto.standalone.features.VMInitItemsFeature;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
@@ -184,6 +185,9 @@ public final class PointsToAnalyzer {
             bigbang.addRootClass(byte[].class, false, false).registerAsInHeap("root class");
             bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("root class");
             bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(Class.class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(Class[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(System.class, false, false).registerAsInHeap("root class");
 
             var rootReason = "Registered in " + PointsToAnalyzer.class;
             bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootReason);
@@ -334,6 +338,7 @@ public final class PointsToAnalyzer {
         // Register DashboardDump feature by default, user can enable the feature by setting
         // -H:+DumpAnalysisReports
         standaloneAnalysisFeatureManager.registerFeature("com.oracle.graal.pointsto.standalone.features.DashboardDumpDelegate$Feature");
+        standaloneAnalysisFeatureManager.registerFeature(VMInitItemsFeature.class);
     }
 
     /**
