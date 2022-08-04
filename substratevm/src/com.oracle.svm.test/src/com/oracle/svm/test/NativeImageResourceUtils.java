@@ -34,12 +34,10 @@ import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.junit.Assert;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImageResourceUtils {
@@ -58,15 +56,14 @@ public class NativeImageResourceUtils {
 
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
-            ResourcesRegistry registry = ImageSingletons.lookup(ResourcesRegistry.class);
             // Remove leading / for the resource patterns
-            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_DIR.substring(1));
-            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_1.substring(1));
-            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_2.substring(1));
+            RuntimeResourceAccess.includeResources(RESOURCE_DIR.substring(1));
+            RuntimeResourceAccess.includeResources(RESOURCE_FILE_1.substring(1));
+            RuntimeResourceAccess.includeResources(RESOURCE_FILE_2.substring(1));
 
             /** Needed for {@link #testURLExternalFormEquivalence()} */
             for (Module module : ModuleLayer.boot().modules()) {
-                registry.addResources(ConfigurationCondition.alwaysTrue(), module.getName() + ":" + "module-info.class");
+                RuntimeResourceAccess.includeResources(module.getName() + ":" + "module-info.class");
             }
         }
     }
