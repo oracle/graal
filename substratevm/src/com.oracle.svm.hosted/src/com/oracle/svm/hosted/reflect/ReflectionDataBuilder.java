@@ -52,6 +52,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -66,7 +67,6 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.ClassLoadingExceptionSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
-import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -641,7 +641,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             AnalysisType analysisType = access.getMetaAccess().lookupJavaType(type);
             makeAnalysisTypeReachable(access, analysisType);
             if (type.isAnnotation()) {
-                ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(type);
+                RuntimeProxyCreation.register(type);
             }
             /*
              * Exception proxies are stored as-is in the image heap
