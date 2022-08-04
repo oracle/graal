@@ -178,6 +178,22 @@ suite = {
         },
       },
     },
+    # This is a dummy library for disabling tests that won't compile because of missing GNU make.
+    "WINDOWS_SUPPORT" : {
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+        },
+        "<others>" : {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
   },
 
   "projects" : {
@@ -843,6 +859,33 @@ suite = {
       },
       "license" : "BSD-new",
     },
+
+    "com.oracle.truffle.llvm.libraries.oldnames" : {
+      "subDir" : "projects",
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
+      "vpath" : True,
+      "ninja_targets" : [
+        "<staticlib:oldnames>",
+      ],
+      "ninja_install_targets" : ["install"],
+      "results" : [
+        "bin/<staticlib:oldnames>",
+      ],
+      "buildDependencies" : [
+        "WINDOWS_SUPPORT",
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
+      ],
+      "cmakeConfig" : {
+        "CMAKE_BUILD_TYPE" : "Release",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_LINKER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
+      },
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
       "vpath" : True,
@@ -1665,6 +1708,7 @@ suite = {
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/bin/*",
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/lib/*",
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+                "dependency:com.oracle.truffle.llvm.libraries.oldnames/bin/<staticlib:oldnames>",
                 "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
               ],
             },
