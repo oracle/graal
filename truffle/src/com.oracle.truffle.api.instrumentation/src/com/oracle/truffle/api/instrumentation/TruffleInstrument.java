@@ -1179,12 +1179,7 @@ public abstract class TruffleInstrument {
          */
         @TruffleBoundary
         public Thread createSystemThread(Runnable runnable) {
-            Objects.requireNonNull(runnable, "Runnable must be non null.");
-            try {
-                return ENGINE.createInstrumentSystemThread(polyglotInstrument, runnable, null);
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
+            return createSystemThread(runnable, null);
         }
 
         /**
