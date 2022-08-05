@@ -277,6 +277,7 @@ public class LanguageSystemThreadTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static long threadId(Thread thread) {
         return thread.getId();
     }
