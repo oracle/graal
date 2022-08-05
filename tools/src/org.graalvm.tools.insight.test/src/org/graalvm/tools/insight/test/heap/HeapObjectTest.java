@@ -27,9 +27,9 @@ package org.graalvm.tools.insight.test.heap;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
-import java.util.HashMap;
 import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -69,6 +69,7 @@ public class HeapObjectTest {
             dumpFile.deleteOnExit();
             b.option("heap.dump", dumpFile.getAbsolutePath());
             b.allowIO(true);
+            b.allowHostAccess(HostAccess.EXPLICIT);
             Context ctx = InsightObjectFactory.newContext(b);
             context = ctx;
             heap = InsightObjectFactory.readObject(ctx, "heap");
@@ -172,19 +173,19 @@ public class HeapObjectTest {
     public void everythingIsOK() throws Exception {
         Source nullSource = new Source("no.source", null, null, null, null);
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), createDumpObject())})
         });
         long heapSize = dumpFile.length();
-        if (heapSize != 2747) {
+        if (heapSize != 2295) {
             fail("Heap dump should be generated. Size = " + heapSize);
         }
 
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), createDumpObject())})
         });
         heapSize = dumpFile.length() - heapSize;
-        if (heapSize != 4436 - 2747) {
+        if (heapSize != 3973 - 2295) {
             fail("Heap dump should be generated. Size = " + dumpFile.length());
         }
     }
@@ -234,7 +235,7 @@ public class HeapObjectTest {
         long oldSize = dumpFile.length();
         for (int i = 0; i < count; i++) {
             invokeDump(heap, 1, new Event[]{
-                            new StackEvent(new StackElement[]{new StackElement(new At("a" + p, source, i, i * 10, 10), new HashMap<>())})
+                            new StackEvent(new StackElement[]{new StackElement(new At("a" + p, source, i, i * 10, 10), createDumpObject())})
             });
             long heapSize = dumpFile.length() - oldSize;
             if (p++ == period) {
@@ -258,7 +259,7 @@ public class HeapObjectTest {
         long oldSize = dumpFile.length();
         for (int i = 0; i < 100; i++) {
             invokeDump(heap, 1, new Event[]{
-                            new StackEvent(new StackElement[]{new StackElement(new At("a" + i, source, i, i * 10, 10), new HashMap<>())})
+                            new StackEvent(new StackElement[]{new StackElement(new At("a" + i, source, i, i * 10, 10), createDumpObject())})
             });
         }
         long heapSize = dumpFile.length() - oldSize;
@@ -268,6 +269,13 @@ public class HeapObjectTest {
         if (heapSize != 3016) {
             fail("Heap dump should be generated. Size = " + dumpFile.length());
         }
+    }
+
+    static Object createDumpObject() {
+        class FrameData {
+            @HostAccess.Export public final String var = "variable";
+        }
+        return new FrameData();
     }
 
 }
