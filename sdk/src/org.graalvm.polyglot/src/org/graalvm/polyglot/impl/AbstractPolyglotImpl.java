@@ -561,11 +561,11 @@ public abstract class AbstractPolyglotImpl {
         public abstract OptionDescriptors getOptions(Object receiver);
 
         public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in,
-                        boolean allowAllAccess,
                         boolean allowHostLookup,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
-                        boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
+                        boolean allowNativeAccess,
+                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,

@@ -165,7 +165,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                             }
                         });
 
-        TruffleContext tc = languageEnv.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build();
         List<Thread> threads = new ArrayList<>();
         List<AtomicReference<Throwable>> exceptions = new ArrayList<>();
         Semaphore waitUntilStart = new Semaphore(0);

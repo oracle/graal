@@ -1863,14 +1863,14 @@ public abstract class TruffleLanguage<C> {
          */
         @Deprecated
         public TruffleContext.Builder newContextBuilder() {
-            return newInnerContextBuilder().initializeCreatorContext(true).allowInheritAccess(true);
+            return newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true);
         }
 
         /**
          * Returns a new context builder useful to create inner context instances.
          * <p>
          * By default the inner context inherits none of the access privileges. To inherit access
-         * set {@link TruffleContext.Builder#allowInheritAccess(boolean)} to <code>true</code>.
+         * set {@link TruffleContext.Builder#inheritAllAccess(boolean)} to <code>true</code>.
          * <p>
          * No language context will be initialized by default in the inner context. In order to
          * initialize the creator context use
@@ -2227,22 +2227,22 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if access to all privileges is allowed or <code>false</code> if
-         * not. Note that privileges like {@link #isNativeAccessAllowed()} may still return
-         * <code>false</code> even though this method may return <code>true</code>. This method only
-         * indicates whether the embedder granted wildcard all access for new privileges using
-         * {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean)}.
+         * Returns <code>true</code> if context options are allowed to be modified for inner
+         * contexts, or <code>false</code> if not. This method only indicates whether the embedder
+         * granted wildcard all access for new privileges using
+         * {@link org.graalvm.polyglot.Context.Builder#allowInnerContextOptions(boolean)}.
          * <p>
          * This method is useful to find out whether it is possible to specify options for inner
          * contexts using {@link TruffleContext.Builder#option(String, String)}, as options can only
          * be specified with all access enabled.
          *
+         * @see TruffleContext.Builder#option(String, String)
          * @since 22.3
          */
         @TruffleBoundary
-        public boolean isAllAccessAllowed() {
+        public boolean isInnerContextOptionsAllowed() {
             try {
-                return LanguageAccessor.engineAccess().isAllAccessAllowed(polyglotLanguageContext, this);
+                return LanguageAccessor.engineAccess().isInnerContextOptionsAllowed(polyglotLanguageContext, this);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

@@ -639,9 +639,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isAllAccessAllowed(Object polyglotLanguageContext, TruffleLanguage.Env env) {
+        public boolean isInnerContextOptionsAllowed(Object polyglotLanguageContext, TruffleLanguage.Env env) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) polyglotLanguageContext;
-            return context.context.config.allAccessAllowed;
+            return context.context.config.innerContextOptionsAllowed;
         }
 
         @Override
@@ -886,7 +886,7 @@ final class EngineAccessor extends Accessor {
                         Consumer<Integer> onExitedRunnable, Runnable onClosedRunnable, boolean inheritAccess, Boolean allowCreateThreads,
                         Boolean allowNativeAccess, Boolean allowIO, Boolean allowHostLookup, Boolean allowHostClassLoading,
                         Boolean allowCreateProcess, Boolean allowPolyglotAccess, Boolean allowEnvironmentAccess,
-                        Map<String, String> customEnvironment) {
+                        Map<String, String> customEnvironment, Boolean allowInnerContextOptions) {
             PolyglotLanguageContext creator = ((PolyglotLanguageContext) sourcePolyglotLanguageContext);
             PolyglotEngineImpl engine = creator.context.engine;
             PolyglotContextConfig creatorConfig = creator.context.config;
@@ -919,11 +919,11 @@ final class EngineAccessor extends Accessor {
                 useOptions.putAll(options);
             }
 
-            if (options != null && !options.isEmpty() && !creatorConfig.allAccessAllowed) {
+            if (options != null && !options.isEmpty() && !creatorConfig.innerContextOptionsAllowed) {
                 throw PolyglotEngineException.illegalArgument(String.format(
-                                "Language options were specified for the inner context but the outer context does not have the required all access privilege for this operation. " +
-                                                "Use TruffleLanguage.Env.isAllowAllAccess() to check whether the inner context has all access privileges. " +
-                                                "Use Context.Builder.allowAllAccess(true) to grant all access to an outer context."));
+                                "Language options were specified for the inner context but the outer context does not have the required context options privilege for this operation. " +
+                                                "Use TruffleLanguage.Env.isInnerContextOptionsAllowed() to check whether the inner context has this privilege. " +
+                                                "Use Context.Builder.allowInnerContextOptions(true) to grant inner context option privilege for inner contexts."));
             }
 
             OutputStream useOut = out;
@@ -1002,6 +1002,8 @@ final class EngineAccessor extends Accessor {
                 useCustomEnvironment = customEnvironment;
             }
 
+            boolean useAllowInnerContextOptions = inheritAccess(inheritAccess, allowInnerContextOptions, creatorConfig.innerContextOptionsAllowed);
+
             ZoneId useTimeZone = timeZone == null ? creatorConfig.timeZone : timeZone;
 
             Map<String, String[]> useArguments;
@@ -1013,8 +1015,8 @@ final class EngineAccessor extends Accessor {
             }
 
             PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, sharingEnabled, useOut, useErr, useIn,
-                            creatorConfig.allAccessAllowed && inheritAccess, useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread,
-                            useAllowHostClassLoading, creatorConfig.allowExperimentalOptions,
+                            useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
+                            useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
                             useClassFilter, useArguments, allowedLanguages, useOptions, useFileSystem, useInternalFileSystem, creatorConfig.logHandler,
                             useAllowCreateProcess, useProcessHandler, useEnvironmentAccess, useCustomEnvironment,
                             useTimeZone, creatorConfig.limits, creatorConfig.hostClassLoader, useAllowHostAccess,

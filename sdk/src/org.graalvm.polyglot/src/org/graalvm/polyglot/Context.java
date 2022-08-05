@@ -1040,6 +1040,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowExperimentalOptions;
         private Boolean allowHostAccess;
         private boolean allowValueSharing = true;
+        private Boolean allowInnerContextOptions;
         private PolyglotAccess polyglotAccess;
         private HostAccess hostAccess;
         private FileSystem customFileSystem;
@@ -1201,6 +1202,8 @@ public final class Context implements AutoCloseable {
          * <li>The {@link #allowCreateProcess(boolean) creation} and use of new sub-processes.
          * <li>The {@link #allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess) access} to
          * process environment variables.
+         * <li>The {@link #allowInnerContextOptions(boolean) changing} of options for of inner
+         * contexts spawned by the language.
          * </ul>
          *
          * @param enabled <code>true</code> for all access by default.
@@ -1373,6 +1376,26 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowValueSharing(boolean enabled) {
             this.allowValueSharing = enabled;
+            return this;
+        }
+
+        /**
+         * Allows this context to spawn inner contexts that may change option values set for the
+         * outer context. If this privilege is set to <code>false</code> then inner contexts are
+         * only allowed to use the same option values as its outer context. If this privilege is set
+         * to <code>true</code> then the context may modify option values for inner contexts it
+         * creates. This privilege should not be enabled for security sensitive use-cases. The
+         * default value for this privilege is inherited from {@link #allowAllAccess(boolean)}.
+         * <p>
+         * Inner contexts are spawned by language implementations to implement language embeddings
+         * of their own. For example, some languages provide dedicated APIs to spawn language
+         * virtual machines. Such APIs are often implemented using the inner context mechanism.
+         *
+         * @see #allowAllAccess(boolean)
+         * @since 22.3
+         */
+        public Builder allowInnerContextOptions(boolean enabled) {
+            this.allowInnerContextOptions = enabled;
             return this;
         }
 
@@ -1738,6 +1761,7 @@ public final class Context implements AutoCloseable {
             boolean io = orAllAccess(allowIO);
             boolean hostClassLoading = orAllAccess(allowHostClassLoading);
             boolean experimentalOptions = orAllAccess(allowExperimentalOptions);
+            boolean innerContextOptions = orAllAccess(allowInnerContextOptions);
 
             if (this.allowHostAccess != null && this.hostAccess != null) {
                 throw new IllegalArgumentException("The method allowHostAccess with boolean and with HostAccess are mutually exclusive.");
@@ -1834,9 +1858,9 @@ public final class Context implements AutoCloseable {
                 contextErr = err;
                 contextIn = in;
             }
-            ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, allowAllAccess,
-                            hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
-                            io, hostClassLoading, experimentalOptions,
+            ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, hostClassLookupEnabled,
+                            hostAccess, polyglotAccess, nativeAccess, createThread, io,
+                            hostClassLoading, innerContextOptions, experimentalOptions,
                             localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                             localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -145,7 +147,9 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                     }
                 }
             });
-            beforeSleep.await(10, TimeUnit.SECONDS);
+            if (!beforeSleep.await(10, TimeUnit.SECONDS)) {
+                fail("timeout");
+            }
             context.close(true);
             future.get();
         } finally {

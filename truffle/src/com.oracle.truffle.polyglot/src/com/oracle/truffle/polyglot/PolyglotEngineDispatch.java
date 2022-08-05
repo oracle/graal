@@ -151,17 +151,17 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
 
     @Override
     public Context createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in,
-                    boolean allowAllAccess,
-                    boolean allowHostLookup, HostAccess hostAccess, PolyglotAccess polyglotAccess,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
-                    boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
+                    boolean allowHostLookup,
+                    HostAccess hostAccess, PolyglotAccess polyglotAccess, boolean allowNativeAccess,
+                    boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
+                    boolean allowInnerContextOptions, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        PolyglotContextImpl context = receiver.createContext(out, err, in, allowAllAccess, allowHostLookup, hostAccess,
-                        polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO,
-                        allowHostClassLoading,
+        PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostLookup, hostAccess, polyglotAccess,
+                        allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading,
+                        allowInnerContextOptions,
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
                         currentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);

@@ -1531,11 +1531,11 @@ public abstract class Source {
             this.embedderSource = b;
         }
 
-        void url(URL url) {
+        void url(@SuppressWarnings("hiding")  URL url) {
             this.url = url;
         }
 
-        void path(String path) {
+        void path(@SuppressWarnings("hiding") String path) {
             this.path = path;
         }
 

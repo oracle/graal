@@ -885,7 +885,7 @@ public class LanguageSPITest {
             boolean inheritPrivileges = (boolean) contextArguments[2];
             Boolean allowPrivilege = (Boolean) contextArguments[3];
 
-            var builder = env.newInnerContextBuilder().initializeCreatorContext(true).allowInheritAccess(inheritPrivileges);
+            var builder = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(inheritPrivileges);
             if (allowPrivilege != null) {
                 setInnerPrivilege(builder, privilege, allowPrivilege);
             }
@@ -1219,7 +1219,7 @@ public class LanguageSPITest {
             assertEquals("inheritedValue", env.getOptions().get(InheritedKey));
 
             if (expectSupportOptions) {
-                assertTrue(env.isAllAccessAllowed());
+                assertTrue(env.isInnerContextOptionsAllowed());
                 var builder = env.newInnerContextBuilder();
 
                 assertFails(() -> builder.option(null, "value"), NullPointerException.class);
@@ -1250,7 +1250,7 @@ public class LanguageSPITest {
                     c.close();
                 }
             } else {
-                assertFalse(env.isAllAccessAllowed());
+                assertFalse(env.isInnerContextOptionsAllowed());
                 var builder = env.newInnerContextBuilder().initializeCreatorContext(true).option(getOptionKey("SharingKey"), "value");
                 assertFails(() -> builder.build(), IllegalArgumentException.class, (e) -> {
                     assertEquals("Language options were specified for the inner context but the outer context does not have the required all access privilege for this operation. " +
@@ -1273,14 +1273,14 @@ public class LanguageSPITest {
         // allow inner context options when all access is granted
         try (Context context = Context.newBuilder().//
                         option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
-                        allowAllAccess(true).build()) {
+                        allowInnerContextOptions(true).build()) {
             execute(context, InnerContextOptionsLanguage.class, true, false);
         }
 
         // disallow inner context options when all is denied
         try (Context context = Context.newBuilder().//
                         option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
-                        allowAllAccess(false).build()) {
+                        allowInnerContextOptions(false).build()) {
             execute(context, InnerContextOptionsLanguage.class, false, false);
         }
 
@@ -1288,14 +1288,14 @@ public class LanguageSPITest {
             // test options may disable sharing for inner context options
             try (Context context = Context.newBuilder().//
                             option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
-                            allowAllAccess(true).engine(engine).build()) {
+                            allowInnerContextOptions(true).engine(engine).build()) {
                 execute(context, InnerContextOptionsLanguage.class, true, false);
             }
             // test with matching options we share code with the inner context
             try (Context context = Context.newBuilder().//
                             option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
                             option(InnerContextOptionsLanguage.getOptionKey("SharingKey"), "value").//
-                            allowAllAccess(true).engine(engine).build()) {
+                            allowInnerContextOptions(true).engine(engine).build()) {
                 execute(context, InnerContextOptionsLanguage.class, true, true);
             }
         }

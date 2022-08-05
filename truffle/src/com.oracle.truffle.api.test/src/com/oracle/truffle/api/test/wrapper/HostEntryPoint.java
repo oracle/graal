@@ -119,7 +119,7 @@ final class HostEntryPoint {
         Engine engine = unmarshall(Engine.class, engineId);
         Object receiver = api.getReceiver(engine);
         AbstractEngineDispatch dispatch = api.getDispatch(engine);
-        Context remoteContext = dispatch.createContext(receiver, null, null, null, false, false, null, PolyglotAccess.NONE,
+        Context remoteContext = dispatch.createContext(receiver, null, null, null, false, null, PolyglotAccess.NONE, false,
                         false, false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], null, null,
                         false, null, EnvironmentAccess.NONE,

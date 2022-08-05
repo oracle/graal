@@ -387,7 +387,7 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
 
-        public abstract boolean isAllAccessAllowed(Object polyglotLanguageContext, Env env);
+        public abstract boolean isInnerContextOptionsAllowed(Object polyglotLanguageContext, Env env);
 
         public abstract boolean isCurrentNativeAccessAllowed(Node node);
 
@@ -398,7 +398,7 @@ public abstract class Accessor {
                         Boolean sharingEnabled, boolean initializeCreatorContext, Runnable onCancelled, Consumer<Integer> onExited,
                         Runnable onClosed, boolean inheritAccess, Boolean allowCreateThreads, Boolean allowNativeAccess, Boolean allowIO,
                         Boolean allowHostLookup, Boolean allowHostClassLoading, Boolean allowCreateProcess, Boolean allowPolyglotAccess,
-                        Boolean allowEnvironmentAccess, Map<String, String> environment);
+                        Boolean allowEnvironmentAccess, Map<String, String> environment, Boolean allowInnerContextOptions);
 
         public abstract Object enterInternalContext(Node node, Object polyglotContext);
 

@@ -709,6 +709,7 @@ public final class TruffleContext implements AutoCloseable {
         private Boolean allowHostLookup;
         private Boolean allowHostClassLoading;
         private Boolean allowCreateProcess;
+        private Boolean allowInnerContextOptions;
         private Boolean allowPolyglotAccess;
         private Boolean allowEnvironmentAccess;
         private ZoneId timeZone;
@@ -792,7 +793,7 @@ public final class TruffleContext implements AutoCloseable {
          * from the outer context.
          * <p>
          * If sharing is explicitly set to <code>true</code> then code may be shared with all
-         * contexts compatible to the configuration of this inner context. Code may also be shared
+         * contexts compatible with the configuration of this inner context. Code may also be shared
          * with the outer context if the outer context supports code sharing and its sharing layer
          * is compatible. This may be useful to force sharing for multiple created inner contexts if
          * the outer context configuration disabled sharing.
@@ -804,7 +805,7 @@ public final class TruffleContext implements AutoCloseable {
          * If multiple languages are potentially used it is recommended but not required to use
          * {@link Env#newInnerContextBuilder(String...) permitted languages} to specify all used
          * languages ahead of time. This allows to validate sharing layer compatibility eagerly and
-         * avoids late failures when a language is initialized lazily and is not compatible to the
+         * avoids late failures when a language is initialized lazily and is not compatible with the
          * sharing layer. Use <code>--engine.TraceSharing</code> for details on whether the sharing
          * configuration is compatible.
          *
@@ -819,16 +820,14 @@ public final class TruffleContext implements AutoCloseable {
          * Overrides an option of the inner context. Only language options may be changed. Engine or
          * instrument options cannot be modified after their initial configuration in the outer
          * context. All options for inner contexts are inherited from the outer context, but options
-         * set for the inner context have precedence of options set in the outer context.
+         * set for the inner context have precedence over options set in the outer context.
          * <p>
-         * This method is currently only supported if the outer context is configured with all
-         * privileges. For example in the embedding API all privileges can be granted by setting
-         * {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean)} to
-         * <code>true</code>. If all privileges are denied then an {@link IllegalArgumentException}
-         * will be thrown when building the context. To find out whether all privileges have been
-         * granted languages may use {@link TruffleLanguage.Env#isAllAccessAllowed()}. All access
-         * privileges
-         * <p>
+         * This method is currently only supported if the outer context is configured with
+         * {@link org.graalvm.polyglot.Context.Builder#allowInnerContextOptions(boolean)}. If all
+         * privileges are denied then an {@link IllegalArgumentException} will be thrown when
+         * building the inner context. To find out whether the inner context option privilege has
+         * been granted languages may use
+         * {@link TruffleLanguage.Env#isInnerContextOptionsAllowed()}.
          *
          * @since 22.3
          */
@@ -859,24 +858,25 @@ public final class TruffleContext implements AutoCloseable {
          * <li>{@link #allowCreateProcess(boolean)}
          * <li>{@link #allowPolyglotAccess(boolean)}
          * <li>{@link #allowInheritEnvironmentAccess(boolean)}
+         * <li>{@link #allowInnerContextOptions(boolean)}
          * </ul>
          * <p>
-         * If an individual privilege was set explicitly for a privilege then the value of
-         * {@link #allowInheritAccess(boolean)} is ignored. For example it is possible to set
-         * {@link #allowInheritAccess(boolean)} to <code>true</code> but set
+         * If an individual privilege was set explicitly then the value of
+         * {@link #inheritAllAccess(boolean)} is ignored for that privilege. For example it is
+         * possible to set {@link #inheritAllAccess(boolean)} to <code>true</code> but set
          * {@link #allowNativeAccess(boolean)} to <code>false</code> to allow inheritance of all but
          * native access rights from the outer to the inner context.
          * <p>
          * In case new privileges are added in the future, then this method will allow or disallow
          * inheritance for the new privileges as well. For security sensitive use-cases it is
-         * recommended to keep the default value of {@link #allowInheritAccess(boolean)} and
+         * recommended to keep the default value of {@link #inheritAllAccess(boolean)} and
          * individually specify allowed privileges for this context. For non security sensitive
          * use-cases it is recommended to set this flag to <code>true</code>. Following this
          * recommendation is important in case new privileges are added to the platform.
          *
          * @since 22.3
          */
-        public Builder allowInheritAccess(boolean b) {
+        public Builder inheritAllAccess(boolean b) {
             this.inheritAccess = b;
             return this;
         }
@@ -886,7 +886,7 @@ public final class TruffleContext implements AutoCloseable {
          * access privilege from the outer context or <code>false</code> to deny access for this
          * context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowCreateThread(boolean)
          * @since 22.3
          */
@@ -900,7 +900,7 @@ public final class TruffleContext implements AutoCloseable {
          * access privilege from the outer context or <code>false</code> to deny access for this
          * context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowNativeAccess(boolean)
          * @since 22.3
          */
@@ -913,7 +913,7 @@ public final class TruffleContext implements AutoCloseable {
          * Allows or denies using IO in this context. Set to <code>true</code> to inherit access
          * privilege from the outer context or <code>false</code> to deny access for this context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowIO(boolean)
          * @since 22.3
          */
@@ -927,7 +927,7 @@ public final class TruffleContext implements AutoCloseable {
          * inherit access privilege from the outer context or <code>false</code> to deny access for
          * this context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)
          * @since 22.3
          */
@@ -941,7 +941,7 @@ public final class TruffleContext implements AutoCloseable {
          * inherit access privilege from the outer context or <code>false</code> to deny access for
          * this context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)
          * @since 22.3
          */
@@ -955,7 +955,7 @@ public final class TruffleContext implements AutoCloseable {
          * access privilege from the outer context or <code>false</code> to deny access for this
          * context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowCreateProcess(boolean)
          * @since 22.3
          */
@@ -965,11 +965,25 @@ public final class TruffleContext implements AutoCloseable {
         }
 
         /**
+         * Allows or denies options for inner contexts created by this context. Set to
+         * <code>true</code> to inherit access privilege from the outer context or
+         * <code>false</code> to deny access for this context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowCreateProcess(boolean)
+         * @since 22.3
+         */
+        public Builder allowInnerContextOptions(boolean b) {
+            this.allowInnerContextOptions = b;
+            return this;
+        }
+
+        /**
          * Allows or denies access to polyglot languages in this context. Set to <code>true</code>
          * to inherit access privilege from the outer context or <code>false</code> to deny access
          * for this context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
          * @since 22.3
          */
@@ -981,10 +995,12 @@ public final class TruffleContext implements AutoCloseable {
         /**
          * Allows or denies access to the parent context's environment in this context. Set to
          * <code>true</code> to inherit variables from the outer context or <code>false</code> to
-         * deny inheritance for this context. Environment variables can be set even if inheritance
-         * is disabled.
+         * deny inheritance for this context. Environment variables can be set for the inner context
+         * with {@link #environment(String, String)} even if inheritance is disabled. If inheritance
+         * is enabled, environment variables specified for the inner context override environment
+         * variables of the outer context.
          *
-         * @see #allowInheritAccess(boolean)
+         * @see #inheritAllAccess(boolean)
          * @see org.graalvm.polyglot.Context.Builder#allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess)
          * @since 22.3
          */
@@ -1149,7 +1165,7 @@ public final class TruffleContext implements AutoCloseable {
                                 sourceEnvironment.getPolyglotLanguageContext(), this.out, this.err, this.in, this.timeZone,
                                 this.permittedLanguages, this.config, this.options, this.arguments, this.sharingEnabled, this.initializeCreatorContext, this.onCancelled, this.onExited,
                                 this.onClosed, this.inheritAccess, this.allowCreateThread, this.allowNativeAccess, this.allowIO, this.allowHostLookup, this.allowHostClassLoading,
-                                this.allowCreateProcess, this.allowPolyglotAccess, this.allowEnvironmentAccess, this.environment);
+                                this.allowCreateProcess, this.allowPolyglotAccess, this.allowEnvironmentAccess, this.environment, this.allowInnerContextOptions);
             } catch (Throwable t) {
                 throw Env.engineToLanguageException(t);
             }

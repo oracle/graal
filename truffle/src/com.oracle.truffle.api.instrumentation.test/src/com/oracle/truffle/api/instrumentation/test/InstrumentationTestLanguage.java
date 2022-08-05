@@ -1746,7 +1746,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private static TruffleContext createInnerContext() {
-            return InstrumentContext.get(null).env.newInnerContextBuilder().allowInheritAccess(true).initializeCreatorContext(true).build();
+            return InstrumentContext.get(null).env.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build();
         }
     }
 

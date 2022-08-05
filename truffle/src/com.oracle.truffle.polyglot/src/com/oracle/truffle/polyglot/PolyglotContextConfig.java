@@ -73,11 +73,11 @@ final class PolyglotContextConfig {
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
-    final boolean allAccessAllowed;
     final boolean hostLookupAllowed;
     final boolean nativeAccessAllowed;
     final boolean createThreadAllowed;
     final boolean hostClassLoadingAllowed;
+    final boolean innerContextOptionsAllowed;
     final boolean createProcessAllowed;
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
@@ -198,10 +198,11 @@ final class PolyglotContextConfig {
                         System.err,
                         System.in,
                         false,
-                        false, // never any host lookup should be allowed in context preinit
-                        sharableConfig.polyglotAccess, // TODO GR-14657 change this to NONE
-                        sharableConfig.nativeAccessAllowed,
+                        sharableConfig.polyglotAccess, // never any host lookup should be allowed in
+                                                       // context preinit
+                        sharableConfig.nativeAccessAllowed, // TODO GR-14657 change this to NONE
                         sharableConfig.createThreadAllowed,
+                        false,
                         false,
                         false,
                         null,
@@ -226,9 +227,9 @@ final class PolyglotContextConfig {
 
     PolyglotContextConfig(PolyglotEngineImpl engine, Boolean forceSharing,
                     OutputStream out, OutputStream err, InputStream in,
-                    boolean allAccessAllowed, boolean hostLookupAllowed, PolyglotAccess polyglotAccess,
-                    boolean nativeAccessAllowed, boolean createThreadAllowed,
-                    boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
+                    boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed,
+                    boolean createThreadAllowed, boolean hostClassLoadingAllowed,
+                    boolean contextOptionsAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> onlyLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
@@ -242,12 +243,12 @@ final class PolyglotContextConfig {
         this.out = out;
         this.err = err;
         this.in = in;
-        this.allAccessAllowed = allAccessAllowed;
         this.hostLookupAllowed = hostLookupAllowed;
         this.polyglotAccess = polyglotAccess;
         this.nativeAccessAllowed = nativeAccessAllowed;
         this.createThreadAllowed = createThreadAllowed;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;
+        this.innerContextOptionsAllowed = contextOptionsAllowed;
         this.allowExperimentalOptions = allowExperimentalOptions;
         this.createProcessAllowed = createProcessAllowed;
         this.classFilter = classFilter;
