@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,29 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.toolchain.launchers;
 
-import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
 
-public interface ToolchainConfig extends LLVMCapability {
+public final class ClangCL {
 
-    /**
-     * Gets the overridden toolchain root, or {@code null} if the default location should be used.
-     */
-    String getToolchainRootOverride();
-
-    /**
-     * Relative toolchain path.
-     */
-    String getToolchainSubdir();
-
-    /**
-     * Returns true if C++ support is enabled.
-     */
-    boolean enableCXX();
-
-    /**
-     * Returns true if the CL compatible compiler is enabled.
-     */
-    boolean enableCL();
+    public static void main(String[] args) {
+        ClangLike.runClangCL(args);
+    }
 }
