@@ -1766,6 +1766,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.libgraal",
+        "org.graalvm.nativebridge",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
         "org.graalvm.util",
@@ -1789,6 +1790,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.libgraal",
         "org.graalvm.libgraal.jni",
+        "org.graalvm.nativebridge",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],
