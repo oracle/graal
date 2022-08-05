@@ -24,6 +24,8 @@
  */
 package org.graalvm.bisect.util;
 
+import org.graalvm.collections.Pair;
+
 import java.util.Iterator;
 
 public final class IteratorUtil {
@@ -34,10 +36,9 @@ public final class IteratorUtil {
      *
      * @param lhs the first iterator
      * @param rhs the second iterator
-     * @param <T> the element type
      * @return an iterator of pairs of the input elements
      */
-    public static <T> Iterator<Pair<T>> zipLongest(Iterator<T> lhs, Iterator<T> rhs) {
+    public static <L, R> Iterator<Pair<L, R>> zipLongest(Iterator<L> lhs, Iterator<R> rhs) {
         return new Iterator<>() {
             @Override
             public boolean hasNext() {
@@ -45,13 +46,13 @@ public final class IteratorUtil {
             }
 
             @Override
-            public Pair<T> next() {
+            public Pair<L, R> next() {
                 if (lhs.hasNext() && rhs.hasNext()) {
-                    return new Pair<>(lhs.next(), rhs.next());
+                    return Pair.create(lhs.next(), rhs.next());
                 } else if (lhs.hasNext()) {
-                    return new Pair<>(lhs.next(), null);
+                    return Pair.createLeft(lhs.next());
                 } else {
-                    return new Pair<>(null, rhs.next());
+                    return Pair.createRight(rhs.next());
                 }
             }
         };

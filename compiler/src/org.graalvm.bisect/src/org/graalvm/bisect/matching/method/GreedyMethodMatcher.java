@@ -65,12 +65,12 @@ public class GreedyMethodMatcher implements MethodMatcher {
             IteratorUtil.zipLongest(
                             methodMap1.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator).iterator(),
                             methodMap2.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator).iterator()).forEachRemaining(pair -> {
-                                if (pair.bothNotNull()) {
-                                    matchedMethod.addMatchedExecutedMethod(pair.getLhs(), pair.getRhs());
-                                } else if (pair.getLhs() == null) {
-                                    matchedMethod.addExtraExecutedMethod(pair.getRhs());
+                                if (pair.getLeft() != null && pair.getRight() != null) {
+                                    matchedMethod.addMatchedExecutedMethod(pair.getLeft(), pair.getRight());
+                                } else if (pair.getLeft() == null) {
+                                    matchedMethod.addExtraExecutedMethod(pair.getRight());
                                 } else {
-                                    matchedMethod.addExtraExecutedMethod(pair.getLhs());
+                                    matchedMethod.addExtraExecutedMethod(pair.getLeft());
                                 }
                             });
         }
