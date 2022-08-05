@@ -149,7 +149,7 @@
     {name: "gate-compiler-benchmarktest-labsjdk-11-linux-amd64"} +      s.benchmark +      c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-benchmarktest-labsjdk-17-linux-amd64"} +      s.benchmark +      c.labsjdk17 +      c.linux_amd64,
     {name: "gate-compiler-style-linux-amd64"} +                         s.style +          c.labsjdk17 +      c.linux_amd64 + t("45:00"),
-    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:15:00") + s.save_as_json + {environment+: {"TRACE_COMPILATION": "true"}, logs+: ['*/*_compilation.log']},
+    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:30:00") + s.save_as_json + {environment+: {"TRACE_COMPILATION": "true"}, logs+: ['*/*_compilation.log']},
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-vector16"} +    s.test_vec16 +     c.labsjdk17 +      c.linux_amd64 + s.weekly,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx0"} +        s.test_avx0 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx1"} +        s.test_avx1 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,
