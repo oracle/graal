@@ -27,88 +27,66 @@ package org.graalvm.bisect.core;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
 
 /**
- * Represents a graal-compiled executed method.
+ * Builder for {@link CompilationUnit a compilation unit}.
  */
-public class ExecutedMethodImpl implements ExecutedMethod {
+public class CompilationUnitBuilder {
     /**
      * The compilation ID of the executed method as reported in the optimization log. Matches
      * "compileId" in the proftool output.
      */
-    private final String compilationId;
+    private String compilationId;
+
     /**
      * The full signature of the method including parameter types as reported in the optimization
      * log.
      */
-    private final String compilationMethodName;
+    private String compilationMethodName;
+
     /**
      * The root optimization phase of this method, which holds all optimization phases applied in
      * this compilation.
      */
-    private final OptimizationPhase rootPhase;
-    /**
-     * The period of execution as reported by proftool.
-     */
-    private final long period;
+    private OptimizationPhase rootPhase;
+
     /**
      * The experiment to which this executed method belongs.
      */
-    private final Experiment experiment;
+    private Experiment experiment;
+
     /**
-     * The hot flag of the executed method.
+     * The period of execution of this method as reported by proftool. If not explicitly set, assume
+     * that the method was not executed.
      */
-    private boolean hot;
+    private long period = 0;
 
-    public ExecutedMethodImpl(String compilationId,
-                    String compilationMethodName,
-                    OptimizationPhase rootPhase,
-                    long period,
-                    Experiment experiment) {
+    public void setCompilationId(String compilationId) {
         this.compilationId = compilationId;
+    }
+
+    public void setCompilationMethodName(String compilationMethodName) {
         this.compilationMethodName = compilationMethodName;
+    }
+
+    public void setPeriod(long period) {
         this.period = period;
-        this.rootPhase = rootPhase;
-        this.experiment = experiment;
     }
 
-    @Override
-    public Experiment getExperiment() {
-        return experiment;
-    }
-
-    @Override
-    public String createSummaryOfMethodExecution() {
-        String graalPercent = String.format("%.2f", (double) period / experiment.getGraalPeriod() * 100);
-        String totalPercent = String.format("%.2f", (double) period / experiment.getTotalPeriod() * 100);
-        return graalPercent + "% of graal execution, " + totalPercent + "% of total";
-    }
-
-    @Override
     public String getCompilationId() {
         return compilationId;
     }
 
-    @Override
-    public String getCompilationMethodName() {
-        return compilationMethodName;
+    public void setExperiment(Experiment experiment) {
+        this.experiment = experiment;
     }
 
-    @Override
-    public OptimizationPhase getRootPhase() {
-        return rootPhase;
+    public void setRootPhase(OptimizationPhase rootPhase) {
+        this.rootPhase = rootPhase;
     }
 
-    @Override
-    public boolean isHot() {
-        return hot;
-    }
-
-    @Override
-    public void setHot(boolean hot) {
-        this.hot = hot;
-    }
-
-    @Override
-    public long getPeriod() {
-        return period;
+    public CompilationUnit build() {
+        assert compilationId != null;
+        assert compilationMethodName != null;
+        assert experiment != null;
+        return new CompilationUnit(compilationId, compilationMethodName, rootPhase, period, experiment);
     }
 }

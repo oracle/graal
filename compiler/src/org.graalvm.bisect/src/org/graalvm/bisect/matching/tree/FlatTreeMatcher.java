@@ -24,7 +24,7 @@
  */
 package org.graalvm.bisect.matching.tree;
 
-import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
 
@@ -37,15 +37,15 @@ public class FlatTreeMatcher implements TreeMatcher {
     /**
      * Creates a matching between optimization trees by flattening them to lists of optimizations.
      *
-     * @param method1 the method from the first experiment
-     * @param method2 the method from the second experiment
-     * @return a description of matched and extra optimizations
+     * @param compilationUnit1 the compilation unit from the first experiment
+     * @param compilationUnit2 the compilation unit from the second experiment
+     * @return a description of matched and unmatched optimizations
      */
     @Override
-    public FlatTreeMatching match(ExecutedMethod method1, ExecutedMethod method2) {
+    public FlatTreeMatching match(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
         OptimizationMatching optimizationMatching = optimizationMatcher.match(
-                        method1.getOptimizationsRecursive(),
-                        method2.getOptimizationsRecursive());
+                        compilationUnit1.getOptimizationsRecursive(),
+                        compilationUnit2.getOptimizationsRecursive());
         return new FlatTreeMatching(optimizationMatching);
     }
 }

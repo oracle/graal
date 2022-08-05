@@ -99,13 +99,18 @@ public class OptimizationLog implements CompilationListener {
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#eventName}")
     public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
         public static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
+
         public static final String OPTIMIZATION_NAME_PROPERTY = "optimizationName";
+
         public static final String EVENT_NAME_PROPERTY = "eventName";
+
         public static final String POSITION_PROPERTY = "position";
+
         /**
          * A map representation of this optimization entry, mapped by property name.
          */
         private final EconomicMap<String, Object> map;
+
         /**
          * A position of a significant node related to this optimization.
          */
@@ -224,9 +229,12 @@ public class OptimizationLog implements CompilationListener {
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Phase", nameTemplate = "{p#phaseName/s}")
     public static class OptimizationPhaseScope extends OptimizationTreeNode implements DebugContext.CompilerPhaseScope {
         public static final NodeClass<OptimizationPhaseScope> TYPE = NodeClass.create(OptimizationPhaseScope.class);
+
         private final OptimizationLog optimizationLog;
 
+
         private final CharSequence phaseName;
+
         @Successor private NodeSuccessorList<OptimizationTreeNode> children = null;
 
         protected OptimizationPhaseScope(OptimizationLog optimizationLog, CharSequence phaseName) {
@@ -336,10 +344,15 @@ public class OptimizationLog implements CompilationListener {
     }
 
     private static final OptimizationEntryEmpty OPTIMIZATION_ENTRY_EMPTY = new OptimizationEntryEmpty();
+
     private final StructuredGraph graph;
+
     private static volatile boolean optionsVerified = false;
+
     private final String compilationId;
+
     private final boolean optimizationLogEnabled;
+
     private PartialEscapeLog partialEscapeLog = null;
 
     /**
@@ -347,6 +360,7 @@ public class OptimizationLog implements CompilationListener {
      * {@link #optimizationLogEnabled} is {@code false}, the field stays null.
      */
     private OptimizationPhaseScope currentPhase;
+
     private final Graph optimizationTree;
 
     /**

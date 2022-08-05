@@ -24,16 +24,28 @@
  */
 package org.graalvm.bisect.matching.optimization;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
+import org.graalvm.collections.EconomicMap;
 
 /**
- * Describes a matching of optimizations between two compilations of the same method in two
- * experiments.
+ * A matching of optimizations between two compilations of the same method in two experiments. Built
+ * incrementally by adding matched/extra optimizations.
  */
-public interface OptimizationMatching {
+public class OptimizationMatching {
+    private final EconomicMap<ExperimentId, List<Optimization>> unmatchedOptimizations = EconomicMap.create();
+
+    private final List<Optimization> matchedOptimizations = new ArrayList<>();
+
+    OptimizationMatching() {
+        for (ExperimentId experimentId : ExperimentId.values()) {
+            unmatchedOptimizations.put(experimentId, new ArrayList<>());
+        }
+    }
+
     /**
      * Gets a list of optimizations from an experiment that were not matched with any other
      * optimization from the other method.
@@ -41,12 +53,24 @@ public interface OptimizationMatching {
      * @param experimentId the experiment ID of the returned optimizations
      * @return a list of extra optimizations
      */
-    List<Optimization> getExtraOptimizations(ExperimentId experimentId);
+    public List<Optimization> getUnmatchedOptimizations(ExperimentId experimentId) {
+        return unmatchedOptimizations.get(experimentId);
+    }
 
     /**
      * Gets a list of optimization that were present in both compiled methods.
      *
      * @return a list of optimizations present in both compiled methods
      */
-    List<Optimization> getMatchedOptimizations();
+    public List<Optimization> getMatchedOptimizations() {
+        return matchedOptimizations;
+    }
+
+    public void addUnmatchedOptimization(Optimization optimization, ExperimentId experimentId) {
+        unmatchedOptimizations.get(experimentId).add(optimization);
+    }
+
+    public void addMatchedOptimization(Optimization optimization) {
+        matchedOptimizations.add(optimization);
+    }
 }

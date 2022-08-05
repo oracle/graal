@@ -32,11 +32,11 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.List;
 
-import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.core.optimization.OptimizationImpl;
-import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
+import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.core.optimization.Optimization;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
 import org.graalvm.bisect.parser.experiment.ExperimentParserTypeError;
@@ -135,41 +135,41 @@ public class ExperimentParserTest {
         ExperimentParser experimentParser = new ExperimentParser(experimentFiles);
         Experiment experiment = experimentParser.parse();
         assertEquals("16102", experiment.getExecutionId());
-        assertEquals(2, experiment.getExecutedMethods().size());
+        assertEquals(2, experiment.getCompilationUnits().size());
         assertEquals(263869257616L, experiment.getTotalPeriod());
         assertEquals(264224374L + 158328120602L, experiment.getGraalPeriod());
 
-        for (ExecutedMethod executedMethod : experiment.getExecutedMethods()) {
-            switch (executedMethod.getCompilationId()) {
+        for (CompilationUnit compilationUnit : experiment.getCompilationUnits()) {
+            switch (compilationUnit.getCompilationId()) {
                 case "2390": {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
-                                    executedMethod.getCompilationMethodName());
-                    OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
-                    OptimizationPhaseImpl someTier = new OptimizationPhaseImpl("SomeTier");
+                                    compilationUnit.getCompilationMethodName());
+                    OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
+                    OptimizationPhase someTier = new OptimizationPhase("SomeTier");
                     rootPhase.addChild(someTier);
-                    someTier.addChild(new OptimizationImpl("LoopTransformation",
+                    someTier.addChild(new Optimization("LoopTransformation",
                                     "PartialUnroll",
                                     EconomicMap.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
                                     EconomicMap.of("unrollFactor", 1)));
-                    someTier.addChild(new OptimizationPhaseImpl("EmptyPhase"));
-                    assertEquals(rootPhase, executedMethod.getRootPhase());
+                    someTier.addChild(new OptimizationPhase("EmptyPhase"));
+                    assertEquals(rootPhase, compilationUnit.getRootPhase());
                     break;
                 }
                 case "3677": {
                     assertEquals("org.example.myMethod(org.example.Foo, org.example.Class$Context)",
-                                    executedMethod.getCompilationMethodName());
-                    OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
-                    rootPhase.addChild(new OptimizationImpl(
+                                    compilationUnit.getCompilationMethodName());
+                    OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
+                    rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
                                     "PartialUnroll",
                                     EconomicMap.of("org.example.myMethod(org.example.Foo, org.example.Class$Context)", 2),
                                     EconomicMap.of("unrollFactor", 1)));
-                    rootPhase.addChild(new OptimizationImpl(
+                    rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
                                     "PartialUnroll",
                                     null,
                                     EconomicMap.of("unrollFactor", 2)));
-                    assertEquals(rootPhase, executedMethod.getRootPhase());
+                    assertEquals(rootPhase, compilationUnit.getRootPhase());
                     break;
                 }
                 default:

@@ -24,38 +24,41 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.util.Writer;
 
 /**
- * Represents a pair of two matched hot compilations (executions) of the same method.
+ * Represents a pair of two matched hot compilation units of the same method.
  */
-public class MatchedExecutedMethod {
+public class MatchedCompilationUnit {
     /**
-     * Gets the matched executed method from the first experiment.
-     *
-     * @return the matched executed method from the first experiment
+     * The compilation unit from the first experiment.
      */
-    public ExecutedMethod getMethod1() {
-        return method1;
+    private final CompilationUnit compilationUnit1;
+
+    /**
+     * The compilation unit from the second experiment.
+     */
+    private final CompilationUnit compilationUnit2;
+
+    /**
+     * Gets the matched compilation unit from the first experiment.
+     */
+    public CompilationUnit getFirstCompilationUnit() {
+        return compilationUnit1;
     }
 
     /**
-     * Gets the matched executed method from the second experiment.
-     *
-     * @return the matched executed method from the second experiment
+     * Gets the matched compilation unit from the second experiment.
      */
-    public ExecutedMethod getMethod2() {
-        return method2;
+    public CompilationUnit getSecondCompilationUnit() {
+        return compilationUnit2;
     }
 
-    private final ExecutedMethod method1;
-    private final ExecutedMethod method2;
-
-    MatchedExecutedMethod(ExecutedMethod method1, ExecutedMethod method2) {
-        assert method1.isHot() && method2.isHot();
-        this.method1 = method1;
-        this.method2 = method2;
+    MatchedCompilationUnit(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
+        assert compilationUnit1.isHot() && compilationUnit2.isHot();
+        this.compilationUnit1 = compilationUnit1;
+        this.compilationUnit2 = compilationUnit2;
     }
 
     /**
@@ -64,7 +67,9 @@ public class MatchedExecutedMethod {
      * @param writer the destination writer
      */
     public void writeHeader(Writer writer) {
-        writer.writeln("Compilation " + method1.getCompilationId() + " (" + method1.createSummaryOfMethodExecution() + ") in experiment " + method1.getExperiment().getExperimentId() +
-                        " vs compilation " + method2.getCompilationId() + " (" + method2.createSummaryOfMethodExecution() + ") in experiment " + method2.getExperiment().getExperimentId());
+        writer.writeln("Compilation " + compilationUnit1.getCompilationId() + " (" + compilationUnit1.createExecutionSummary() + ") in experiment " +
+                        compilationUnit1.getExperiment().getExperimentId() +
+                        " vs compilation " + compilationUnit2.getCompilationId() + " (" + compilationUnit2.createExecutionSummary() + ") in experiment " +
+                        compilationUnit2.getExperiment().getExperimentId());
     }
 }

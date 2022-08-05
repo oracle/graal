@@ -27,7 +27,7 @@ package org.graalvm.bisect.matching.method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.util.Writer;
 
@@ -36,10 +36,29 @@ import org.graalvm.bisect.util.Writer;
  */
 public class MatchedMethod {
     /**
-     * Gets the signature of the matched methods. Both methods must have the same signature.
+     * The full signature of the matched methods (they must have the same signature).
+     */
+    private final String compilationMethodName;
+
+    /**
+     * Pairs of matched compilation units of this method.
+     */
+    private final List<MatchedCompilationUnit> matchedCompilationUnits = new ArrayList<>();
+
+    /**
+     * Unmatched compilation units of this method.
+     */
+    private final List<UnmatchedCompilationUnit> unmatchedCompilationUnits = new ArrayList<>();
+
+    MatchedMethod(String compilationMethodName) {
+        this.compilationMethodName = compilationMethodName;
+    }
+
+    /**
+     * Gets the full signature of the matched methods (they must have the same signature).
      *
      * @return the compilation method name
-     * @see ExecutedMethod#getCompilationMethodName()
+     * @see CompilationUnit#getCompilationMethodName()
      */
     public String getCompilationMethodName() {
         return compilationMethodName;
@@ -47,67 +66,55 @@ public class MatchedMethod {
 
     /**
      * Gets the list of pairs of matched compilations of this method.
-     *
-     * @return the list of pairs of matched compilations
      */
-    public List<MatchedExecutedMethod> getMatchedExecutedMethods() {
-        return matchedExecutedMethods;
+    public List<MatchedCompilationUnit> getMatchedCompilationUnits() {
+        return matchedCompilationUnits;
     }
 
     /**
      * Gets the list of compilations of this method that do not have a match.
-     *
-     * @return the list of compilations of this method that were not matched
      */
-    public List<ExtraExecutedMethod> getExtraExecutedMethods() {
-        return extraExecutedMethods;
+    public List<UnmatchedCompilationUnit> getUnmatchedCompilationUnits() {
+        return unmatchedCompilationUnits;
     }
 
-    private final String compilationMethodName;
-    private final ArrayList<MatchedExecutedMethod> matchedExecutedMethods = new ArrayList<>();
-    private final ArrayList<ExtraExecutedMethod> extraExecutedMethods = new ArrayList<>();
-
-    MatchedMethod(String compilationMethodName) {
-        this.compilationMethodName = compilationMethodName;
+    public MatchedCompilationUnit addMatchedCompilationUnit(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
+        MatchedCompilationUnit matchedCompilationUnit = new MatchedCompilationUnit(compilationUnit1, compilationUnit2);
+        matchedCompilationUnits.add(matchedCompilationUnit);
+        return matchedCompilationUnit;
     }
 
-    public MatchedExecutedMethod addMatchedExecutedMethod(ExecutedMethod method1, ExecutedMethod method2) {
-        MatchedExecutedMethod matchedExecutedMethod = new MatchedExecutedMethod(method1, method2);
-        matchedExecutedMethods.add(matchedExecutedMethod);
-        return matchedExecutedMethod;
-    }
-
-    public ExtraExecutedMethod addExtraExecutedMethod(ExecutedMethod method) {
-        ExtraExecutedMethod extraExecutedMethod = new ExtraExecutedMethod(method);
-        extraExecutedMethods.add(extraExecutedMethod);
-        return extraExecutedMethod;
+    public UnmatchedCompilationUnit addUnmatchedCompilationUnit(CompilationUnit compilationUnit) {
+        UnmatchedCompilationUnit unmatchedCompilationUnit = new UnmatchedCompilationUnit(compilationUnit);
+        unmatchedCompilationUnits.add(unmatchedCompilationUnit);
+        return unmatchedCompilationUnit;
     }
 
     /**
-     * Writes the name of the method and the list of compilations for each experiment.
+     * Writes the name of the method and the list of compilations unit for each experiment.
      *
      * @param writer the destination writer
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment
      */
-    public void writeHeaderAndCompilationLists(Writer writer, Experiment experiment1, Experiment experiment2) {
+    public void writeHeaderAndCompilationUnits(Writer writer, Experiment experiment1, Experiment experiment2) {
         writer.writeln("Method " + compilationMethodName);
         writer.increaseIndent();
-        experiment1.writeMethodCompilationList(writer, compilationMethodName);
-        experiment2.writeMethodCompilationList(writer, compilationMethodName);
+        experiment1.writeCompilationUnits(writer, compilationMethodName);
+        experiment2.writeCompilationUnits(writer, compilationMethodName);
         writer.decreaseIndent();
     }
 
     /**
-     * Writes the header and the optimization tree for each extra (unpaired) executed method.
+     * Writes the header and the optimization tree for each unmatched compilation unit.
      *
      * @param writer the destination writer
      */
-    public void writeExtraExecutedMethods(Writer writer) {
-        for (ExtraExecutedMethod extraExecutedMethod : extraExecutedMethods) {
-            extraExecutedMethod.writeHeader(writer);
+    public void writeUnmatchedCompilationUnits(Writer writer) {
+        for (UnmatchedCompilationUnit unmatchedCompilationUnit : unmatchedCompilationUnits) {
+            unmatchedCompilationUnit.writeHeader(writer);
             writer.increaseIndent();
-            extraExecutedMethod.getExecutedMethod().getRootPhase().writeRecursive(writer);
+            unmatchedCompilationUnit.getExecutedMethod().getRootPhase().writeRecursive(writer);
             writer.decreaseIndent();
         }
     }

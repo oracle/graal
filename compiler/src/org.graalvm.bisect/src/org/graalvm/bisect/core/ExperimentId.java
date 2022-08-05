@@ -26,7 +26,7 @@ package org.graalvm.bisect.core;
 
 /**
  * Identifies an experiment in the context of two compared experiments. The first experiment is
- * assigned an ID of ONE and the second is assigned an ID of TWO.
+ * assigned the ID {@code ONE} and the second is assigned the ID {@code TWO}.
  */
 public enum ExperimentId {
     /**

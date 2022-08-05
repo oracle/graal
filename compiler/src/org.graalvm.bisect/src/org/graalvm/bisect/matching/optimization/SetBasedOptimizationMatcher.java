@@ -42,13 +42,15 @@ public class SetBasedOptimizationMatcher implements OptimizationMatcher {
      * optimizations is the list of extra optimizations. The lists of extra optimizations preserve
      * their original order.
      *
-     * @param optimizations1 a list of optimizations from a method in the first experiment
-     * @param optimizations2 a list of optimizations from a method in the second experiment
-     * @return an object that describes matched and extra optimizations
+     * @param optimizations1 a list of optimizations in the compilation unit from the first
+     *            experiment
+     * @param optimizations2 a list of optimizations in the compilation units from the second
+     *            experiment
+     * @return an object that describes matched and unmatched optimizations
      */
     @Override
     public OptimizationMatching match(List<Optimization> optimizations1, List<Optimization> optimizations2) {
-        OptimizationMatchingImpl matching = new OptimizationMatchingImpl();
+        OptimizationMatching matching = new OptimizationMatching();
         Set<Optimization> optimizationSet1 = Set.copyOf(optimizations1);
         Set<Optimization> optimizationSet2 = Set.copyOf(optimizations2);
         identifyExtraOptimizations(optimizations1, optimizationSet2, matching, ExperimentId.ONE);
@@ -64,11 +66,11 @@ public class SetBasedOptimizationMatcher implements OptimizationMatcher {
     private static void identifyExtraOptimizations(
                     List<Optimization> optimizations,
                     Set<Optimization> toRemoveSet,
-                    OptimizationMatchingImpl matching,
+                    OptimizationMatching matching,
                     ExperimentId lhsExperimentId) {
         for (Optimization optimization : optimizations) {
             if (!toRemoveSet.contains(optimization)) {
-                matching.addExtraOptimization(optimization, lhsExperimentId);
+                matching.addUnmatchedOptimization(optimization, lhsExperimentId);
             }
         }
     }

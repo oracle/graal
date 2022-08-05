@@ -37,15 +37,18 @@ public class ArgumentParser {
      * The name of the program.
      */
     private final String prog;
+
     /**
      * The description of the program.
      */
     private final String description;
+
     /**
      * The map of argument names to option arguments. Option argument names start with the "--"
      * prefix. They may be required or optional.
      */
     private final Map<String, Argument> optionArguments = new LinkedHashMap<>();
+
     /**
      * The list of positional arguments. The argument names do not start with a prefix and are
      * always required.

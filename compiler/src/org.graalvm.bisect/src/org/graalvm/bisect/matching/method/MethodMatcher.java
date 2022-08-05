@@ -32,9 +32,8 @@ import org.graalvm.bisect.core.Experiment;
 public interface MethodMatcher {
     /**
      * Matches pairs of methods by their signature and then tries to match their respective
-     * compilations (executions) according to a heuristic. Returns an object describing the pairs of
-     * matched methods, matched executed methods and also the list of (executed) methods that do not
-     * have a pair - extra methods.
+     * compilation units according to a heuristic. Returns an object describing the pairs of matched
+     * methods, matched compilation units and also the list of unmatched compilation units.
      *
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment

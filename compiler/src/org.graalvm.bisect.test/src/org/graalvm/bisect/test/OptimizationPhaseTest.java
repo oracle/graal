@@ -29,23 +29,22 @@ import static org.junit.Assert.assertEquals;
 import java.util.List;
 
 import org.graalvm.bisect.core.optimization.Optimization;
-import org.graalvm.bisect.core.optimization.OptimizationImpl;
-import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.junit.Test;
 
 public class OptimizationPhaseTest {
     @Test
     public void recursiveOptimizationList() {
-        OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
-        OptimizationPhaseImpl phaseA = new OptimizationPhaseImpl("A");
-        OptimizationPhaseImpl phaseB = new OptimizationPhaseImpl("B");
-        OptimizationPhaseImpl phaseC = new OptimizationPhaseImpl("C");
-        OptimizationPhaseImpl phaseD = new OptimizationPhaseImpl("D");
-        Optimization optimization1 = new OptimizationImpl("foo", "1", null, null);
-        Optimization optimization2 = new OptimizationImpl("foo", "2", null, null);
-        Optimization optimization3 = new OptimizationImpl("foo", "3", null, null);
-        Optimization optimization4 = new OptimizationImpl("foo", "4", null, null);
-        Optimization optimization5 = new OptimizationImpl("foo", "5", null, null);
+        OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
+        OptimizationPhase phaseA = new OptimizationPhase("A");
+        OptimizationPhase phaseB = new OptimizationPhase("B");
+        OptimizationPhase phaseC = new OptimizationPhase("C");
+        OptimizationPhase phaseD = new OptimizationPhase("D");
+        Optimization optimization1 = new Optimization("foo", "1", null, null);
+        Optimization optimization2 = new Optimization("foo", "2", null, null);
+        Optimization optimization3 = new Optimization("foo", "3", null, null);
+        Optimization optimization4 = new Optimization("foo", "4", null, null);
+        Optimization optimization5 = new Optimization("foo", "5", null, null);
 
         rootPhase.addChild(optimization1);
         rootPhase.addChild(phaseA);

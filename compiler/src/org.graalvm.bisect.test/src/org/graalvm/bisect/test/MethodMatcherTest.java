@@ -26,12 +26,10 @@ package org.graalvm.bisect.test;
 
 import static org.junit.Assert.assertEquals;
 
-import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.ExecutedMethodImpl;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.core.ExperimentImpl;
+import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
-import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.matching.method.GreedyMethodMatcher;
 import org.graalvm.bisect.matching.method.MatchedMethod;
 import org.graalvm.bisect.matching.method.MethodMatcher;
@@ -41,24 +39,24 @@ import org.junit.Test;
 public class MethodMatcherTest {
     @Test
     public void testGreedyMethodMatcher() {
-        OptimizationPhase rootPhase = new OptimizationPhaseImpl("RootPhase");
-        ExperimentImpl experiment1 = new ExperimentImpl("1", ExperimentId.ONE, 100, 100);
-        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", rootPhase, 1, experiment1);
-        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", rootPhase, 2, experiment1);
-        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", rootPhase, 3, experiment1);
-        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", rootPhase, 3, experiment1);
-        experiment1.addExecutedMethod(foo1);
-        experiment1.addExecutedMethod(foo2);
-        experiment1.addExecutedMethod(foo3);
-        experiment1.addExecutedMethod(bar1);
+        OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
+        Experiment experiment1 = new Experiment("1", ExperimentId.ONE, 100, 100);
+        CompilationUnit foo1 = new CompilationUnit("foo1", "foo", rootPhase, 1, experiment1);
+        CompilationUnit foo2 = new CompilationUnit("foo2", "foo", rootPhase, 2, experiment1);
+        CompilationUnit foo3 = new CompilationUnit("foo3", "foo", rootPhase, 3, experiment1);
+        CompilationUnit bar1 = new CompilationUnit("bar1", "bar", rootPhase, 3, experiment1);
+        experiment1.addCompilationUnit(foo1);
+        experiment1.addCompilationUnit(foo2);
+        experiment1.addCompilationUnit(foo3);
+        experiment1.addCompilationUnit(bar1);
 
-        ExperimentImpl experiment2 = new ExperimentImpl("2", ExperimentId.TWO, 100, 100);
-        ExecutedMethod foo4 = new ExecutedMethodImpl("foo4", "foo", rootPhase, 1, experiment2);
-        ExecutedMethod bar2 = new ExecutedMethodImpl("bar2", "bar", rootPhase, 2, experiment2);
-        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "baz", rootPhase, 3, experiment2);
-        experiment2.addExecutedMethod(foo4);
-        experiment2.addExecutedMethod(bar2);
-        experiment2.addExecutedMethod(baz1);
+        Experiment experiment2 = new Experiment("2", ExperimentId.TWO, 100, 100);
+        CompilationUnit foo4 = new CompilationUnit("foo4", "foo", rootPhase, 1, experiment2);
+        CompilationUnit bar2 = new CompilationUnit("bar2", "bar", rootPhase, 2, experiment2);
+        CompilationUnit baz1 = new CompilationUnit("baz1", "baz", rootPhase, 3, experiment2);
+        experiment2.addCompilationUnit(foo4);
+        experiment2.addCompilationUnit(bar2);
+        experiment2.addCompilationUnit(baz1);
 
         MethodMatcher matcher = new GreedyMethodMatcher();
         MethodMatching matching = matcher.match(experiment1, experiment2);
@@ -66,7 +64,7 @@ public class MethodMatcherTest {
         // only hot methods should be considered, therefore we expect zero matches and no extra
         // methods
         assertEquals(0, matching.getMatchedMethods().size());
-        assertEquals(0, matching.getExtraMethods().size());
+        assertEquals(0, matching.getUnmatchedMethods().size());
 
         foo2.setHot(true);
         foo3.setHot(true);
@@ -82,11 +80,11 @@ public class MethodMatcherTest {
         assertEquals(1, matching.getMatchedMethods().size());
         MatchedMethod matchedFoo = matching.getMatchedMethods().get(0);
         assertEquals("foo", matchedFoo.getCompilationMethodName());
-        assertEquals(1, matchedFoo.getMatchedExecutedMethods().size());
-        assertEquals("foo3", matchedFoo.getMatchedExecutedMethods().get(0).getMethod1().getCompilationId());
-        assertEquals("foo4", matchedFoo.getMatchedExecutedMethods().get(0).getMethod2().getCompilationId());
-        assertEquals(1, matchedFoo.getExtraExecutedMethods().size());
-        assertEquals("foo2", matchedFoo.getExtraExecutedMethods().get(0).getExecutedMethod().getCompilationId());
-        assertEquals(2, matching.getExtraMethods().size());
+        assertEquals(1, matchedFoo.getMatchedCompilationUnits().size());
+        assertEquals("foo3", matchedFoo.getMatchedCompilationUnits().get(0).getFirstCompilationUnit().getCompilationId());
+        assertEquals("foo4", matchedFoo.getMatchedCompilationUnits().get(0).getSecondCompilationUnit().getCompilationId());
+        assertEquals(1, matchedFoo.getUnmatchedCompilationUnits().size());
+        assertEquals("foo2", matchedFoo.getUnmatchedCompilationUnits().get(0).getExecutedMethod().getCompilationId());
+        assertEquals(2, matching.getUnmatchedMethods().size());
     }
 }

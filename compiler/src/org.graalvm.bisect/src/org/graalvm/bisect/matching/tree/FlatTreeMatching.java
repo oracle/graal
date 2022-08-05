@@ -73,7 +73,7 @@ public class FlatTreeMatching implements TreeMatching {
                     Writer writer,
                     ExperimentId experimentId,
                     OptimizationMatching optimizationMatching) {
-        List<Optimization> optimizations = optimizationMatching.getExtraOptimizations(experimentId);
+        List<Optimization> optimizations = optimizationMatching.getUnmatchedOptimizations(experimentId);
         if (optimizations.isEmpty()) {
             return;
         }

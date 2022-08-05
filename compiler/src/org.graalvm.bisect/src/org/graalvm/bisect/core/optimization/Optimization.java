@@ -24,27 +24,104 @@
  */
 package org.graalvm.bisect.core.optimization;
 
+import java.util.List;
+
 import org.graalvm.bisect.util.Writer;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
 
 /**
- * Represents an optimization in a compilation unit.
+ * Represents an immutable optimization (applied graph transformation) in a compilation unit at a
+ * particular source position.
+ *
+ * An example of an optimization is loop peeling of a loop at a particular source position, which is
+ * performed by an {@link OptimizationPhase optimization phase} like {@code LoopPeelingPhase}.
  */
-public interface Optimization extends OptimizationTreeNode {
+public class Optimization implements OptimizationTreeNode {
+    /**
+     * The name of this optimization. Corresponds to the name of the compiler phase or another class
+     * which performed this optimization.
+     */
+    private final String optimizationName;
+
+    /**
+     * The name of the event that occurred, which describes this optimization entry.
+     */
+    private final String eventName;
+
+    /**
+     * An ordered map that represents the position of a significant node related to this
+     * optimization. It maps method names to byte code indices, starting with the method containing
+     * the significant node and its bci. If the node does not belong to the root method in the
+     * compilation unit, the map also contains the method names of the method's callsites mapped to
+     * the byte code indices of their invokes.
+     *
+     * A significant node is a node that describes the applied transformation well. For instance, it
+     * is the canonicalized node in case of a canonicalization. For loop transformations, it could
+     * be the position of a {@code LoopBeginNode}.
+     */
+    private final UnmodifiableEconomicMap<String, Integer> position;
+
+    /**
+     * A map of additional properties of this optimization, mapped by property name.
+     */
+    private final UnmodifiableEconomicMap<String, Object> properties;
+
+    /**
+     * A pre-calculated hash code.
+     */
+    private final int cachedHashCode;
+
+    public Optimization(String optimizationName,
+                    String eventName,
+                    UnmodifiableEconomicMap<String, Integer> position,
+                    UnmodifiableEconomicMap<String, Object> properties) {
+        this.optimizationName = optimizationName;
+        this.eventName = eventName;
+        this.position = (position == null) ? EconomicMap.emptyMap() : position;
+        this.properties = (properties == null) ? EconomicMap.emptyMap() : properties;
+        cachedHashCode = calculateHashCode();
+    }
+
     /**
      * Gets the name of this optimization. Corresponds to the name of the compiler phase or another
-     * class which performed this optimization.
+     * class which performed this optimization. Example of an optimization name:
+     * LoopTransformations.
      *
      * @return the name of this optimization
      */
-    String getOptimizationName();
+    public String getOptimizationName() {
+        return optimizationName;
+    }
+
+    /**
+     * Gets the name of the event that occurred. Compared to {@link #getOptimizationName()}, it
+     * should return a more specific description of the optimization. Example of an event name:
+     * LoopPeeling.
+     *
+     * @return the name of the event that occurred
+     */
+    @Override
+    public String getName() {
+        return eventName;
+    }
 
     /**
      * Gets the map of additional properties of this optimization, mapped by property name.
      *
+     * As an example, the properties of a canonicalization could be:
+     *
+     * <pre>
+     * {replacedNodeClass: +, canonicalNodeClass: Constant}
+     * </pre>
+     *
      * @return the map of additional properties
      */
-    UnmodifiableEconomicMap<String, Object> getProperties();
+    public UnmodifiableEconomicMap<String, Object> getProperties() {
+        return properties;
+    }
 
     /**
      * Gets an ordered map that represents the position of a significant node related to this
@@ -55,7 +132,86 @@ public interface Optimization extends OptimizationTreeNode {
      *
      * @return an ordered map that represents the position of a significant node
      */
-    UnmodifiableEconomicMap<String, Integer> getPosition();
+    public UnmodifiableEconomicMap<String, Integer> getPosition() {
+        return position;
+    }
+
+    /**
+     * Appends a representation of an {@link EconomicMap} to a {@link StringBuilder}.
+     *
+     * The output format is:
+     *
+     * <pre>
+     * {key1: value1, key2: value2, ...}
+     * </pre>
+     *
+     * @param sb the builder that is extended with the representation
+     * @param map the map that is formatted
+     */
+    private static void formatMap(StringBuilder sb, UnmodifiableEconomicMap<String, ?> map) {
+        sb.append('{');
+        boolean first = true;
+        UnmodifiableMapCursor<String, ?> cursor = map.getEntries();
+        while (cursor.advance()) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(cursor.getKey()).append(": ").append(cursor.getValue());
+        }
+        sb.append('}');
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getOptimizationName()).append(" ").append(getName());
+        UnmodifiableMapCursor<String, Integer> positionCursor = position.getEntries();
+        if (positionCursor.advance()) {
+            sb.append(" at bci ").append(positionCursor.getValue());
+        }
+        if (properties.isEmpty()) {
+            return sb.toString();
+        }
+        sb.append(" with ");
+        formatMap(sb, properties);
+        return sb.toString();
+    }
+
+    @Override
+    public void writeHead(Writer writer) {
+        writer.writeln(toString());
+    }
+
+    private int calculateHashCode() {
+        int result = EconomicMapUtil.hashCode(position);
+        result = 31 * result + optimizationName.hashCode();
+        result = 31 * result + eventName.hashCode();
+        result = 31 * result + EconomicMapUtil.hashCode(properties);
+        return result;
+    }
+
+    @Override
+    public int hashCode() {
+        return cachedHashCode;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof Optimization)) {
+            return false;
+        }
+        Optimization other = (Optimization) object;
+        return cachedHashCode == other.cachedHashCode && optimizationName.equals(other.optimizationName) &&
+                        eventName.equals(other.eventName) && EconomicMapUtil.equals(position, other.position) &&
+                        EconomicMapUtil.equals(properties, other.properties);
+    }
+
+    @Override
+    public List<OptimizationTreeNode> getChildren() {
+        return List.of();
+    }
 
     /**
      * Writes the representation of this subtree to the destination writer. This is equivalent to
@@ -64,7 +220,7 @@ public interface Optimization extends OptimizationTreeNode {
      * @param writer the destination writer
      */
     @Override
-    default void writeRecursive(Writer writer) {
+    public void writeRecursive(Writer writer) {
         writeHead(writer);
     }
 }

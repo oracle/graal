@@ -29,15 +29,17 @@ import java.util.List;
 import org.graalvm.bisect.core.optimization.Optimization;
 
 /**
- * Creates a matching between optimizations of two executed methods.
+ * Creates a matching between optimizations of two compilation units.
  */
 public interface OptimizationMatcher {
     /**
-     * Creates a matching between optimizations of two executed methods.
+     * Creates a matching between optimizations of two compilation units.
      *
-     * @param optimizations1 a list of optimizations from a method in the first experiment
-     * @param optimizations2 a list of optimizations from a method in the second experiment
-     * @return an object that describes matched and extra optimizations
+     * @param optimizations1 a list of optimizations in the compilation unit from the first
+     *            experiment
+     * @param optimizations2 a list of optimizations in the compilation units from the second
+     *            experiment
+     * @return an object that describes matched and unmatched optimizations
      */
     OptimizationMatching match(List<Optimization> optimizations1, List<Optimization> optimizations2);
 }

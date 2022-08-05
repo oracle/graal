@@ -30,7 +30,6 @@ import java.util.List;
 
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
-import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.matching.optimization.OptimizationMatcher;
 import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
@@ -40,15 +39,15 @@ import org.junit.Test;
 public class OptimizationMatcherTest {
     @Test
     public void testSetBasedOptimizationMatcher() {
-        Optimization common1 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
-        Optimization common2 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 2));
-        Optimization common1Clone = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
-        Optimization common2Clone = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 2));
+        Optimization common1 = new Optimization("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
+        Optimization common2 = new Optimization("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 2));
+        Optimization common1Clone = new Optimization("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
+        Optimization common2Clone = new Optimization("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 2));
 
-        Optimization extra1 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), null);
-        Optimization extra2 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 2), EconomicMap.of("prop", 1));
-        Optimization extra3 = new OptimizationImpl("foo", "baz", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
-        Optimization extra4 = new OptimizationImpl("baz", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
+        Optimization extra1 = new Optimization("foo", "bar", EconomicMap.of("method", 1), null);
+        Optimization extra2 = new Optimization("foo", "bar", EconomicMap.of("method", 2), EconomicMap.of("prop", 1));
+        Optimization extra3 = new Optimization("foo", "baz", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
+        Optimization extra4 = new Optimization("baz", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
 
         List<Optimization> optimizations1 = List.of(extra1, common1, extra2, common2);
         List<Optimization> optimizations2 = List.of(common1Clone, common2Clone, extra3, extra4);
@@ -60,7 +59,7 @@ public class OptimizationMatcherTest {
         OptimizationMatcher matcher = new SetBasedOptimizationMatcher();
         OptimizationMatching matching = matcher.match(optimizations1, optimizations2);
         assertEquals(common, matching.getMatchedOptimizations());
-        assertEquals(extraLhs, matching.getExtraOptimizations(ExperimentId.ONE));
-        assertEquals(extraRhs, matching.getExtraOptimizations(ExperimentId.TWO));
+        assertEquals(extraLhs, matching.getUnmatchedOptimizations(ExperimentId.ONE));
+        assertEquals(extraRhs, matching.getUnmatchedOptimizations(ExperimentId.TWO));
     }
 }

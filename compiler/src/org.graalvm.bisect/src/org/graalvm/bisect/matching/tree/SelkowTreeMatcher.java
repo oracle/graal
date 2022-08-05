@@ -24,7 +24,7 @@
  */
 package org.graalvm.bisect.matching.tree;
 
-import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.core.optimization.OptimizationTreeNode;
 import org.graalvm.collections.EconomicMap;
@@ -55,7 +55,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
     private EconomicMap<OptimizationTreeNode, Integer> treeSize = null;
 
     @Override
-    public EditScript match(ExecutedMethod method1, ExecutedMethod method2) {
+    public EditScript match(CompilationUnit method1, CompilationUnit method2) {
         treeSize = EconomicMap.create();
         EditScript editScript = new EditScript();
         edit(method1.getRootPhase(), method2.getRootPhase(), editScript, 0);

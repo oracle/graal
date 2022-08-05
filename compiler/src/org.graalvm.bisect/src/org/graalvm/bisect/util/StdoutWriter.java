@@ -29,7 +29,9 @@ package org.graalvm.bisect.util;
  */
 public class StdoutWriter implements Writer {
     private int indentLevel = 0;
+
     private boolean indentWritten = false;
+
     private String prefix;
 
     @Override

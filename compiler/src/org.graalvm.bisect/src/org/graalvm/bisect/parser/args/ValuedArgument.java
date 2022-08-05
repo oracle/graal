@@ -33,15 +33,6 @@ package org.graalvm.bisect.parser.args;
  */
 abstract class ValuedArgument<T> extends Argument {
     /**
-     * Gets the value of the argument.
-     *
-     * @return the value of the argument
-     */
-    public T getValue() {
-        return value;
-    }
-
-    /**
      * The value of the argument.
      */
     protected T value;
@@ -68,6 +59,13 @@ abstract class ValuedArgument<T> extends Argument {
         super(name, false, help);
         set = true;
         value = defaultValue;
+    }
+
+    /**
+     * Gets the value of the argument.
+     */
+    public T getValue() {
+        return value;
     }
 
     @Override

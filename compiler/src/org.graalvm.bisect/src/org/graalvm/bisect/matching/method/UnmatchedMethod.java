@@ -26,53 +26,55 @@ package org.graalvm.bisect.matching.method;
 
 import java.util.List;
 
-import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.util.Writer;
 
 /**
- * Represents a Java method that was not matched with any other Java method from the other
- * experiment.
+ * Represents a method that was not matched with any other method from the other experiment.
  */
-public class ExtraMethod {
+public class UnmatchedMethod {
     /**
-     * Gets the experiment to which this Java method belongs.
-     *
-     * @return the experiment of this Java method
+     * The experiment to which this unmatched method belongs.
      */
-    public Experiment getExperiment() {
-        return experiment;
-    }
-
     private final Experiment experiment;
 
     /**
-     * Gets the compilation method name of this Java method.
-     *
-     * @return the compilation name of this method
-     * @see ExecutedMethod#getCompilationMethodName()
+     * The full signature of this unmatched method.
      */
-    public String getCompilationMethodName() {
-        return compilationMethodName;
-    }
-
     private final String compilationMethodName;
 
     /**
      * The list of hot compilations of this method.
      */
-    private final List<ExecutedMethod> executedMethods;
+    private final List<CompilationUnit> compilationUnits;
 
-    ExtraMethod(Experiment experiment, String compilationMethodName, List<ExecutedMethod> executedMethods) {
+    UnmatchedMethod(Experiment experiment, String compilationMethodName, List<CompilationUnit> compilationUnits) {
         this.experiment = experiment;
         this.compilationMethodName = compilationMethodName;
-        this.executedMethods = executedMethods;
+        this.compilationUnits = compilationUnits;
+    }
+
+    /**
+     * Gets the experiment to which this unmatched method belongs.
+     */
+    public Experiment getExperiment() {
+        return experiment;
+    }
+
+    /**
+     * Gets the compilation method name of this method.
+     *
+     * @see CompilationUnit#getCompilationMethodName()
+     */
+    public String getCompilationMethodName() {
+        return compilationMethodName;
     }
 
     /**
      * Writes a header identifying this method and
-     * {@link Experiment#writeMethodCompilationList(Writer, String) the list of compilations} of
-     * this method.
+     * {@link Experiment#writeCompilationUnits(Writer, String) the list of compilations} of this
+     * method.
      *
      * @param writer the destination writer
      * @param experiment1 the first experiment
@@ -81,8 +83,8 @@ public class ExtraMethod {
     public void writeHeaderAndCompilationList(Writer writer, Experiment experiment1, Experiment experiment2) {
         writer.writeln("Method " + compilationMethodName + " is hot only in experiment " + experiment.getExperimentId());
         writer.increaseIndent();
-        experiment1.writeMethodCompilationList(writer, compilationMethodName);
-        experiment2.writeMethodCompilationList(writer, compilationMethodName);
+        experiment1.writeCompilationUnits(writer, compilationMethodName);
+        experiment2.writeCompilationUnits(writer, compilationMethodName);
         writer.decreaseIndent();
     }
 
@@ -97,8 +99,8 @@ public class ExtraMethod {
     public void write(Writer writer, Experiment experiment1, Experiment experiment2) {
         writeHeaderAndCompilationList(writer, experiment1, experiment2);
         writer.increaseIndent();
-        for (ExecutedMethod method : executedMethods) {
-            writer.writeln("Compilation " + method.getCompilationId() + " (" + method.createSummaryOfMethodExecution() + ") in experiment " + method.getExperiment().getExperimentId());
+        for (CompilationUnit method : compilationUnits) {
+            writer.writeln("Compilation " + method.getCompilationId() + " (" + method.createExecutionSummary() + ") in experiment " + method.getExperiment().getExperimentId());
             writer.increaseIndent();
             method.getRootPhase().writeRecursive(writer);
             writer.decreaseIndent();

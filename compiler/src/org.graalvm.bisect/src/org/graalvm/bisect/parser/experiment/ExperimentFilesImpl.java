@@ -39,7 +39,9 @@ import org.graalvm.bisect.core.ExperimentId;
  */
 public class ExperimentFilesImpl implements ExperimentFiles {
     private final ExperimentId experimentId;
+
     private final String optimizationLogPath;
+
     private final String proftoolOutputPath;
 
     /**

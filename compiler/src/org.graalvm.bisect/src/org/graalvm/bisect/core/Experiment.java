@@ -24,61 +24,141 @@
  */
 package org.graalvm.bisect.core;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.graalvm.bisect.util.Writer;
 import org.graalvm.collections.EconomicMap;
 
 /**
- * An experiment consisting of all graal-compiled methods and metadata.
+ * An experiment consisting of all graal-compiled methods and metadata. Additionally, this class
+ * allows its {@link CompilationUnit executed methods} to be added incrementally. This is necessary
+ * to be able to create an instance of the experiment first and then bind the {@link CompilationUnit
+ * executed methods} with their {@link Experiment}.
  */
-public interface Experiment {
+public class Experiment {
+    /**
+     * The list of graal-compiled executed methods belonging to this experiment. The list is empty
+     * initially and gets built incrementally via {@link #addCompilationUnit(CompilationUnit)}.
+     */
+    private final List<CompilationUnit> compilationUnits;
+
+    /**
+     * The execution ID of this experiment.
+     */
+    private final String executionId;
+
+    /**
+     * The ID of this experiment.
+     */
+    private final ExperimentId experimentId;
+
+    /**
+     * The total period of all executed methods including non-graal executions.
+     */
+    private final long totalPeriod;
+
+    /**
+     * The total number of methods collected by proftool.
+     */
+    private final int totalProftoolMethods;
+
+    /**
+     * A cached sum of execution periods of the {@link #compilationUnits}. Initially {@code null}
+     * and computed on demand.
+     */
+    private Long graalPeriod;
+
+    /**
+     * Maps {@link CompilationUnit#getCompilationMethodName() compilation method names} to methods
+     * with a matching name in this experiment.
+     */
+    private final Map<String, List<CompilationUnit>> methodsByName;
+
+    public Experiment(
+                    String executionId,
+                    ExperimentId experimentId,
+                    long totalPeriod,
+                    int totalProftoolMethods) {
+        this.compilationUnits = new ArrayList<>();
+        this.executionId = executionId;
+        this.experimentId = experimentId;
+        this.totalPeriod = totalPeriod;
+        this.totalProftoolMethods = totalProftoolMethods;
+        this.methodsByName = new HashMap<>();
+    }
+
     /**
      * Gets the experiment ID.
      */
-    ExperimentId getExperimentId();
+    public ExperimentId getExperimentId() {
+        return experimentId;
+    }
 
     /**
      * Gets the execution ID.
      */
-    String getExecutionId();
+    public String getExecutionId() {
+        return executionId;
+    }
 
     /**
-     * Gets the total period of all executed methods including non-graal executions.
+     * Gets the total period of all executed code including non-graal executions.
      *
      * @return the total period of execution
      */
-    long getTotalPeriod();
+    public long getTotalPeriod() {
+        return totalPeriod;
+    }
 
     /**
      * Gets the sum of the periods of all graal-compiled methods.
      *
      * @return the total period of graal-compiled methods
      */
-    long getGraalPeriod();
+    public long getGraalPeriod() {
+        if (graalPeriod != null) {
+            return graalPeriod;
+        }
+        graalPeriod = compilationUnits.stream().mapToLong(CompilationUnit::getPeriod).sum();
+        return graalPeriod;
+    }
 
     /**
-     * Gets the list of all graal-compiled methods, including non-hot methods.
+     * Gets the list of all compilation units, including non-hot methods.
      *
-     * @return the list of graal-compiled methods
+     * @return the list of compilation units
      */
-    List<ExecutedMethod> getExecutedMethods();
+    public List<CompilationUnit> getCompilationUnits() {
+        return compilationUnits;
+    }
 
     /**
-     * Groups hot graal-compiled methods by compilation method name.
+     * Groups hot compilation units by method name.
      *
-     * @see ExecutedMethod#getCompilationMethodName()
-     * @return a map of lists of executed methods grouped by compilation method name
+     * @see CompilationUnit#getCompilationMethodName()
+     * @return a map of lists of compilation units grouped by method name
      */
-    EconomicMap<String, List<ExecutedMethod>> groupHotMethodsByName();
-
-    /**
-     * Gets a list of methods with the given compilation method name.
-     *
-     * @param compilationMethodName the compilation method name
-     * @return a list of methods with matching compilation method name
-     */
-    List<ExecutedMethod> getMethodsByName(String compilationMethodName);
+    public EconomicMap<String, List<CompilationUnit>> groupHotCompilationUnitsByMethod() {
+        EconomicMap<String, List<CompilationUnit>> map = EconomicMap.create();
+        for (CompilationUnit compilationUnit : compilationUnits) {
+            if (compilationUnit.isHot()) {
+                List<CompilationUnit> methods;
+                if (map.containsKey(compilationUnit.getCompilationMethodName())) {
+                    methods = map.get(compilationUnit.getCompilationMethodName());
+                } else {
+                    methods = new ArrayList<>();
+                    map.put(compilationUnit.getCompilationMethodName(), methods);
+                }
+                methods.add(compilationUnit);
+            }
+        }
+        return map;
+    }
 
     /**
      * Writes a summary of the experiment. Includes the number of methods collected (proftool and
@@ -87,7 +167,17 @@ public interface Experiment {
      *
      * @param writer the destination writer
      */
-    void writeExperimentSummary(Writer writer);
+    public void writeExperimentSummary(Writer writer) {
+        String graalExecutionPercent = String.format("%.2f", (double) getGraalPeriod() / totalPeriod * 100);
+        String graalHotExecutionPercent = String.format("%.2f", (double) countHotGraalPeriod() / totalPeriod * 100);
+        writer.writeln("Experiment " + experimentId + " with execution ID " + executionId);
+        writer.increaseIndent();
+        writer.writeln("Collected optimization logs for " + compilationUnits.size() + " methods");
+        writer.writeln("Collected proftool data for " + totalProftoolMethods + " methods");
+        writer.writeln("Graal-compiled methods account for " + graalExecutionPercent + "% of execution");
+        writer.writeln(countHotCompilationUnits() + " hot compilation units account for " + graalHotExecutionPercent + "% of execution");
+        writer.decreaseIndent();
+    }
 
     /**
      * Writes the list of compilations (including compilation ID, share of the execution and hotness
@@ -96,5 +186,45 @@ public interface Experiment {
      * @param writer the destination writer
      * @param compilationMethodName the compilation method name to summarize
      */
-    void writeMethodCompilationList(Writer writer, String compilationMethodName);
+    public void writeCompilationUnits(Writer writer, String compilationMethodName) {
+        writer.writeln("In experiment " + experimentId);
+        writer.increaseIndent();
+        List<CompilationUnit> methods = methodsByName.get(compilationMethodName);
+        if (methods == null) {
+            writer.writeln("No compilations");
+            writer.decreaseIndent();
+            return;
+        }
+        methods = methods.stream().sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod())).collect(Collectors.toList());
+        long hotMethodCount = methods.stream().filter(CompilationUnit::isHot).count();
+        writer.writeln(methods.size() + " compilations (" + hotMethodCount + " of which are hot)");
+        writer.writeln("Compilations");
+        writer.increaseIndent();
+        for (CompilationUnit compilationUnit : methods) {
+            writer.writeln(compilationUnit.getCompilationId() + " (" + compilationUnit.createExecutionSummary() + ((compilationUnit.isHot()) ? ") *hot*" : ")"));
+        }
+        writer.decreaseIndent(2);
+    }
+
+    private long countHotCompilationUnits() {
+        return compilationUnits.stream().filter(CompilationUnit::isHot).count();
+    }
+
+    private long countHotGraalPeriod() {
+        return compilationUnits.stream().filter(CompilationUnit::isHot).mapToLong(CompilationUnit::getPeriod).sum();
+    }
+
+    /**
+     * Add a compilation unit to this experiment. The compilation unit's experiment must be set to
+     * this instance.
+     *
+     * @param compilationUnit the compilation unit to be added
+     */
+    public void addCompilationUnit(CompilationUnit compilationUnit) {
+        assert compilationUnit.getExperiment() == this;
+        graalPeriod = null;
+        compilationUnits.add(compilationUnit);
+        List<CompilationUnit> methods = methodsByName.computeIfAbsent(compilationUnit.getCompilationMethodName(), k -> new ArrayList<>());
+        methods.add(compilationUnit);
+    }
 }

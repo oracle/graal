@@ -28,9 +28,9 @@ import java.io.IOException;
 
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.core.HotMethodPolicy;
+import org.graalvm.bisect.core.HotCompilationUnitPolicy;
 import org.graalvm.bisect.matching.method.GreedyMethodMatcher;
-import org.graalvm.bisect.matching.method.MatchedExecutedMethod;
+import org.graalvm.bisect.matching.method.MatchedCompilationUnit;
 import org.graalvm.bisect.matching.method.MatchedMethod;
 import org.graalvm.bisect.matching.method.MethodMatching;
 import org.graalvm.bisect.matching.tree.SelkowTreeMatcher;
@@ -57,23 +57,23 @@ public class ProfBisect {
                         "Compares the optimization log of hot compilation units of two experiments.");
         IntegerArgument hotMinArgument = argumentParser.addIntegerArgument(
                         "--hot-min-limit", 1,
-                        "the minimum number of methods to mark as hot");
+                        "the minimum number of compilation units to mark as hot");
         IntegerArgument hotMaxArgument = argumentParser.addIntegerArgument(
                         "--hot-max-limit", 10,
-                        "the maximum number of methods to mark as hot");
+                        "the maximum number of compilation units to mark as hot");
         DoubleArgument percentileArgument = argumentParser.addDoubleArgument(
                         "--hot-percentile", 0.9,
-                        "the percentile of the execution period that is spent executing hot methods");
+                        "the percentile of the execution period that is spent executing hot compilation units");
         StringArgument proftoolArgument1 = argumentParser.addStringArgument(
                         "proftoolOutput1", "proftool output of the first experiment in JSON.");
         StringArgument optimizationLogArgument1 = argumentParser.addStringArgument(
                         "optimizationLog1",
-                        "directory with optimization logs for each method compiled in the first experiment.");
+                        "directory with optimization logs for each compilation unit in the first experiment.");
         StringArgument proftoolArgument2 = argumentParser.addStringArgument(
                         "proftoolOutput2", "proftool output of the second experiment in JSON.");
         StringArgument optimizationLogArgument2 = argumentParser.addStringArgument(
                         "optimizationLog2",
-                        "directory with optimization logs for each method compiled in the second experiment.");
+                        "directory with optimization logs for each compilation unit in the second experiment.");
         try {
             argumentParser.parse(args);
         } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {
@@ -94,16 +94,16 @@ public class ProfBisect {
 
         Writer writer = new StdoutWriter();
 
-        HotMethodPolicy hotMethodPolicy = new HotMethodPolicy();
-        hotMethodPolicy.setHotMethodMinLimit(hotMinArgument.getValue());
-        hotMethodPolicy.setHotMethodMaxLimit(hotMaxArgument.getValue());
-        hotMethodPolicy.setHotMethodPercentile(percentileArgument.getValue());
+        HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
+        hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
+        hotCompilationUnitPolicy.setHotMaxLimit(hotMaxArgument.getValue());
+        hotCompilationUnitPolicy.setHotPercentile(percentileArgument.getValue());
 
         ExperimentFiles experimentFiles1 = new ExperimentFilesImpl(
                         ExperimentId.ONE, proftoolArgument1.getValue(), optimizationLogArgument1.getValue());
         ExperimentParser parser1 = new ExperimentParser(experimentFiles1);
         Experiment experiment1 = parseOrExit(parser1);
-        hotMethodPolicy.markHotMethods(experiment1);
+        hotCompilationUnitPolicy.markHotCompilationUnits(experiment1);
         experiment1.writeExperimentSummary(writer);
         writer.writeln();
 
@@ -111,7 +111,7 @@ public class ProfBisect {
                         ExperimentId.TWO, proftoolArgument2.getValue(), optimizationLogArgument2.getValue());
         ExperimentParser parser2 = new ExperimentParser(experimentFiles2);
         Experiment experiment2 = parseOrExit(parser2);
-        hotMethodPolicy.markHotMethods(experiment2);
+        hotCompilationUnitPolicy.markHotCompilationUnits(experiment2);
         experiment2.writeExperimentSummary(writer);
 
         GreedyMethodMatcher matcher = new GreedyMethodMatcher();
@@ -120,23 +120,21 @@ public class ProfBisect {
 
         for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
             writer.writeln();
-            matchedMethod.writeHeaderAndCompilationLists(writer, experiment1, experiment2);
+            matchedMethod.writeHeaderAndCompilationUnits(writer, experiment1, experiment2);
             writer.increaseIndent();
-            for (MatchedExecutedMethod matchedExecutedMethod : matchedMethod.getMatchedExecutedMethods()) {
-                matchedExecutedMethod.writeHeader(writer);
-                TreeMatching treeMatching = treeMatcher.match(
-                                matchedExecutedMethod.getMethod1(),
-                                matchedExecutedMethod.getMethod2());
+            for (MatchedCompilationUnit matchedCompilationUnit : matchedMethod.getMatchedCompilationUnits()) {
+                matchedCompilationUnit.writeHeader(writer);
+                TreeMatching treeMatching = treeMatcher.match(matchedCompilationUnit.getFirstCompilationUnit(), matchedCompilationUnit.getSecondCompilationUnit());
                 writer.increaseIndent();
                 treeMatching.write(writer);
                 writer.decreaseIndent();
             }
-            matchedMethod.writeExtraExecutedMethods(writer);
+            matchedMethod.writeUnmatchedCompilationUnits(writer);
             writer.decreaseIndent();
         }
-        matching.getExtraMethods().iterator().forEachRemaining(extraMethod -> {
+        matching.getUnmatchedMethods().iterator().forEachRemaining(unmatchedMethod -> {
             writer.writeln();
-            extraMethod.write(writer, experiment1, experiment2);
+            unmatchedMethod.write(writer, experiment1, experiment2);
         });
     }
 

@@ -31,13 +31,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.bisect.core.ExecutedMethodBuilder;
+import org.graalvm.bisect.core.CompilationUnitBuilder;
 import org.graalvm.bisect.core.Experiment;
-import org.graalvm.bisect.core.ExperimentImpl;
 import org.graalvm.bisect.core.optimization.Optimization;
-import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
-import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.util.json.JSONParser;
@@ -47,6 +44,7 @@ import org.graalvm.util.json.JSONParser;
  */
 public class ExperimentParser {
     private final ExperimentFiles experimentFiles;
+
     /**
      * The compiler level of graal-compiled methods in the output of proftool.
      */
@@ -72,9 +70,9 @@ public class ExperimentParser {
      */
     public Experiment parse() throws IOException, ExperimentParserTypeError {
         // parse optimization logs to ExecutedMethodsBuilders
-        Map<String, ExecutedMethodBuilder> methodByCompilationId = new HashMap<>();
+        Map<String, CompilationUnitBuilder> methodByCompilationId = new HashMap<>();
         for (Reader optimizationLog : experimentFiles.getOptimizationLogs()) {
-            ExecutedMethodBuilder method = parseCompiledMethod(optimizationLog);
+            CompilationUnitBuilder method = parseCompiledMethod(optimizationLog);
             methodByCompilationId.put(method.getCompilationId(), method);
         }
 
@@ -85,7 +83,7 @@ public class ExperimentParser {
             if (method.level == null || method.level != GRAAL_COMPILER_LEVEL) {
                 continue;
             }
-            ExecutedMethodBuilder builder = methodByCompilationId.get(method.compilationId);
+            CompilationUnitBuilder builder = methodByCompilationId.get(method.compilationId);
             if (builder == null) {
                 System.out.println("Warning: Compilation ID " + method.compilationId + " not found in the optimization log");
             } else {
@@ -93,23 +91,23 @@ public class ExperimentParser {
             }
         }
 
-        ExperimentImpl experiment = new ExperimentImpl(
+        Experiment experiment = new Experiment(
                         proftoolLog.executionId,
                         experimentFiles.getExperimentId(),
                         proftoolLog.totalPeriod,
                         proftoolLog.code.size());
-        for (ExecutedMethodBuilder builder : methodByCompilationId.values()) {
+        for (CompilationUnitBuilder builder : methodByCompilationId.values()) {
             builder.setExperiment(experiment);
-            experiment.addExecutedMethod(builder.build());
+            experiment.addCompilationUnit(builder.build());
         }
         return experiment;
     }
 
-    private ExecutedMethodBuilder parseCompiledMethod(Reader optimizationLog)
+    private CompilationUnitBuilder parseCompiledMethod(Reader optimizationLog)
                     throws IOException, ExperimentParserTypeError {
         JSONParser parser = new JSONParser(optimizationLog);
         EconomicMap<String, Object> log = expectMap(parser.parse(), "the root of a compiled method", false);
-        ExecutedMethodBuilder builder = new ExecutedMethodBuilder();
+        CompilationUnitBuilder builder = new CompilationUnitBuilder();
         builder.setCompilationId(expectString(log, "compilationId", false));
         builder.setCompilationMethodName(expectString(log, "compilationMethodName", false));
         EconomicMap<String, Object> rootPhase = expectMap(log.get("rootPhase"), "the root phase of a method", false);
@@ -119,7 +117,7 @@ public class ExperimentParser {
 
     private OptimizationPhase parseOptimizationPhase(EconomicMap<String, Object> log) throws ExperimentParserTypeError {
         String phaseName = expectString(log, "phaseName", false);
-        OptimizationPhaseImpl optimizationPhase = new OptimizationPhaseImpl(phaseName);
+        OptimizationPhase optimizationPhase = new OptimizationPhase(phaseName);
         List<Object> optimizations = expectList(log, "optimizations", true);
         if (optimizations == null) {
             return optimizationPhase;
@@ -155,7 +153,7 @@ public class ExperimentParser {
         optimization.removeKey("eventName");
         optimization.removeKey("position");
         EconomicMap<String, Object> properties = optimization.isEmpty() ? null : optimization;
-        return new OptimizationImpl(optimizationName, eventName, position, properties);
+        return new Optimization(optimizationName, eventName, position, properties);
     }
 
     private static class ProftoolMethod {

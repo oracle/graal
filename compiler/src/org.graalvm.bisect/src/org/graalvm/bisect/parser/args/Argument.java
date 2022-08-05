@@ -41,6 +41,35 @@ public abstract class Argument {
     private final String name;
 
     /**
+     * Is the argument required?
+     */
+    private final boolean required;
+
+    /**
+     * The help message to be displayed in the program usage string.
+     */
+    private final String help;
+
+    /**
+     * Was the argument's value already set to the default value or parsed from the program
+     * arguments?
+     */
+    protected boolean set = false;
+
+    /**
+     * Constructs an argument.
+     *
+     * @param name the name of the argument
+     * @param required is the argument required
+     * @param help the help message
+     */
+    Argument(String name, boolean required, String help) {
+        this.name = name;
+        this.required = required;
+        this.help = help;
+    }
+
+    /**
      * Gets whether this argument is required.
      *
      * @return true iff this argument is required
@@ -60,11 +89,6 @@ public abstract class Argument {
     }
 
     /**
-     * Is the argument required?
-     */
-    private final boolean required;
-
-    /**
      * Gets the help message.
      *
      * @return the help message
@@ -74,36 +98,12 @@ public abstract class Argument {
     }
 
     /**
-     * The help message to be displayed in the program usage string.
-     */
-    private final String help;
-
-    /**
-     * Was the argument's value already set to the default value or parsed from the program
-     * arguments?
-     */
-    protected boolean set = false;
-
-    /**
      * Gets the argument name.
      *
      * @return the argument name
      */
     public String getName() {
         return name;
-    }
-
-    /**
-     * Constructs an argument.
-     *
-     * @param name the name of the argument
-     * @param required is the argument required
-     * @param help the help message
-     */
-    Argument(String name, boolean required, String help) {
-        this.name = name;
-        this.required = required;
-        this.help = help;
     }
 
     /**

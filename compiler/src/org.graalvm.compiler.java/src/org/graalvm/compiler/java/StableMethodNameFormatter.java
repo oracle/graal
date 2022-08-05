@@ -138,7 +138,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
 
     /**
      * Find a stable method name for a lambda method by replacing the numbers just after the
-     * substring {@code $$Lambda$} with a hash of invokes similarly to {@link LambdaUtils}
+     * substring {@code $$Lambda$} with a hash of invokes similarly to {@link LambdaUtils}.
      *
      * @param method a lambda method to be formatted
      * @return a stable method name

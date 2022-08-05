@@ -26,10 +26,10 @@ package org.graalvm.bisect.matching.method;
 
 import java.util.List;
 
-import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.Experiment;
-import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.util.CollectionsUtil;
 
@@ -40,59 +40,59 @@ import org.graalvm.util.CollectionsUtil;
 public class GreedyMethodMatcher implements MethodMatcher {
     /**
      * Matches pairs of methods by their signature and then greedily matches their respective
-     * compilation (executions). For a given Java method (in both experiments), the hottest
-     * executions (with the longest execution period) are matched first. Then again the pair of the
-     * hottest execution is paired until no more pairs are left. Only hot executions and methods
-     * that have a hot execution are considered. Returns an object describing the pairs of matched
-     * methods, matched executed methods and also the list of (executed) methods that do not have a
-     * pair - extra methods.
+     * compilations. For a given Java method (in both experiments), the hottest compilation units
+     * (with the longest execution period) are matched first. Then again the pair of the hottest
+     * compilation units is matched until no more pairs are left. Only hot compilation units and
+     * methods that have a hot compilation units are considered. Returns an object describing the
+     * pairs of matched methods, matched compilation units and also the list of (executed) methods
+     * that do not have a pair - unmatched methods.
      *
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment
      * @return the description of the computed matching
-     * @see Experiment#groupHotMethodsByName()
+     * @see Experiment#groupHotCompilationUnitsByMethod()
      */
     @Override
     public MethodMatching match(Experiment experiment1, Experiment experiment2) {
-        EconomicMap<String, List<ExecutedMethod>> methodMap1 = experiment1.groupHotMethodsByName();
-        EconomicMap<String, List<ExecutedMethod>> methodMap2 = experiment2.groupHotMethodsByName();
-        MethodMatchingImpl matching = new MethodMatchingImpl();
+        EconomicMap<String, List<CompilationUnit>> methodMap1 = experiment1.groupHotCompilationUnitsByMethod();
+        EconomicMap<String, List<CompilationUnit>> methodMap2 = experiment2.groupHotCompilationUnitsByMethod();
+        MethodMatching matching = new MethodMatching();
 
         EconomicSet<String> intersection = EconomicMapUtil.keySet(methodMap1);
         intersection.retainAll(EconomicMapUtil.keySet(methodMap2));
         for (String compilationMethodName : intersection) {
             MatchedMethod matchedMethod = matching.addMatchedMethod(compilationMethodName);
-            Iterable<ExecutedMethod> leftMethods = methodMap1.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator)::iterator;
-            Iterable<ExecutedMethod> rightMethods = methodMap2.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator)::iterator;
+            Iterable<CompilationUnit> leftMethods = methodMap1.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator)::iterator;
+            Iterable<CompilationUnit> rightMethods = methodMap2.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator)::iterator;
             CollectionsUtil.zipLongest(leftMethods, rightMethods).iterator().forEachRemaining(pair -> {
-                                if (pair.getLeft() != null && pair.getRight() != null) {
-                                    matchedMethod.addMatchedExecutedMethod(pair.getLeft(), pair.getRight());
-                                } else if (pair.getLeft() == null) {
-                                    matchedMethod.addExtraExecutedMethod(pair.getRight());
-                                } else {
-                                    matchedMethod.addExtraExecutedMethod(pair.getLeft());
-                                }
-                            });
+                if (pair.getLeft() != null && pair.getRight() != null) {
+                    matchedMethod.addMatchedCompilationUnit(pair.getLeft(), pair.getRight());
+                } else if (pair.getLeft() == null) {
+                    matchedMethod.addUnmatchedCompilationUnit(pair.getRight());
+                } else {
+                    matchedMethod.addUnmatchedCompilationUnit(pair.getLeft());
+                }
+            });
         }
 
-        analyzeExtraMethods(methodMap1, methodMap2, matching, experiment1);
-        analyzeExtraMethods(methodMap2, methodMap1, matching, experiment2);
+        analyzeUnmatchedMethods(methodMap1, methodMap2, matching, experiment1);
+        analyzeUnmatchedMethods(methodMap2, methodMap1, matching, experiment2);
 
         return matching;
     }
 
-    private static int greaterPeriodComparator(ExecutedMethod a, ExecutedMethod b) {
+    private static int greaterPeriodComparator(CompilationUnit a, CompilationUnit b) {
         return Long.compare(b.getPeriod(), a.getPeriod());
     }
 
-    private static void analyzeExtraMethods(EconomicMap<String, List<ExecutedMethod>> methodMap1,
-                    EconomicMap<String, List<ExecutedMethod>> methodMap2,
-                    MethodMatchingImpl matching,
+    private static void analyzeUnmatchedMethods(EconomicMap<String, List<CompilationUnit>> methodMap1,
+                    EconomicMap<String, List<CompilationUnit>> methodMap2,
+                    MethodMatching matching,
                     Experiment lhsExperiment) {
         EconomicSet<String> difference = EconomicMapUtil.keySet(methodMap1);
         difference.removeAll(EconomicMapUtil.keySet(methodMap2));
         for (String compilationMethodName : difference) {
-            matching.addExtraMethod(compilationMethodName, lhsExperiment, methodMap1.get(compilationMethodName));
+            matching.addUnmatchedMethod(compilationMethodName, lhsExperiment, methodMap1.get(compilationMethodName));
         }
     }
 }

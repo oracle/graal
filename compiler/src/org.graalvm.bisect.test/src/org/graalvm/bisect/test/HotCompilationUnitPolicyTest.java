@@ -28,35 +28,33 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Set;
 
-import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.ExecutedMethodImpl;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.core.ExperimentImpl;
-import org.graalvm.bisect.core.HotMethodPolicy;
+import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.core.HotCompilationUnitPolicy;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
-import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.junit.Test;
 
-public class HotMethodPolicyTest {
+public class HotCompilationUnitPolicyTest {
     @Test
     public void testHotMethodPolicy() {
-        OptimizationPhase rootPhase = new OptimizationPhaseImpl("RootPhase");
-        ExperimentImpl experiment = new ExperimentImpl("1", ExperimentId.ONE, 100, 100);
-        experiment.addExecutedMethod(new ExecutedMethodImpl("foo1", "foo", rootPhase, 5, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("foo2", "foo", rootPhase, 35, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("foo3", "foo", rootPhase, 30, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("bar1", "bar", rootPhase, 20, experiment));
-        experiment.addExecutedMethod(new ExecutedMethodImpl("baz1", "bar", rootPhase, 10, experiment));
+        OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
+        Experiment experiment = new Experiment("1", ExperimentId.ONE, 100, 100);
+        experiment.addCompilationUnit(new CompilationUnit("foo1", "foo", rootPhase, 5, experiment));
+        experiment.addCompilationUnit(new CompilationUnit("foo2", "foo", rootPhase, 35, experiment));
+        experiment.addCompilationUnit(new CompilationUnit("foo3", "foo", rootPhase, 30, experiment));
+        experiment.addCompilationUnit(new CompilationUnit("bar1", "bar", rootPhase, 20, experiment));
+        experiment.addCompilationUnit(new CompilationUnit("baz1", "bar", rootPhase, 10, experiment));
 
-        HotMethodPolicy hotMethodPolicy = new HotMethodPolicy();
-        hotMethodPolicy.markHotMethods(experiment);
+        HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
+        hotCompilationUnitPolicy.markHotCompilationUnits(experiment);
 
-        hotMethodPolicy.setHotMethodMinLimit(1);
-        hotMethodPolicy.setHotMethodMaxLimit(10);
-        hotMethodPolicy.setHotMethodPercentile(0.9);
+        hotCompilationUnitPolicy.setHotMinLimit(1);
+        hotCompilationUnitPolicy.setHotMaxLimit(10);
+        hotCompilationUnitPolicy.setHotPercentile(0.9);
 
         Set<String> hotMethods = Set.of("foo2", "foo3", "bar1");
-        for (ExecutedMethod method : experiment.getExecutedMethods()) {
+        for (CompilationUnit method : experiment.getCompilationUnits()) {
             assertEquals(hotMethods.contains(method.getCompilationId()), method.isHot());
         }
     }

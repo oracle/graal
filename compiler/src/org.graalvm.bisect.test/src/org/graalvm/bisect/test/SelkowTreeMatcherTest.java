@@ -26,10 +26,9 @@ package org.graalvm.bisect.test;
 
 import java.util.List;
 
-import org.graalvm.bisect.core.ExecutedMethodImpl;
+import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.optimization.Optimization;
-import org.graalvm.bisect.core.optimization.OptimizationImpl;
-import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.matching.tree.EditScript;
 import org.graalvm.bisect.matching.tree.SelkowTreeMatcher;
 import org.graalvm.collections.EconomicMap;
@@ -39,15 +38,15 @@ import org.junit.Test;
 public class SelkowTreeMatcherTest {
     @Test
     public void preferOptimizationInsertionAndDeletion() {
-        Optimization foo = new OptimizationImpl("root", "foo", null, null);
-        OptimizationPhaseImpl root1 = new OptimizationPhaseImpl("RootPhase");
+        Optimization foo = new Optimization("root", "foo", null, null);
+        OptimizationPhase root1 = new OptimizationPhase("RootPhase");
         root1.addChild(foo);
-        ExecutedMethodImpl method1 = new ExecutedMethodImpl("1", "foo", root1, 0, null);
+        CompilationUnit method1 = new CompilationUnit("1", "foo", root1, 0, null);
 
-        Optimization bar = new OptimizationImpl("root", "bar", null, null);
-        OptimizationPhaseImpl root2 = new OptimizationPhaseImpl("RootPhase");
+        Optimization bar = new Optimization("root", "bar", null, null);
+        OptimizationPhase root2 = new OptimizationPhase("RootPhase");
         root2.addChild(bar);
-        ExecutedMethodImpl method2 = new ExecutedMethodImpl("2", "bar", root2, 0, null);
+        CompilationUnit method2 = new CompilationUnit("2", "bar", root2, 0, null);
 
         SelkowTreeMatcher matcher = new SelkowTreeMatcher();
         EditScript editScript = matcher.match(method1, method2);
@@ -86,33 +85,33 @@ public class SelkowTreeMatcherTest {
      */
     @Test
     public void testOperations() {
-        OptimizationPhaseImpl toBeDeleted = new OptimizationPhaseImpl("ToBeDeleted");
-        OptimizationPhaseImpl toBeRelabeled = new OptimizationPhaseImpl("ToBeRelabeled");
-        Optimization foo1 = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
-        Optimization foo3 = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
+        OptimizationPhase toBeDeleted = new OptimizationPhase("ToBeDeleted");
+        OptimizationPhase toBeRelabeled = new OptimizationPhase("ToBeRelabeled");
+        Optimization foo1 = new Optimization("ToBeRelabeled", "foo", null, null);
+        Optimization foo3 = new Optimization("ToBeRelabeled", "foo", null, null);
         toBeRelabeled.addChild(foo1);
         toBeRelabeled.addChild(foo3);
-        OptimizationPhaseImpl toBeUnchaged = new OptimizationPhaseImpl("ToBeUnchanged");
-        OptimizationPhaseImpl root1 = new OptimizationPhaseImpl("RootPhase");
+        OptimizationPhase toBeUnchaged = new OptimizationPhase("ToBeUnchanged");
+        OptimizationPhase root1 = new OptimizationPhase("RootPhase");
         root1.addChild(toBeDeleted);
         root1.addChild(toBeRelabeled);
         root1.addChild(toBeUnchaged);
-        ExecutedMethodImpl method1 = new ExecutedMethodImpl("1", "method1", root1, 0, null);
+        CompilationUnit method1 = new CompilationUnit("1", "method1", root1, 0, null);
 
-        OptimizationPhaseImpl relabeled = new OptimizationPhaseImpl("Relabeled");
-        Optimization foo1Clone = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
-        Optimization foo2 = new OptimizationImpl("ToBeRelabeled", "foo", null, EconomicMap.of("prop", 1));
-        Optimization foo3Clone = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
+        OptimizationPhase relabeled = new OptimizationPhase("Relabeled");
+        Optimization foo1Clone = new Optimization("ToBeRelabeled", "foo", null, null);
+        Optimization foo2 = new Optimization("ToBeRelabeled", "foo", null, EconomicMap.of("prop", 1));
+        Optimization foo3Clone = new Optimization("ToBeRelabeled", "foo", null, null);
         relabeled.addChild(foo1Clone);
         relabeled.addChild(foo2);
         relabeled.addChild(foo3Clone);
-        OptimizationPhaseImpl toBeInserted = new OptimizationPhaseImpl("ToBeInserted");
-        OptimizationPhaseImpl root2 = new OptimizationPhaseImpl("RootPhase");
+        OptimizationPhase toBeInserted = new OptimizationPhase("ToBeInserted");
+        OptimizationPhase root2 = new OptimizationPhase("RootPhase");
         root2.addChild(relabeled);
-        OptimizationPhaseImpl toBeUnchagedClone = new OptimizationPhaseImpl("ToBeUnchanged");
+        OptimizationPhase toBeUnchagedClone = new OptimizationPhase("ToBeUnchanged");
         root2.addChild(toBeUnchagedClone);
         root2.addChild(toBeInserted);
-        ExecutedMethodImpl method2 = new ExecutedMethodImpl("2", "method2", root2, 0, null);
+        CompilationUnit method2 = new CompilationUnit("2", "method2", root2, 0, null);
 
         SelkowTreeMatcher matcher = new SelkowTreeMatcher();
         EditScript editScript = matcher.match(method1, method2);

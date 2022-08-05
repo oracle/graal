@@ -24,39 +24,33 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.core.CompilationUnit;
+import org.graalvm.bisect.util.Writer;
 
 /**
- * Represents a matching between methods of two experiments and the matching of their respective
- * compilations. The matching is built incrementally by adding matched/extra methods.
+ * Represents a compilation unit that was not matched with any other compilation unit from the other
+ * experiment.
  */
-class MethodMatchingImpl implements MethodMatching {
-    private final ArrayList<MatchedMethod> matchedMethods = new ArrayList<>();
-    private final ArrayList<ExtraMethod> extraMethods = new ArrayList<>();
+public class UnmatchedCompilationUnit {
+    private final CompilationUnit compilationUnit;
 
-    public MatchedMethod addMatchedMethod(String compilationMethodName) {
-        MatchedMethod matchedMethod = new MatchedMethod(compilationMethodName);
-        matchedMethods.add(matchedMethod);
-        return matchedMethod;
+    UnmatchedCompilationUnit(CompilationUnit compilationUnit) {
+        this.compilationUnit = compilationUnit;
     }
 
-    @Override
-    public List<MatchedMethod> getMatchedMethods() {
-        return matchedMethods;
+    public CompilationUnit getExecutedMethod() {
+        return compilationUnit;
     }
 
-    public ExtraMethod addExtraMethod(String compilationMethodName, Experiment experiment, List<ExecutedMethod> executedMethods) {
-        ExtraMethod extraMethod = new ExtraMethod(experiment, compilationMethodName, executedMethods);
-        extraMethods.add(extraMethod);
-        return extraMethod;
-    }
-
-    @Override
-    public List<ExtraMethod> getExtraMethods() {
-        return extraMethods;
+    /**
+     * Writes a string that describes the compilation ID of this method, including
+     * {@link CompilationUnit#createExecutionSummary() the summary of its execution} and its
+     * experiment ID.
+     *
+     * @param writer the destination writer
+     */
+    public void writeHeader(Writer writer) {
+        writer.writeln("Compilation " + compilationUnit.getCompilationId() + " (" + compilationUnit.createExecutionSummary() + ") only in experiment " +
+                        compilationUnit.getExperiment().getExperimentId());
     }
 }

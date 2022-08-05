@@ -24,7 +24,7 @@
  */
 package org.graalvm.bisect.matching.tree;
 
-import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.CompilationUnit;
 
 /**
  * Creates a matching between optimization trees.
@@ -37,5 +37,5 @@ public interface TreeMatcher {
      * @param method2 the method from the second experiment
      * @return a description of the computed tree matching
      */
-    TreeMatching match(ExecutedMethod method1, ExecutedMethod method2);
+    TreeMatching match(CompilationUnit method1, CompilationUnit method2);
 }

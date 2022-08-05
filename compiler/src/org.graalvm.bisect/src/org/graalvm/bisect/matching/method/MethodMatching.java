@@ -24,25 +24,63 @@
  */
 package org.graalvm.bisect.matching.method;
 
+import java.util.ArrayList;
 import java.util.List;
+
+import org.graalvm.bisect.core.CompilationUnit;
+import org.graalvm.bisect.core.Experiment;
 
 /**
  * Represents a matching between methods of two experiments and the matching of their respective
- * compilations.
+ * compilations. The matching is built incrementally by adding matched/unmatched methods.
  */
-public interface MethodMatching {
+public class MethodMatching {
+    private final ArrayList<MatchedMethod> matchedMethods = new ArrayList<>();
+
+    private final ArrayList<UnmatchedMethod> unmatchedMethods = new ArrayList<>();
+
+    /**
+     * Adds a matched method to this matching.
+     *
+     * @param compilationMethodName the compilation method name of the newly added method
+     * @return the added matched method
+     */
+    public MatchedMethod addMatchedMethod(String compilationMethodName) {
+        MatchedMethod matchedMethod = new MatchedMethod(compilationMethodName);
+        matchedMethods.add(matchedMethod);
+        return matchedMethod;
+    }
+
     /**
      * Gets the list of pairs of matched methods, each of which holds a matching of its
      * compilations.
      *
      * @return the list of matched methods
      */
-    List<MatchedMethod> getMatchedMethods();
+    public List<MatchedMethod> getMatchedMethods() {
+        return matchedMethods;
+    }
+
+    /**
+     * Adds an unmatched method to this matching.
+     *
+     * @param compilationMethodName the compilation method name of the unmatched method to be added
+     * @param experiment the experiment to which the unmatched method belongs
+     * @param compilationUnits the compilation units of the method in its {@code experiment}
+     * @return the added unmatched method
+     */
+    public UnmatchedMethod addUnmatchedMethod(String compilationMethodName, Experiment experiment, List<CompilationUnit> compilationUnits) {
+        UnmatchedMethod unmatchedMethod = new UnmatchedMethod(experiment, compilationMethodName, compilationUnits);
+        unmatchedMethods.add(unmatchedMethod);
+        return unmatchedMethod;
+    }
 
     /**
      * Gets the list of the methods that do not have a pair.
      *
      * @return the list of methods without a pair
      */
-    List<ExtraMethod> getExtraMethods();
+    public List<UnmatchedMethod> getUnmatchedMethods() {
+        return unmatchedMethods;
+    }
 }
