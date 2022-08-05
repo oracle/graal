@@ -40,7 +40,7 @@ import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
 import org.graalvm.bisect.parser.experiment.ExperimentParserTypeError;
-import org.graalvm.bisect.util.EconomicMapUtil;
+import org.graalvm.collections.EconomicMap;
 import org.junit.Test;
 
 public class ExperimentParserTest {
@@ -149,8 +149,8 @@ public class ExperimentParserTest {
                     rootPhase.addChild(someTier);
                     someTier.addChild(new OptimizationImpl("LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMapUtil.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
-                                    EconomicMapUtil.of("unrollFactor", 1)));
+                                    EconomicMap.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
+                                    EconomicMap.of("unrollFactor", 1)));
                     someTier.addChild(new OptimizationPhaseImpl("EmptyPhase"));
                     assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
@@ -162,13 +162,13 @@ public class ExperimentParserTest {
                     rootPhase.addChild(new OptimizationImpl(
                                     "LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMapUtil.of("org.example.myMethod(org.example.Foo, org.example.Class$Context)", 2),
-                                    EconomicMapUtil.of("unrollFactor", 1)));
+                                    EconomicMap.of("org.example.myMethod(org.example.Foo, org.example.Class$Context)", 2),
+                                    EconomicMap.of("unrollFactor", 1)));
                     rootPhase.addChild(new OptimizationImpl(
                                     "LoopTransformation",
                                     "PartialUnroll",
                                     null,
-                                    EconomicMapUtil.of("unrollFactor", 2)));
+                                    EconomicMap.of("unrollFactor", 2)));
                     assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
                 }

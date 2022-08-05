@@ -83,35 +83,6 @@ public final class EconomicMapUtil {
     }
 
     /**
-     * Creates an {@link EconomicMap} with one mapping.
-     *
-     * @param key1 the key of the first mapping
-     * @param value1 the value of the first mapping
-     * @return a map with the mapping
-     */
-    public static <K, V> EconomicMap<K, V> of(K key1, V value1) {
-        EconomicMap<K, V> map = EconomicMap.create(1);
-        map.put(key1, value1);
-        return map;
-    }
-
-    /**
-     * Creates an {@link EconomicMap} with two mappings.
-     *
-     * @param key1 the key of the first mapping
-     * @param value1 the value of the first mapping
-     * @param key2 the key of the second mapping
-     * @param value2 the value of the second mapping
-     * @return a map with two mappings
-     */
-    public static <K, V> EconomicMap<K, V> of(K key1, V value1, K key2, V value2) {
-        EconomicMap<K, V> map = EconomicMap.create(2);
-        map.put(key1, value1);
-        map.put(key2, value2);
-        return map;
-    }
-
-    /**
      * Returns a set of keys of the map.
      *
      * @param map the input map

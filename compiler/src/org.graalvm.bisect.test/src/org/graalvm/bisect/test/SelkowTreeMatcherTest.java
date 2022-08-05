@@ -32,7 +32,7 @@ import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.matching.tree.EditScript;
 import org.graalvm.bisect.matching.tree.SelkowTreeMatcher;
-import org.graalvm.bisect.util.EconomicMapUtil;
+import org.graalvm.collections.EconomicMap;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -101,7 +101,7 @@ public class SelkowTreeMatcherTest {
 
         OptimizationPhaseImpl relabeled = new OptimizationPhaseImpl("Relabeled");
         Optimization foo1Clone = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
-        Optimization foo2 = new OptimizationImpl("ToBeRelabeled", "foo", null, EconomicMapUtil.of("prop", 1));
+        Optimization foo2 = new OptimizationImpl("ToBeRelabeled", "foo", null, EconomicMap.of("prop", 1));
         Optimization foo3Clone = new OptimizationImpl("ToBeRelabeled", "foo", null, null);
         relabeled.addChild(foo1Clone);
         relabeled.addChild(foo2);

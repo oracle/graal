@@ -34,21 +34,21 @@ import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.matching.optimization.OptimizationMatcher;
 import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
-import org.graalvm.bisect.util.EconomicMapUtil;
+import org.graalvm.collections.EconomicMap;
 import org.junit.Test;
 
 public class OptimizationMatcherTest {
     @Test
     public void testSetBasedOptimizationMatcher() {
-        Optimization common1 = new OptimizationImpl("foo", "bar", EconomicMapUtil.of("method", 1), EconomicMapUtil.of("prop", 1));
-        Optimization common2 = new OptimizationImpl("foo", "bar", EconomicMapUtil.of("method", 1), EconomicMapUtil.of("prop", 2));
-        Optimization common1Clone = new OptimizationImpl("foo", "bar", EconomicMapUtil.of("method", 1), EconomicMapUtil.of("prop", 1));
-        Optimization common2Clone = new OptimizationImpl("foo", "bar", EconomicMapUtil.of("method", 1), EconomicMapUtil.of("prop", 2));
+        Optimization common1 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
+        Optimization common2 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 2));
+        Optimization common1Clone = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
+        Optimization common2Clone = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 2));
 
-        Optimization extra1 = new OptimizationImpl("foo", "bar", EconomicMapUtil.of("method", 1), null);
-        Optimization extra2 = new OptimizationImpl("foo", "bar", EconomicMapUtil.of("method", 2), EconomicMapUtil.of("prop", 1));
-        Optimization extra3 = new OptimizationImpl("foo", "baz", EconomicMapUtil.of("method", 1), EconomicMapUtil.of("prop", 1));
-        Optimization extra4 = new OptimizationImpl("baz", "bar", EconomicMapUtil.of("method", 1), EconomicMapUtil.of("prop", 1));
+        Optimization extra1 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 1), null);
+        Optimization extra2 = new OptimizationImpl("foo", "bar", EconomicMap.of("method", 2), EconomicMap.of("prop", 1));
+        Optimization extra3 = new OptimizationImpl("foo", "baz", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
+        Optimization extra4 = new OptimizationImpl("baz", "bar", EconomicMap.of("method", 1), EconomicMap.of("prop", 1));
 
         List<Optimization> optimizations1 = List.of(extra1, common1, extra2, common2);
         List<Optimization> optimizations2 = List.of(common1Clone, common2Clone, extra3, extra4);
