@@ -28,7 +28,7 @@ import java.util.List;
 
 import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.Experiment;
-import org.graalvm.bisect.util.EconomicMapUtil;
+import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.util.CollectionsUtil;

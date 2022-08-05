@@ -26,7 +26,7 @@ package org.graalvm.bisect.core.optimization;
 
 import java.util.List;
 
-import org.graalvm.bisect.util.EconomicMapUtil;
+import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.bisect.util.Writer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
