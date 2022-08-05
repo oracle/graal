@@ -726,6 +726,7 @@ suite = {
       "sourceDirs" : ["src"],
       "jniHeaders" : True,
       "dependencies" : [
+        "com.oracle.truffle.nfi.api",
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "requires" : [

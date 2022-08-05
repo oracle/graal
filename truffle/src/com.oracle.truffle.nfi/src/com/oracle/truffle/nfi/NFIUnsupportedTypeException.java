@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.backend.spi.types;
+package com.oracle.truffle.nfi;
 
-public enum NativeSimpleType {
-    VOID,
-    UINT8,
-    SINT8,
-    UINT16,
-    SINT16,
-    UINT32,
-    SINT32,
-    UINT64,
-    SINT64,
-    FLOAT,
-    DOUBLE,
-    FP80,
-    POINTER,
-    STRING,
-    OBJECT,
-    NULLABLE;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+@ExportLibrary(InteropLibrary.class)
+class NFIUnsupportedTypeException extends AbstractTruffleException {
+
+    private static final long serialVersionUID = 1L;
+
+    NFIUnsupportedTypeException(String type) {
+        super(type, null);
+    }
+
+    @ExportMessage
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
+    }
 }

@@ -42,18 +42,23 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.nfi.api.SerializableLibrary;
 
 abstract class NativeBuffer implements TruffleObject {
 
+    @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
     @ExportLibrary(InteropLibrary.class)
     static final class Array extends NativeBuffer {
 
@@ -61,6 +66,23 @@ abstract class NativeBuffer implements TruffleObject {
 
         Array(byte[] content) {
             this.content = content;
+        }
+
+        @ExportMessage
+        boolean isSerializable() {
+            return true;
+        }
+
+        @ExportMessage(limit = "1")
+        void serialize(Object buffer,
+                        @CachedLibrary("buffer") InteropLibrary interop) {
+            try {
+                for (int i = 0; i < content.length; i++) {
+                    interop.writeBufferByte(buffer, i, content[i]);
+                }
+            } catch (UnsupportedMessageException | InvalidBufferOffsetException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
         }
 
         @ExportMessage
