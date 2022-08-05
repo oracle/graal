@@ -48,15 +48,15 @@ The `mx profbisect` takes the JSON profiles and optimization logs of 2 experimen
 in their hot methods. Run `mx profbisect` without arguments to display its usage.
 
 ```
-The argument 'proftoolOutput1' is required.
-Usage: mx profbisect [--hot-min-limit value] [--hot-max-limit value] [--hot-percentile value] proftoolOutput1 optimizationLog1 proftoolOutput2 optimizationLog2
+The argument 'proftool_output_1' is required.
+Usage: mx profbisect [--hot-min-limit value] [--hot-max-limit value] [--hot-percentile value] proftool_output_1 optimization_log_1 proftool_output_2 optimization_log_2
 
-Compares performed optimizations in hot methods of two experiments.
+Compares the optimization log of hot compilation units of two experiments.
 
 Options:
-  --hot-min-limit      the minimum number of methods to mark as hot
-  --hot-max-limit      the maximum number of methods to mark as hot
-  --hot-percentile     the percentile of the execution period that is spent executing hot methods
+  --hot-min-limit      the minimum number of compilation units to mark as hot
+  --hot-max-limit      the maximum number of compilation units to mark as hot
+  --hot-percentile     the percentile of the execution period that is spent executing hot compilation units~~~~
 ```
 
 Use the tool to diff our toy experiments:
@@ -110,14 +110,14 @@ Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Sp
     In experiment 1
         3 compilations (1 of which are hot)
         Compilations
-            9068 (19.74% of graal execution, 11.64% of total) *hot*
-            7878 (0.00% of graal execution, 0.00% of total)
-            9003 (0.00% of graal execution, 0.00% of total)
+            9068 (19.74% of Graal execution, 11.64% of total) *hot*
+            7878 (0.00% of Graal execution, 0.00% of total)
+            9003 (0.00% of Graal execution, 0.00% of total)
     In experiment 2
         2 compilations (1 of which are hot)
         Compilations
-            12622 (16.24% of graal execution, 9.74% of total) *hot*
-            9215 (0.06% of graal execution, 0.04% of total)
+            12622 (16.24% of Graal execution, 9.74% of total) *hot*
+            9215 (0.06% of Graal execution, 0.04% of total)
 ```
 
 We can see that the method compilation
@@ -145,7 +145,7 @@ Continuing with the example:
 ```
 Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Spliterator)
     ...
-    Compilation 9068 (19.74% of graal execution, 11.64% of total) in experiment 1 vs compilation 12622 (16.24% of graal execution, 9.74% of total) in experiment 2
+    Compilation 9068 (19.74% of Graal execution, 11.64% of total) in experiment 1 vs compilation 12622 (16.24% of Graal execution, 9.74% of total) in experiment 2
           RootPhase
               Parsing
                   GraphBuilderPhase

@@ -65,15 +65,13 @@ public class ProfBisect {
                         "--hot-percentile", 0.9,
                         "the percentile of the execution period that is spent executing hot compilation units");
         StringArgument proftoolArgument1 = argumentParser.addStringArgument(
-                        "proftoolOutput1", "proftool output of the first experiment in JSON.");
+                        "proftool_output_1", "proftool output of the first experiment in JSON.");
         StringArgument optimizationLogArgument1 = argumentParser.addStringArgument(
-                        "optimizationLog1",
-                        "directory with optimization logs for each compilation unit in the first experiment.");
+                        "optimization_log_1", "directory with optimization logs for each compilation unit in the first experiment.");
         StringArgument proftoolArgument2 = argumentParser.addStringArgument(
-                        "proftoolOutput2", "proftool output of the second experiment in JSON.");
+                        "proftool_output_2", "proftool output of the second experiment in JSON.");
         StringArgument optimizationLogArgument2 = argumentParser.addStringArgument(
-                        "optimizationLog2",
-                        "directory with optimization logs for each compilation unit in the second experiment.");
+                        "optimization_log_2", "directory with optimization logs for each compilation unit in the second experiment.");
         try {
             argumentParser.parse(args);
         } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {
