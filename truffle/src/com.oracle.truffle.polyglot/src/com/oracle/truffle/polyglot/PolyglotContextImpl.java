@@ -2861,15 +2861,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         assert !this.disposing;
         this.disposing = true;
         List<PolyglotLanguageContext> disposedContexts = new ArrayList<>(contexts.length);
+        for (int i = contexts.length - 1; i >= 0; i--) {
+            PolyglotLanguageContext context = contexts[i];
+            boolean disposed = context.dispose();
+            if (disposed) {
+                disposedContexts.add(context);
+            }
+        }
         Closeable[] toClose;
         synchronized (this) {
-            for (int i = contexts.length - 1; i >= 0; i--) {
-                PolyglotLanguageContext context = contexts[i];
-                boolean disposed = context.dispose();
-                if (disposed) {
-                    disposedContexts.add(context);
-                }
-            }
             toClose = closeables == null ? null : closeables.toArray(new Closeable[0]);
         }
         if (toClose != null) {
