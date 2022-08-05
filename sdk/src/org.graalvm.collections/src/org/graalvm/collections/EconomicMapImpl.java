@@ -879,4 +879,12 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     public void remove(K element) {
         removeKey(element);
     }
+
+    @Override
+    public Equivalence getEquivalenceStrategy() {
+        if (strategy == null) {
+            return Equivalence.IDENTITY;
+        }
+        return strategy;
+    }
 }

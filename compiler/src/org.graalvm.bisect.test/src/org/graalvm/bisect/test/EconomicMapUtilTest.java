@@ -90,12 +90,12 @@ public class EconomicMapUtilTest {
     }
 
     @Test
-    public void equivalenceStrategyDeterminedByFirstMap() {
-        EconomicMap<Box, String> map1 = EconomicMap.create();
-        map1.put(new Box(0), "foo");
-        EconomicMap<Box, String> map2 = EconomicMap.create(Equivalence.IDENTITY);
-        map2.put(new Box(0), "foo");
-        Assert.assertTrue(EconomicMapUtil.equals(map1, map2));
+    public void differentStrategiesNotEqual() {
+        EconomicMap<Integer, String> map1 = EconomicMap.create();
+        map1.put(0, "foo");
+        EconomicMap<Integer, String> map2 = EconomicMap.create(Equivalence.IDENTITY);
+        map2.put(0, "foo");
+        Assert.assertFalse(EconomicMapUtil.equals(map1, map2));
         Assert.assertFalse(EconomicMapUtil.equals(map2, map1));
     }
 }

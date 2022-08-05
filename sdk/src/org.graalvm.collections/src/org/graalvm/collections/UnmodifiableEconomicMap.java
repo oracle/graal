@@ -112,4 +112,11 @@ public interface UnmodifiableEconomicMap<K, V> {
      * @since 19.0
      */
     UnmodifiableMapCursor<K, V> getEntries();
+
+    /**
+     * Returns the strategy used to compare keys.
+     */
+    default Equivalence getEquivalenceStrategy() {
+        return Equivalence.DEFAULT;
+    }
 }

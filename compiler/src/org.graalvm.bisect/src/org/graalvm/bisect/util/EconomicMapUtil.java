@@ -36,9 +36,10 @@ import org.graalvm.collections.UnmodifiableMapCursor;
  */
 public final class EconomicMapUtil {
     /**
-     * Compares maps for equality. The maps are equal iff their keys are equal with respect to the
-     * {@link org.graalvm.collections.Equivalence equivalence strategy} of the first map and the
-     * values are equal as determined by the {@link Objects#equals(Object, Object) equals} method.
+     * Compares maps for equality. The maps are equal iff they share the same
+     * {@link org.graalvm.collections.Equivalence equivalence strategy}, their keys are equal with
+     * respect to the strategy and the values are equal as determined by the
+     * {@link Objects#equals(Object, Object) equals} method.
      *
      * @param lhs the first map to be compared
      * @param rhs the second map to be compared
@@ -48,7 +49,7 @@ public final class EconomicMapUtil {
         if (lhs == rhs) {
             return true;
         }
-        if (lhs == null || rhs == null || lhs.size() != rhs.size()) {
+        if (lhs == null || rhs == null || lhs.size() != rhs.size() || !Objects.equals(lhs.getEquivalenceStrategy(), rhs.getEquivalenceStrategy())) {
             return false;
         }
         UnmodifiableMapCursor<K, V> cursor = rhs.getEntries();
