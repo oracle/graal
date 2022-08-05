@@ -1253,7 +1253,6 @@ public class LanguageSPITest {
                 assertFalse(env.isInnerContextOptionsAllowed());
                 var builder = env.newInnerContextBuilder().initializeCreatorContext(true).option(getOptionKey("SharingKey"), "value");
                 assertFails(() -> builder.build(), IllegalArgumentException.class, (e) -> {
-                    e.printStackTrace();
                     assertEquals("Language options were specified for the inner context but the outer context does not have the required context options privilege for this operation. " +
                                     "Use TruffleLanguage.Env.isInnerContextOptionsAllowed() to check whether the inner context has this privilege. " +
                                     "Use Context.Builder.allowInnerContextOptions(true) to grant inner context option privilege for inner contexts.", e.getMessage());

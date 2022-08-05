@@ -89,7 +89,8 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         Engine localEngine = engine.localEngine;
         AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
         Object engineReceiver = api.getReceiver(localEngine);
-        Context localContext = dispatch.createContext(engineReceiver, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading,
+        Context localContext = dispatch.createContext(engineReceiver, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO,
+                        allowHostClassLoading,
                         allowInnerContextOptions, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler,
                         environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader, true, useSystemExit);
         long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine);

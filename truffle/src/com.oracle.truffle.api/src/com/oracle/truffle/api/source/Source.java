@@ -1531,7 +1531,7 @@ public abstract class Source {
             this.embedderSource = b;
         }
 
-        void url(@SuppressWarnings("hiding")  URL url) {
+        void url(@SuppressWarnings("hiding") URL url) {
             this.url = url;
         }
 
