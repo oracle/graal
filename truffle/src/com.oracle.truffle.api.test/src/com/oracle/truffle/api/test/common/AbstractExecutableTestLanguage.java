@@ -179,8 +179,7 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Exe
             Object[] values = new Object[size];
             for (int i = 0; i < size; i++) {
                 Object value = interop.readArrayElement(arguments, i);
-                // unbox host null
-                if (c.env.isHostObject(value) && InteropLibrary.getUncached().isNull(value)) {
+                if (InteropLibrary.getUncached().isNull(value)) {
                     value = null;
                 }
                 values[i] = value;
