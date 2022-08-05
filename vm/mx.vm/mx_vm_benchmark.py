@@ -204,6 +204,7 @@ class NativeImageVM(GraalVm):
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
+        self.use_upx = False
         self.graalvm_edition = None
         self.config = None
         self.ml = None
@@ -226,7 +227,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
@@ -246,6 +247,10 @@ class NativeImageVM(GraalVm):
         if matching.group("gate") is not None:
             mx.logv("'gate' mode is enabled for {}".format(config_name))
             self.is_gate = True
+
+        if matching.group("upx") is not None:
+            mx.logv("'upx' is enabled for {}".format(config_name))
+            self.use_upx = True
 
         if matching.group("quickbuild") is not None:
             mx.logv("'quickbuild' is enabled for {}".format(config_name))
@@ -773,6 +778,13 @@ class NativeImageVM(GraalVm):
         final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
+            if self.use_upx:
+                image_path = os.path.join(config.output_dir, config.final_image_name)
+                upx_directory = mx.library("UPX", True).get_path(True)
+                upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
+                upx_cmd = [upx_path, image_path]
+                mx.log("Compressing image: {0}".format(' '.join(upx_cmd)))
+                mx.run(upx_cmd, s.stdout(True), s.stderr(True))
 
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
@@ -1321,7 +1333,7 @@ def register_graalvm_vms():
             break
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
-    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'quickbuild', 'quickbuild-g1gc']:
+    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
         mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 
