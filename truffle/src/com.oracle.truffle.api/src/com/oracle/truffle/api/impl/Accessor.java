@@ -229,6 +229,8 @@ public abstract class Accessor {
 
         public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
 
+        public abstract void setURL(SourceBuilder builder, URL url);
+
         public abstract void setPath(SourceBuilder builder, String path);
     }
 

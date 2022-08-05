@@ -542,7 +542,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public org.graalvm.polyglot.Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached,
-                    Charset encoding, String path)
+                    Charset encoding, URL url, String path)
                     throws IOException {
         assert language != null;
         com.oracle.truffle.api.source.Source.SourceBuilder builder;
@@ -567,6 +567,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         EngineAccessor.SOURCE.setEmbedderSource(builder, true);
+        if (url != null) {
+            EngineAccessor.SOURCE.setURL(builder, url);
+        }
         if (path != null) {
             EngineAccessor.SOURCE.setPath(builder, path);
         }
@@ -587,9 +590,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         try {
             return PolyglotImpl.getOrCreatePolyglotSource(this, builder.build());
-        } catch (IOException e) {
-            throw e;
-        } catch (RuntimeException e) {
+        } catch (IOException | RuntimeException e) {
             throw e;
         } catch (Exception e) {
             throw shouldNotReachHere(e);
