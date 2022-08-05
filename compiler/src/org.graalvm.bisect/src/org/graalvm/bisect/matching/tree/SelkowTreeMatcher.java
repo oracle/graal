@@ -39,15 +39,15 @@ public class SelkowTreeMatcher implements TreeMatcher {
     /**
      * The cost of insertion or deletion per node.
      */
-    public static final int INSERT_DELETE_COST = 1;
+    public static final long INSERT_DELETE_COST = 1;
     /**
      * The cost to rename a phase node.
      */
-    public static final int PHASE_RENAME_COST = 2;
+    public static final long PHASE_RENAME_COST = 1000000000;
     /**
      * The cost to replace an optimization with a different optimization.
      */
-    public static final int OPTIMIZATION_REPLACE_COST = 1000;
+    public static final long OPTIMIZATION_REPLACE_COST = 1000000000;
 
     /**
      * Maps a node to the size of its subtree.
@@ -76,11 +76,11 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @param depth the depth of the nodes in the tree, i.e, the distances from the respective roots
      * @return the edit distance
      */
-    private int edit(OptimizationTreeNode node1, OptimizationTreeNode node2, EditScript editScript, int depth) {
+    private long edit(OptimizationTreeNode node1, OptimizationTreeNode node2, EditScript editScript, int depth) {
         int m = node1.getChildren().size();
         int n = node2.getChildren().size();
         boolean rootsEqual = nodesEqual(node1, node2);
-        int[][] delta = new int[m + 1][n + 1];
+        long[][] delta = new long[m + 1][n + 1];
         delta[0][0] = rootsEqual ? 0 : relabelCost(node1, node2);
         // scripts[i][j] is the edit script between the (i - 1)-th and (j - 1)-th child's subtree
         EditScript[][] scripts = new EditScript[m + 1][n + 1];
@@ -95,9 +95,9 @@ public class SelkowTreeMatcher implements TreeMatcher {
                 OptimizationTreeNode left = node1.getChildren().get(i - 1);
                 OptimizationTreeNode right = node2.getChildren().get(j - 1);
                 EditScript subtreeScript = new EditScript();
-                int relabelDelta = delta[i - 1][j - 1] + edit(left, right, subtreeScript, depth + 1);
-                int insertDelta = delta[i][j - 1] + insertCost(right);
-                int deleteDelta = delta[i - 1][j] + deleteCost(left);
+                long relabelDelta = delta[i - 1][j - 1] + edit(left, right, subtreeScript, depth + 1);
+                long insertDelta = delta[i][j - 1] + insertCost(right);
+                long deleteDelta = delta[i - 1][j] + deleteCost(left);
                 delta[i][j] = Math.min(relabelDelta, Math.min(insertDelta, deleteDelta));
                 scripts[i][j] = subtreeScript;
             }
@@ -152,7 +152,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @param node the root of the subtree to be inserted
      * @return the cost to insert the node's subtree
      */
-    private int insertCost(OptimizationTreeNode node) {
+    private long insertCost(OptimizationTreeNode node) {
         return getTreeSize(node) * INSERT_DELETE_COST;
     }
 
@@ -162,7 +162,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @param node the root of the subtree to be deleted
      * @return the cost to delete the node's subtree
      */
-    private int deleteCost(OptimizationTreeNode node) {
+    private long deleteCost(OptimizationTreeNode node) {
         return getTreeSize(node) * INSERT_DELETE_COST;
     }
 
@@ -174,7 +174,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @param node2 the second node
      * @return the cost to relabel the first node to the second
      */
-    private static int relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
+    private static long relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
         assert !nodesEqual(node1, node2);
         if (node1 instanceof OptimizationPhase && node2 instanceof OptimizationPhase) {
             return PHASE_RENAME_COST;
