@@ -22,24 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.amd64;
+package org.graalvm.compiler.lir;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
-import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.stubs.SnippetStub;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
-import org.graalvm.word.Pointer;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public final class AMD64VectorizedMismatchStub extends SnippetStub {
-
-    public AMD64VectorizedMismatchStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super(linkage.getDescriptor().getName(), options, providers, linkage);
-    }
-
-    @Snippet
-    private static int vectorizedMismatch(Pointer arrayA, Pointer arrayB, int length, int stride) {
-        return VectorizedMismatchNode.vectorizedMismatch(arrayA, arrayB, length, stride);
-    }
+/**
+ * Container for multiple {@link GenerateStub} annotations.
+ */
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.CLASS)
+public @interface GenerateStubs {
+    GenerateStub[] value();
 }

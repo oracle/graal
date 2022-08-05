@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -45,6 +46,7 @@ import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
 import org.graalvm.compiler.replacements.nodes.PureFunctionStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -241,23 +243,35 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
     }
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length,
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS1S2S1", parameters = {"S1", "S2", "S1"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS2S2S1", parameters = {"S2", "S2", "S1"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS1S1", parameters = {"S1", "S1", "S1"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS1S2", parameters = {"S1", "S2", "S2"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS1S4", parameters = {"S1", "S4", "S4"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS2S1", parameters = {"S2", "S1", "S1"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS2S2", parameters = {"S2", "S2", "S2"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS2S4", parameters = {"S2", "S4", "S4"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS4S1", parameters = {"S4", "S1", "S1"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS4S2", parameters = {"S4", "S2", "S2"})
+    @GenerateStub(name = "arrayRegionEqualsWithMaskS4S4", parameters = {"S4", "S4", "S4"})
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Pointer mask, int length,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB,
                     @ConstantNodeParameter Stride strideMask);
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length,
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Pointer mask, int length,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB,
                     @ConstantNodeParameter Stride strideMask,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length, int stride);
+    @GenerateStub(name = "arrayRegionEqualsWithMaskDynamicStrides")
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Pointer mask, int length, int stride);
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length, int stride,
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Pointer mask, int length, int stride,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override

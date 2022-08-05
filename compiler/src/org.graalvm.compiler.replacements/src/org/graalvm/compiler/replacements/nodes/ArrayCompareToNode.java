@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -131,12 +133,16 @@ public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements
     }
 
     @NodeIntrinsic
-    public static native int compareTo(Object arrayA, int lengthA, Object arrayB, int lengthB,
+    @GenerateStub(name = "byteArrayCompareToByteArray", parameters = {"S1", "S1"})
+    @GenerateStub(name = "byteArrayCompareToCharArray", parameters = {"S1", "S2"})
+    @GenerateStub(name = "charArrayCompareToByteArray", parameters = {"S2", "S1"})
+    @GenerateStub(name = "charArrayCompareToCharArray", parameters = {"S2", "S2"})
+    public static native int compareTo(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB);
 
     @NodeIntrinsic
-    public static native int compareTo(Object arrayA, int lengthA, Object arrayB, int lengthB,
+    public static native int compareTo(Pointer arrayA, int lengthA, Pointer arrayB, int lengthB,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
