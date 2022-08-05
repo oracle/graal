@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 21.3.3.1
+* GR-40233: The interpretation of the `depth` parameter in [Insight heap dumping](../docs/tools/insight/Insight-Manual.md#heap-dumping) was off by one and was applied to primitive values as well. This is now corrected to match the documentation.
+
 ## Version 21.3.3
 * GR-37442: Added new options `--heap.cacheSize=<int>` and `--heap.cacheReplacement=flush|lru` to enable memory cache in [Heap Dumping via Insight](../docs/tools/insight/Insight-Manual.md#heap-dumping-cache). 
 * GR-37442: Added new method `flush()` to [heap dumping object](../docs/tools/insight/Insight-Manual.md#heap-dumping) to flush cached events to the heap dump file.
