@@ -574,7 +574,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitLoad(LIRKind loadKind, Value address, LIRFrameState state, MemoryExtendKind extendKind) {
+    public Variable emitLoad(LIRKind loadKind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
         AArch64Kind readKind = (AArch64Kind) loadKind.getPlatformKind();
         Variable result;
         if (extendKind.isNotExtended()) {
@@ -585,42 +585,29 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             result = getLIRGen().newVariable(LIRKind.value(resultKind));
         }
         AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, readKind.getSizeInBytes() * Byte.SIZE);
-        getLIRGen().append(new LoadOp(readKind, extendKind, result, loadAddress, state));
+        switch (memoryOrder) {
+            case PLAIN:
+            case OPAQUE: // no fences are needed for opaque memory accesses
+                getLIRGen().append(new LoadOp(readKind, extendKind, result, loadAddress, state));
+                break;
+            case ACQUIRE:
+            case VOLATILE: {
+                getLIRGen().append(new AArch64Move.LoadAcquireOp(readKind, extendKind, result, loadAddress, state));
+                break;
+            }
+            default:
+                throw GraalError.shouldNotReachHere("Unexpected memory order");
+        }
         return result;
     }
 
     @Override
-    public Variable emitOrderedLoad(LIRKind loadKind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
-        switch (memoryOrder) {
-            case OPAQUE:
-                // no fences are needed for opaque memory accesses
-                return emitLoad(loadKind, address, state, extendKind);
-            case ACQUIRE:
-            case VOLATILE:
-                AArch64Kind readKind = (AArch64Kind) loadKind.getPlatformKind();
-                Variable result;
-                if (extendKind.isNotExtended()) {
-                    result = getLIRGen().newVariable(getLIRGen().toRegisterKind(loadKind));
-                } else {
-                    assert loadKind.isValue();
-                    AArch64Kind resultKind = extendKind.getExtendedBitSize() / Byte.SIZE > AArch64Kind.DWORD.getSizeInBytes() ? AArch64Kind.QWORD : AArch64Kind.DWORD;
-                    result = getLIRGen().newVariable(LIRKind.value(resultKind));
-                }
-                AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, readKind.getSizeInBytes() * Byte.SIZE);
-                getLIRGen().append(new AArch64Move.LoadAcquireOp(readKind, extendKind, result, loadAddress, state));
-                return result;
-            default:
-                throw GraalError.shouldNotReachHere("Unexpected memory order");
-        }
-    }
-
-    @Override
-    public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
+    public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state, MemoryOrderMode memoryOrder) {
         AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
         AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
 
         /* We can store 0 directly via the gp zr register. */
-        if (kind.getSizeInBytes() <= Long.BYTES && isJavaConstant(inputVal)) {
+        if (!MemoryOrderMode.ordersMemoryAccesses(memoryOrder) && kind.getSizeInBytes() <= Long.BYTES && isJavaConstant(inputVal)) {
             JavaConstant c = asJavaConstant(inputVal);
             if (c.isDefaultForKind()) {
                 getLIRGen().append(new StoreZeroOp(kind, storeAddress, state));
@@ -628,21 +615,13 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             }
         }
         AllocatableValue input = asAllocatable(inputVal);
-        getLIRGen().append(new StoreOp(kind, storeAddress, input, state));
-    }
-
-    @Override
-    public void emitOrderedStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state, MemoryOrderMode memoryOrder) {
         switch (memoryOrder) {
-            case OPAQUE:
-                // no fences are needed for opaque memory accesses
-                emitStore(lirKind, address, inputVal, state);
+            case PLAIN:
+            case OPAQUE: // no fences are needed for opaque memory accesses
+                getLIRGen().append(new StoreOp(kind, storeAddress, input, state));
                 break;
             case RELEASE:
             case VOLATILE:
-                AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
-                AllocatableValue input = asAllocatable(inputVal);
-                AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
                 getLIRGen().append(new AArch64Move.StoreReleaseOp(kind, storeAddress, input, state));
                 break;
             default:

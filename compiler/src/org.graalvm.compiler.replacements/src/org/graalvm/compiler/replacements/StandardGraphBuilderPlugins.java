@@ -123,7 +123,6 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
-import org.graalvm.compiler.nodes.extended.RawOrderedLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
@@ -288,7 +287,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
                                 new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, PLAIN, false));
                 return true;
             }
         });
@@ -307,7 +306,7 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Byte, new JavaReadNode(JavaKind.Byte, new IndexAddressNode(arg1, arg2, JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, PLAIN, false));
                 return true;
             }
         });
@@ -1382,12 +1381,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             // Note that non-ordered raw accesses can be turned into floatable field accesses.
-            UnsafeNodeConstructor unsafeNodeConstructor;
-            if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
-                unsafeNodeConstructor = (obj, loc) -> new RawOrderedLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
-            } else {
-                unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc);
-            }
+            UnsafeNodeConstructor unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
             createUnsafeAccess(object, b, unsafeNodeConstructor);
             return true;
         }

@@ -36,9 +36,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
@@ -49,7 +47,6 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.OrderedReadNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -194,22 +191,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 return optimizeNormalizeCompare(constantReflection, metaAccess, options, smallestCompareWidth, constant, (AbstractNormalizeCompareNode) nonConstant, mirrored, view);
             } else if (nonConstant instanceof ConvertNode) {
                 ConvertNode convert = (ConvertNode) nonConstant;
-                boolean multiUsage = (convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsage());
-                if (!multiUsage && convert.asNode().hasMoreThanOneUsage() && convert.getValue() instanceof OrderedReadNode) {
-                    // Only account for data usages
-                    OrderedReadNode read = (OrderedReadNode) convert.getValue();
-                    int nonMemoryEdges = 0;
-                    for (Node u : read.usages()) {
-                        for (Position pos : u.inputPositions()) {
-                            if (pos.get(u) == read && pos.getInputType() != InputType.Memory) {
-                                nonMemoryEdges++;
-                            }
-                        }
-                    }
-                    multiUsage = nonMemoryEdges == 1;
-                }
+                boolean multiUsage = convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsageOfType(InputType.Value);
                 if (convert instanceof IntegerConvertNode && multiUsage) {
-                    // Do not perform for integer convers if it could introduce
+                    // Do not perform for integer converts if it could introduce
                     // new live values.
                     return null;
                 }

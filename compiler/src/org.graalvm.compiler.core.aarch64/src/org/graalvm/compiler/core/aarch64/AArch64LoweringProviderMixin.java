@@ -26,7 +26,6 @@
 package org.graalvm.compiler.core.aarch64;
 
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
@@ -74,7 +73,7 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
         boolean supportsZero = false;
         if (access instanceof ReadNode) {
             supportsZero = true;
-            supportsSigned = !MemoryOrderMode.ordersMemoryAccesses(((ReadNode) access).getMemoryOrder());
+            supportsSigned = !((ReadNode) access).ordersMemoryAccesses();
         }
 
         switch (extendKind) {

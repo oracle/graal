@@ -68,11 +68,15 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
      * This constructor exists for node intrinsics that need a stamp based on {@code accessKind}.
      */
     public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        this(object, offset, accessKind, locationIdentity, false);
+        this(object, offset, accessKind, locationIdentity, false, MemoryOrderMode.PLAIN);
     }
 
-    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation) {
-        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceLocation, MemoryOrderMode.PLAIN);
+    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, MemoryOrderMode memoryOrder) {
+        this(object, offset, accessKind, locationIdentity, false, memoryOrder);
+    }
+
+    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation, MemoryOrderMode memoryOrder) {
+        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceLocation, memoryOrder);
     }
 
     /**
@@ -199,11 +203,8 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
-    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, MemoryOrderMode memOrder) {
-        if (MemoryOrderMode.ordersMemoryAccesses(memOrder)) {
-            return new RawOrderedLoadNode(object(), location, accessKind(), identity, memOrder);
-        }
-        return new RawLoadNode(object(), location, accessKind(), identity);
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, MemoryOrderMode memoryOrder) {
+        return new RawLoadNode(object(), location, accessKind(), identity, memoryOrder);
     }
 
     @NodeIntrinsic
