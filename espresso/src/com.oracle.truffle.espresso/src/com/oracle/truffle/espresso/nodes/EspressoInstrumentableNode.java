@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -67,9 +68,13 @@ public abstract class EspressoInstrumentableNode extends EspressoNode implements
     }
 
     @ExportMessage
-    @TruffleBoundary
-    @SuppressWarnings("static-method")
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return getScopeSlowPath(frame != null ? frame.materialize() : null);
+    }
+
+    @TruffleBoundary
+    private Object getScopeSlowPath(MaterializedFrame frame) {
+
         // construct the current scope with valid local variables information
         Method method = getMethod();
         Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(getBci(frame));

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -66,9 +67,12 @@ public abstract class BaseQuickNode extends EspressoNode implements BciProvider,
     }
 
     @ExportMessage
+    public final Object getScope(Frame frame, boolean nodeEnter) {
+        return getScopeSlowPath(frame != null ? frame.materialize() : null, nodeEnter);
+    }
+
     @TruffleBoundary
-    @SuppressWarnings("static-method")
-    public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+    private Object getScopeSlowPath(MaterializedFrame frame, boolean nodeEnter) {
         return getBytecodeNode().getScope(frame, nodeEnter);
     }
 }

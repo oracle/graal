@@ -32,7 +32,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 
 /**
@@ -107,7 +106,6 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    @TruffleBoundary
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
         invokeListeners((l) -> l.onCompilationDeoptimized(target, frame));
     }
