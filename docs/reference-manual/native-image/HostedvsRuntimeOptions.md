@@ -2,7 +2,7 @@
 layout: ni-docs
 toc_group: contributing
 link_title: Hosted and Runtime Options
-permalink: /reference-manual/native-image/contributing/HostedvsRuntimeOptions/
+permalink: /reference-manual/native-image/overview/HostedvsRuntimeOptions/
 redirect_from: /$version/reference-manual/native-image/HostedvsRuntimeOptions/
 ---
 
