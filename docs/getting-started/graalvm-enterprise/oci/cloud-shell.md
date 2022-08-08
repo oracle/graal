@@ -13,7 +13,6 @@ As of version 22.2.0, GraalVM Enterprise JDK 17 and Native Image are pre-install
 
 > Note: GraalVM Enterprise is available on Oracle Cloud Infrastructure at no additional cost.
 
-
 ## Steps to Use GraalVM Enterprise in Cloud Shell
 
 Cloud Shell has several pre-installed JDKs, including GraalVM Enterprise JDK.
