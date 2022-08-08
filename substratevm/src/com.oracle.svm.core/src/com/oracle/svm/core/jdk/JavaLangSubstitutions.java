@@ -71,7 +71,6 @@ import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -100,27 +99,16 @@ final class Target_java_lang_Object {
     }
 
     @Substitute
-    @TargetElement(name = "wait", onlyWith = JDK17OrEarlier.class)
+    @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
+        /*
+         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
+         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned.
+         * Also, we get interrupted on the virtual thread instead of the carrier thread, which
+         * clears the carrier thread's interrupt status too, so we don't have to intercept an
+         * InterruptedException from the carrier thread to clear the virtual thread interrupt.
+         */
         MonitorSupport.singleton().wait(this, timeoutMillis);
-    }
-
-    /**
-     * Our monitors do not pin virtual threads, so we must avoid {@code jdk.internal.misc.Blocker}
-     * which expects and asserts that the virtual thread is pinned.
-     */
-    @Substitute
-    @TargetElement(name = "wait", onlyWith = JDK19OrLater.class)
-    private void waitSubstJDK19(long timeoutMillis) throws InterruptedException {
-        try {
-            MonitorSupport.singleton().wait(this, timeoutMillis);
-        } catch (InterruptedException e) {
-            Thread thread = Thread.currentThread();
-            if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread)) {
-                VirtualThreads.singleton().getAndClearInterrupt(thread);
-            }
-            throw e;
-        }
     }
 
     @Delete
