@@ -24,20 +24,19 @@
  */
 package org.graalvm.compiler.core.test.ea;
 
+import static org.graalvm.compiler.nodes.OptimizationLogImpl.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.test.TypeSystemTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
-
-import static org.graalvm.compiler.nodes.OptimizationLogImpl.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
 
 /**
  * Tests that the {@link OptimizationLogImpl} collects virtualized allocations and the number of
@@ -128,10 +127,9 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
     private void testOptimizationLog(String snippet, int allocationsRemoved, int materializations) {
         prepareGraph(snippet, false);
         try {
-            NodeIterable<OptimizationLogImpl.OptimizationEntryImpl> entries = graph.getOptimizationLog().getOptimizationTree().getNodes().filter(OptimizationLogImpl.OptimizationEntryImpl.class);
             int actualAllocationsRemoved = 0;
             int actualMaterializations = 0;
-            for (OptimizationLogImpl.OptimizationEntryImpl entry : entries) {
+            for (OptimizationLogImpl.OptimizationEntryImpl entry : graph.getOptimizationLog().getOptimizationTree().getNodes().filter(OptimizationLogImpl.OptimizationEntryImpl.class)) {
                 if (entry.getMap().get(EVENT_NAME_PROPERTY).equals("AllocationVirtualization")) {
                     actualAllocationsRemoved += 1;
                     actualMaterializations += (Integer) entry.getMap().get("materializations");
