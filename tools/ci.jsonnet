@@ -60,15 +60,9 @@
     targets: ["weekly"],
   },
 
-  local tools_unittest = {
-    environment+: {
-        "MX_TEST_RESULT_TAGS": "tools"
-    }
-  },
-
   builds: [
-    common.linux_amd64   + common.oraclejdk11 + tools_gate + tools_unittest,
-    common.linux_amd64   + common.oraclejdk17 + tools_gate + tools_unittest,
+    common.linux_amd64   + common.oraclejdk11 + tools_gate,
+    common.linux_amd64   + common.oraclejdk17 + tools_gate,
 
     common.linux_amd64   + common.oraclejdk11 + tools_javadoc,
     common.linux_amd64   + common.oraclejdk17 + tools_coverage_weekly,
