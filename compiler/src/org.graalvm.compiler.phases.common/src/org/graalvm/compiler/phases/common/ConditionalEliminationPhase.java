@@ -314,7 +314,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                     } else {
                                         guard.replaceAndDelete(newGuard);
                                     }
-                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardsCombined", guard);
+                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", guard);
                                 }
                             }
                         }
@@ -407,7 +407,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     node.replaceAtUsages(valueAnchor);
                     node.graph().replaceFixedWithFixed(node, valueAnchor);
                 }
-                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "KilledConditionAnchor", node);
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "ConditionAnchorElimination", node);
                 return true;
             });
         }
@@ -437,7 +437,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                         graph.addAfterFixed(beginNode, node.graph().add(deopt));
                     }
                 }
-                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "KilledGuard", node);
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardElimination", node);
                 return true;
             })) {
                 registerNewCondition(node.getCondition(), node.isNegated(), node);
@@ -457,7 +457,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
                     // Don't kill this branch immediately, see `processGuard`.
                 }
-                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "KilledFixedGuard", node);
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "FixedGuardElimination", node);
                 return true;
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node);
@@ -507,13 +507,13 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                  */
                                 if (alternatePi.stamp(NodeView.DEFAULT).join(existing.stamp(NodeView.DEFAULT)).equals(alternatePi.stamp(NodeView.DEFAULT))) {
                                     existing.replaceAndDelete(alternatePi);
-                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "RebuiltPi", existing);
+                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "PiImprovement", existing);
                                 }
                             }
                             continue;
                         }
                         existing.replaceAndDelete(pi);
-                        graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "RebuiltPi", existing);
+                        graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "PiImprovement", existing);
                     }
                 }
             }
@@ -525,7 +525,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
                 // Don't kill the other branch immediately, see `processGuard`.
-                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "KilledIf", node);
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "IfElimination", node);
                 return true;
             });
         }
@@ -721,7 +721,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                 newPhi.addInput(valueAt);
                             }
                             phi.replaceAtUsagesAndDelete(newPhi);
-                            graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "ImprovedPhi", phi);
+                            graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "PhiImprovement", phi);
                         }
                     }
                 }
@@ -952,7 +952,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                             otherGuard.setCondition(condition, thisGuard.isNegated());
                             otherGuard.setAction(action);
                             otherGuard.setReason(thisGuard.getReason());
-                            graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "FoldedGuard", thisGuard.asNode());
+                            graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardFolding", thisGuard.asNode());
                         }
                         return true;
                     }

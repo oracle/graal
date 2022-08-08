@@ -247,7 +247,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         } else {
             originalNode.replaceAndDelete(replacementWrapped);
         }
-        graph.getOptimizationLog().report(OptimizeDivPhase.class, "DivOptimized", originalNode);
+        graph.getOptimizationLog().report(OptimizeDivPhase.class, "DivOptimization", originalNode);
     }
 
     /**

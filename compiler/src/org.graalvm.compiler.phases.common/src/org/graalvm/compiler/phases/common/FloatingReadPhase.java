@@ -437,7 +437,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
                     FloatingAccessNode floatingNode = accessNode.asFloatingNode();
                     assert floatingNode.getLastLocationAccess() == lastLocationAccess;
                     graph.replaceFixedWithFloating(accessNode, floatingNode);
-                    graph.getOptimizationLog().report(FloatingReadPhase.class, "ReplacedWithFloating", accessNode);
+                    graph.getOptimizationLog().report(FloatingReadPhase.class, "FixedWithFloatingReplacement", accessNode);
                 }
             }
         }

@@ -274,9 +274,9 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
         try (DebugCloseable position = deopt.asNode().withNodeSourcePosition()) {
             FixedNode next = node.next();
             if (next != deopt.asNode()) {
-                node.graph().getOptimizationLog().report(ConvertDeoptimizeToGuardPhase.class, "DeoptimizeMoved", deopt.asNode());
                 node.setNext(node.graph().add(new DeoptimizeNode(deopt.getAction(), deopt.getReason(), deopt.getSpeculation())));
                 GraphUtil.killCFG(next);
+                node.graph().getOptimizationLog().report(ConvertDeoptimizeToGuardPhase.class, "DeoptimizeMovement", deopt.asNode());
             }
         }
     }

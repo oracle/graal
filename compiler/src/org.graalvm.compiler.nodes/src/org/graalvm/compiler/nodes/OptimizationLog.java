@@ -525,7 +525,7 @@ public class OptimizationLog implements CompilationListener {
             assert partialEscapeLog != null;
             MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.virtualNodes.getEntries();
             while (cursor.advance()) {
-                report(PartialEscapeLog.class, "AllocationVirtualized", cursor.getKey()).setProperty("materializations", cursor.getValue());
+                report(PartialEscapeLog.class, "AllocationVirtualization", cursor.getKey()).setProperty("materializations", cursor.getValue());
             }
             partialEscapeLog = null;
         }

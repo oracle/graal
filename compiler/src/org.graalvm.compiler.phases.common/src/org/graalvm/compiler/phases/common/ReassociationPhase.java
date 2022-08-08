@@ -161,13 +161,12 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
      */
     @SuppressWarnings("try")
     private static void prepareGraphForReassociation(StructuredGraph graph) {
-        final String eventName = "ReplacedWithMul";
         final DebugContext debug = graph.getDebug();
         EconomicSetNodeEventListener nev = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.NODE_ADDED));
         try (NodeEventScope news = graph.trackNodeEvents(nev)) {
             for (LeftShiftNode l : graph.getNodes().filter(LeftShiftNode.class)) {
                 if (l.tryReplaceWithMulNode()) {
-                    graph.getOptimizationLog().report(ReassociationPhase.class, eventName, l).setLazyProperty("replacedNodeClass", () -> l.getNodeClass().shortName());
+                    graph.getOptimizationLog().report(ReassociationPhase.class, "ArithmeticWithMulReplacement", l).setLazyProperty("replacedNodeClass", () -> l.getNodeClass().shortName());
                 }
             }
         }
@@ -195,7 +194,7 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
                         }
                     }
                     if (replaced) {
-                        graph.getOptimizationLog().report(ReassociationPhase.class, eventName, usage).setLazyProperty("replacedNodeClass", () -> usage.getNodeClass().shortName());
+                        graph.getOptimizationLog().report(ReassociationPhase.class, "ArithmeticWithMulReplacement", usage).setLazyProperty("replacedNodeClass", () -> usage.getNodeClass().shortName());
                     }
                 }
             }

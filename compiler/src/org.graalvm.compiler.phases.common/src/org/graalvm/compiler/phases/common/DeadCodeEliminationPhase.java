@@ -143,7 +143,7 @@ public class DeadCodeEliminationPhase extends Phase {
             if (!flood.isMarked(node)) {
                 node.markDeleted();
                 node.applyInputs(consumer);
-                graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved", node);
+                graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoval", node);
             }
         }
     }

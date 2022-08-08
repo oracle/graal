@@ -408,7 +408,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     }
                 }
             }
-            graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "CompareOptimized", compare);
+            graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "CompareOptimization", compare);
         }
 
         private LogicNode createLoopEnterCheck(CountedLoopInfo countedLoop, LogicNode newCompare) {
@@ -581,7 +581,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             Loop<Block> hoistAbove = findInstanceOfLoopHoisting(guard, anchorBlock, valueBlock);
             if (hoistAbove != null) {
                 compare.setProfile(compare.profile(), hoistAbove.getHeader().getDominator().getBeginNode());
-                graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "InstanceOfOptimized", compare);
+                graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "InstanceOfOptimization", compare);
                 return hoistAbove;
             }
             return null;

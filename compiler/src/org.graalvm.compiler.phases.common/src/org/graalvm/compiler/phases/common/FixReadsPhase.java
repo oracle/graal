@@ -433,7 +433,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                         node.replaceAndDelete(newNode);
                         GraphUtil.tryKillUnused(x);
                         GraphUtil.tryKillUnused(y);
-                        graph.getOptimizationLog().report(FixReadsPhase.class, "CanonicalizedBinary", node);
+                        graph.getOptimizationLog().report(FixReadsPhase.class, "BinaryCanonicalization", node);
                         return;
                     }
                 }
@@ -445,7 +445,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         protected void processIntegerSwitch(IntegerSwitchNode node) {
             Stamp bestStamp = getBestStamp(node.value());
             if (node.tryRemoveUnreachableKeys(null, bestStamp)) {
-                graph.getOptimizationLog().report(FixReadsPhase.class, "CanonicalizedSwitch", node);
+                graph.getOptimizationLog().report(FixReadsPhase.class, "SwitchCanonicalization", node);
             }
         }
 
@@ -456,7 +456,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 // Don't kill the other branch immediately, see
                 // `ConditionalEliminationPhase.processGuard`.
                 node.setCondition(LogicConstantNode.forBoolean(isTrue, node.graph()));
-                graph.getOptimizationLog().report(FixReadsPhase.class, "KilledIf", node);
+                graph.getOptimizationLog().report(FixReadsPhase.class, "IfElimination", node);
             }
         }
 
@@ -465,7 +465,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             if (result != TriState.UNKNOWN) {
                 boolean isTrue = (result == TriState.TRUE);
                 node.replaceAndDelete(isTrue ? node.trueValue() : node.falseValue());
-                graph.getOptimizationLog().report(FixReadsPhase.class, "KilledConditional", node);
+                graph.getOptimizationLog().report(FixReadsPhase.class, "ConditionalElimination", node);
             } else {
                 Stamp trueStamp = getBestStamp(node.trueValue());
                 Stamp falseStamp = getBestStamp(node.falseValue());
