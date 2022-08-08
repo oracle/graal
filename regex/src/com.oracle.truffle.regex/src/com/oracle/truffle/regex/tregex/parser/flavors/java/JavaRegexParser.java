@@ -270,14 +270,14 @@ public final class JavaRegexParser implements RegexParser {
                     dollar();
                     break;
                 case wordBoundary:
-                    if (getLocalFlags().isUnicode()) {
+                    if (lexer.getLocalFlags().isUnicode()) {
                         buildWordBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
                     } else {
                         buildWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
                     }
                     break;
                 case nonWordBoundary:
-                    if (getLocalFlags().isUnicode()) {
+                    if (lexer.getLocalFlags().isUnicode()) {
                         buildWordNonBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
                     } else {
                         buildWordNonBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
@@ -290,7 +290,7 @@ public final class JavaRegexParser implements RegexParser {
                     if (astBuilder.getCurTerm() == null) {
                         throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                     }
-                    if (getLocalFlags().isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
+                    if (lexer.getLocalFlags().isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
                         throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                     }
                     if (astBuilder.getCurTerm().isLookBehindAssertion()) {
@@ -321,7 +321,8 @@ public final class JavaRegexParser implements RegexParser {
                         case 'G':
                             bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
                     }
-                case alternation:   // already handled in function disjunction()
+                case alternation:
+                    astBuilder.nextSequence();
                     break;
                 case inlineFlag:
                     openInlineFlag = ((Token.InlineFlagToken) token).isOpen();
@@ -475,7 +476,8 @@ public final class JavaRegexParser implements RegexParser {
                             case 'G':
                                 bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
                         }
-                    case alternation:   // already handled in function disjunction()
+                    case alternation:
+                        astBuilder.nextSequence();
                         break;
                     case inlineFlag:
                         openInlineFlag = ((Token.InlineFlagToken) token).isOpen();
@@ -749,7 +751,7 @@ public final class JavaRegexParser implements RegexParser {
 
     private void dollar() {
         // (?:$|(?=[\n])) only, when multiline flag is set, otherwise just dollar
-        if (getLocalFlags().isMultiline()) {
+        if (lexer.getLocalFlags().isMultiline()) {
             pushGroup(); // (?:
             addDollar(); // $
             nextSequence(); // |
@@ -790,7 +792,7 @@ public final class JavaRegexParser implements RegexParser {
 
     private void caret() {
         // (?:^|(?<=[\n])(?=.)) only, when multiline flag is set, otherwise just caret
-        if (getLocalFlags().isMultiline()) {
+        if (lexer.getLocalFlags().isMultiline()) {
             pushGroup(); // (?:
             addCaret(); // ^
             nextSequence(); // |
