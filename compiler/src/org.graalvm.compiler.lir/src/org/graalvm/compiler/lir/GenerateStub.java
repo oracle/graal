@@ -48,8 +48,9 @@ public @interface GenerateStub {
 
     /**
      * Optional values for parameters annotated with
-     * {@link org.graalvm.compiler.graph.Node.ConstantNodeParameter}. This works only for primitive
-     * and enum parameters.
+     * {@link org.graalvm.compiler.graph.Node.ConstantNodeParameter}. The string content is pasted
+     * as-is into the generated code, with the only exception being enum values - in that case, the
+     * enum class name and a dot is prepended to the string.
      */
     String[] parameters() default {};
 
