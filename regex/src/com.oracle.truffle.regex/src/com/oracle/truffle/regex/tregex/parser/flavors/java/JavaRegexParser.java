@@ -58,6 +58,7 @@ import com.oracle.truffle.regex.errors.JavaErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
+import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -158,13 +159,6 @@ public final class JavaRegexParser implements RegexParser {
     private final String inFlags;
 
     /**
-     * Whether or not the parser should attempt to construct an ECMAScript regex during parsing or
-     * not. Setting this to {@code false} is not there to gain efficiency, but to avoid triggering
-     * {@link UnsupportedRegexException}s when checking for syntax errors.
-     */
-    private boolean silent;
-
-    /**
      * The index of the next character in {@link #inPattern} to be parsed.
      */
     private int position;
@@ -228,6 +222,8 @@ public final class JavaRegexParser implements RegexParser {
 
     private final RegexASTBuilder astBuilder;
 
+    private final JavaLexer lexer;
+
 
     private static RegexFlags makeTRegexFlags(boolean sticky) {
         // We need to set the Unicode flag to true so that character classes will treat the entire
@@ -251,21 +247,122 @@ public final class JavaRegexParser implements RegexParser {
         this.flagsStack = new LinkedList<>();
 
         this.astBuilder = astBuilder;
-        this.silent = astBuilder == null;
+
+        this.lexer = new JavaLexer(inSource, globalFlags);
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), compilationBuffer));
     }
 
-    public void validate() throws RegexSyntaxException {
-        silent = true;
-        parseInternal();
-    }
-
     public RegexAST parse() {
         astBuilder.pushRootGroup();
-        parseInternal();
+        Token token = null;
+        boolean openInlineFlag = true;
+        while (lexer.hasNext()) {
+            lastToken = token == null ? null : token;
+            token = lexer.next();
+            switch (token.kind) {
+                case caret: // java version of it
+                    caret();
+                    break;
+                case dollar: // java version of it
+                    dollar();
+                    break;
+                case wordBoundary:
+                    if (getLocalFlags().isUnicode()) {
+                        buildWordBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
+                    } else {
+                        buildWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
+                    }
+                    break;
+                case nonWordBoundary:
+                    if (getLocalFlags().isUnicode()) {
+                        buildWordNonBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
+                    } else {
+                        buildWordNonBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
+                    }
+                    break;
+                case backReference:
+                    astBuilder.addBackReference((Token.BackReference) token);
+                    break;
+                case quantifier:
+                    if (astBuilder.getCurTerm() == null) {
+                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                    }
+                    if (getLocalFlags().isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
+                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+                    }
+                    if (astBuilder.getCurTerm().isLookBehindAssertion()) {
+                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                    }
+                    addQuantifier((Token.Quantifier) token);
+                    break;
+                case anchor:
+                    Token.Anchor anc = (Token.Anchor) token;
+                    switch (anc.getAncCps().getHi(0)) {
+                        case 'A':
+                            addCaret();
+                            break;
+                        case 'Z':
+                            // (?:$|(?=[\r\n]$))
+                            pushGroup(); // (?:
+                            addDollar(); // $
+                            nextSequence(); // |
+                            pushLookAheadAssertion(false); // (?=
+                            addCharClass(CodePointSet.create('\n', '\n', '\r', '\r')); // [\r\n]
+                            addDollar(); // $
+                            popGroup(); // )
+                            popGroup(); // )
+                            break;
+                        case 'z':
+                            addDollar();
+                            break;
+                        case 'G':
+                            bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
+                    }
+                case alternation:   // already handled in function disjunction()
+                    break;
+                case inlineFlag:
+                    openInlineFlag = ((Token.InlineFlagToken) token).isOpen();
+                    if (!openInlineFlag)
+                        astBuilder.pushGroup();
+                    flagsStack.push(new JavaFlags(((Token.InlineFlagToken) token).getFlags()));
+                    break;
+                case captureGroupBegin:
+                    astBuilder.pushCaptureGroup(token);
+                    break;
+                case nonCaptureGroupBegin:
+                    astBuilder.pushGroup(token);
+                    break;
+                case lookAheadAssertionBegin:
+                    astBuilder.pushLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
+                    break;
+                case lookBehindAssertionBegin:
+                    astBuilder.pushLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
+                    break;
+                case groupEnd:
+                    if (!openInlineFlag) {
+                        flagsStack.pop();
+                        openInlineFlag = true;
+                    } else if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
+                        throw syntaxErrorHere(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                    }
+                    astBuilder.popGroup(token);
+                    break;
+                case charClass:
+                    astBuilder.addCharClass((Token.CharacterClass) token);
+                    break;
+
+            }
+//            lastToken = token;
+        }
+        if (!astBuilder.curGroupIsRoot()) {
+            throw syntaxErrorHere(ErrorMessages.UNTERMINATED_GROUP);
+        }
+
+//        astBuilder.pushRootGroup();
+//        parseInternal();
 
         return astBuilder.popRootGroup();
     }
@@ -516,9 +613,7 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     private void bailOut(String reason) throws UnsupportedRegexException {
-        if (!silent) {
-            throw new UnsupportedRegexException(reason);
-        }
+        throw new UnsupportedRegexException(reason);
     }
 
     // further parsing
@@ -1405,93 +1500,63 @@ public final class JavaRegexParser implements RegexParser {
     /// RegexASTBuilder method wrappers
 
     private void pushGroup() {
-        if (!silent) {
-            astBuilder.pushGroup();
-        }
+        astBuilder.pushGroup();
     }
 
     private void pushCaptureGroup() {
-        if (!silent) {
-            astBuilder.pushCaptureGroup();
-        }
+        astBuilder.pushCaptureGroup();
     }
 
     private void pushLookAheadAssertion(boolean negate) {
-        if (!silent) {
-            astBuilder.pushLookAheadAssertion(negate);
-        }
+        astBuilder.pushLookAheadAssertion(negate);
     }
 
     private void pushLookBehindAssertion(boolean negate) {
-        if (!silent) {
-            astBuilder.pushLookBehindAssertion(negate);
-        }
+        astBuilder.pushLookBehindAssertion(negate);
     }
 
     private void popGroup() {
-        if (!silent) {
-            astBuilder.popGroup();
-        }
+        astBuilder.popGroup();
     }
 
     private void nextSequence() {
-        if (!silent) {
-            astBuilder.nextSequence();
-        }
+        astBuilder.nextSequence();
     }
 
     private void addCharClass(CodePointSet charSet) {
-        if (!silent) {
-            astBuilder.addCharClass(charSet);
-        }
+        astBuilder.addCharClass(charSet);
     }
 
     private void addChar(int codepoint) {
-        if (!silent) {
-            astBuilder.addCharClass(CodePointSet.create(codepoint), true);
-        }
+        astBuilder.addCharClass(CodePointSet.create(codepoint), true);
     }
 
     private void addBackReference(int groupNumber) {
-        if (!silent) {
-            astBuilder.addBackReference(groupNumber);
-        }
+        astBuilder.addBackReference(groupNumber);
     }
 
     private void addSubexpressionCall(int groupNumber) {
-        if (!silent) {
-            astBuilder.addSubexpressionCall(groupNumber);
-        }
+        astBuilder.addSubexpressionCall(groupNumber);
     }
 
     private void addCaret() {
-        if (!silent) {
-            astBuilder.addCaret();
-        }
+        astBuilder.addCaret();
     }
 
     private void addDollar() {
-        if (!silent) {
-            astBuilder.addDollar();
-        }
+        astBuilder.addDollar();
     }
 
     private void addQuantifier(Token.Quantifier quantifier) {
-        if (!silent) {
-            astBuilder.addQuantifier(quantifier);
-        }
+        astBuilder.addQuantifier(quantifier);
     }
 
     private void addDeadNode() {
-        if (!silent) {
-            astBuilder.addDeadNode();
-        }
+        astBuilder.addDeadNode();
     }
 
     private void wrapCurTermInGroup() {
-        if (!silent) {
-            astBuilder.wrapCurTermInGroup();
-        }
+        astBuilder.wrapCurTermInGroup();
     }
 
     // Character predicates
