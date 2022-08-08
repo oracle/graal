@@ -144,7 +144,8 @@ public class PerfManager {
 
     public RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
-            if (isFirstIsolate && UsePerfData.getValue()) {
+            boolean startupHookExecuted = startTime > 0;
+            if (isFirstIsolate && UsePerfData.getValue() && startupHookExecuted) {
                 perfDataThread.shutdown();
 
                 PerfMemory memory = ImageSingletons.lookup(PerfMemory.class);
