@@ -40,8 +40,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * This test is temporarily removed from the project as a quick fix to GR-40265. Test will be
- * re-enabled as soon as the solution for this problem is found.
+ * FIXME: Temporary workaround for GR-40265. Test will be re-enabled as soon as the solution for
+ * this problem is found.
  */
 public class ProxyClassSerializationTest {
 
