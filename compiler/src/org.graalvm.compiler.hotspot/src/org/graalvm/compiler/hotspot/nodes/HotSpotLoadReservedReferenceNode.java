@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.nodes;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
@@ -71,7 +72,7 @@ public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode im
     public void lower(LoweringTool tool) {
         CurrentJavaThreadNode thread = graph().unique(new CurrentJavaThreadNode(wordTypes));
         AddressNode address = graph().unique(new OffsetAddressNode(thread, graph().unique(ConstantNode.forLong(jvmciReservedReference0Offset))));
-        JavaReadNode read = graph().add(new JavaReadNode(JavaKind.Object, address, JVMCI_RESERVED_REFERENCE, BarrierType.NONE, false));
+        JavaReadNode read = graph().add(new JavaReadNode(JavaKind.Object, address, JVMCI_RESERVED_REFERENCE, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
         /*
          * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they will
          * conservatively be forced at a fixed location.

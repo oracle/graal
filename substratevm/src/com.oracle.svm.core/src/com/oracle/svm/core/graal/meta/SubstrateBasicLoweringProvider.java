@@ -29,6 +29,7 @@ import static org.graalvm.word.LocationIdentity.any;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -165,7 +166,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
          */
         Stamp methodStamp = SubstrateMethodPointerStamp.methodNonNull();
         AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
-        ReadNode methodPointer = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
+        ReadNode methodPointer = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
         return methodPointer;
     }
 

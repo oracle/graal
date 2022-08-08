@@ -35,8 +35,9 @@ import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -46,7 +47,7 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThreadLocalAccess, Lowerable, SingleMemoryKill {
+public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThreadLocalAccess, Lowerable, SingleMemoryKill, OrderedMemoryAccess {
     public static final NodeClass<StoreVMThreadLocalNode> TYPE = NodeClass.create(StoreVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;
@@ -55,13 +56,9 @@ public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThre
     @Input protected ValueNode holder;
     @Input protected ValueNode value;
 
-    public StoreVMThreadLocalNode(VMThreadLocalInfo threadLocalInfo, ValueNode holder, ValueNode value, BarrierType barrierType) {
-        this(TYPE, threadLocalInfo, holder, value, barrierType, MemoryOrderMode.PLAIN);
-    }
-
-    protected StoreVMThreadLocalNode(NodeClass<? extends StoreVMThreadLocalNode> c, VMThreadLocalInfo threadLocalInfo, ValueNode holder, ValueNode value, BarrierType barrierType,
+    public StoreVMThreadLocalNode(VMThreadLocalInfo threadLocalInfo, ValueNode holder, ValueNode value, BarrierType barrierType,
                     MemoryOrderMode memoryOrder) {
-        super(c, StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.threadLocalInfo = threadLocalInfo;
         this.barrierType = barrierType;
         this.memoryOrder = memoryOrder;
@@ -75,10 +72,15 @@ public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThre
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
+        if (ordersMemoryAccesses()) {
             return LocationIdentity.any();
         }
         return threadLocalInfo.locationIdentity;
+    }
+
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return memoryOrder;
     }
 
     @Override

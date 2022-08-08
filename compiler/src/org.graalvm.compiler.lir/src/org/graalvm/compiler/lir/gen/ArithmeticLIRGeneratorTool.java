@@ -106,13 +106,9 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitBitScanReverse(Value operand);
 
-    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryExtendKind extendKind);
+    Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind);
 
-    Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind);
-
-    void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
-
-    void emitOrderedStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
+    void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
 
     @SuppressWarnings("unused")
     default Value emitFusedMultiplyAdd(Value a, Value b, Value c) {

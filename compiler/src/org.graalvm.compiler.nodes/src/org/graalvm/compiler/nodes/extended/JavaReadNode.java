@@ -34,8 +34,10 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -50,24 +52,27 @@ import jdk.vm.ci.meta.JavaKind;
  * barriers, implicit conversions and optionally oop uncompression.
  */
 @NodeInfo(nameTemplate = "JavaRead#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable, OrderedMemoryAccess {
+public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable, OrderedMemoryAccess, SingleMemoryKill {
 
     public static final NodeClass<JavaReadNode> TYPE = NodeClass.create(JavaReadNode.class);
     protected final JavaKind readKind;
     protected final boolean compressible;
+    private final MemoryOrderMode memoryOrder;
 
-    public JavaReadNode(JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
-        this(StampFactory.forKind(readKind), readKind, address, location, barrierType, compressible);
+    public JavaReadNode(JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder, boolean compressible) {
+        this(StampFactory.forKind(readKind), readKind, address, location, barrierType, memoryOrder, compressible);
     }
 
-    public JavaReadNode(Stamp stamp, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
-        this(TYPE, stamp, readKind, address, location, barrierType, compressible);
+    public JavaReadNode(Stamp stamp, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder, boolean compressible) {
+        this(TYPE, stamp, readKind, address, location, barrierType, memoryOrder, compressible);
     }
 
-    protected JavaReadNode(NodeClass<? extends JavaReadNode> c, Stamp stamp, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
+    protected JavaReadNode(NodeClass<? extends JavaReadNode> c, Stamp stamp, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder,
+                    boolean compressible) {
         super(c, address, location, stamp, barrierType);
         this.readKind = readKind;
         this.compressible = compressible;
+        this.memoryOrder = memoryOrder;
     }
 
     @Override
@@ -93,7 +98,15 @@ public class JavaReadNode extends FixedAccessNode implements Lowerable, Guarding
     }
 
     @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
+    }
+
+    @Override
     public MemoryOrderMode getMemoryOrder() {
-        return MemoryOrderMode.PLAIN;
+        return memoryOrder;
     }
 }

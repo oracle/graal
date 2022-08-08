@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -41,8 +42,8 @@ public class CInterfaceReadNode extends ReadNode {
 
     protected final String accessName;
 
-    public CInterfaceReadNode(AddressNode address, LocationIdentity locationIdentity, Stamp stamp, BarrierType barrierType, String accessName) {
-        super(TYPE, address, locationIdentity, stamp, null, barrierType, false, null);
+    public CInterfaceReadNode(AddressNode address, LocationIdentity locationIdentity, Stamp stamp, BarrierType barrierType, MemoryOrderMode memoryOrder, String accessName) {
+        super(TYPE, address, locationIdentity, stamp, null, barrierType, memoryOrder, false, null);
         this.accessName = accessName;
     }
 }
