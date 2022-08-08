@@ -142,18 +142,14 @@ public class GraalCompiler {
         DebugContext debug = r.graph.getDebug();
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(r.graph.getOptions())) {
             assert !r.graph.isFrozen();
-            if (r.graph.getOptimizationLog().isOptimizationLogEnabled()) {
-                debug.setCompilationListener(r.graph.getOptimizationLog());
-            }
-            try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache()); DebugCloseable a = CompilerTimer.start(debug)) {
+            StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(r.graph, r.providers, r.graphBuilderSuite);
+            try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache());
+                            DebugCloseable a = CompilerTimer.start(debug);
+                            DebugCloseable l = r.graph.getOptimizationLog().listen(methodNameFormatter)) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
                 r.backend.emitBackEnd(r.graph, null, r.installedCodeOwner, r.compilationResult, r.factory, null, r.lirSuites);
                 if (r.verifySourcePositions) {
                     assert r.graph.verifySourcePositions(true);
-                }
-                if (r.graph.getOptimizationLog().isOptimizationLogEnabled()) {
-                    StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(r.graph, r.providers, r.graphBuilderSuite);
-                    r.graph.getOptimizationLog().printOptimizationTree(methodNameFormatter);
                 }
             } catch (Throwable e) {
                 throw debug.handle(e);

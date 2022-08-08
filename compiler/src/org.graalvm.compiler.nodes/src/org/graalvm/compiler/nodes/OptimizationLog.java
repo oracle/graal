@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.nodes;
 
-import java.io.IOException;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.debug.CompilationListener;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.Graph;
@@ -191,11 +191,6 @@ public interface OptimizationLog extends CompilationListener {
             return OPTIMIZATION_ENTRY_DUMMY;
         }
 
-        @Override
-        public void printOptimizationTree(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-
-        }
-
         /**
          * Returns {@code null} rather than a dummy because the logging effect that uses the
          * {@link PartialEscapeLog} is not added and therefore never applied when the optimization
@@ -224,6 +219,18 @@ public interface OptimizationLog extends CompilationListener {
         @Override
         public void exitPartialEscapeAnalysis() {
 
+        }
+
+        /**
+         * Does not set itself as the compilation listener and returns a scope that does nothing,
+         * because the optimization log is disabled.
+         *
+         * @param methodNameFormatter a function that formats method names (ignored)
+         * @return a scope that does nothing
+         */
+        @Override
+        public DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+            return DebugCloseable.VOID_CLOSEABLE;
         }
     }
 
@@ -299,18 +306,6 @@ public interface OptimizationLog extends CompilationListener {
     OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node);
 
     /**
-     * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
-     * optimization tree to the standard output, a JSON file and/or dumps it. If the optimization
-     * tree is printed to a file, the directory is specified by the
-     * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option. Directories are created
-     * if they do not exist.
-     *
-     * @param methodNameFormatter a function that formats method names
-     * @throws IOException failed to create a directory or the file
-     */
-    void printOptimizationTree(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException;
-
-    /**
      * Gets the log that keeps track of virtualized allocations during partial escape analysis. Must
      * be called between {@link #enterPartialEscapeAnalysis()} and
      * {@link #exitPartialEscapeAnalysis()}.
@@ -348,4 +343,15 @@ public interface OptimizationLog extends CompilationListener {
      * it reports all virtualized allocations.
      */
     void exitPartialEscapeAnalysis();
+
+    /**
+     * Opens a scope and sets itself as the compilation listener, if the optimization log is
+     * enabled. When the scope is closed, the compilation listener is reset to {@code null} and the
+     * optimization tree is printed according to the {@link DebugOptions#OptimizationLog
+     * OptimizationLog} option.
+     *
+     * @param methodNameFormatter a function that formats method names
+     * @return a scope in whose lifespan the optimization log is set as the compilation listener
+     */
+    DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter);
 }

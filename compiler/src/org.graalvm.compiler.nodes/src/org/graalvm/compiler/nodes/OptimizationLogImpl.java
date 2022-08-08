@@ -37,6 +37,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
@@ -446,6 +447,22 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     @Override
+    public DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        if (!optimizationLogEnabled) {
+            return DebugCloseable.VOID_CLOSEABLE;
+        }
+        graph.getDebug().setCompilationListener(this);
+        return () -> {
+            graph.getDebug().setCompilationListener(null);
+            try {
+                printOptimizationTree(methodNameFormatter);
+            } catch (IOException exception) {
+                throw new GraalError("Failed to print the optimization tree: %s", exception.getMessage());
+            }
+        };
+    }
+
+    @Override
     public PartialEscapeLog getPartialEscapeLog() {
         assert partialEscapeLog != null;
         return partialEscapeLog;
@@ -461,8 +478,17 @@ public class OptimizationLogImpl implements OptimizationLog {
         return currentPhase;
     }
 
-    @Override
-    public void printOptimizationTree(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
+    /**
+     * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
+     * optimization tree to the standard output, a JSON file and/or dumps it. If the optimization
+     * tree is printed to a file, the directory is specified by the
+     * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option. Directories are created
+     * if they do not exist.
+     *
+     * @param methodNameFormatter a function that formats method names
+     * @throws IOException failed to create a directory or the file
+     */
+    private void printOptimizationTree(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
         EconomicSet<DebugOptions.OptimizationLogTarget> targets = DebugOptions.OptimizationLog.getValue(graph.getOptions());
         if (targets == null || targets.isEmpty()) {
             return;
