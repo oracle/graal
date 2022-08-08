@@ -62,6 +62,8 @@ public interface CTypeConversionSupport {
 
     String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset);
 
+    String utf8ToJavaString(CCharPointer utf8String);
+
     CCharPointerHolder toCBytes(byte[] bytes);
 
     ByteBuffer asByteBuffer(PointerBase address, int size);

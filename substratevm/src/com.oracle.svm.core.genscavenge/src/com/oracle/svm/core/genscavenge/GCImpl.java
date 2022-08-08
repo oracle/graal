@@ -1225,7 +1225,7 @@ public final class GCImpl implements GC {
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected boolean isGC() {
+        public boolean isGC() {
             return true;
         }
 

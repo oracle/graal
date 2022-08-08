@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -45,6 +46,8 @@ public interface PerfDataSupport {
     ByteBuffer createLong(String name, int variability, int units, long value);
 
     ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength);
+
+    CLongPointer getLong(String name);
 }
 
 class NoPerfDataSupport implements PerfDataSupport {
@@ -79,6 +82,11 @@ class NoPerfDataSupport implements PerfDataSupport {
 
     @Override
     public ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength) {
+        throw new IllegalArgumentException("Performance data is not supported.");
+    }
+
+    @Override
+    public CLongPointer getLong(String name) {
         throw new IllegalArgumentException("Performance data is not supported.");
     }
 }
