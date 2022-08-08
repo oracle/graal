@@ -114,6 +114,14 @@ public final class AlignedHeapChunk {
         return result;
     }
 
+    /** Retract last allocation made. Used by parallel collector. */
+    static Pointer freeMemory(AlignedHeader that, UnsignedWord size) {
+        Pointer newTop = HeapChunk.getTopPointer(that).subtract(size);
+        assert newTop.aboveOrEqual(HeapChunk.asPointer(that));
+        HeapChunk.setTopPointer(that, newTop);
+        return newTop;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord getCommittedObjectMemory(AlignedHeader that) {
         return HeapChunk.getEndOffset(that).subtract(getObjectsStartOffset());

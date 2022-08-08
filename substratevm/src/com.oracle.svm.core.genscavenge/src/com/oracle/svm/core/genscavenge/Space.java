@@ -176,7 +176,7 @@ public final class Space {
     /**
      * Allocate memory from an AlignedHeapChunk in this Space.
      */
-    @NeverInline("GC performance")
+    @AlwaysInline("GC performance")
     Pointer allocateMemory(UnsignedWord objectSize) {
         Pointer result = WordFactory.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
@@ -195,6 +195,16 @@ public final class Space {
         } finally {
             mutex.unlock();
         }
+    }
+
+    /**
+     * Retract last allocation made. Used by parallel collector.
+     */
+    @AlwaysInline("GC performance")
+    Pointer freeMemory(UnsignedWord objectSize) {
+        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.TLAB.get();
+        assert oldChunk.isNonNull();
+        return AlignedHeapChunk.freeMemory(oldChunk, objectSize);
     }
 
     private Pointer allocateInNewChunk(UnsignedWord objectSize) {
@@ -395,6 +405,8 @@ public final class Space {
             return ObjectHeaderImpl.getForwardedObject(originalMemory, originalHeader);
         }
 
+        // We need forwarding pointer to point somewhere, so we speculatively allocate memory here.
+        // If another thread copies the object first, we retract the allocation later.
         UnsignedWord size = getSizeFromHeader(original, originalHeader, impl);
         assert size.aboveThan(0);
         Pointer copyMemory = allocateMemory(size);
@@ -411,14 +423,14 @@ public final class Space {
         Object forward = ObjectHeaderImpl.installForwardingPointerParallel(original, originalHeader, copy);
 
         if (forward == copy) {
-            // We have won the race, now we must copy the object bits. First install the original originalHeader
+            // We have won the race, now we must copy the object bits. First install the original header
             int headerSize = ObjectHeaderImpl.getReferenceSize();
             if (headerSize == Integer.BYTES) {
                 copyMemory.writeInt(0, (int) originalHeader.rawValue());
             } else {
                 copyMemory.writeWord(0, originalHeader);
             }
-            // copy the rest of original object
+            // Copy the rest of original object
             UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(headerSize), copyMemory.add(headerSize), size.subtract(headerSize));
 
             if (isOldSpace()) {
@@ -430,15 +442,8 @@ public final class Space {
             ParallelGCImpl.queue(copyMemory);
             return copy;
         } else {
-            /// DEBUG: make a long array to make heap verifier happy
-            UnmanagedMemoryUtil.fillLongs(copyMemory, size, 0L);
-            DynamicHub fillClass = DynamicHub.fromClass(Object[].class);
-            Word fillHeader = ObjectHeaderImpl.encodeAsObjectHeader(fillClass, false, false);
-            int headerSize = ObjectHeaderImpl.getReferenceSize();
-            copyMemory.writeWord(0, fillHeader);
-            copyMemory.writeWord(headerSize, size.unsignedDivide(headerSize).subtract(2).shiftLeft(4 * headerSize));
-            /// END DEBUG
-            /// Now the allocated memory is lost. Retract in TLAB?
+            // Retract speculatively allocated memory
+            freeMemory(size);
             return forward;
         }
     }
