@@ -39,8 +39,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.Test;
-
+/**
+ * FIXME: Temporary workaround for GR-40265. Test will be re-enabled as soon as the solution for
+ * this problem is found.
+ */
 public class ProxyClassSerializationTest {
 
     private static void serialize(ByteArrayOutputStream byteArrayOutputStream, Object proxyObject) throws IOException {
@@ -55,7 +57,6 @@ public class ProxyClassSerializationTest {
         return objectInputStream.readObject();
     }
 
-    @Test
     public void testProxyClassSerialization() throws Exception {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
