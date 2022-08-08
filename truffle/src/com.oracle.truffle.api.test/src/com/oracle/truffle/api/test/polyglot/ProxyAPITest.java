@@ -84,6 +84,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import java.util.Collections;
+import static org.junit.Assert.fail;
 
 /**
  * Testing the behavior of proxies API and proxy interfaces.
@@ -137,6 +139,21 @@ public class ProxyAPITest {
             return getSize.get();
         }
 
+    }
+
+    @Test
+    public void readOnlyUnmodifiableList() {
+        List<String> proxy = Collections.unmodifiableList(Collections.nCopies(10, "A"));
+        Value value = context.asValue(proxy);
+        assertTrue(value.hasArrayElements());
+        try {
+            value.setArrayElement(0, "B");
+        } catch (RuntimeException ex) {
+            assertEquals("Read-only array element", ex.getMessage());
+            assertEquals(UnsupportedOperationException.class, ex.getClass());
+            return;
+        }
+        fail("Runtime exception shall have been thrown");
     }
 
     @Test

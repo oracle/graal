@@ -517,6 +517,9 @@ final class HostObject implements TruffleObject {
                         @Shared("isList") @Cached IsListNode isList,
                         @Shared("error") @Cached BranchProfile error) {
             try {
+                if (isReadOnlyList(receiver)) {
+                    return false;
+                }
                 long size = GuestToHostCalls.getListSize(receiver);
                 return index >= 0 && index < size;
             } catch (Throwable t) {
@@ -540,10 +543,17 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    private static boolean isReadOnlyList(HostObject receiver) {
+        return receiver.obj.getClass() == java.util.Collections.unmodifiableList(java.util.Collections.emptyList()).getClass();
+    }
+
     @ExportMessage
     boolean isArrayElementInsertable(long index, @Shared("isList") @Cached IsListNode isList,
                     @Shared("error") @Cached BranchProfile error) {
         try {
+            if (isReadOnlyList(this)) {
+                return false;
+            }
             return isList.execute(this) && GuestToHostCalls.getListSize(this) == index;
         } catch (Throwable t) {
             error.enter();
@@ -560,7 +570,7 @@ final class HostObject implements TruffleObject {
                         @Shared("toHost") @Cached HostToTypeNode toHostNode,
                         @Shared("isArray") @Cached IsArrayNode isArray,
                         @Cached ArraySet arraySet,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException, UnsupportedMessageException {
             if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
@@ -590,10 +600,13 @@ final class HostObject implements TruffleObject {
         static void doList(HostObject receiver, long index, Object value,
                         @Shared("isList") @Cached IsListNode isList,
                         @Shared("toHost") @Cached HostToTypeNode toHostNode,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException, UnsupportedMessageException {
             if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
+            }
+            if (isReadOnlyList(receiver)) {
+                throw UnsupportedMessageException.create();
             }
             Object javaValue;
             try {

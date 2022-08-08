@@ -199,7 +199,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
-            setArrayElementUnsupported(context, receiver);
+            setArrayElementUnsupported(context, receiver, index);
         } catch (Throwable e) {
             throw guestToHostException(context, e, true);
         } finally {
@@ -208,7 +208,10 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @TruffleBoundary
-    static void setArrayElementUnsupported(PolyglotLanguageContext context, Object receiver) {
+    static void setArrayElementUnsupported(PolyglotLanguageContext context, Object receiver, long index) {
+        if (!InteropLibrary.getUncached().isArrayElementWritable(receiver, index)) {
+            throw PolyglotEngineException.unsupported("Read-only array element");
+        }
         throw unsupported(context, receiver, "setArrayElement(long, Object)", "hasArrayElements()");
     }
 
@@ -3333,7 +3336,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     arrays.writeArrayElement(receiver, index, value);
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    setArrayElementUnsupported(context, receiver);
+                    setArrayElementUnsupported(context, receiver, index);
                 } catch (UnsupportedTypeException e) {
                     invalidValue.enter();
                     throw invalidArrayValue(context, receiver, index, value);
