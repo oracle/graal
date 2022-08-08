@@ -23,10 +23,12 @@ The options fall into three categories:
 
 Find a complete list of options for the `native-image` tool [here](BuildOptions.md).
 
+There are some expert level options that a Native Image developer may find useful or needed, for example, the option to dump graphs of the `native-image` builder or enable assertions at image run time. This information can be found in [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md).
+
 ### Further Reading
+
+If you are new to GraalVM Native Image or have little experience using it, see the [Native Image Basics](NativeImageBasics.md) to better understand some key aspects before going further.
 
 For more tweaks and how to properly configure the `native-image` tool, see [Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
 
 Native Image will output the progress and various statistics when building the native binary. To learn more about the output, and the different build phases, see [Build Output](BuildOutput.md).
-
-If you are new to GraalVM Native Image or have little experience using it, see the [Native Image Basics](NativeImageBasics.md) to better understand some key aspects before going further.
