@@ -481,9 +481,10 @@ public class OptimizationLogImpl implements OptimizationLog {
     /**
      * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
      * optimization tree to the standard output, a JSON file and/or dumps it. If the optimization
-     * tree is printed to a file, the directory is specified by the
-     * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option. Directories are created
-     * if they do not exist.
+     * tree is printed to a file, the directory is either specified by the
+     * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option or it is printed to
+     * {@link DebugOptions#DumpPath DumpPath}/optimization_log (the former having precedence).
+     * Directories are created if they do not exist.
      *
      * @param methodNameFormatter a function that formats method names
      * @throws IOException failed to create a directory or the file
@@ -503,10 +504,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (targets.contains(DebugOptions.OptimizationLogTarget.Directory)) {
             String pathOptionValue = DebugOptions.OptimizationLogPath.getValue(graph.getOptions());
             if (pathOptionValue == null) {
-                throw new GraalError("%s is set to %s but %s is not set",
-                                DebugOptions.OptimizationLog.getName(),
-                                DebugOptions.OptimizationLogTarget.Directory.name(),
-                                DebugOptions.OptimizationLogPath.getName());
+                pathOptionValue = PathUtilities.getPath(DebugOptions.getDumpDirectory(graph.getOptions()), "optimization_log");
             }
             PathUtilities.createDirectories(pathOptionValue);
             String filePath = PathUtilities.getPath(pathOptionValue, compilationId + ".json");
