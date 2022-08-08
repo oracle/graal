@@ -57,7 +57,7 @@ import org.graalvm.compiler.processor.AbstractProcessor;
  */
 public class IntrinsicStubProcessor extends AbstractProcessor {
 
-    enum Flavor {
+    enum TargetVM {
         hotspot,
         substrate
     }
@@ -169,7 +169,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
             constantNodeParameter = getType(CONSTANT_NODE_PARAMETER_CLASS_NAME);
             for (Element holder : roundEnv.getElementsAnnotatedWith(generatedStubsHolder)) {
                 AnnotationMirror generatedStubsHolderAnnotation = getAnnotation(holder, generatedStubsHolder.asType());
-                Flavor flavor = Flavor.valueOf(getAnnotationValue(generatedStubsHolderAnnotation, "flavor", String.class));
+                TargetVM targetVM = TargetVM.valueOf(getAnnotationValue(generatedStubsHolderAnnotation, "targetVM", String.class));
                 ArrayList<GenerateStubClass> classes = new ArrayList<>();
                 for (TypeMirror sourceType : getAnnotationValueList(generatedStubsHolderAnnotation, "sources", TypeMirror.class)) {
                     TypeElement source = asTypeElement(sourceType);
@@ -178,23 +178,23 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                     for (Element e : source.getEnclosedElements()) {
                         AnnotationMirror generateStubAnnotation = getAnnotation(e, generateStub.asType());
                         if (generateStubAnnotation != null) {
-                            extractStubs(flavor, source, stubs, minimumFeatureGetters, (ExecutableElement) e, generateStubAnnotation, List.of(generateStubAnnotation));
+                            extractStubs(targetVM, source, stubs, minimumFeatureGetters, (ExecutableElement) e, generateStubAnnotation, List.of(generateStubAnnotation));
                         }
                         AnnotationMirror generateStubsAnnotation = getAnnotation(e, generateStubs.asType());
                         if (generateStubsAnnotation != null) {
                             List<AnnotationMirror> values = getAnnotationValueList(generateStubsAnnotation, "value", AnnotationMirror.class);
-                            extractStubs(flavor, source, stubs, minimumFeatureGetters, (ExecutableElement) e, generateStubsAnnotation, values);
+                            extractStubs(targetVM, source, stubs, minimumFeatureGetters, (ExecutableElement) e, generateStubsAnnotation, values);
                         }
                     }
                     classes.add(new GenerateStubClass(source, stubs, minimumFeatureGetters.keySet()));
                 }
-                createStubs(this, flavor, (TypeElement) holder, classes);
+                createStubs(this, targetVM, (TypeElement) holder, classes);
             }
         }
         return false;
     }
 
-    private void extractStubs(Flavor flavor,
+    private void extractStubs(TargetVM targetVM,
                     TypeElement source,
                     ArrayList<GenerateStub> stubs,
                     HashMap<MinimumFeaturesGetter, MinimumFeaturesGetter> minimumFeatureGetters,
@@ -205,15 +205,15 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
             String msg = String.format("methods annotated with %s must also be annotated with %s", annotation, nodeIntrinsic);
             env().getMessager().printMessage(Diagnostic.Kind.ERROR, msg, method, annotation);
         }
-        RuntimeCheckedFlagsMethod rtc = flavor == Flavor.substrate ? findRuntimeCheckedFlagsVariant(this, source, method, annotation) : null;
+        RuntimeCheckedFlagsMethod rtc = findRuntimeCheckedFlagsVariant(this, source, method, annotation);
         for (AnnotationMirror generateStubAnnotationValue : generateStubAnnotations) {
-            MinimumFeaturesGetter minimumFeaturesGetter = extractMinimumFeaturesGetter(flavor, minimumFeatureGetters, generateStubAnnotationValue);
+            MinimumFeaturesGetter minimumFeaturesGetter = extractMinimumFeaturesGetter(targetVM, minimumFeatureGetters, generateStubAnnotationValue);
             stubs.add(new GenerateStub(generateStubAnnotationValue, method, rtc, minimumFeaturesGetter));
         }
     }
 
-    private static MinimumFeaturesGetter extractMinimumFeaturesGetter(Flavor flavor, HashMap<MinimumFeaturesGetter, MinimumFeaturesGetter> minimumFeatureGetters, AnnotationMirror genStub) {
-        if (flavor == Flavor.substrate) {
+    private static MinimumFeaturesGetter extractMinimumFeaturesGetter(TargetVM targetVM, HashMap<MinimumFeaturesGetter, MinimumFeaturesGetter> minimumFeatureGetters, AnnotationMirror genStub) {
+        if (targetVM == TargetVM.substrate) {
             String amd64Getter = getAnnotationValue(genStub, "minimumCPUFeaturesAMD64", String.class);
             String aarch64Getter = getAnnotationValue(genStub, "minimumCPUFeaturesAARCH64", String.class);
             if (!amd64Getter.isEmpty() || !aarch64Getter.isEmpty()) {
@@ -235,7 +235,9 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                 }
             }
         }
-        processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, "could not find runtime checked flags variant", method, annotation);
+        processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, "Could not find runtime checked flags variant. " +
+                        "For every method annotated with @GenerateStub, a second @NodeIntrinsic method with the same signature + an additional @ConstantNodeParameter EnumSet<CPUFeature> parameter for runtime checked CPU flags is required.",
+                        method, annotation);
         return null;
     }
 
@@ -266,7 +268,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
         return new RuntimeCheckedFlagsMethod(cur, iDiff);
     }
 
-    private void createStubs(AbstractProcessor processor, Flavor flavor, TypeElement holder, ArrayList<GenerateStubClass> classes) {
+    private void createStubs(AbstractProcessor processor, TargetVM targetVM, TypeElement holder, ArrayList<GenerateStubClass> classes) {
         PackageElement pkg = (PackageElement) holder.getEnclosingElement();
         String genClassName = holder.getSimpleName() + "Gen";
         String pkgQualifiedName = pkg.getQualifiedName().toString();
@@ -282,7 +284,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                 out.printf("package %s;\n", pkgQualifiedName);
                 out.printf("\n");
                 Set<String> imports = new HashSet<>();
-                switch (flavor) {
+                switch (targetVM) {
                     case hotspot:
                         imports.addAll(List.of(
                                         "org.graalvm.compiler.api.replacements.Snippet",
@@ -323,11 +325,11 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                 }
                 out.printf("\n");
                 out.printf("public class %s", genClassName);
-                if (flavor == Flavor.hotspot) {
+                if (targetVM == TargetVM.hotspot) {
                     out.printf(" extends SnippetStub ");
                 }
                 out.printf("{\n");
-                if (flavor == Flavor.hotspot) {
+                if (targetVM == TargetVM.hotspot) {
                     out.printf("\n");
                     out.printf("    public %s(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {\n", genClassName);
                     out.printf("        super(linkage.getDescriptor().getName(), options, providers, linkage);\n");
@@ -335,7 +337,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                 }
                 out.printf("\n");
                 for (GenerateStubClass genClass : classes) {
-                    if (flavor == Flavor.substrate) {
+                    if (targetVM == TargetVM.substrate) {
                         int n = 0;
                         for (MinimumFeaturesGetter featuresGetter : genClass.featureGetters) {
                             featuresGetter.setName(String.format("%s_getMinimumFeatures%s", genClass.clazz.getSimpleName(), n++ > 0 ? "_" + n : ""));
@@ -372,21 +374,21 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                         }
                         List<String> params = getAnnotationValueList(gen.annotation, "parameters", String.class);
                         Name className = genClass.clazz.getSimpleName();
-                        switch (flavor) {
+                        switch (targetVM) {
                             case hotspot:
-                                generateStub(flavor, out, className, name, params, gen.method, null, 0);
+                                generateStub(targetVM, out, className, name, params, gen.method, null, 0);
                                 break;
                             case substrate:
                                 if (gen.minimumFeaturesGetter == null) {
-                                    generateStub(flavor, out, className, name, params, gen.method, null,
+                                    generateStub(targetVM, out, className, name, params, gen.method, null,
                                                     0);
                                 } else {
-                                    generateStub(flavor, out, className, name, params,
+                                    generateStub(targetVM, out, className, name, params,
                                                     gen.runtimeCheckedFlagsMethod.method,
                                                     gen.minimumFeaturesGetter.getName() + "()",
                                                     gen.runtimeCheckedFlagsMethod.runtimeCheckedFlagsParameterIndex);
                                 }
-                                generateStub(flavor, out, className, name + "RTC", params,
+                                generateStub(targetVM, out, className, name + "RTC", params,
                                                 gen.runtimeCheckedFlagsMethod.method,
                                                 "Stubs.getRuntimeCheckedCPUFeatures()",
                                                 gen.runtimeCheckedFlagsMethod.runtimeCheckedFlagsParameterIndex);
@@ -401,9 +403,9 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
         }
     }
 
-    private void generateStub(Flavor flavor, PrintWriter out, Name className, String methodName, List<String> params, ExecutableElement m, String runtimeCheckedFeatures,
+    private void generateStub(TargetVM targetVM, PrintWriter out, Name className, String methodName, List<String> params, ExecutableElement m, String runtimeCheckedFeatures,
                     int runtimeCheckedFeaturesParameterIndex) {
-        switch (flavor) {
+        switch (targetVM) {
             case hotspot:
                 out.printf("    @Snippet\n");
                 break;

@@ -33,7 +33,7 @@ import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
-@GeneratedStubsHolder(flavor = "hotspot", sources = {
+@GeneratedStubsHolder(targetVM = "hotspot", sources = {
                 ArrayIndexOfNode.class,
                 ArrayEqualsNode.class,
                 ArrayRegionEqualsNode.class,

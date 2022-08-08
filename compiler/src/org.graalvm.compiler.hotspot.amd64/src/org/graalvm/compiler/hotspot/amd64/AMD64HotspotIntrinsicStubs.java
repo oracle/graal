@@ -28,7 +28,7 @@ import org.graalvm.compiler.lir.GeneratedStubsHolder;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 
-@GeneratedStubsHolder(flavor = "hotspot", sources = {
+@GeneratedStubsHolder(targetVM = "hotspot", sources = {
                 AMD64ArrayRegionEqualsWithMaskNode.class,
                 AMD64CalcStringAttributesNode.class,
 })

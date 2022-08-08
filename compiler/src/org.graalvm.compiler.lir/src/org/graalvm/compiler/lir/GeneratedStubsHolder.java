@@ -40,7 +40,7 @@ public @interface GeneratedStubsHolder {
     /**
      * Target VM. Supported values are "hotspot" and "substrate".
      */
-    String flavor();
+    String targetVM();
 
     /**
      * List of classes containing methods annotated with {@link GenerateStub} stubs should be
