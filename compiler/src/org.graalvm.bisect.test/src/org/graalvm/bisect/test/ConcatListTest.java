@@ -39,7 +39,7 @@ public class ConcatListTest {
         foo.append(1);
         ConcatList<Integer> bar = new ConcatList<>();
         bar.append(2);
-        foo.concat(bar);
+        foo.transferFrom(bar);
         assertEquals(List.of(1, 2), foo.toList());
         assertTrue(bar.isEmpty());
     }
@@ -50,7 +50,7 @@ public class ConcatListTest {
         ConcatList<Integer> bar = new ConcatList<>();
         bar.append(1);
         bar.append(2);
-        foo.concat(bar);
+        foo.transferFrom(bar);
         assertEquals(List.of(1, 2), foo.toList());
         assertTrue(bar.isEmpty());
     }
@@ -61,7 +61,7 @@ public class ConcatListTest {
         ConcatList<Integer> bar = new ConcatList<>();
         foo.append(1);
         foo.append(2);
-        foo.concat(bar);
+        foo.transferFrom(bar);
         assertEquals(List.of(1, 2), foo.toList());
         assertTrue(bar.isEmpty());
     }

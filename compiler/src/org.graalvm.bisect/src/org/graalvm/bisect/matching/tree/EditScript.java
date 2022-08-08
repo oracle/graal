@@ -266,7 +266,7 @@ public class EditScript implements TreeMatching {
      * @param otherScript the other edit script which will be emptied
      */
     public void concat(EditScript otherScript) {
-        operations = otherScript.operations.concat(operations);
+        operations = otherScript.operations.transferFrom(operations);
         otherScript.operations = null;
     }
 

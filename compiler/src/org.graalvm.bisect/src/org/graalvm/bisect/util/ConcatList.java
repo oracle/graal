@@ -29,7 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * A linked list with O(1) concatenation.
+ * A linked list which allows O(1) concatenation by transferring elements of another list.
  *
  * @param <T> the element type
  */
@@ -106,13 +106,13 @@ public class ConcatList<T> implements Iterable<T> {
     }
 
     /**
-     * Concatenates the other list's elements with this list's elements. The other list will be
-     * empty after the concatenation.
+     * Transfers the other list's elements to the end of this list. The other list will be empty
+     * after the transfer.
      *
      * @param otherList the other list that will be emptied
      * @return the concatenated list
      */
-    public ConcatList<T> concat(ConcatList<T> otherList) {
+    public ConcatList<T> transferFrom(ConcatList<T> otherList) {
         if (otherList.head == null) {
             assert otherList.tail == null;
             return this;
