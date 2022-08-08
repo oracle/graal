@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.test;
 
+import static org.graalvm.compiler.nodes.OptimizationLogImpl.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
+
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -33,6 +35,7 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.nodes.OptimizationLog;
+import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -46,8 +49,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import static org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
 
 /**
  * Tests the functionality of the {@link OptimizationLog}.
@@ -108,14 +109,14 @@ public class OptimizationLogTest extends GraalCompilerTest {
         ReportNodePhase reportNodePhase = new ReportNodePhase(() -> 43);
         reportNodePhase.apply(graph, providers);
 
-        OptimizationLog.OptimizationPhaseScope rootPhase = graph.getOptimizationLog().getCurrentPhase();
+        OptimizationLogImpl.OptimizationPhaseScope rootPhase = graph.getOptimizationLog().getCurrentPhase();
         Assert.assertEquals("RootPhase", rootPhase.getPhaseName());
 
-        OptimizationLog.OptimizationPhaseScope reportNodePhaseScope = (OptimizationLog.OptimizationPhaseScope) rootPhase.getChildren().get(0);
+        OptimizationLogImpl.OptimizationPhaseScope reportNodePhaseScope = (OptimizationLogImpl.OptimizationPhaseScope) rootPhase.getChildren().get(0);
         Assert.assertEquals(new ClassTypeSequence(ReportNodePhase.class).toString(), reportNodePhaseScope.getPhaseName().toString());
         Assert.assertEquals(3, reportNodePhaseScope.getChildren().count());
 
-        OptimizationLog.OptimizationEntryImpl startNodeLog = (OptimizationLog.OptimizationEntryImpl) reportNodePhaseScope.getChildren().get(0);
+        OptimizationLogImpl.OptimizationEntryImpl startNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportNodePhaseScope.getChildren().get(0);
         EconomicMap<String, Object> expectedProperties = EconomicMap.create();
         expectedProperties.put("optimizationName", "ReportNode");
         expectedProperties.put("eventName", "StartNodeReported");
@@ -123,16 +124,16 @@ public class OptimizationLogTest extends GraalCompilerTest {
         expectedProperties.put("bar", 43);
         Assert.assertEquals(expectedProperties.toString(), startNodeLog.getMap().toString());
 
-        OptimizationLog.OptimizationPhaseScope reportAddNodePhase = (OptimizationLog.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(1);
+        OptimizationLogImpl.OptimizationPhaseScope reportAddNodePhase = (OptimizationLogImpl.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(1);
         Assert.assertEquals(new ClassTypeSequence(ReportAddNodePhase.class).toString(), reportAddNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportAddNodePhase.getChildren().count());
-        OptimizationLog.OptimizationEntryImpl addNodeLog = (OptimizationLog.OptimizationEntryImpl) reportAddNodePhase.getChildren().get(0);
+        OptimizationLogImpl.OptimizationEntryImpl addNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportAddNodePhase.getChildren().get(0);
         Assert.assertEquals("AddNodeReported", addNodeLog.getMap().get(EVENT_NAME_PROPERTY));
 
-        OptimizationLog.OptimizationPhaseScope reportReturnNodePhase = (OptimizationLog.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(2);
+        OptimizationLogImpl.OptimizationPhaseScope reportReturnNodePhase = (OptimizationLogImpl.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(2);
         Assert.assertEquals(new ClassTypeSequence(ReportReturnNodePhase.class).toString(), reportReturnNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportReturnNodePhase.getChildren().count());
-        OptimizationLog.OptimizationEntryImpl returnNodeLog = (OptimizationLog.OptimizationEntryImpl) reportReturnNodePhase.getChildren().get(0);
+        OptimizationLogImpl.OptimizationEntryImpl returnNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportReturnNodePhase.getChildren().get(0);
         Assert.assertEquals("ReturnNodeReported", returnNodeLog.getMap().get(EVENT_NAME_PROPERTY));
     }
 
@@ -165,8 +166,9 @@ public class OptimizationLogTest extends GraalCompilerTest {
      * position tracking}.
      *
      * @param methodName the name of the method to be parsed
-     * @param enableOptimizationLog whether the {@link DebugOptions#OptimizationLog} should be enabled
-     * @param setCompilationListener the graph's {@link OptimizationLog} will be set as the
+     * @param enableOptimizationLog whether the {@link DebugOptions#OptimizationLog} should be
+     *            enabled
+     * @param setCompilationListener the graph's {@link OptimizationLogImpl} will be set as the
      *            compilation listener iff set
      * @return the parsed graph
      */

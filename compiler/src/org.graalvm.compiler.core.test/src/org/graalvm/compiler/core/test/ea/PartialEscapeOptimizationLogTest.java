@@ -31,16 +31,16 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.OptimizationLog;
+import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
+import static org.graalvm.compiler.nodes.OptimizationLogImpl.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
 
 /**
- * Tests that the {@link OptimizationLog} collects virtualized allocations and the number of
+ * Tests that the {@link OptimizationLogImpl} collects virtualized allocations and the number of
  * materializations per allocation.
  */
 public class PartialEscapeOptimizationLogTest extends EATestBase {
@@ -128,11 +128,11 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
     private void testOptimizationLog(String snippet, int allocationsRemoved, int materializations) {
         prepareGraph(snippet, false);
         try {
-            NodeIterable<OptimizationLog.OptimizationEntryImpl> entries = graph.getOptimizationLog().getOptimizationTree().getNodes().filter(OptimizationLog.OptimizationEntryImpl.class);
+            NodeIterable<OptimizationLogImpl.OptimizationEntryImpl> entries = graph.getOptimizationLog().getOptimizationTree().getNodes().filter(OptimizationLogImpl.OptimizationEntryImpl.class);
             int actualAllocationsRemoved = 0;
             int actualMaterializations = 0;
-            for (OptimizationLog.OptimizationEntryImpl entry : entries) {
-                if (entry.getMap().get(EVENT_NAME_PROPERTY).equals("AllocationVirtualized")) {
+            for (OptimizationLogImpl.OptimizationEntryImpl entry : entries) {
+                if (entry.getMap().get(EVENT_NAME_PROPERTY).equals("AllocationVirtualization")) {
                     actualAllocationsRemoved += 1;
                     actualMaterializations += (Integer) entry.getMap().get("materializations");
                 }

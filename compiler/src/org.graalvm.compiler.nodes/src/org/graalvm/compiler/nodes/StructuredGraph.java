@@ -369,7 +369,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.cancellable = cancellable;
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
-        this.optimizationLog = new OptimizationLog(this);
+        this.optimizationLog = OptimizationLog.getInstance(this);
     }
 
     private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
