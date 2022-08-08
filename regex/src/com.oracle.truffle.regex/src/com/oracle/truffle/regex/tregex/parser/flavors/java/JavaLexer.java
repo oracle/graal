@@ -303,6 +303,8 @@ public class JavaLexer {
         switch (ch) {
             case '\\':
                 return escape();
+            case '|':
+                return Token.createAlternation();
             case '[':
                 return characterClass();
             case '*':
@@ -344,7 +346,7 @@ public class JavaLexer {
         }
     }
 
-    private JavaFlags getLocalFlags() {
+    public JavaFlags getLocalFlags() {
         return flagsStack.peek();
     }
 
