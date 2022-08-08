@@ -577,8 +577,12 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * DIE should inherit attributes from the method_definition DIE referenced as its
          * specification attribute without the need to repeat them, including attributes specified
          * in child DIEs of the method_definition. However, it is actually necessary to replicate
-         * the method_parameter DIEs of the specification as children of the abstract_inline_method
-         * DIE because gdb does not carry these attributes across from the specification DIE.
+         * the method_parameter/local_declaration DIEs of the specification as children of the
+         * abstract_inline_method DIE. This provides a CU-local target for references from the
+         * corresponding method_parameter/local_location DIEs that sit below the inlined_subroutine
+         * DIEs in the concrete inlined subroutine tree. This is needed because some tools require
+         * the location DIEs abstract_origin attribute that links the location to specification to
+         * be a CU-relative offset (FORM_Ref4) rather than an info section offset.
          *
          * <ul>
          *
@@ -1337,7 +1341,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeTag(DwarfDebugInfo.DW_TAG_variable, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         /* Do we have a symbol name to use here? */
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_linkage_name, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
@@ -1511,8 +1515,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_formal_parameter, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_abstract_origin, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location2) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
             pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
@@ -1530,8 +1534,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_variable, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_abstract_origin, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_local_location2) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
             pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
@@ -1556,7 +1560,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeTag(DwarfDebugInfo.DW_TAG_inlined_subroutine, buffer, pos);
         pos = writeFlag(withChildren ? DwarfDebugInfo.DW_CHILDREN_yes : DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_abstract_origin, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_low_pc, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_hi_pc, buffer, pos);

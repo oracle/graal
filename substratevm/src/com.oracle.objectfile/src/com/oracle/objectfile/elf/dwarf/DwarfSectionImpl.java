@@ -776,21 +776,63 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodEntry);
     }
 
-    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
-        dwarfSections.setMethodLocalIndex(methodEntry, localInfo, index);
+    /**
+     * Record the info section offset of a local (or parameter) declaration DIE. The local (or
+     * parameter) can be a child of a standard method declaration in the CU of its owning class.
+     * Alternatively, it can be as a child of an abstract inline method declaration in the CU of a
+     * class into which the original's code needs to be inlined.
+     * 
+     * @param classEntry null if the local declaration belongs to a standard method declaration
+     *            otherwise the entry for the class importing the inline code.
+     * @param methodEntry the method being declared or inlined.
+     * @param localInfo the local or param whose index is to be recorded.
+     * @param index the info section offset to be recorded.
+     */
+    protected void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setMethodLocalIndex(classEntry, methodEntry, localInfo, index);
     }
 
-    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo) {
+    /**
+     * Retrieve the info section offset of a local (or parameter) declaration DIE. The local (or
+     * parameter) can be a child of a standard method declaration in the CU of its owning class.
+     * Alternatively, it can be as a child of an abstract inline method declaration in the CU of a
+     * class into which the original's code needs to be inlined.
+     * 
+     * @param classEntry null if the local declaration belongs to a standard method declaration
+     *            otherwise the entry for the class importing the inline code.
+     * @param methodEntry the method being declared or imported
+     * @param localInfo the local or param whose index is to be retrieved.
+     * @return the associated info section offset.
+     */
+    protected int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getMethodLocalIndex(methodEntry, localInfo);
+        return dwarfSections.getMethodLocalIndex(classEntry, methodEntry, localInfo);
     }
 
+    /**
+     * Record the info section offset of a local (or parameter) location DIE associated with a top
+     * level (primary) or inline method range.
+     * 
+     * @param range the top level (primary) or inline range to which the local (or parameter)
+     *            belongs.
+     * @param localInfo the local or param whose index is to be recorded.
+     * @param index the info section offset to be recorded.
+     */
     protected void setRangeLocalIndex(Range range, DebugLocalInfo localInfo, int index) {
         dwarfSections.setRangeLocalIndex(range, localInfo, index);
     }
 
+    /**
+     * Retrieve the info section offset of a local (or parameter) location DIE associated with a top
+     * level (primary) or inline method range.
+     * 
+     * @param range the top level (primary) or inline range to which the local (or parameter)
+     *            belongs.
+     * @param localInfo the local or param whose index is to be retrieved.
+     * @return the associated info section offset.
+     */
     protected int getRangeLocalIndex(Range range, DebugLocalInfo localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
