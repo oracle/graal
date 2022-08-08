@@ -48,10 +48,9 @@ function(setFromEnv varname envname)
   endif()
 endfunction()
 
+check_var(GRAALVM_LLVM_INCLUDE_DIR)
 check_var(GRAALVM_LLVM_LIBS_INCLUDE_DIR)
-check_var(GRAALVM_LLVM_LIB_DIR)
 check_var(LIBCXX_SRC)
-check_var(LIBCXX_ISYSTEM)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
 add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
@@ -79,6 +78,9 @@ target_sources(sulong PRIVATE
 )
 
 if(WIN32)
+    check_var(LIBCXX_ISYSTEM)
+    check_var(GRAALVM_LLVM_LIB_DIR)
+
     target_link_directories(sulong PRIVATE ${GRAALVM_LLVM_LIB_DIR})
     target_link_libraries(sulong graalvm-llvm)
     target_sources(sulong PRIVATE sulong.def)
