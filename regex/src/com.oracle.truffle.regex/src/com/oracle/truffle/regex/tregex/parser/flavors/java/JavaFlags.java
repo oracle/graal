@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -60,7 +59,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
 
     private final int value;
 
-    private static final String FLAGS = "idmsuxU";   // TODO "U" as well? -- YES
+    private static final String FLAGS = "idmsuxU";
     //    private static final String BIT_FLAGS = "mixy";
 //    private static final String COMPILE_TIME_FLAGS = "mix";
     private static final String TYPE_FLAGS = "duU";
