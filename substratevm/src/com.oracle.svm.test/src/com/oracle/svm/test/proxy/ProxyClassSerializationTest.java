@@ -42,8 +42,8 @@ import java.util.Set;
 import org.junit.Test;
 
 /**
- * This test is temporarily removed from the project as a quick fix to GR-40265.
- * Test will be re-enabled as soon as the solution for this problem is found.
+ * This test is temporarily removed from the project as a quick fix to GR-40265. Test will be
+ * re-enabled as soon as the solution for this problem is found.
  */
 public class ProxyClassSerializationTest {
 
@@ -63,7 +63,7 @@ public class ProxyClassSerializationTest {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
         Object proxyObject = Proxy.newProxyInstance(Serializable.class.getClassLoader(),
-                new Class<?>[]{Serializable.class, Comparable.class}, new ProxyHandler());
+                        new Class<?>[]{Serializable.class, Comparable.class}, new ProxyHandler());
         serialize(byteArrayOutputStream, proxyObject);
 
         Object deserializedProxy = deserialize(byteArrayOutputStream);
