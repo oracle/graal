@@ -128,13 +128,13 @@
     {name: "weekly-compiler-test-labsjdk-11-darwin-aarch64"} +          s.test +           c.labsjdk11 +      c.darwin_aarch64 + s.weekly,
 
     # Windows AMD64
-    {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"] + c.mach5_target,
+    {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"],
     {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk17"] + c.mach5_target,
 
     # Linux AMD64
-    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("55:00") + c.mach5_target,
+    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("55:00"),
     {name: "gate-compiler-test-labsjdk-17-linux-amd64"} +               s.test +           c.labsjdk17 +      c.linux_amd64 + t("55:00") + c.mach5_target,
-    {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.linux_amd64 + c.mach5_target,
+    {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-ctw-labsjdk-17-linux-amd64"} +                s.ctw +            c.labsjdk17 +      c.linux_amd64 + c.mach5_target,
     {name: "gate-compiler-ctw-economy-labsjdk-11-linux-amd64"} +        s.ctw_economy +    c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-ctw-economy-labsjdk-17-linux-amd64"} +        s.ctw_economy +    c.labsjdk17 +      c.linux_amd64,
@@ -160,7 +160,7 @@
     {name: "weekly-compiler-test-ctw-labsjdk-11-linux-aarch64"} +       s.coverage_ctw +   c.labsjdk11 +      c.linux_aarch64 + s.weekly,
 
     # Bootstrap testing
-    {name: "gate-compiler-bootstraplite-labsjdk-11-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk11 +      c.darwin_amd64 + t("1:00:00") + c.mach5_target,
+    {name: "gate-compiler-bootstraplite-labsjdk-11-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk11 +      c.darwin_amd64 + t("1:00:00"),
     {name: "gate-compiler-bootstraplite-labsjdk-17-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + c.mach5_target,
     {name: "gate-compiler-bootstrapfullverify-labsjdk-17-linux-amd64"} +s.bootstrap_full + c.labsjdk17 +      c.linux_amd64  + s.many_cores + c.mach5_target,
 
