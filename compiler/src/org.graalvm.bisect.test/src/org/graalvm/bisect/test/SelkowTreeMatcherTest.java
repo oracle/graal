@@ -48,7 +48,7 @@ public class SelkowTreeMatcherTest {
         root2.addChild(bar);
         CompilationUnit method2 = new CompilationUnit("2", "bar", root2, 0, null);
 
-        SelkowTreeMatcher matcher = new SelkowTreeMatcher();
+        SelkowTreeMatcher matcher = new SelkowTreeMatcher(1, 2, 1000);
         EditScript editScript = matcher.match(method1, method2);
         List<EditScript.DeltaNode> expected = List.of(
                         new EditScript.Identity(root1, root2, 0),
@@ -113,7 +113,7 @@ public class SelkowTreeMatcherTest {
         root2.addChild(toBeInserted);
         CompilationUnit method2 = new CompilationUnit("2", "method2", root2, 0, null);
 
-        SelkowTreeMatcher matcher = new SelkowTreeMatcher();
+        SelkowTreeMatcher matcher = new SelkowTreeMatcher(1, 2, 1000);
         EditScript editScript = matcher.match(method1, method2);
         List<EditScript.DeltaNode> expected = List.of(
                         new EditScript.Identity(root1, root2, 0),

@@ -39,22 +39,46 @@ public class SelkowTreeMatcher implements TreeMatcher {
     /**
      * The cost of insertion or deletion per node.
      */
-    public static final long INSERT_DELETE_COST = 1;
+    private final long insertDeleteCost;
 
     /**
      * The cost to rename a phase node.
      */
-    public static final long PHASE_RENAME_COST = 1000000000;
+    private final long phaseRenameCost;
 
     /**
      * The cost to replace an optimization with a different optimization.
      */
-    public static final long OPTIMIZATION_REPLACE_COST = 1000000000;
+    public final long optimizationReplaceCost;
 
     /**
      * Maps a node to the size of its subtree.
      */
     private EconomicMap<OptimizationTreeNode, Integer> treeSize = null;
+
+    /**
+     * Constructs the tree matcher with the default costs of operations. By default, relabelling
+     * operations are avoided.
+     */
+    public SelkowTreeMatcher() {
+        insertDeleteCost = 1;
+        phaseRenameCost = 1000000000;
+        optimizationReplaceCost = 1000000000;
+    }
+
+    /**
+     * Constructs the tree matcher with custom costs of operations.
+     *
+     * @param insertDeleteCost the cost of insertion or deletion per node
+     * @param phaseRenameCost the cost to rename a phase node
+     * @param optimizationReplaceCost the cost to replace an optimization with a different
+     *            optimization
+     */
+    public SelkowTreeMatcher(long insertDeleteCost, long phaseRenameCost, long optimizationReplaceCost) {
+        this.insertDeleteCost = insertDeleteCost;
+        this.phaseRenameCost = phaseRenameCost;
+        this.optimizationReplaceCost = optimizationReplaceCost;
+    }
 
     @Override
     public EditScript match(CompilationUnit method1, CompilationUnit method2) {
@@ -155,7 +179,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @return the cost to insert the node's subtree
      */
     private long insertCost(OptimizationTreeNode node) {
-        return getTreeSize(node) * INSERT_DELETE_COST;
+        return getTreeSize(node) * insertDeleteCost;
     }
 
     /**
@@ -165,7 +189,7 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @return the cost to delete the node's subtree
      */
     private long deleteCost(OptimizationTreeNode node) {
-        return getTreeSize(node) * INSERT_DELETE_COST;
+        return getTreeSize(node) * insertDeleteCost;
     }
 
     /**
@@ -176,12 +200,12 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * @param node2 the second node
      * @return the cost to relabel the first node to the second
      */
-    private static long relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
+    private long relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
         assert !nodesEqual(node1, node2);
         if (node1 instanceof OptimizationPhase && node2 instanceof OptimizationPhase) {
-            return PHASE_RENAME_COST;
+            return phaseRenameCost;
         }
-        return OPTIMIZATION_REPLACE_COST;
+        return optimizationReplaceCost;
     }
 
     /**
