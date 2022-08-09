@@ -88,8 +88,10 @@ public class BranchInstruction extends Instruction {
             if (LOOP_COUNTING || SAFEPOINT_POLL) {
                 b.startIf();
                 b.tree(GeneratorUtils.createHasNextTier());
-                b.string(" && ");
-                b.string("++loopCounter.count >= " + REPORT_LOOP_STRIDE);
+                if (LOOP_COUNTING) {
+                    b.string(" && ");
+                    b.string("++loopCounter.count >= " + REPORT_LOOP_STRIDE);
+                }
                 b.end().startBlock(); // {
 
                 if (SAFEPOINT_POLL) {
@@ -118,8 +120,8 @@ public class BranchInstruction extends Instruction {
                 b.end().startBlock(); // {
                 b.startAssign("Object osrResult").startStaticCall(typeBytecodeOsrNode, "tryOSR");
                 b.string("$this");
-                b.string("targetBci");
-                b.variable(vars.sp);
+                b.string("($sp << 16) | targetBci");
+                b.string("null");
                 b.string("null");
                 b.variable(vars.frame);
                 b.end(2);

@@ -3607,7 +3607,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         loopCounter.count = 0;
                                     }
                                     if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
-                                        Object osrResult = BytecodeOSRNode.tryOSR($this, targetBci, $sp, null, $frame);
+                                        Object osrResult = BytecodeOSRNode.tryOSR($this, ($sp << 16) | targetBci, null, null, $frame);
                                         if (osrResult != null) {
                                             $frame.setObject(0, osrResult);
                                             return 0x0000ffff;
@@ -9690,7 +9690,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         loopCounter.count = 0;
                                     }
                                     if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
-                                        Object osrResult = BytecodeOSRNode.tryOSR($this, targetBci, $sp, null, $frame);
+                                        Object osrResult = BytecodeOSRNode.tryOSR($this, ($sp << 16) | targetBci, null, null, $frame);
                                         if (osrResult != null) {
                                             $frame.setObject(0, osrResult);
                                             return 0x0000ffff;

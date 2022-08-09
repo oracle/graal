@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.operation.test.example;
 
-import java.util.function.Consumer;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -58,6 +56,7 @@ import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationNode;
 import com.oracle.truffle.api.operation.OperationNodes;
+import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.test.example.BoxingOperations.ObjectProducer;
 
 public class BoxingOperationsTest {
@@ -65,7 +64,7 @@ public class BoxingOperationsTest {
     // todo: all of these tests should somehow check that e&s is not called more times
     // than it needs to
 
-    private static RootCallTarget parse(Consumer<BoxingOperationsBuilder> parser) {
+    private static RootCallTarget parse(OperationParser<BoxingOperationsBuilder> parser) {
         OperationNodes nodes = BoxingOperationsBuilder.create(OperationConfig.DEFAULT, parser);
         OperationNode node = nodes.getNodes().get(0);
         return new TestRootNode(node).getCallTarget();

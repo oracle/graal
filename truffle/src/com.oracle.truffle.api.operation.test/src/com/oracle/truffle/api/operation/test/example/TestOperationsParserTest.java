@@ -43,7 +43,6 @@ package com.oracle.truffle.api.operation.test.example;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,17 +53,18 @@ import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationParser;
 
 public class TestOperationsParserTest {
     // @formatter:off
 
-    private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
+    private static RootCallTarget parse(OperationParser<TestOperationsBuilder> builder) {
         OperationNode operationsNode = parseNode(builder);
         System.out.println(operationsNode.dump());
         return new TestRootNode(operationsNode).getCallTarget();
     }
 
-    private static OperationNode parseNode(Consumer<TestOperationsBuilder> builder) {
+    private static OperationNode parseNode(OperationParser<TestOperationsBuilder> builder) {
         return TestOperationsBuilder.create(OperationConfig.DEFAULT, builder).getNodes().get(0);
     }
 

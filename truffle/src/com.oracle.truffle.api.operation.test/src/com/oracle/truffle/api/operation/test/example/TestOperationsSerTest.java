@@ -40,11 +40,10 @@
  */
 package com.oracle.truffle.api.operation.test.example;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -64,12 +63,10 @@ public class TestOperationsSerTest {
     }
 
     private static TestRootNode deserialize(byte[] byteArray) {
-        ByteArrayInputStream input = new ByteArrayInputStream(byteArray);
-
         OperationNodes nodes2 = null;
         try {
-            nodes2 = TestOperationsBuilder.deserialize(OperationConfig.DEFAULT, new DataInputStream(input), (ctx, buf2) -> {
-                return buf2.readLong();
+            nodes2 = TestOperationsBuilder.deserialize(OperationConfig.DEFAULT, ByteBuffer.wrap(byteArray), (ctx, buf2) -> {
+                return buf2.getLong();
             });
         } catch (IOException e) {
             assert false;
@@ -97,7 +94,7 @@ public class TestOperationsSerTest {
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
-            nodes.serialize(new DataOutputStream(output), (ctx, buf2, obj) -> {
+            nodes.serialize(OperationConfig.DEFAULT, new DataOutputStream(output), (ctx, buf2, obj) -> {
                 if (obj instanceof Long) {
                     haveConsts[(int) (long) obj - 1] = true;
                     buf2.writeLong((long) obj);
