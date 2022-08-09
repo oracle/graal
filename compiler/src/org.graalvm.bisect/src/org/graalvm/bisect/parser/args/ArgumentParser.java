@@ -74,15 +74,8 @@ public class ArgumentParser {
     public String createUsage() {
         StringBuilder sb = new StringBuilder();
         sb.append("Usage: ").append(prog);
-        for (Argument argument : optionArguments.values()) {
-            sb.append(' ');
-            if (!argument.isRequired()) {
-                sb.append('[');
-            }
-            sb.append(argument.getName()).append(" value");
-            if (!argument.isRequired()) {
-                sb.append(']');
-            }
+        if (!optionArguments.values().isEmpty()) {
+            sb.append(" [options]");
         }
         for (Argument argument : positionalArguments) {
             sb.append(' ').append(argument.getName());
