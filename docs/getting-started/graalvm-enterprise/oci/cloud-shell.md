@@ -17,7 +17,7 @@ As of version 22.2.0, GraalVM Enterprise JDK 17 and Native Image are pre-install
 
 Cloud Shell has several pre-installed JDKs, including GraalVM Enterprise JDK.
 
-1. Login to the OCI Console. Click the Cloud Shell icon in the Console header (top right).
+1. [Login to OCI Console and launch Cloud Shell](https://cloud.oracle.com/?bdcstate=maximized&cloudshell=true).
 
 2. List the installed JDKs using the `csruntimectl java list` command. You should see the following output:
 
@@ -147,6 +147,7 @@ Thus, you can easily use GraalVM Enterprise in OCI Cloud Shell to build and test
 
 ### Related Documentation
 
-- [GraalVM Enterprise in OCI DevOps Build Pipelines](installation-devops-build-pipeline.md)
+- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/java-hello-world-maven/README-CS.md)
+- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-CS.md)
+- [GraalVM Enterprise in OCI Code Editor](code-editor.md)
 
-- [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1)

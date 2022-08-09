@@ -5,11 +5,11 @@ permalink: /getting-started/oci/code-editor/
 
 # GraalVM Enterprise in OCI Code Editor
 
-This guide shows you how to get started with GraalVM Enterprise Edition in Oracle Cloud Infrastructre (OCI) Code Editor. 
+This guide shows you how to get started with GraalVM Enterprise Edition in Oracle Cloud Infrastructure (OCI) Code Editor. 
 
-[OCI Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm) provides a rich, in-console editing environment that enables you to edit code without having to switch between the OCI Console and your local development environment. The Code Editor enables you to edit and deploy code for various OCI services directly from the OCI Console.
+[OCI Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm) provides a rich, in-console editing environment that enables you to edit code without having to switch between the OCI Console and your local development environment. The Code Editor enables you to edit and deploy code for OCI services directly from the OCI Console.
 
-Code Editor's direct integration with Cloud Shell allows you to access GraalVM Enterprise Native Image and JDK 17 (Java Development Kit) pre-installed in Cloud Shell.
+GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so you don’t have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to GraalVM Enterprise JDK 17 and Native Image.
 
 > Note: GraalVM Enterprise is available on Oracle Cloud Infrastructure at no additional cost.
 
@@ -17,7 +17,7 @@ Code Editor's direct integration with Cloud Shell allows you to access GraalVM E
 
 ### Step 1: Open Terminal in Code Editor
 
-1. [Login to OCI Console](https://www.oracle.com/cloud/sign-in.html) and launch Code Editor.
+1. [Login to OCI Console and launch Code Editor](https://cloud.oracle.com/?bdcstate=maximized&codeeditor=true).
 2. Open a New Terminal in Code Editor. Use this Terminal window to run the following steps. 
 
     ![OCI Code Editor](../img/oci-code-editor.png)
@@ -75,7 +75,9 @@ Code Editor's direct integration with Cloud Shell allows you to access GraalVM E
     git pull --depth=1 origin main
 
     cd java-samples/graalvmee-java-hello-world/
+    
     ```
+    
     You can now view/change the sample code in code editor.
 
     ![Java project opened in OCI Code Editor](../img/oci-ce-java-app.png)
@@ -136,10 +138,11 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
     ./target/my-app
     ```
 
-Congratulations! You have successfully built and ran a native executable using GraalVM Enterprise in OCI Code Editor without the need to switch between the OCI Console and your local development environments.
+Congratulations! You have successfully built and run a native executable using GraalVM Enterprise in OCI Code Editor without the need to switch between the OCI Console and your local development environments.
 The Code Editor allows you to accomplish quick coding tasks and run applications directly from the OCI Console.
 
 ### Related Documentation
 
+- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Code Editor](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
 - [Working with Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm)
 - [GraalVM Enterprise in OCI Cloud Shell](cloud-shell.md)
