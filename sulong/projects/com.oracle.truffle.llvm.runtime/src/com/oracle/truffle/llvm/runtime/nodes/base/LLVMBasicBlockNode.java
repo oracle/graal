@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.base;
 
-import org.graalvm.options.OptionValues;
-
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -45,7 +42,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 /**
  * This node represents a basic block in LLVM. The node contains both sequential statements which do
