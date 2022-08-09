@@ -226,7 +226,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
             if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
                 loopSuccessorSlot = builder.addSlot(FrameSlotKind.Int, null, null);
-                resolveLoops(blockNodes, cfg, loopSuccessorSlot, exceptionSlot, info, options);
+                resolveLoops(blockNodes, cfg, loopSuccessorSlot, exceptionSlot, info);
             }
         }
 
@@ -267,7 +267,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return neededForDebug;
     }
 
-    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info, OptionValues options) {
+    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info) {
         // The original array is needed to access the frame nuller information for outgoing control
         // flow egdes
         LLVMBasicBlockNode[] originalBodyNodes = nodes.clone();
