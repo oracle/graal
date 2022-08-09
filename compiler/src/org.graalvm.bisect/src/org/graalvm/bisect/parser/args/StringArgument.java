@@ -33,7 +33,7 @@ public class StringArgument extends ValuedArgument<String> {
     }
 
     @Override
-    protected void parseValue(String s) {
-        this.value = s;
+    protected String parseValue(String s) {
+        return s;
     }
 }

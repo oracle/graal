@@ -203,4 +203,20 @@ public class ArgumentParser {
         addArgument(argument);
         return argument;
     }
+
+    /**
+     * Adds an argument that can hold an enum value. The value is parsed as its string
+     * representation.
+     *
+     * @param name the name of the argument
+     * @param defaultValue the default value of the argument, must not be null
+     * @param help the help message in the program usage string
+     * @return the created argument instance
+     * @param <T> the type of the enum
+     */
+    public <T extends Enum<T>> EnumArgument<T> addEnumArgument(String name, T defaultValue, String help) {
+        EnumArgument<T> argument = new EnumArgument<>(name, defaultValue, help);
+        addArgument(argument);
+        return argument;
+    }
 }

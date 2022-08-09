@@ -35,7 +35,7 @@ abstract class ValuedArgument<T> extends Argument {
     /**
      * The value of the argument.
      */
-    protected T value;
+    private T value;
 
     /**
      * Constructs a required argument with a value.
@@ -77,9 +77,9 @@ abstract class ValuedArgument<T> extends Argument {
             if (offset >= args.length) {
                 throw new InvalidArgumentException(getName(), "No value was provided.");
             }
-            parseValue(args[offset]);
+            value = parseValue(args[offset]);
         } else {
-            parseValue(args[offset]);
+            value = parseValue(args[offset]);
         }
         set = true;
         return offset + 1;
@@ -88,8 +88,9 @@ abstract class ValuedArgument<T> extends Argument {
     /**
      * Parse the argument value from a string.
      *
-     * @param s the value that is parsed
+     * @param s the value that is being parsed
+     * @return the parsed value
      * @throws InvalidArgumentException the value could not be parsed
      */
-    protected abstract void parseValue(String s) throws InvalidArgumentException;
+    protected abstract T parseValue(String s) throws InvalidArgumentException;
 }

@@ -30,6 +30,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.graalvm.bisect.parser.args.ArgumentParser;
 import org.graalvm.bisect.parser.args.DoubleArgument;
+import org.graalvm.bisect.parser.args.EnumArgument;
 import org.graalvm.bisect.parser.args.FlagArgument;
 import org.graalvm.bisect.parser.args.IntegerArgument;
 import org.graalvm.bisect.parser.args.InvalidArgumentException;
@@ -41,14 +42,29 @@ import org.junit.Test;
 public class ArgumentParserTest {
     private static final double DELTA = 0.000001;
 
+    private enum TestEnum {
+        FOO,
+        BAR
+    }
+
     private static class ProgramArguments {
         static final double DEFAULT_DOUBLE = 3.14;
+
         static final int DEFAULT_INT = 42;
+
+        static final TestEnum DEFAULT_ENUM = TestEnum.FOO;
+
         ArgumentParser argumentParser;
+
         DoubleArgument doubleArgument;
+
         IntegerArgument integerArgument;
+
         FlagArgument flagArgument;
+
         StringArgument stringArgument;
+
+        EnumArgument<TestEnum> enumArgument;
 
         ProgramArguments() {
             argumentParser = new ArgumentParser("program", "Program description.");
@@ -56,6 +72,7 @@ public class ArgumentParserTest {
             integerArgument = argumentParser.addIntegerArgument("--int", DEFAULT_INT, "An integer argument.");
             flagArgument = argumentParser.addFlagArgument("--flag", "A flag argument.");
             stringArgument = argumentParser.addStringArgument("string", "A string argument.");
+            enumArgument = argumentParser.addEnumArgument("--enum", DEFAULT_ENUM, "An enum argument.");
         }
     }
 
@@ -68,16 +85,18 @@ public class ArgumentParserTest {
         assertEquals(ProgramArguments.DEFAULT_DOUBLE, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(ProgramArguments.DEFAULT_INT, programArguments.integerArgument.getValue().intValue());
         assertFalse(programArguments.flagArgument.getValue());
+        assertEquals(ProgramArguments.DEFAULT_ENUM, programArguments.enumArgument.getValue());
     }
 
     @Test
     public void testProvidedValues() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArguments programArguments = new ProgramArguments();
-        String[] args = new String[]{"--int", "123", "foo", "--double", "1.23", "--flag"};
+        String[] args = new String[]{"--int", "123", "foo", "--double", "1.23", "--flag", "--enum", TestEnum.BAR.toString()};
         programArguments.argumentParser.parse(args);
         assertEquals(args[2], programArguments.stringArgument.getValue());
         assertEquals(1.23, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(123, programArguments.integerArgument.getValue().intValue());
+        assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
         assertTrue(programArguments.flagArgument.getValue());
     }
 
