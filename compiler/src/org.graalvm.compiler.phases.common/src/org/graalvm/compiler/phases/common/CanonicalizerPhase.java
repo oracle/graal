@@ -404,7 +404,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 if (performReplacement(node, canonical, tool)) {
                     Node finalCanonical = canonical;
                     StructuredGraph graph = (StructuredGraph) node.graph();
-                    graph.getOptimizationLog().report(CanonicalizerPhase.class, "CanonicalReplacement", node).setLazyProperty("replacedNodeClass", nodeClass::shortName).setLazyProperty(
+                    graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CanonicalReplacement", node)
+                                    .setLazyProperty("replacedNodeClass", nodeClass::shortName).setLazyProperty(
                                     "canonicalNodeClass", () -> {
                                         if (finalCanonical == null) {
                                             return null;
@@ -424,7 +425,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     customSimplification.simplify(node, tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                         StructuredGraph graph = (StructuredGraph) node.graph();
-                        graph.getOptimizationLog().report(CanonicalizerPhase.class, "CfgSimplificationCustom", node);
+                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CfgSimplificationCustom", node);
                         return true;
                     }
                 }
@@ -436,7 +437,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     ((Simplifiable) node).simplify(tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                         StructuredGraph graph = (StructuredGraph) node.graph();
-                        graph.getOptimizationLog().report(CanonicalizerPhase.class, "CfgSimplification", node);
+                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CfgSimplification", node);
                         return true;
                     }
                 }

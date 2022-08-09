@@ -26,6 +26,7 @@ package org.graalvm.compiler.phases.common;
 
 import java.util.Optional;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -143,7 +144,7 @@ public class DeadCodeEliminationPhase extends Phase {
             if (!flood.isMarked(node)) {
                 node.markDeleted();
                 node.applyInputs(consumer);
-                graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoval", node);
+                graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, DeadCodeEliminationPhase.class, "NodeRemoval", node);
             }
         }
     }

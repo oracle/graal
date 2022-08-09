@@ -390,24 +390,26 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     @Override
-    public OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node) {
-        boolean isCountEnabled = graph.getDebug().isCountEnabled();
-        boolean isLogEnabled = graph.getDebug().isLogEnabledForMethod();
-        boolean isDumpEnabled = graph.getDebug().isDumpEnabled(DebugContext.DETAILED_LEVEL);
+    public OptimizationEntry report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
+        assert logLevel > 0;
+        DebugContext debug = graph.getDebug();
+        boolean isCountEnabled = debug.isCountEnabled();
+        boolean isLogEnabled = debug.isLogEnabled(logLevel) && debug.isLogEnabledForMethod();
+        boolean isDumpEnabled = debug.isDumpEnabled(logLevel) && debug.isDumpEnabledForMethod();
 
         String optimizationName = getOptimizationName(optimizationClass);
         if (isCountEnabled) {
-            DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
+            DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
         }
         if (isLogEnabled) {
             if (node.getNodeSourcePosition() == null) {
-                graph.getDebug().log("Performed %s %s", optimizationName, eventName);
+                debug.log(logLevel, "Performed %s %s", optimizationName, eventName);
             } else {
-                graph.getDebug().log("Performed %s %s at bci %d", optimizationName, eventName, node.getNodeSourcePosition().getBCI());
+                debug.log(logLevel, "Performed %s %s at bci %d", optimizationName, eventName, node.getNodeSourcePosition().getBCI());
             }
         }
         if (isDumpEnabled) {
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, eventName);
+            debug.dump(logLevel, graph, "After %s %s", optimizationName, eventName);
         }
         if (optimizationLogEnabled) {
             OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, node.getNodeSourcePosition());

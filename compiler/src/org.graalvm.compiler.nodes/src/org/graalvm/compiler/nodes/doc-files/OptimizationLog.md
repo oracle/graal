@@ -16,18 +16,21 @@ bci). However, in the presence of inlining, we need to collect the bci of each m
 
 The `report` method handles the following use cases:
 
-| Concern                              | Option                    | Output                                                                                     |
-|--------------------------------------|---------------------------|--------------------------------------------------------------------------------------------|
-| `log` using a `DebugContext`         | `-Dgraal.Log`             | log the message `Performed {optimizationName} {eventName} at bci {bci}` at `BASIC_LEVEL`   |
-| `dump` using a `DebugContext`        | `-Dgraal.Dump`            | dump the graph with the caption `After {optimizationName} {eventName}` at `DETAILED_LEVEL` |
-| `CounterKey` increment               | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                                     |
-| structured optimization logging      | `-Dgraal.OptimizationLog` | tree of optimizations dumped to the standard output, a JSON file or an IGV graph           |
+| Concern                              | Option                    | Output                                                                           |
+|--------------------------------------|---------------------------|----------------------------------------------------------------------------------|
+| `log` using a `DebugContext`         | `-Dgraal.Log`             | log the message `Performed {optimizationName} {eventName} at bci {bci}`          |
+| `dump` using a `DebugContext`        | `-Dgraal.Dump`            | dump the graph with the caption `After {optimizationName} {eventName}`           |
+| `CounterKey` increment               | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                           |
+| structured optimization logging      | `-Dgraal.OptimizationLog` | tree of optimizations dumped to the standard output, a JSON file or an IGV graph |
+
+The method logs and dumps at `DETAILED_LEVEL` by default. There is a variant of the method which allows the log level to
+be specified as the first argument.
 
 It suffices to insert a line like the one below (from `DeadCodeEliminationPhase`) to solve all of the above concerns.
 The `report` method creates an *optimization entry*.
 
 ```java
-graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved", node);
+graph.getOptimizationLog().report(DeadCodeEliminationPhase.class,"NodeRemoved",node);
 ```
 
 It is recommended to enable the structured optimization jointly with node source position

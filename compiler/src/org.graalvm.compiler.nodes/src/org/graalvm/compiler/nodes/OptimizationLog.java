@@ -153,7 +153,7 @@ public interface OptimizationLog extends CompilationListener {
 
     /**
      * A dummy implementation of the optimization log that does nothing. Used in case when
-     * {@link #isAnyLoggingEnabled(DebugContext) no logging is enabled} to decrease runtime
+     * {@link #isAnyLoggingEnabled(OptionValues) no logging is enabled} to decrease runtime
      * overhead.
      */
     final class OptimizationLogDummy implements OptimizationLog {
@@ -187,7 +187,7 @@ public interface OptimizationLog extends CompilationListener {
          * @return a dummy optimization entry that ignores its set properties
          */
         @Override
-        public OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node) {
+        public OptimizationEntry report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
             return OPTIMIZATION_ENTRY_DUMMY;
         }
 
@@ -266,14 +266,14 @@ public interface OptimizationLog extends CompilationListener {
      * Returns {@code true} iff at least one logging feature unified by the optimization log is
      * enabled.
      *
-     * @param debugContext the debug context that is tested
+     * @param optionValues the option values that are tested
      * @return {@code true} iff any logging is enabled
      */
-    static boolean isAnyLoggingEnabled(DebugContext debugContext) {
-        return debugContext.isCountEnabled() ||
-                        debugContext.isLogEnabled() ||
-                        debugContext.isDumpEnabled(DebugContext.DETAILED_LEVEL) ||
-                        isOptimizationLogEnabled(debugContext.getOptions());
+    static boolean isAnyLoggingEnabled(OptionValues optionValues) {
+        return DebugOptions.Count.getValue(optionValues) != null ||
+                        DebugOptions.Log.getValue(optionValues) != null ||
+                        DebugOptions.Dump.getValue(optionValues) != null ||
+                        isOptimizationLogEnabled(optionValues);
     }
 
     /**
@@ -287,7 +287,7 @@ public interface OptimizationLog extends CompilationListener {
      * @return an instance of the optimization log
      */
     static OptimizationLog getInstance(StructuredGraph graph) {
-        if (isAnyLoggingEnabled(graph.getDebug())) {
+        if (isAnyLoggingEnabled(graph.getDebug().getOptions())) {
             return new OptimizationLogImpl(graph);
         }
         return OPTIMIZATION_LOG_DUMMY;
@@ -295,15 +295,35 @@ public interface OptimizationLog extends CompilationListener {
 
     /**
      * Increments a {@link org.graalvm.compiler.debug.CounterKey counter},
-     * {@link DebugContext#log(String) logs}, {@link DebugContext#dump(int, Object, String) dumps}
-     * and appends to the optimization log if each respective feature is enabled.
+     * {@link DebugContext#log(String) logs} at {@link DebugContext#DETAILED_LEVEL},
+     * {@link DebugContext#dump(int, Object, String) dumps} at {@link DebugContext#DETAILED_LEVEL}
+     * and appends to the optimization log if each respective feature is enabled. This method is
+     * equivalent to {@link #report(int, Class, String, Node)} at
+     * {@link DebugContext#DETAILED_LEVEL}.
      *
      * @param optimizationClass the class that performed the optimization
      * @param eventName the name of the event that occurred
      * @param node the most relevant node
      * @return an optimization entry in the optimization log that can take more properties
      */
-    OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node);
+    default OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node) {
+        return report(DebugContext.DETAILED_LEVEL, optimizationClass, eventName, node);
+    }
+
+    /**
+     * Increments a {@link org.graalvm.compiler.debug.CounterKey counter},
+     * {@link DebugContext#log(String) logs} at the specified level,
+     * {@link DebugContext#dump(int, Object, String) dumps} at the specified level and appends to
+     * the optimization log if each respective feature is enabled.
+     *
+     * @param logLevel the log level to use for logging and dumping (e.g.
+     *            {@link DebugContext#DETAILED_LEVEL})
+     * @param optimizationClass the class that performed the optimization
+     * @param eventName the name of the event that occurred
+     * @param node the most relevant node
+     * @return an optimization entry in the optimization log that can take more properties
+     */
+    OptimizationEntry report(int logLevel, Class<?> optimizationClass, String eventName, Node node);
 
     /**
      * Gets the log that keeps track of virtualized allocations during partial escape analysis. Must
