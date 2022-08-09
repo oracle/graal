@@ -259,7 +259,7 @@ public final class JavaStackWalker {
         return walkCurrentThread(startSP, WordFactory.nullPointer(), FrameAccess.singleton().readReturnAddress(startSP), visitor, data);
     }
 
-    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> boolean walkCurrentThread(Pointer startSP, CodePointer startIP, ParameterizedStackFrameVisitor<T> visitor) {
         return walkCurrentThread(startSP, WordFactory.nullPointer(), startIP, visitor, null);
     }
@@ -273,10 +273,6 @@ public final class JavaStackWalker {
 
     public static boolean walkThread(IsolateThread thread, StackFrameVisitor visitor) {
         return walkThread(thread, visitor, null);
-    }
-
-    public static boolean walkThread(IsolateThread thread, Pointer endSP, StackFrameVisitor visitor) {
-        return walkThread(thread, endSP, visitor, null);
     }
 
     public static <T> boolean walkThread(IsolateThread thread, ParameterizedStackFrameVisitor<T> visitor, T data) {
@@ -299,8 +295,6 @@ public final class JavaStackWalker {
         assert VMOperation.isInProgressAtSafepoint();
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         initWalk(walk, startSP, endSP, startIP);
-        walk.setAnchor(WordFactory.nullPointer());
-        walk.setEndSP(endSP);
         doWalk(walk, visitor, null);
     }
 

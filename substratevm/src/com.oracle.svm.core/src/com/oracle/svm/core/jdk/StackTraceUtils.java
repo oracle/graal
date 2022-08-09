@@ -94,7 +94,7 @@ public class StackTraceUtils {
     public static StackTraceElement[] getThreadStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
-        JavaStackWalker.walkThread(isolateThread, endSP, visitor);
+        JavaStackWalker.walkThread(isolateThread, endSP, visitor, null);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
