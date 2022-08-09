@@ -60,7 +60,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         /*
          * The EncodedGraph instance also serves as a cache for some information during decoding,
          * e.g., the start offsets of encoded nodes. So it is beneficial to have a cache of the
@@ -68,7 +68,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
          */
         EncodedGraph result = graphCache.get(method);
         if (result == null) {
-            result = createGraph(method, trackNodeSourcePosition);
+            result = createGraph(method, graph.trackNodeSourcePosition());
         }
         return result;
     }

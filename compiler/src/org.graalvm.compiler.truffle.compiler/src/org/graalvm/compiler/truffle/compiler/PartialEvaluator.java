@@ -437,7 +437,8 @@ public abstract class PartialEvaluator {
                         graphCache, getCreateCachedGraphScope(persistentEncodedGraphCache));
         GraphSizeListener listener = new GraphSizeListener(context.options, context.graph);
         try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(listener)) {
-            decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
+            assert !context.graph.isSubstitution();
+            decoder.decode(context.graph.method());
         }
         assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
     }

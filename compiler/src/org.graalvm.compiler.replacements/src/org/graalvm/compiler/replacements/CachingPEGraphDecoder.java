@@ -89,6 +89,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), needsExplicitException);
 
+        assert !graphBuilderConfig.trackNodeSourcePosition() || graph.trackNodeSourcePosition();
+
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
@@ -104,13 +106,13 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings("try")
-    private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution) {
+    private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         StructuredGraph graphToEncode;
-        if (isSubstitution && IS_IN_NATIVE_IMAGE) {
+        if (graph.isSubstitution() && IS_IN_NATIVE_IMAGE) {
             throw GraalError.shouldNotReachHere("dead path");
         } else {
-            graphToEncode = buildGraph(method, intrinsicBytecodeProvider, isSubstitution, canonicalizer);
+            graphToEncode = buildGraph(method, intrinsicBytecodeProvider, canonicalizer);
         }
 
         /*
@@ -131,13 +133,12 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, CanonicalizerPhase canonicalizer) {
+    private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, CanonicalizerPhase canonicalizer) {
         StructuredGraph graphToEncode;// @formatter:off
         graphToEncode = new StructuredGraph.Builder(options, debug, allowAssumptions).
                 profileProvider(null).
                 trackNodeSourcePosition(graphBuilderConfig.trackNodeSourcePosition()).
                 method(method).
-                setIsSubstitution(isSubstitution).
                 cancellable(graph.getCancellable()).
                 build();
         // @formatter:on
@@ -220,14 +221,13 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings({"unused", "try"})
-    private EncodedGraph lookupOrCreatePersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                    boolean trackNodeSourcePosition) {
+    private EncodedGraph lookupOrCreatePersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         EncodedGraph result = persistentGraphCache.get(method);
         if (result == null && method.hasBytecodes()) {
             try (AutoCloseable scope = createPersistentCachedGraphScope.get()) {
                 // Encoded graphs that can be cached across compilations are wrapped by "scopes"
                 // provided by createCachedGraphScope.
-                result = createGraph(method, intrinsicBytecodeProvider, isSubstitution);
+                result = createGraph(method, intrinsicBytecodeProvider);
             } catch (Throwable ex) {
                 throw debug.handle(ex);
             }
@@ -237,8 +237,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                    boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         // Graph's assumptions are fresh or validated recently.
         EncodedGraph result = localGraphCache.get(method);
         if (result != null) {
@@ -249,7 +248,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         if (result == null) {
             // Embedded assumptions in a fresh encoded graph should be up-to-date, so no need to
             // validate them.
-            result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider, isSubstitution, trackNodeSourcePosition);
+            result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider);
             if (result != null) {
                 localGraphCache.put(method, result);
             }
@@ -258,7 +257,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             persistentGraphCache.removeKey(method);
             // Embedded assumptions in a fresh encoded graph should be up-to-date, so no need to
             // validate them.
-            result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider, isSubstitution, trackNodeSourcePosition);
+            result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider);
             if (result != null) {
                 localGraphCache.put(method, result);
             }
@@ -269,8 +268,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
         // Cached graph from previous compilation may not have source positions, re-parse and store
         // in compilation-local cache.
-        if (trackNodeSourcePosition && !result.trackNodeSourcePosition()) {
-            result = createGraph(method, intrinsicBytecodeProvider, isSubstitution);
+        if (graph.trackNodeSourcePosition() && !result.trackNodeSourcePosition()) {
+            result = createGraph(method, intrinsicBytecodeProvider);
             assert result.trackNodeSourcePosition();
             localGraphCache.put(method, result);
         }
