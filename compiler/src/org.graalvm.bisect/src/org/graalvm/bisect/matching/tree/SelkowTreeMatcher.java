@@ -40,10 +40,12 @@ public class SelkowTreeMatcher implements TreeMatcher {
      * The cost of insertion or deletion per node.
      */
     public static final long INSERT_DELETE_COST = 1;
+
     /**
      * The cost to rename a phase node.
      */
     public static final long PHASE_RENAME_COST = 1000000000;
+
     /**
      * The cost to replace an optimization with a different optimization.
      */
