@@ -126,10 +126,9 @@ public class PerfManager {
     }
 
     public void waitForInitialization() {
-        if (!Isolates.isCurrentFirst() || !PerfManager.Options.UsePerfData.getValue()) {
+        if (!Isolates.isCurrentFirst() || !PerfManager.Options.UsePerfData.getValue() || !perfDataThread.waitForInitialization()) {
             throw new IllegalArgumentException("Performance data support is disabled.");
         }
-        perfDataThread.waitForInitialization();
     }
 
     private void allocate() {
@@ -144,8 +143,7 @@ public class PerfManager {
 
     public RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
-            boolean startupHookExecuted = startTime > 0;
-            if (isFirstIsolate && UsePerfData.getValue() && startupHookExecuted) {
+            if (isFirstIsolate && UsePerfData.getValue()) {
                 perfDataThread.shutdown();
 
                 PerfMemory memory = ImageSingletons.lookup(PerfMemory.class);
@@ -222,19 +220,29 @@ public class PerfManager {
             }
         }
 
-        public void waitForInitialization() {
+        public boolean waitForInitialization() {
             if (initialized) {
-                return;
+                return true;
             }
 
             initializationMutex.lock();
             try {
                 if (!initialized) {
+                    if (!this.isAlive()) {
+                        /*
+                         * It can happen that the performance data support is enabled but that the
+                         * startup hook is not executed for some reason. In that case, we must not
+                         * block as this would result in a deadlock otherwise.
+                         */
+                        return false;
+                    }
+
                     // We use a VMCondition to avoid that anyone can interrupt us while waiting. As
                     // this method is also called from JDK code, this makes it easier as the JDK
                     // code doesn't expect an InterruptedException.
                     initializationCondition.block();
                 }
+                return true;
             } finally {
                 initializationMutex.unlock();
             }
@@ -249,6 +257,11 @@ public class PerfManager {
              */
             waitForInitialization();
             this.interrupt();
+            try {
+                this.join();
+            } catch (InterruptedException e) {
+                throw VMError.shouldNotReachHere("Shutdown hook should not be interrupted");
+            }
         }
     }
 
