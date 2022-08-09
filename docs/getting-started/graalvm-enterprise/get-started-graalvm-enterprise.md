@@ -24,11 +24,11 @@ You can get Oracle GraalVM Enterprise Edition by:
 
 Choose your operating system and proceed to the installation steps for your specific platform:
 
-* Oracle Cloud 
-  * [Cloud Shell](oci/cloud-shell.md)
+* Oracle Cloud (OCI) 
   * [Code Editor](oci/code-editor.md)
-  * [OCI Compute with Oracle Linux 7/8](oci/installation-compute-instance-with-OL.md)
-  * [OCI DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
+  * [Cloud Shell](oci/cloud-shell.md)
+  * [Compute with Oracle Linux 7/8](oci/installation-compute-instance-with-OL.md)
+  * [DevOps Build Pipelines](oci/installation-devops-build-pipeline.md)
 * [Linux](installation-linux.md)
 * [macOS](installation-macos.md)
 * [Windows](installation-windows.md)
