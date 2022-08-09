@@ -1296,8 +1296,7 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    config = GraalVMConfig.build(native_images=['native-image', 'lib:native-image-agent', 'lib:native-image-diagnostics-agent'])
-    with native_image_context(hosted_assertions=False, config=config) as native_image:
+    with native_image_context(hosted_assertions=False) as native_image:
         module_path_sep = ';' if mx.is_windows() else ':'
         moduletest_run_args = [
             '-ea',
@@ -1308,16 +1307,13 @@ def hellomodule(args):
         mx.log('Running module-tests on JVM:')
         build_dir = join(svmbuild_dir(), 'hellomodule')
         mx.run([
-            vm_executable_path('java', config),
-            # also test if native-image-agent works
-            '-agentlib:native-image-agent=config-output-dir=' + join(build_dir, 'config-output-dir-{pid}-{datetime}/'),
+            vm_executable_path('java'),
             ] + moduletest_run_args)
 
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
         built_image = native_image([
             '--verbose', '-H:Path=' + build_dir,
-            '--trace-class-initialization=hello.lib.Greeter', # also test native-image-diagnostics-agent
             ] + moduletest_run_args)
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
