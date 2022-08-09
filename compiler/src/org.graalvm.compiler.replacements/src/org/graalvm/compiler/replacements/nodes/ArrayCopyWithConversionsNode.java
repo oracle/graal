@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -136,6 +137,15 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
     }
 
     @NodeIntrinsic
+    @GenerateStub(name = "arrayCopyWithConversionsS1S1", parameters = {"S1", "S1"})
+    @GenerateStub(name = "arrayCopyWithConversionsS1S2", parameters = {"S1", "S2"})
+    @GenerateStub(name = "arrayCopyWithConversionsS1S4", parameters = {"S1", "S4"})
+    @GenerateStub(name = "arrayCopyWithConversionsS2S1", parameters = {"S2", "S1"})
+    @GenerateStub(name = "arrayCopyWithConversionsS2S2", parameters = {"S2", "S2"})
+    @GenerateStub(name = "arrayCopyWithConversionsS2S4", parameters = {"S2", "S4"})
+    @GenerateStub(name = "arrayCopyWithConversionsS4S1", parameters = {"S4", "S1"})
+    @GenerateStub(name = "arrayCopyWithConversionsS4S2", parameters = {"S4", "S2"})
+    @GenerateStub(name = "arrayCopyWithConversionsS4S4", parameters = {"S4", "S4"})
     public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length,
                     @ConstantNodeParameter Stride strideSrc,
                     @ConstantNodeParameter Stride strideDst);
@@ -147,6 +157,7 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
+    @GenerateStub(name = "arrayCopyWithConversionsDynamicStrides")
     public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int stride);
 
     @NodeIntrinsic

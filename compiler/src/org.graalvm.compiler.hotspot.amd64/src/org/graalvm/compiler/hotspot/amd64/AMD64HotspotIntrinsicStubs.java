@@ -24,22 +24,13 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
-import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.stubs.SnippetStub;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
-import org.graalvm.word.Pointer;
+import org.graalvm.compiler.lir.GeneratedStubsHolder;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 
-public final class AMD64VectorizedMismatchStub extends SnippetStub {
-
-    public AMD64VectorizedMismatchStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super(linkage.getDescriptor().getName(), options, providers, linkage);
-    }
-
-    @Snippet
-    private static int vectorizedMismatch(Pointer arrayA, Pointer arrayB, int length, int stride) {
-        return VectorizedMismatchNode.vectorizedMismatch(arrayA, arrayB, length, stride);
-    }
+@GeneratedStubsHolder(targetVM = "hotspot", sources = {
+                AMD64ArrayRegionEqualsWithMaskNode.class,
+                AMD64CalcStringAttributesNode.class,
+})
+public final class AMD64HotspotIntrinsicStubs {
 }

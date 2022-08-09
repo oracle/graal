@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.stubs;
+package org.graalvm.compiler.lir;
 
-import java.util.EnumSet;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
-import org.graalvm.nativeimage.Platform.AARCH64;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-
-import jdk.vm.ci.aarch64.AArch64;
-
-@AutomaticFeature
-@Platforms(AARCH64.class)
-public class AARCH64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
-
-    public AARCH64StubForeignCallsFeature() {
-        super(new StubDescriptor[]{
-                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, true, EnumSet.noneOf(AArch64.CPUFeature.class))
-        });
-    }
+/**
+ * Container for multiple {@link GenerateStub} annotations.
+ */
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.CLASS)
+public @interface GenerateStubs {
+    GenerateStub[] value();
 }
