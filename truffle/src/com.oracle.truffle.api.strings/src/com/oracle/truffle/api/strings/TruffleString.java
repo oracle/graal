@@ -4856,15 +4856,31 @@ public final class TruffleString extends AbstractTruffleString {
                         ToIndexableNode toIndexableNodeB,
                         EqualNode equalNode) {
             assert TSCodeRange.isKnown(codeRangeA, codeRangeB);
-            if (a.length() != b.length() || codeRangeA != codeRangeB ||
+            int lengthCMP = a.length();
+            if (lengthCMP != b.length() || codeRangeA != codeRangeB ||
                             !CompilerDirectives.isCompilationConstant(a) && !CompilerDirectives.isCompilationConstant(b) &&
                                             a.isHashCodeCalculated() && b.isHashCodeCalculated() &&
                                             a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
                 return false;
             }
+            if (lengthCMP == 0) {
+                return true;
+            }
+            Object arrayA = toIndexableNodeA.execute(a, a.data());
+            Object arrayB = toIndexableNodeB.execute(b, b.data());
+            int strideA = a.stride();
+            int strideB = b.stride();
+            if (arrayA instanceof byte[] && arrayB instanceof byte[] && (strideA | strideB) == 0) {
+                // fast path: check first byte
+                if (((byte[]) arrayA)[a.offset()] != ((byte[]) arrayB)[b.offset()]) {
+                    return false;
+                } else if (lengthCMP == 1) {
+                    return true;
+                }
+            }
             return TStringOps.regionEqualsWithOrMaskWithStride(equalNode,
-                            a, toIndexableNodeA.execute(a, a.data()), a.stride(), 0,
-                            b, toIndexableNodeB.execute(b, b.data()), b.stride(), 0, null, a.length());
+                            a, arrayA, strideA, 0,
+                            b, arrayB, strideB, 0, null, lengthCMP);
         }
 
         /**
