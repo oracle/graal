@@ -49,14 +49,15 @@ in their hot methods. Run `mx profbisect` without arguments to display its usage
 
 ```
 The argument 'proftool_output_1' is required.
-Usage: mx profbisect [--hot-min-limit value] [--hot-max-limit value] [--hot-percentile value] proftool_output_1 optimization_log_1 proftool_output_2 optimization_log_2
+Usage: mx profbisect [options] proftool_output_1 optimization_log_1 proftool_output_2 optimization_log_2
 
 Compares the optimization log of hot compilation units of two experiments.
 
 Options:
   --hot-min-limit      the minimum number of compilation units to mark as hot
   --hot-max-limit      the maximum number of compilation units to mark as hot
-  --hot-percentile     the percentile of the execution period that is spent executing hot compilation units~~~~
+  --hot-percentile     the percentile of the execution period that is spent executing hot compilation units
+  --verbosity          the verbosity level of the diff, accepted values are [default, high]
 ```
 
 Use the tool to diff our toy experiments:
@@ -168,3 +169,7 @@ CanonicalizerPhase
 
 The interpretation here is that the `CanonicalizerPhase` was present in both compilations. However, it performed 2
 canonical replacements in the 1st compilation and one different replacement in the 2nd compilation.
+
+Note that the reported byte code indices are relative to the method where the code comes from, which might not be the
+root method in the presence of inlining. Run the diff again with `--verbosity high` to see the whole stacks of inlined
+methods.

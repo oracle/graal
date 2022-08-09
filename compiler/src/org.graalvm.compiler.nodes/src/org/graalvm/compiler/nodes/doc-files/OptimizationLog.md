@@ -11,7 +11,8 @@ method `report(Class<?> optimizationClass, String eventName, Node node)`, which 
 - the most relevant node in the transformation, i.e., a node that was just replaced/deleted/modified or
   a `LoopBeginNode` in the context of loop transformations like unrolling
 
-At the moment, the node is only used to obtain the bci of the transformation.
+The node is used to obtain the position of the transformation. The position is characterized by the byte code index (
+bci). However, in the presence of inlining, we need to collect the bci of each method in the inlined stack of methods.
 
 The `report` method handles the following use cases:
 
@@ -30,13 +31,16 @@ graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved",
 ```
 
 It is recommended to enable the structured optimization jointly with node source position
-tracking (`-Dgraal.TrackNodeSourcePosition`) so that the bci of nodes can be logged. Otherwise, a warning is emitted.
+tracking (`-Dgraal.TrackNodeSourcePosition`) so that the bytecode position of nodes can be logged. Otherwise, a warning
+is emitted.
 
 The value of the option `-Dgraal.OptimizationLog` specifies where the structured optimization log is printed.
 The accepted values are:
 
 - `Directory` - print the structured optimization log to JSON files (`<compile-id>.json`) in a directory. The directory
-  is specified by the option `-Dgraal.OptimizationLogPath`. Directories are created if they do not exist.
+  is specified by the option `-Dgraal.OptimizationLogPath`. If `OptimizationLogPath` is not set,
+  the target directory is `DumpPath/optimization_log` (specified by `-Dgraal.DumpPath`). Directories are created if they
+  do not exist.
 - `Stdout` - print the structured optimization log to the standard output.
 - `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
 
@@ -83,48 +87,25 @@ optimization phases and optimization entries. The result is a tree of optimizati
 - when a phase is entered (`CompilationListener#enterPhase`), the new phase is a child of the phase that entered this phase
 - when an optimization is logged via the `report` method, it is attributed to its parent phase
 
-An optimization tree in textual representation looks like the snippet below. In reality, however, the trees are
-significantly larger than in this example.
+The ASCII art below is a snippet of an optimization tree.
 
 ```
-RootPhase
-    HighTier
-        LoopFullUnrollPhase
-        LoopPeelingPhase
-            LoopTransformations LoopPeeling at bci 122 {peelings: 1}
-            IncrementalCanonicalizerPhase
-                Canonicalizer CfgSimplification at bci 122
-        HighTierLoweringPhase
-            SchedulePhase
-            IncrementalCanonicalizerPhase
-                Canonicalizer CanonicalReplacement at bci 75 {replacedNodeClass: IsNull, canonicalNodeClass: IsNull}
-                Canonicalizer CanonicalReplacement at bci 124 {replacedNodeClass: IsNull, canonicalNodeClass: IsNull}
-    MidTier
-        LockEliminationPhase
-        FloatingReadPhase
-            FloatingRead ReplacedWithFloating at bci 13
-            FloatingRead ReplacedWithFloating at bci 20
-            FloatingRead ReplacedWithFloating at bci 26
-            IncrementalCanonicalizerPhase
-        IterativeConditionalEliminationPhase
-            ConditionalEliminationPhase
-                ConditionalElimination KilledGuard at bci 80
-                ConditionalElimination KilledGuard at bci 149
-            IncrementalCanonicalizerPhase
-            ConditionalEliminationPhase
-            DeoptimizationGrouping DeoptimizationGrouping at bci 1
-        CanonicalizerPhase
-            Canonicalizer CanonicalReplacement at bci 1 {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
-        WriteBarrierAdditionPhase
-    LowTier
-        LowTierLoweringPhase
-            SchedulePhase
-            IncrementalCanonicalizerPhase
-        ExpandLogicPhase
-        CanonicalizerPhase
-        AddressLoweringPhase
-        SchedulePhase
+                                  RootPhase
+                    _____________/    |    \_____________
+                   /                  |                  \
+                LowTier            MidTier            HighTier
+           ______/  \___              |                   |
+          /             \     CanonicalizerPhase         ...    
+  LoopPeelingPhase      ...     ___|     |__________
+          |                    /                    \
+     LoopPeeling       CfgSimplification      CanonicalReplacement
+      at bci 122           at bci 13                at bci 25
+                                         {replacedNodeClass: ValuePhi,
+                                          canonicalNodeClass: Constant}
 ```
+
+In reality, however, the trees are significantly larger than in this example. Read the sections below to learn how to
+format the tree as JSON or view it in IGV.
 
 ## JSON output
 
@@ -141,7 +122,7 @@ to one compilation. The structure is the following:
 
 ```json
 {
-  "compilationMethodName": "java.util.Formatter$FixedString.<init>(Formatter, String, int, int)",
+  "compilationMethodName": "java.lang.String.hashCode()",
   "compilationId": "17697",
   "rootPhase": {
     "phaseName": "RootPhase",
@@ -157,11 +138,11 @@ root of the optimization tree. Each node in the optimization tree is either:
 
 - a phase node, which contains a `phaseName` derived from the class name and a list of children (phases and optimization
   entries),
-- or an optimization entry node, containing `optimizationName`, `eventName` (from the arguments of `report`), `bci` (
-  from the `Node` passed to `report`) and additional properties.
+- or an optimization entry node, containing `optimizationName`, `eventName` (from the arguments of `report`), `position`
+  (from the `Node` passed to `report`) and additional properties.
 
-Consider the following example with an `IncrementalCanonicalizerPhase` that performed a `CfgSimplification` and
-a `CanonicalReplacement`:
+Consider the following example with an `IncrementalCanonicalizerPhase` that performed a `CanonicalReplacement` and
+a `CfgSimplification`:
 
 ```json
 {
@@ -169,19 +150,45 @@ a `CanonicalReplacement`:
   "optimizations": [
     {
       "optimizationName": "Canonicalizer",
-      "eventName": "CfgSimplification",
-      "bci": 18
+      "eventName": "CanonicalReplacement",
+      "replacedNodeClass": "==",
+      "canonicalNodeClass": "LogicNegation",
+      "position": {
+        "java.lang.String.hashCode()": 20
+      }
     },
     {
       "optimizationName": "Canonicalizer",
-      "eventName": "CanonicalReplacement",
-      "bci": 3,
-      "replacedNodeClass": "==",
-      "canonicalNodeClass": "=="
+      "eventName": "CfgSimplification",
+      "position": {
+        "java.lang.String.hashCode()": 20
+      }
     }
   ]
 }
 ```
+
+We can see that both the replacement and the simplification occurred at bci 20 in the root `java.lang.String.hashCode()`
+method. In the presence of inlining, the positions are more complex. Consider the example below.
+
+```json
+{
+  "phaseName": "DeadCodeEliminationPhase",
+  "optimizations": [
+    {
+      "optimizationName": "DeadCodeElimination",
+      "eventName": "NodeRemoval",
+      "position": {
+        "java.lang.StringLatin1.hashCode(byte[])": 10,
+        "java.lang.String.hashCode()": 27
+      }
+    }
+  ]
+}
+```
+
+We can see that the `NodeRemoval` occurred at bci 10 in the inlined `java.lang.StringLatin1.hashCode(byte[])` method,
+which callsite is at bci 27 in the root method. Note that the order of keys is important in this case.
 
 ## IGV output
 
