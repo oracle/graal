@@ -25,10 +25,12 @@
 package org.graalvm.bisect.parser.args;
 
 import java.util.EnumSet;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * A program argument that holds the value of an enum. The value is parsed as its string
- * representation.
+ * A program argument that holds the value of an enum. The value is parsed as its case-insensitive
+ * string representation.
  *
  * @param <T> the type of the enum
  */
@@ -52,14 +54,14 @@ public class EnumArgument<T extends Enum<T>> extends ValuedArgument<T> {
     }
 
     /**
-     * Returns the set of possible values for this argument.
+     * Returns the list of all possible values for this argument in lowercase.
      */
-    private EnumSet<T> getAllValues() {
-        return EnumSet.allOf(enumClass);
+    private List<String> getAllValues() {
+        return EnumSet.allOf(enumClass).stream().map((key) -> key.name().toLowerCase()).collect(Collectors.toList());
     }
 
     /**
-     * Parses the provided string as an identifier of the enum.
+     * Parses the provided string case-insensitively as an identifier of the enum.
      *
      * @param s the value that is being parsed
      * @return the parsed enum constant
@@ -67,11 +69,12 @@ public class EnumArgument<T extends Enum<T>> extends ValuedArgument<T> {
      */
     @Override
     protected T parseValue(String s) throws InvalidArgumentException {
-        try {
-            return Enum.valueOf(enumClass, s);
-        } catch (IllegalArgumentException e) {
-            throw new InvalidArgumentException(getName(), "\"" + s + "\" is an invalid value. Valid values are " + getAllValues());
+        for (T enumValue : enumClass.getEnumConstants()) {
+            if (enumValue.name().compareToIgnoreCase(s) == 0) {
+                return enumValue;
+            }
         }
+        throw new InvalidArgumentException(getName(), "\"" + s + "\" is an invalid value. Valid values are " + getAllValues());
     }
 
     /**
@@ -82,6 +85,6 @@ public class EnumArgument<T extends Enum<T>> extends ValuedArgument<T> {
      */
     @Override
     public String getHelp() {
-        return super.getHelp() + ", accepted values " + getAllValues();
+        return super.getHelp() + ", accepted values are " + getAllValues();
     }
 }

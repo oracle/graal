@@ -100,6 +100,14 @@ public class ArgumentParserTest {
         assertTrue(programArguments.flagArgument.getValue());
     }
 
+    @Test
+    public void enumArgumentCaseInsensitive() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArguments programArguments = new ProgramArguments();
+        String[] args = new String[]{"foo", "--enum", TestEnum.BAR.toString().toLowerCase()};
+        programArguments.argumentParser.parse(args);
+        assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
+    }
+
     @Test(expected = MissingArgumentException.class)
     public void testMissingPositional() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArguments programArguments = new ProgramArguments();
