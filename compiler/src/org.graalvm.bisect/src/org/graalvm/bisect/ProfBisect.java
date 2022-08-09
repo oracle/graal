@@ -95,7 +95,8 @@ public class ProfBisect {
             System.exit(1);
         }
 
-        Writer writer = new StdoutWriter(verbosityLevelArgument.getValue());
+        VerbosityLevel verbosityLevel = verbosityLevelArgument.getValue();
+        Writer writer = new StdoutWriter(verbosityLevel);
 
         HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
         hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
@@ -125,14 +126,19 @@ public class ProfBisect {
             writer.writeln();
             matchedMethod.writeHeaderAndCompilationUnits(writer, experiment1, experiment2);
             writer.increaseIndent();
-            for (MatchedCompilationUnit matchedCompilationUnit : matchedMethod.getMatchedCompilationUnits()) {
-                matchedCompilationUnit.writeHeader(writer);
-                TreeMatching treeMatching = treeMatcher.match(matchedCompilationUnit.getFirstCompilationUnit(), matchedCompilationUnit.getSecondCompilationUnit());
-                writer.increaseIndent();
-                treeMatching.write(writer);
-                writer.decreaseIndent();
+            if (verbosityLevel.shouldPrintOptimizationTree()) {
+                matchedMethod.writeAllHotCompilationUnits(writer);
             }
-            matchedMethod.writeUnmatchedCompilationUnits(writer);
+            if (verbosityLevel.shouldDiffCompilations()) {
+                for (MatchedCompilationUnit matchedCompilationUnit : matchedMethod.getMatchedCompilationUnits()) {
+                    matchedCompilationUnit.writeHeader(writer);
+                    TreeMatching treeMatching = treeMatcher.match(matchedCompilationUnit.getFirstCompilationUnit(), matchedCompilationUnit.getSecondCompilationUnit());
+                    writer.increaseIndent();
+                    treeMatching.write(writer);
+                    writer.decreaseIndent();
+                }
+                matchedMethod.writeUnmatchedCompilationUnits(writer);
+            }
             writer.decreaseIndent();
         }
         matching.getUnmatchedMethods().iterator().forEachRemaining(unmatchedMethod -> {

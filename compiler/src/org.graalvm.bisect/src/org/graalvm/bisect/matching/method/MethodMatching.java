@@ -43,10 +43,12 @@ public class MethodMatching {
      * Adds a matched method to this matching.
      *
      * @param compilationMethodName the compilation method name of the newly added method
+     * @param compilationUnits1 hot compilation units of the method in the first experiment
+     * @param compilationUnits2 hot compilation units of the method in the second experiment
      * @return the added matched method
      */
-    public MatchedMethod addMatchedMethod(String compilationMethodName) {
-        MatchedMethod matchedMethod = new MatchedMethod(compilationMethodName);
+    public MatchedMethod addMatchedMethod(String compilationMethodName, List<CompilationUnit> compilationUnits1, List<CompilationUnit> compilationUnits2) {
+        MatchedMethod matchedMethod = new MatchedMethod(compilationMethodName, compilationUnits1, compilationUnits2);
         matchedMethods.add(matchedMethod);
         return matchedMethod;
     }

@@ -34,12 +34,29 @@ public enum VerbosityLevel {
     /**
      * The default verbosity level.
      */
-    DEFAULT(false),
+    DEFAULT(false, true, false),
 
     /**
      * High verbosity level.
      */
-    HIGH(true);
+    HIGH(false, true, true),
+
+    /**
+     * Maximum verbosity level.
+     */
+    MAX(true, false, true);
+
+    /**
+     * Whether the optimization tree should be printed for each hot compilation unit.
+     */
+    private final boolean printOptimizationTree;
+
+    /**
+     * Whether a matching of hot compilations should be created for each method and their diffs
+     * printed. If a compilation does not have match, its optimization tree is printed instead
+     * (similarly to {@link #printOptimizationTree}).
+     */
+    private final boolean diffCompilations;
 
     /**
      * Byte code indices should be printed in the long form, i.e., as
@@ -51,10 +68,28 @@ public enum VerbosityLevel {
     /**
      * Constructs a verbosity level.
      *
+     * @param printOptimizationTree optimization tree should be printed for each hot compilation
+     * @param diffCompilations compilations should be matched and diffed
      * @param bciLongForm byte code indices should be printed in the long form
      */
-    VerbosityLevel(boolean bciLongForm) {
+    VerbosityLevel(boolean printOptimizationTree, boolean diffCompilations, boolean bciLongForm) {
+        this.printOptimizationTree = printOptimizationTree;
+        this.diffCompilations = diffCompilations;
         this.bciLongForm = bciLongForm;
+    }
+
+    /**
+     * Returns whether the optimization tree should be printed for each hot compilation unit.
+     */
+    public boolean shouldPrintOptimizationTree() {
+        return printOptimizationTree;
+    }
+
+    /**
+     * Returns whether compilations should be matched and diffed.
+     */
+    public boolean shouldDiffCompilations() {
+        return diffCompilations;
     }
 
     /**

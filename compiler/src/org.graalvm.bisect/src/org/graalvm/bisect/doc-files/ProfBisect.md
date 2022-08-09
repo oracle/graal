@@ -57,7 +57,7 @@ Options:
   --hot-min-limit      the minimum number of compilation units to mark as hot
   --hot-max-limit      the maximum number of compilation units to mark as hot
   --hot-percentile     the percentile of the execution period that is spent executing hot compilation units
-  --verbosity          the verbosity level of the diff, accepted values are [default, high]
+  --verbosity          the verbosity level of the diff, accepted values are [default, high, max]
 ```
 
 Use the tool to diff our toy experiments:
@@ -172,4 +172,4 @@ canonical replacements in the 1st compilation and one different replacement in t
 
 Note that the reported byte code indices are relative to the method where the code comes from, which might not be the
 root method in the presence of inlining. Run the diff again with `--verbosity high` to see the whole stacks of inlined
-methods.
+methods. Use `--verbosity max` to display optimization trees without diffing.

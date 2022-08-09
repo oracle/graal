@@ -25,6 +25,7 @@
 package org.graalvm.bisect.matching.method;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.Experiment;
@@ -61,9 +62,9 @@ public class GreedyMethodMatcher implements MethodMatcher {
         EconomicSet<String> intersection = EconomicMapUtil.keySet(methodMap1);
         intersection.retainAll(EconomicMapUtil.keySet(methodMap2));
         for (String compilationMethodName : intersection) {
-            MatchedMethod matchedMethod = matching.addMatchedMethod(compilationMethodName);
-            Iterable<CompilationUnit> leftMethods = methodMap1.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator)::iterator;
-            Iterable<CompilationUnit> rightMethods = methodMap2.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator)::iterator;
+            List<CompilationUnit> leftMethods = methodMap1.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator).collect(Collectors.toList());
+            List<CompilationUnit> rightMethods = methodMap2.get(compilationMethodName).stream().sorted(GreedyMethodMatcher::greaterPeriodComparator).collect(Collectors.toList());
+            MatchedMethod matchedMethod = matching.addMatchedMethod(compilationMethodName, leftMethods, rightMethods);
             CollectionsUtil.zipLongest(leftMethods, rightMethods).iterator().forEachRemaining(pair -> {
                 if (pair.getLeft() != null && pair.getRight() != null) {
                     matchedMethod.addMatchedCompilationUnit(pair.getLeft(), pair.getRight());

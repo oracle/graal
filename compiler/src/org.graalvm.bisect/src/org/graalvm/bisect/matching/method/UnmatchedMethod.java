@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.bisect.core.CompilationUnit;
 import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.core.VerbosityLevel;
 import org.graalvm.bisect.util.Writer;
 
 /**
@@ -89,8 +90,9 @@ public class UnmatchedMethod {
     }
 
     /**
-     * Writes the full description of the method. Includes {@link #writeHeaderAndCompilationList a
-     * header and the list of compilations} and optimization trees for each compilation.
+     * Writes the full description of the method according to the current verbosity level. Includes
+     * {@link #writeHeaderAndCompilationList a header and the list of compilations}. If enabled,
+     * writes optimization trees for each compilation.
      *
      * @param writer the destination writer
      * @param experiment1 the first experiment
@@ -98,13 +100,13 @@ public class UnmatchedMethod {
      */
     public void write(Writer writer, Experiment experiment1, Experiment experiment2) {
         writeHeaderAndCompilationList(writer, experiment1, experiment2);
-        writer.increaseIndent();
-        for (CompilationUnit method : compilationUnits) {
-            writer.writeln("Compilation " + method.getCompilationId() + " (" + method.createExecutionSummary() + ") in experiment " + method.getExperiment().getExperimentId());
+        VerbosityLevel verbosity = writer.getVerbosityLevel();
+        if (verbosity.shouldPrintOptimizationTree() || verbosity.shouldDiffCompilations()) {
             writer.increaseIndent();
-            method.getRootPhase().writeRecursive(writer);
+            for (CompilationUnit compilationUnit : compilationUnits) {
+                compilationUnit.write(writer);
+            }
             writer.decreaseIndent();
         }
-        writer.decreaseIndent();
     }
 }

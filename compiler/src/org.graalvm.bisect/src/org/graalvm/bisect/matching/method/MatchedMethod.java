@@ -41,6 +41,16 @@ public class MatchedMethod {
     private final String compilationMethodName;
 
     /**
+     * Hot compilation units of the method in the first experiment.
+     */
+    private final List<CompilationUnit> compilationUnits1;
+
+    /**
+     * Hot compilation units of the method in the second experiment.
+     */
+    private final List<CompilationUnit> compilationUnits2;
+
+    /**
      * Pairs of matched compilation units of this method.
      */
     private final List<MatchedCompilationUnit> matchedCompilationUnits = new ArrayList<>();
@@ -50,8 +60,17 @@ public class MatchedMethod {
      */
     private final List<UnmatchedCompilationUnit> unmatchedCompilationUnits = new ArrayList<>();
 
-    MatchedMethod(String compilationMethodName) {
+    /**
+     * Constructs a matched method.
+     *
+     * @param compilationMethodName full signature of the matched methods
+     * @param compilationUnits1 hot compilation units of the method in the first experiment
+     * @param compilationUnits2 hot compilation units of the method in the second experiment
+     */
+    MatchedMethod(String compilationMethodName, List<CompilationUnit> compilationUnits1, List<CompilationUnit> compilationUnits2) {
         this.compilationMethodName = compilationMethodName;
+        this.compilationUnits1 = compilationUnits1;
+        this.compilationUnits2 = compilationUnits2;
     }
 
     /**
@@ -116,6 +135,21 @@ public class MatchedMethod {
             writer.increaseIndent();
             unmatchedCompilationUnit.getExecutedMethod().getRootPhase().writeRecursive(writer);
             writer.decreaseIndent();
+        }
+    }
+
+    /**
+     * Writes all hot compilation units including optimization trees from both experiments to the
+     * destination writer.
+     *
+     * @param writer the destination writer
+     */
+    public void writeAllHotCompilationUnits(Writer writer) {
+        for (CompilationUnit compilationUnit : compilationUnits1) {
+            compilationUnit.write(writer);
+        }
+        for (CompilationUnit compilationUnit : compilationUnits2) {
+            compilationUnit.write(writer);
         }
     }
 }

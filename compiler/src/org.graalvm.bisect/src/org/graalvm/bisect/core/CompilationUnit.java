@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
+import org.graalvm.bisect.util.Writer;
 
 /**
  * Represents an executed Graal compilation of a method.
@@ -179,5 +180,18 @@ public class CompilationUnit {
      */
     public List<Optimization> getOptimizationsRecursive() {
         return rootPhase.getOptimizationsRecursive();
+    }
+
+    /**
+     * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
+     * and the optimization tree to the destination writer.
+     *
+     * @param writer the destination writer
+     */
+    public void write(Writer writer) {
+        writer.writeln("Compilation " + compilationId + " (" + createExecutionSummary() + ") in experiment " + experiment.getExperimentId());
+        writer.increaseIndent();
+        rootPhase.writeRecursive(writer);
+        writer.decreaseIndent();
     }
 }
