@@ -212,6 +212,12 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     public abstract WasmMemory duplicate();
 
+    public abstract void initialize(byte[] source, int sourceOffset, int destinationOffset, int length);
+
+    public abstract void fill(int destinationOffset, int length, byte value);
+
+    public abstract void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length);
+
     @TruffleBoundary
     protected final WasmException trapOutOfBounds(Node node, long address, int length) {
         final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",

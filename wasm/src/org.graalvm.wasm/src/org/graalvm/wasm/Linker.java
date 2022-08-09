@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -381,7 +381,16 @@ public class Linker {
         if (offsetGlobalIndex != -1) {
             dependencies.add(new InitializeGlobalSym(instance.name(), offsetGlobalIndex));
         }
-        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
+        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
+    }
+
+    void resolvePassiveDataSegment(WasmInstance instance, int dataSegmentId, byte[] data) {
+        final Runnable resolveAction = () -> instance.setDataInstance(dataSegmentId, data);
+        final ArrayList<Sym> dependencies = new ArrayList<>();
+        if (dataSegmentId > 0) {
+            dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));
+        }
+        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
     void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int declaredMinSize, int declaredMaxSize) {
@@ -422,8 +431,8 @@ public class Linker {
         resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int[] functionsIndices) {
-        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, elemSegmentId, offsetAddress, offsetGlobalIndex, functionsIndices);
+    void resolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, long[] elements) {
+        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, elemSegmentId, offsetAddress, offsetGlobalIndex, elements);
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedTable() != null) {
             dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable()));
@@ -434,16 +443,20 @@ public class Linker {
         if (offsetGlobalIndex != -1) {
             dependencies.add(new InitializeGlobalSym(instance.name(), offsetGlobalIndex));
         }
-        for (final int functionIndex : functionsIndices) {
-            final WasmFunction function = instance.module().function(functionIndex);
-            if (function.importDescriptor() != null) {
-                dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
+        for (final long element : elements) {
+            // Null functions are represented by 0
+            if (element != 0L) {
+                final int functionIndex = (int) element;
+                final WasmFunction function = instance.module().function(functionIndex);
+                if (function.importDescriptor() != null) {
+                    dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
+                }
             }
         }
-        resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
+        resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int[] functionsIndices) {
+    void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, long[] elements) {
         assertTrue(instance.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final WasmTable table = instance.table();
         Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
@@ -459,13 +472,53 @@ public class Linker {
         }
 
         Assert.assertUnsignedIntLessOrEqual(baseAddress, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
-        Assert.assertUnsignedIntLessOrEqual(baseAddress + functionsIndices.length, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+        Assert.assertUnsignedIntLessOrEqual(baseAddress + elements.length, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
 
-        for (int index = 0; index != functionsIndices.length; ++index) {
-            final int functionIndex = functionsIndices[index];
-            final WasmFunction function = instance.module().function(functionIndex);
-            table.initialize(baseAddress + index, instance.functionInstance(function));
+        for (int index = 0; index != elements.length; ++index) {
+            final long element = elements[index];
+            // Null functions are represented by 0
+            if (element == 0L) {
+                table.initializeWithNull(baseAddress + index);
+            } else {
+                final int functionIndex = (int) element;
+                final WasmFunction function = instance.module().function(functionIndex);
+                table.initialize(baseAddress + index, instance.functionInstance(function));
+            }
         }
+    }
+
+    void resolvePassiveElemSegment(WasmInstance instance, int elemSegmentId, long[] elements) {
+        final Runnable resolveAction = () -> immediatelyResolvePassiveElementSegment(instance, elemSegmentId, elements);
+        final ArrayList<Sym> dependencies = new ArrayList<>();
+        if (elemSegmentId > 0) {
+            dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
+        }
+        for (final long element : elements) {
+            if (element != 0) {
+                final int functionIndex = (int) element;
+                final WasmFunction function = instance.module().function(functionIndex);
+                if (function.importDescriptor() != null) {
+                    dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
+                }
+            }
+        }
+        resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
+
+    }
+
+    void immediatelyResolvePassiveElementSegment(WasmInstance instance, int elemSegmentId, long[] elements) {
+        final Object[] initialValues = new Object[elements.length];
+        for (int index = 0; index != elements.length; index++) {
+            final long element = elements[index];
+            if (element == 0L) {
+                initialValues[index] = WasmRefNull.INSTANCE;
+            } else {
+                final int functionIndex = (int) element;
+                final WasmFunction function = instance.module().function(functionIndex);
+                initialValues[index] = instance.functionInstance(function);
+            }
+        }
+        instance.setElementInstance(elemSegmentId, initialValues);
     }
 
     static class ResolutionDag {

@@ -86,4 +86,7 @@ public class WasmOptions {
 
     @Option(help = "Enable multi-value support", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> MultiValue = new OptionKey<>(true);
+
+    @Option(help = "Enable bulk-memory operations", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> BulkMemoryOps = new OptionKey<>(true);
 }

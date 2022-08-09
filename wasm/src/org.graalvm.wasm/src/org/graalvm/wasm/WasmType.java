@@ -47,7 +47,6 @@ import org.graalvm.wasm.exception.WasmException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -72,6 +71,8 @@ public class WasmType implements TruffleObject {
     public static final byte F64_TYPE = 0x7C;
     @CompilationFinal(dimensions = 1) public static final byte[] F64_TYPE_ARRAY = {F64_TYPE};
 
+    public static final byte FUNCREF_TYPE = 0x70;
+
     public static final WasmType VOID = new WasmType("void");
 
     public static String toString(int valueType) {
@@ -87,6 +88,8 @@ public class WasmType implements TruffleObject {
                 return "f64";
             case VOID_TYPE:
                 return "void";
+            case FUNCREF_TYPE:
+                return "funcref";
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
@@ -133,21 +136,5 @@ public class WasmType implements TruffleObject {
     @TruffleBoundary
     public String toString() {
         return "wasm-value-type[" + name + "]";
-    }
-
-    public static FrameSlotKind asFrameSlotKind(byte type) {
-        CompilerAsserts.neverPartOfCompilation();
-        switch (type) {
-            case I32_TYPE:
-                return FrameSlotKind.Int;
-            case I64_TYPE:
-                return FrameSlotKind.Long;
-            case F32_TYPE:
-                return FrameSlotKind.Float;
-            case F64_TYPE:
-                return FrameSlotKind.Double;
-            default:
-                return null;
-        }
     }
 }

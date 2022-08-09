@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,6 +161,14 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         elements[index] = element;
     }
 
+    public void initialize(Object[] elementInstance, int sourceOffset, int destinationOffset, int length) {
+        System.arraycopy(elementInstance, sourceOffset, elements, destinationOffset, length);
+    }
+
+    public void copyFrom(WasmTable source, int sourceOffset, int destinationOffset, int length) {
+        System.arraycopy(source.elements, sourceOffset, elements, destinationOffset, length);
+    }
+
     /**
      * Gets element at {@code index}.
      *
@@ -168,6 +176,10 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      */
     public void initialize(int i, WasmFunctionInstance function) {
         elements[i] = function;
+    }
+
+    public void initializeWithNull(int i) {
+        elements[i] = WasmRefNull.INSTANCE;
     }
 
     /**

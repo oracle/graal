@@ -46,6 +46,7 @@ import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.Assumption;
 import org.graalvm.wasm.exception.Failure;
@@ -318,6 +319,26 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
+    }
+
+    @Override
+    public void initialize(byte[] source, int sourceOffset, int destinationOffset, int length) {
+        assert destinationOffset + length <= byteSize();
+        System.arraycopy(source, sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
+    }
+
+    @Override
+    public void fill(int destinationOffset, int length, byte value) {
+        assert destinationOffset + length <= byteSize();
+        Arrays.fill(byteArrayBuffer.buffer(), destinationOffset, destinationOffset + length, value);
+    }
+
+    @Override
+    public void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length) {
+        assert source instanceof ByteArrayWasmMemory;
+        assert destinationOffset < byteSize();
+        ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
+        System.arraycopy(s.byteArrayBuffer.buffer(), sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
     }
 
     @Override

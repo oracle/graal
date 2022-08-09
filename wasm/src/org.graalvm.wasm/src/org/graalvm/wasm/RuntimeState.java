@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,10 @@ public class RuntimeState {
      */
     @CompilationFinal private WasmMemory memory;
 
+    @CompilationFinal(dimensions = 0) private Object[][] elementInstances;
+
+    @CompilationFinal(dimensions = 0) private byte[][] dataInstances;
+
     @CompilationFinal private Linker.LinkState linkState;
 
     private void ensureGlobalsCapacity(int index) {
@@ -105,6 +109,8 @@ public class RuntimeState {
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
+        this.elementInstances = null;
+        this.dataInstances = null;
     }
 
     private void checkNotLinked() {
@@ -226,5 +232,63 @@ public class RuntimeState {
     public void setFunctionInstance(int index, WasmFunctionInstance functionInstance) {
         assert functionInstance != null;
         functionInstances[index] = functionInstance;
+    }
+
+    private void ensureElementInstanceCapacity(int index) {
+        if (elementInstances == null) {
+            elementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+        } else if (index >= elementInstances.length) {
+            final Object[][] nElementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length)][];
+            System.arraycopy(elementInstances, 0, nElementInstances, 0, elementInstances.length);
+            elementInstances = nElementInstances;
+        }
+    }
+
+    void setElementInstance(int index, Object[] elements) {
+        assert elements != null;
+        ensureElementInstanceCapacity(index);
+        elementInstances[index] = elements;
+    }
+
+    public void dropElementInstance(int index) {
+        assert index < elementInstances.length;
+        elementInstances[index] = null;
+    }
+
+    public Object[] elementInstance(int index) {
+        if (elementInstances == null) {
+            return null;
+        }
+        assert index < elementInstances.length;
+        return elementInstances[index];
+    }
+
+    private void ensureDataInstanceCapacity(int index) {
+        if (dataInstances == null) {
+            dataInstances = new byte[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+        } else if (index >= dataInstances.length) {
+            final byte[][] nDataInstances = new byte[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)][];
+            System.arraycopy(dataInstances, 0, nDataInstances, 0, dataInstances.length);
+            dataInstances = nDataInstances;
+        }
+    }
+
+    void setDataInstance(int index, byte[] data) {
+        assert data != null;
+        ensureDataInstanceCapacity(index);
+        dataInstances[index] = data;
+    }
+
+    public void dropDataInstance(int index) {
+        assert index < dataInstances.length;
+        dataInstances[index] = null;
+    }
+
+    public byte[] dataInstance(int index) {
+        if (dataInstances == null) {
+            return null;
+        }
+        assert index < dataInstances.length;
+        return dataInstances[index];
     }
 }

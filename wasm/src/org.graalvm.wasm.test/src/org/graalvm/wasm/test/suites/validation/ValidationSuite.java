@@ -245,16 +245,9 @@ public class ValidationSuite extends WasmFileSuite {
 
                         // The table `C.tables[x]` must be defined in the context.
                         // Validated in: BinaryParser#readElementSection
-                        binaryCase(
-                                        "Element segment - invalid table index",
-                                        "unknown table: 2 should = 0",
-                                        // (table 1 funcref) (elem 5 (i32.const 0) $f1) (func $f1
-                                        // (result i32) i32.const 42)
-                                        "00 61 73 6d 01 00 00 00 01 05 01 60 00 01 7f 03" +
-                                                        "03 02 00 00 04 04 01 70 00 01 07 09 01 05 5f 6d" +
-                                                        "61 69 6e 00 01 09 09 01 02 05 41 00 0b 00 01 00" +
-                                                        "0a 0b 02 04 00 41 2a 0b 04 00 41 2a 0b",
-                                        Failure.Type.INVALID),
+                        // This is checked in:
+                        // - TableInitializationSuite#testTableInitActiveType2InvalidTableIndex
+                        // - TableInitializationSuite#testTableInitActiveType6InvalidTableIndex
 
                         // The element type `elemtype` must be `funcref`.
                         // Validated in: BinaryParser#readTableSection and
@@ -282,12 +275,8 @@ public class ValidationSuite extends WasmFileSuite {
 
                         // The memory `C.mems[x]` must be defined in the context.
                         // Validated in: BinaryParser#readDataSection
-                        binaryCase(
-                                        "Data segment - invalid memory index",
-                                        "unknown memory: 5 should = 0",
-                                        // (memory 1) (data 5 (i32.const 0) "Hi")
-                                        "0061 736d 0100 0000 0503 0100 010b 0801 0541 000b 0248 69",
-                                        Failure.Type.INVALID),
+                        // This is checked in:
+                        // - MemoryInitializationSuite#testMemoryInitActiveType2InvalidMemoryIndex
 
                         // The expression `expr` must be valid with result type `[i32]`.
                         // Checked in OfficialTestSuite:

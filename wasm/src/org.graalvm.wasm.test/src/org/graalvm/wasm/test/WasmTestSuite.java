@@ -54,7 +54,10 @@ import org.graalvm.wasm.test.suites.control.MultiValueSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
+import org.graalvm.wasm.test.suites.memory.MemoryInitializationSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
+import org.graalvm.wasm.test.suites.table.TableInitializationSuite;
+import org.graalvm.wasm.test.suites.table.TableSuite;
 import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ValidationSuite;
 import org.graalvm.wasm.test.suites.wasi.WasiSuite;
@@ -75,6 +78,7 @@ import org.junit.runners.Suite;
                 BranchBlockSuite.class,
                 LoopBlockSuite.class,
                 IfThenElseSuite.class,
+                MemoryInitializationSuite.class,
                 MemorySuite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
@@ -88,7 +92,9 @@ import org.junit.runners.Suite;
                 MultiValueValidationSuite.class,
                 WasmLateLinkingSuite.class,
                 WasmImplementationLimitationsSuite.class,
-                ExtraDataSuite.class
+                ExtraDataSuite.class,
+                TableInitializationSuite.class,
+                TableSuite.class
 })
 public class WasmTestSuite {
     @Test

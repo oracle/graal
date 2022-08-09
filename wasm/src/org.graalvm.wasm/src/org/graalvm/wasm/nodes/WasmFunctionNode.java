@@ -48,7 +48,9 @@ import static org.graalvm.wasm.constants.Instructions.BR_IF;
 import static org.graalvm.wasm.constants.Instructions.BR_TABLE;
 import static org.graalvm.wasm.constants.Instructions.CALL;
 import static org.graalvm.wasm.constants.Instructions.CALL_INDIRECT;
+import static org.graalvm.wasm.constants.Instructions.DATA_DROP;
 import static org.graalvm.wasm.constants.Instructions.DROP;
+import static org.graalvm.wasm.constants.Instructions.ELEM_DROP;
 import static org.graalvm.wasm.constants.Instructions.ELSE;
 import static org.graalvm.wasm.constants.Instructions.END;
 import static org.graalvm.wasm.constants.Instructions.F32_ABS;
@@ -221,12 +223,17 @@ import static org.graalvm.wasm.constants.Instructions.LOCAL_GET;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_SET;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_TEE;
 import static org.graalvm.wasm.constants.Instructions.LOOP;
+import static org.graalvm.wasm.constants.Instructions.MEMORY_COPY;
+import static org.graalvm.wasm.constants.Instructions.MEMORY_FILL;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_GROW;
+import static org.graalvm.wasm.constants.Instructions.MEMORY_INIT;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_SIZE;
 import static org.graalvm.wasm.constants.Instructions.MISC;
 import static org.graalvm.wasm.constants.Instructions.NOP;
 import static org.graalvm.wasm.constants.Instructions.RETURN;
 import static org.graalvm.wasm.constants.Instructions.SELECT;
+import static org.graalvm.wasm.constants.Instructions.TABLE_COPY;
+import static org.graalvm.wasm.constants.Instructions.TABLE_INIT;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
@@ -272,6 +279,7 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmMath;
+import org.graalvm.wasm.WasmRefNull;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
@@ -300,7 +308,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_U_INT = 4294967040f;
 
-    private static final double MIN_DOUBLE_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
+    private static final double MIN_DOUBLE_TRUNCATABLE_TO_INT = -2147483648.9999997;
     private static final double MAX_DOUBLE_TRUNCATABLE_TO_INT = 2147483647.9999998;
     private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_INT = -0.9999999999999999;
     private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_INT = 4294967295.9999995;
@@ -691,6 +699,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     if (element == null) {
                         enterErrorBranch();
                         throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
+                    }
+                    if (element == WasmRefNull.INSTANCE) {
+                        enterErrorBranch();
+                        throw WasmException.format(Failure.NULL_REFERENCE, this, "Table element at index %d is null.", elementIndex);
                     }
                     final WasmFunctionInstance functionInstance;
                     final WasmFunction function;
@@ -1453,10 +1465,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     f64_reinterpret_i64(frame, stackPointer);
                     break;
                 case MISC:
-                    byte miscByteOpcode = BinaryStreamParser.rawPeek1(data, offset);
-                    int miscOpcode = miscByteOpcode & 0xFF;
-                    offset++;
-                    CompilerAsserts.partialEvaluationConstant(offset);
+                    long miscOpcodeAndLength = BinaryStreamParser.peekUnsignedInt32AndLength(data, offset);
+                    int miscOpcode = value(miscOpcodeAndLength);
+                    offset += length(miscOpcodeAndLength);
+                    CompilerAsserts.partialEvaluationConstant(miscOpcode);
                     switch (miscOpcode) {
                         case I32_TRUNC_SAT_F32_S:
                             i32_trunc_sat_f32_s(frame, stackPointer);
@@ -1482,6 +1494,79 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case I64_TRUNC_SAT_F64_U:
                             i64_trunc_sat_f64_u(frame, stackPointer);
                             break;
+                        case TABLE_INIT: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int elementIndex = value(valueAndLength);
+                            // endregion
+
+                            // Consume the ZERO_TABLE constant.
+                            offset += 1;
+
+                            table_init(instance, frame, stackPointer, elementIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case TABLE_COPY:
+                            // Consume the two ZERO_TABLE constants.
+                            offset += 2;
+
+                            table_copy(instance, frame, stackPointer);
+                            stackPointer -= 3;
+                            break;
+                        case ELEM_DROP: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int elementIndex = value(valueAndLength);
+                            // endregion
+
+                            instance.dropElementInstance(elementIndex);
+                            break;
+                        }
+                        case MEMORY_INIT: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int dataIndex = value(valueAndLength);
+                            // endregion
+
+                            // Consume the ZERO_MEMORY constant.
+                            offset += 1;
+
+                            memory_init(instance, frame, stackPointer, dataIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case MEMORY_FILL: {
+                            // Consume the ZERO_MEMORY constant.
+                            offset += 1;
+                            memory_fill(instance, frame, stackPointer);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case MEMORY_COPY:
+                            // Consume the two ZERO_MEMORY constants.
+                            offset += 2;
+
+                            memory_copy(instance, frame, stackPointer);
+                            stackPointer -= 3;
+                            break;
+                        case DATA_DROP: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int dataIndex = value(valueAndLength);
+                            // endregion
+
+                            instance.dropDataInstance(dataIndex);
+                            break;
+                        }
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
@@ -2747,7 +2832,104 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushLong(frame, stackPointer - 1, result);
     }
 
+    private void table_init(WasmInstance instance, VirtualFrame frame, int stackPointer, int elementIndex) {
+        final WasmTable table = instance.table();
+        final Object[] elementInstance = instance.elementInstance(elementIndex);
+        final int elementInstanceLength;
+        if (elementInstance == null) {
+            elementInstanceLength = 0;
+        } else {
+            elementInstanceLength = elementInstance.length;
+        }
+        final int n = popInt(frame, stackPointer - 1);
+        final int src = popInt(frame, stackPointer - 2);
+        final int dst = popInt(frame, stackPointer - 3);
+        if (checkOutOfBounds(src, n, elementInstanceLength) || checkOutOfBounds(dst, n, table.size())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        }
+        if (n == 0) {
+            return;
+        }
+        table.initialize(elementInstance, src, dst, n);
+    }
+
+    private void table_copy(WasmInstance instance, VirtualFrame frame, int stackPointer) {
+        final WasmTable table = instance.table();
+        final int n = popInt(frame, stackPointer - 1);
+        final int src = popInt(frame, stackPointer - 2);
+        final int dst = popInt(frame, stackPointer - 3);
+        if (checkOutOfBounds(src, n, table.size()) || checkOutOfBounds(dst, n, table.size())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        }
+        if (n == 0) {
+            return;
+        }
+        table.copyFrom(table, src, dst, n);
+    }
+
+    private void memory_init(WasmInstance instance, VirtualFrame frame, int stackPointer, int dataIndex) {
+        final WasmMemory memory = instance.memory();
+        final byte[] data = instance.dataInstance(dataIndex);
+        final int dataLength;
+        if (data == null) {
+            dataLength = 0;
+        } else {
+            dataLength = data.length;
+        }
+        final int n = popInt(frame, stackPointer - 1);
+        final int src = popInt(frame, stackPointer - 2);
+        final int dst = popInt(frame, stackPointer - 3);
+        if (checkOutOfBounds(src, n, dataLength) || checkOutOfBounds(dst, n, memory.byteSize())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+        }
+        if (n == 0) {
+            return;
+        }
+        memory.initialize(data, src, dst, n);
+    }
+
+    private void memory_fill(WasmInstance instance, VirtualFrame frame, int stackPointer) {
+        final WasmMemory memory = instance.memory();
+        final int n = popInt(frame, stackPointer - 1);
+        final int val = popInt(frame, stackPointer - 2);
+        final int dst = popInt(frame, stackPointer - 3);
+        if (checkOutOfBounds(dst, n, memory.byteSize())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+        }
+        if (n == 0) {
+            return;
+        }
+        memory.fill(dst, n, (byte) val);
+    }
+
+    private void memory_copy(WasmInstance instance, VirtualFrame frame, int stackPointer) {
+        final WasmMemory memory = instance.memory();
+        final int n = popInt(frame, stackPointer - 1);
+        final int src = popInt(frame, stackPointer - 2);
+        final int dst = popInt(frame, stackPointer - 3);
+        if (checkOutOfBounds(src, n, memory.byteSize()) || checkOutOfBounds(dst, n, memory.byteSize())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+        }
+        if (n == 0) {
+            return;
+        }
+        memory.copyFrom(memory, src, dst, n);
+    }
+
     // Checkstyle: resume method name check
+
+    private static boolean checkOutOfBounds(int offset, int length, long size) {
+        return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
+    }
+
+    private static boolean checkOutOfBounds(int offset, int length, int size) {
+        return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
+    }
 
     @TruffleBoundary
     public void resolveCallNode(int callNodeIndex) {

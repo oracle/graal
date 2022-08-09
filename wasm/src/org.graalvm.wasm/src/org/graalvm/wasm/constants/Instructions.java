@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -251,6 +251,17 @@ public final class Instructions {
     public static final int I64_EXTEND8_S = 0xC2;
     public static final int I64_EXTEND16_S = 0xC3;
     public static final int I64_EXTEND32_S = 0xC4;
+
+    public static final int REF_NULL = 0xD0;
+    public static final int REF_FUNC = 0xD2;
+
+    public static final int MEMORY_INIT = 0x08;
+    public static final int DATA_DROP = 0x09;
+    public static final int MEMORY_COPY = 0x0A;
+    public static final int MEMORY_FILL = 0x0B;
+    public static final int TABLE_INIT = 0x0C;
+    public static final int ELEM_DROP = 0x0D;
+    public static final int TABLE_COPY = 0x0E;
 
     private static String[] decodingTable = new String[256];
 

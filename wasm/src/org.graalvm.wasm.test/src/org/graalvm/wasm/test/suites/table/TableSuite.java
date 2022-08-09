@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,46 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.constants;
+package org.graalvm.wasm.test.suites.table;
 
-public final class Section {
-    public static final int CUSTOM = 0;
-    public static final int TYPE = 1;
-    public static final int IMPORT = 2;
-    public static final int FUNCTION = 3;
-    public static final int TABLE = 4;
-    public static final int MEMORY = 5;
-    public static final int GLOBAL = 6;
-    public static final int EXPORT = 7;
-    public static final int START = 8;
-    public static final int ELEMENT = 9;
-    public static final int CODE = 10;
-    public static final int DATA = 11;
-    public static final int DATA_COUNT = 12;
+import org.graalvm.wasm.test.WasmFileSuite;
+import org.junit.Test;
 
-    private static final int[] SECTION_ORDER = new int[13];
+import java.io.IOException;
 
-    static {
-        SECTION_ORDER[CUSTOM] = 0;
-        SECTION_ORDER[TYPE] = 1;
-        SECTION_ORDER[IMPORT] = 2;
-        SECTION_ORDER[FUNCTION] = 3;
-        SECTION_ORDER[TABLE] = 4;
-        SECTION_ORDER[MEMORY] = 5;
-        SECTION_ORDER[GLOBAL] = 6;
-        SECTION_ORDER[EXPORT] = 7;
-        SECTION_ORDER[START] = 8;
-        SECTION_ORDER[ELEMENT] = 9;
-        SECTION_ORDER[DATA_COUNT] = 10;
-        SECTION_ORDER[CODE] = 11;
-        SECTION_ORDER[DATA] = 12;
+public class TableSuite extends WasmFileSuite {
+
+    @Override
+    protected String testResource() {
+        return "table";
     }
 
-    private Section() {
-    }
-
-    public static boolean isNextSectionIdValid(int sectionID, int lastSectionID) {
-        // Undefined section ids and custom section ids are seen as valid and will be handled later
-        return sectionID > SECTION_ORDER.length || sectionID <= 0 || SECTION_ORDER[sectionID] > SECTION_ORDER[lastSectionID];
+    @Override
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test sutie class.
+        super.test();
     }
 }

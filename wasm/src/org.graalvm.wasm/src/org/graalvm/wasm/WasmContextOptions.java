@@ -50,6 +50,7 @@ public class WasmContextOptions {
     @CompilationFinal private boolean signExtensionOps;
     @CompilationFinal private boolean keepDataSections;
     @CompilationFinal private boolean multiValue;
+    @CompilationFinal private boolean bulkMemoryOps;
 
     @CompilationFinal private OptionValues optionValues;
 
@@ -67,6 +68,7 @@ public class WasmContextOptions {
         this.signExtensionOps = readBooleanOption(WasmOptions.SignExtensionOps);
         this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
         this.multiValue = readBooleanOption(WasmOptions.MultiValue);
+        this.bulkMemoryOps = readBooleanOption(WasmOptions.BulkMemoryOps);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
@@ -89,6 +91,10 @@ public class WasmContextOptions {
         return multiValue;
     }
 
+    public boolean isBulkMemoryOps() {
+        return bulkMemoryOps;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -96,6 +102,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.signExtensionOps ? 1 : 0);
         hash = 53 * hash + (this.keepDataSections ? 1 : 0);
         hash = 53 * hash + (this.multiValue ? 1 : 0);
+        hash = 53 * hash + (this.bulkMemoryOps ? 1 : 0);
         return hash;
     }
 
@@ -121,6 +128,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.multiValue != other.multiValue) {
+            return false;
+        }
+        if (this.bulkMemoryOps != other.bulkMemoryOps) {
             return false;
         }
         return true;

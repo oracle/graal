@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.WasmMath.maxUnsigned;
@@ -330,6 +331,10 @@ public abstract class SymbolTable {
      */
     private final List<WasmCustomSection> customSections;
 
+    @CompilationFinal private int elemSegmentCount;
+    @CompilationFinal private boolean dataCountExists;
+    @CompilationFinal private int dataSegmentCount;
+
     SymbolTable() {
         CompilerAsserts.neverPartOfCompilation();
         this.typeData = new int[INITIAL_DATA_SIZE];
@@ -356,6 +361,9 @@ public abstract class SymbolTable {
         this.importedMemoryDescriptor = null;
         this.exportedMemoryNames = new ArrayList<>();
         this.customSections = new ArrayList<>();
+        this.elemSegmentCount = 0;
+        this.dataCountExists = false;
+        this.dataSegmentCount = 0;
     }
 
     private void checkNotParsed() {
@@ -939,4 +947,27 @@ public abstract class SymbolTable {
         return customSections;
     }
 
+    public void incrementElemSegmentCount() {
+        elemSegmentCount++;
+    }
+
+    public void checkElemIndex(int elemIndex) {
+        assertUnsignedIntLess(elemIndex, elemSegmentCount, Failure.UNKNOWN_ELEM_SEGMENT);
+    }
+
+    public void checkDataSegmentIndex(int dataIndex) {
+        assertTrue(dataCountExists, Failure.DATA_COUNT_SECTION_REQUIRED);
+        assertUnsignedIntLess(dataIndex, dataSegmentCount, Failure.UNKNOWN_DATA_SEGMENT);
+    }
+
+    public void setDataSegmentCount(int count) {
+        this.dataSegmentCount = count;
+        this.dataCountExists = true;
+    }
+
+    public void checkDataSegmentCount(int numberOfDataSegments) {
+        if (dataCountExists) {
+            assertIntEqual(numberOfDataSegments, this.dataSegmentCount, Failure.DATA_COUNT_MISMATCH);
+        }
+    }
 }

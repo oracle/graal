@@ -77,7 +77,7 @@ public abstract class BinaryStreamParser {
         if (shift == 42) {
             throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
         } else if (shift == 35 && (0b0111_0000 & b) != 0) {
-            throw WasmException.create(Failure.INTEGER_TOO_LONG);
+            throw WasmException.create(Failure.INTEGER_TOO_LARGE);
         }
 
         return packValueAndLength(result, currentOffset - initialOffset);
@@ -118,7 +118,7 @@ public abstract class BinaryStreamParser {
         if (shift == 42) {
             throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
         } else if (shift == 35 && (b & 0b0111_0000) != ((b & 0b1000) == 0 ? 0 : 0b0111_0000)) {
-            throw WasmException.create(Failure.INTEGER_TOO_LONG);
+            throw WasmException.create(Failure.INTEGER_TOO_LARGE);
         }
 
         if (shift != 35 && (b & 0x40) != 0) {
@@ -168,7 +168,7 @@ public abstract class BinaryStreamParser {
             if (shift == 77) {
                 throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
             } else if (shift == 70 && (b & 0b0111_1110) != ((b & 1) == 0 ? 0 : 0b0111_1110)) {
-                throw WasmException.create(Failure.INTEGER_TOO_LONG);
+                throw WasmException.create(Failure.INTEGER_TOO_LARGE);
             }
         }
 
