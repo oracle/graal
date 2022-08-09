@@ -29,6 +29,7 @@ import java.io.IOException;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.HotCompilationUnitPolicy;
+import org.graalvm.bisect.core.VerbosityLevel;
 import org.graalvm.bisect.matching.method.GreedyMethodMatcher;
 import org.graalvm.bisect.matching.method.MatchedCompilationUnit;
 import org.graalvm.bisect.matching.method.MatchedMethod;
@@ -38,6 +39,7 @@ import org.graalvm.bisect.matching.tree.TreeMatcher;
 import org.graalvm.bisect.matching.tree.TreeMatching;
 import org.graalvm.bisect.parser.args.ArgumentParser;
 import org.graalvm.bisect.parser.args.DoubleArgument;
+import org.graalvm.bisect.parser.args.EnumArgument;
 import org.graalvm.bisect.parser.args.IntegerArgument;
 import org.graalvm.bisect.parser.args.InvalidArgumentException;
 import org.graalvm.bisect.parser.args.MissingArgumentException;
@@ -64,6 +66,9 @@ public class ProfBisect {
         DoubleArgument percentileArgument = argumentParser.addDoubleArgument(
                         "--hot-percentile", 0.9,
                         "the percentile of the execution period that is spent executing hot compilation units");
+        EnumArgument<VerbosityLevel> verbosityLevelArgument = argumentParser.addEnumArgument(
+                        "--verbosity", VerbosityLevel.DEFAULT,
+                        "the verbosity level of the diff");
         StringArgument proftoolArgument1 = argumentParser.addStringArgument(
                         "proftool_output_1", "proftool output of the first experiment in JSON.");
         StringArgument optimizationLogArgument1 = argumentParser.addStringArgument(
@@ -90,7 +95,7 @@ public class ProfBisect {
             System.exit(1);
         }
 
-        Writer writer = new StdoutWriter();
+        Writer writer = new StdoutWriter(verbosityLevelArgument.getValue());
 
         HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
         hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
@@ -141,8 +146,7 @@ public class ProfBisect {
             return parser.parse();
         } catch (IOException e) {
             e.printStackTrace();
-            System.err.println(
-                            "Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId());
+            System.err.println("Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId());
             System.exit(1);
         } catch (ExperimentParserTypeError e) {
             System.err.println(e.getMessage());

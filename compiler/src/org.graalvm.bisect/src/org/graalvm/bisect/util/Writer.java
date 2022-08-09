@@ -24,9 +24,11 @@
  */
 package org.graalvm.bisect.util;
 
+import org.graalvm.bisect.core.VerbosityLevel;
+
 /**
  * An output writer that manages indentation and optional string prefixes that are prepended to each
- * written line.
+ * written line. The writer holds the current {@link VerbosityLevel} for convenience.
  */
 public interface Writer {
     /**
@@ -84,4 +86,9 @@ public interface Writer {
      * Clears the set prefix that is prepended to each written line after the indentation.
      */
     void clearPrefixAfterIndent();
+
+    /**
+     * Gets the current verbosity level.
+     */
+    VerbosityLevel getVerbosityLevel();
 }

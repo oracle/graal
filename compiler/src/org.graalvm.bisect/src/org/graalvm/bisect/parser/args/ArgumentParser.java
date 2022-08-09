@@ -205,8 +205,8 @@ public class ArgumentParser {
     }
 
     /**
-     * Adds an argument that can hold an enum value. The value is parsed as its string
-     * representation.
+     * Adds an argument that can hold an enum value. The value is parsed case-insensitively as its
+     * string representation.
      *
      * @param name the name of the argument
      * @param defaultValue the default value of the argument, must not be null

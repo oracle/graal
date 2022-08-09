@@ -163,13 +163,38 @@ public class Optimization implements OptimizationTreeNode {
         sb.append('}');
     }
 
-    @Override
-    public String toString() {
+    /**
+     * Returns a string representation of this optimization with its properties and the position. If
+     * the properties/position is {@code null}, it is omitted.
+     *
+     * An example of the output in the long form is:
+     *
+     * <pre>
+     * DeadCodeElimination NodeRemoval at bci {java.util.stream.ReferencePipeline$8$1.accept(Object): 13, java.util.Spliterators$ArraySpliterator.forEachRemaining(Consumer): 53}
+     * </pre>
+     *
+     * The short form looks like the example below.
+     *
+     * <pre>
+     * Canonicalizer CanonicalReplacement at bci 18 with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
+     * </pre>
+     *
+     * @param bciLongForm byte code indices should be printed in the long form
+     * @return a string representation of this optimization
+     */
+    private String toString(boolean bciLongForm) {
         StringBuilder sb = new StringBuilder();
         sb.append(getOptimizationName()).append(" ").append(getName());
-        UnmodifiableMapCursor<String, Integer> positionCursor = position.getEntries();
-        if (positionCursor.advance()) {
-            sb.append(" at bci ").append(positionCursor.getValue());
+        if (!position.isEmpty()) {
+            sb.append(" at bci ");
+            if (bciLongForm) {
+                formatMap(sb, position);
+            } else {
+                UnmodifiableMapCursor<String, Integer> positionCursor = position.getEntries();
+                if (positionCursor.advance()) {
+                    sb.append(positionCursor.getValue());
+                }
+            }
         }
         if (properties.isEmpty()) {
             return sb.toString();
@@ -179,9 +204,15 @@ public class Optimization implements OptimizationTreeNode {
         return sb.toString();
     }
 
+    /**
+     * Writes {@link #toString(boolean) the representation of this optimization} to the destination
+     * writer according to the current verbosity level.
+     *
+     * @param writer the destination writer
+     */
     @Override
     public void writeHead(Writer writer) {
-        writer.writeln(toString());
+        writer.writeln(toString(writer.getVerbosityLevel().isBciLongForm()));
     }
 
     private int calculateHashCode() {

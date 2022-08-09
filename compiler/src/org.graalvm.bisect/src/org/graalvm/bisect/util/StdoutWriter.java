@@ -24,15 +24,41 @@
  */
 package org.graalvm.bisect.util;
 
+import org.graalvm.bisect.core.VerbosityLevel;
+
 /**
- * An output writer that manages indentation and writes to the standard output.
+ * An output writer that manages indentation and writes to the standard output. The writer holds the
+ * current {@link VerbosityLevel} for convenience.
  */
 public class StdoutWriter implements Writer {
+    /**
+     * The current level of indentation.
+     */
     private int indentLevel = 0;
 
+    /**
+     * Whether the indentation string has already been written for the current line.
+     */
     private boolean indentWritten = false;
 
+    /**
+     * The prefix to be written in front of each line after the indentation.
+     */
     private String prefix;
+
+    /**
+     * The current verbosity level.
+     */
+    private final VerbosityLevel verbosityLevel;
+
+    /**
+     * Constructs a writer to the standard output.
+     *
+     * @param verbosityLevel the current verbosity level
+     */
+    public StdoutWriter(VerbosityLevel verbosityLevel) {
+        this.verbosityLevel = verbosityLevel;
+    }
 
     @Override
     public void write(String output) {
@@ -83,6 +109,11 @@ public class StdoutWriter implements Writer {
     @Override
     public void clearPrefixAfterIndent() {
         this.prefix = null;
+    }
+
+    @Override
+    public VerbosityLevel getVerbosityLevel() {
+        return verbosityLevel;
     }
 
     private void printIndentIfNeeded() {
