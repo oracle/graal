@@ -102,4 +102,7 @@ public final class ClassInitializationOptions {
 
     @Option(help = "Use build-time evaluation of methods annotated with the @Constant annotation and constant arguments.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseExperimentalBuildTimeEvaluation = new HostedOptionKey<>(false);
+
+    @Option(help = "Build-time evaluation is only possible with constable, primitive, return types.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseStrictBuildTimeEvaluation = new HostedOptionKey<>(true);
 }
