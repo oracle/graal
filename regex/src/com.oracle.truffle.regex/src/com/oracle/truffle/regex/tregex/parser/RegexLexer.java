@@ -413,7 +413,7 @@ public final class RegexLexer {
 
     private int parseCodePointInGroupName() throws RegexSyntaxException {
         if (consumingLookahead("\\u")) {
-            final int unicodeEscape = parseUnicodeEscapeChar();
+            final int unicodeEscape = parseUnicodeEscapeChar(true);
             if (unicodeEscape < 0) {
                 throw syntaxError(ErrorMessages.INVALID_UNICODE_ESCAPE);
             } else {
@@ -427,7 +427,7 @@ public final class RegexLexer {
             return -1;
         }
         final char c = consumeChar();
-        return flags.isUnicode() && Character.isHighSurrogate(c) ? finishSurrogatePair(c) : c;
+        return Character.isHighSurrogate(c) ? finishSurrogatePair(c) : c;
     }
 
     /**
@@ -658,11 +658,14 @@ public final class RegexLexer {
     /**
      * Parse a {@code RegExpUnicodeEscapeSequence}, assuming that the prefix '&#92;u' has already
      * been read.
+     * 
+     * @param unicodeMode whether we are in Unicode mode, which allows '&#92;u{...} escapes and
+     *            treats surrogate pairs as single code points
      *
      * @return the code point of the escaped character, or -1 if the escape was malformed
      */
-    private int parseUnicodeEscapeChar() throws RegexSyntaxException {
-        if (flags.isUnicode() && consumingLookahead("{")) {
+    private int parseUnicodeEscapeChar(boolean unicodeMode) throws RegexSyntaxException {
+        if (unicodeMode && consumingLookahead("{")) {
             final int value = parseHex(1, Integer.MAX_VALUE, 0x10ffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
             if (!consumingLookahead("}")) {
                 throw syntaxError(ErrorMessages.INVALID_UNICODE_ESCAPE);
@@ -670,7 +673,7 @@ public final class RegexLexer {
             return value;
         } else {
             final int value = parseHex(4, 4, 0xffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
-            if (flags.isUnicode() && Character.isHighSurrogate((char) value)) {
+            if (unicodeMode && Character.isHighSurrogate((char) value)) {
                 final int resetIndex = index;
                 if (consumingLookahead("\\u") && !lookahead("{")) {
                     final char lead = (char) value;
@@ -728,7 +731,7 @@ public final class RegexLexer {
                 advance();
                 return Character.toUpperCase(controlLetter) - ('A' - 1);
             case 'u':
-                final int unicodeEscape = parseUnicodeEscapeChar();
+                final int unicodeEscape = parseUnicodeEscapeChar(flags.isUnicode());
                 return unicodeEscape < 0 ? c : unicodeEscape;
             case 'x':
                 final int value = parseHex(2, 2, 0xff, ErrorMessages.INVALID_ESCAPE);
@@ -750,7 +753,7 @@ public final class RegexLexer {
     }
 
     private int finishSurrogatePair(char c) {
-        assert flags.isUnicode() && Character.isHighSurrogate(c);
+        assert Character.isHighSurrogate(c);
         if (!atEnd() && Character.isLowSurrogate(curChar())) {
             final char lead = c;
             final char trail = consumeChar();
