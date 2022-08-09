@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -49,6 +51,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
@@ -316,8 +319,28 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     public CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType, boolean write) {
         boolean specClass = useSpecializationClass.test(s);
         Object refObject = specClass ? s : fieldName;
-        boolean isChild = specClass ? true : ElementUtils.isAssignable(fieldType, types.Node);
+        boolean isChild = specClass ? specializationClassIsNode(s) : ElementUtils.isAssignable(fieldType, types.Node);
         return createArrayReference(frame, refObject, !write, fieldType, isChild);
+    }
+
+    /* Specialization class needs to be a Node in such a case. */
+    private boolean specializationClassIsNode(SpecializationData specialization) {
+        for (CacheExpression cache : specialization.getCaches()) {
+            TypeMirror type = cache.getParameter().getType();
+            if (isAssignable(type, types.NodeInterface)) {
+                return true;
+            } else if (isNodeInterfaceArray(type)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isNodeInterfaceArray(TypeMirror type) {
+        if (type == null) {
+            return false;
+        }
+        return type.getKind() == TypeKind.ARRAY && isAssignable(((ArrayType) type).getComponentType(), types.NodeInterface);
     }
 
     @Override

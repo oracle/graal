@@ -157,6 +157,14 @@ public final class TestOperations {
             return assoc.getValue();
         }
     }
+
+    @Operation
+    public static final class NonNodeInstance {
+        @Specialization(limit = "3", guards = "i == cachedI")
+        public static Integer doCached(Integer i, @Cached("i") Integer cachedI) {
+            return cachedI;
+        }
+    }
 }
 
 class Association {

@@ -340,33 +340,33 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         static final int INSTR_LOAD_CONSTANT_OBJECT = 5;
         static final int LOAD_CONSTANT_OBJECT_CONSTANT_OFFSET = 1;
         static final int LOAD_CONSTANT_OBJECT_LENGTH = 2;
-        static final int INSTR_LOAD_CONSTANT_BOOLEAN = 6;
-        static final int LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET = 1;
-        static final int LOAD_CONSTANT_BOOLEAN_LENGTH = 2;
-        static final int INSTR_LOAD_CONSTANT_LONG = 7;
+        static final int INSTR_LOAD_CONSTANT_LONG = 6;
         static final int LOAD_CONSTANT_LONG_CONSTANT_OFFSET = 1;
         static final int LOAD_CONSTANT_LONG_LENGTH = 2;
+        static final int INSTR_LOAD_CONSTANT_BOOLEAN = 7;
+        static final int LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET = 1;
+        static final int LOAD_CONSTANT_BOOLEAN_LENGTH = 2;
         static final int INSTR_LOAD_ARGUMENT_OBJECT = 8;
         static final int LOAD_ARGUMENT_OBJECT_ARGUMENT_OFFSET = 1;
         static final int LOAD_ARGUMENT_OBJECT_LENGTH = 2;
-        static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 9;
-        static final int LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET = 1;
-        static final int LOAD_ARGUMENT_BOOLEAN_LENGTH = 2;
-        static final int INSTR_LOAD_ARGUMENT_LONG = 10;
+        static final int INSTR_LOAD_ARGUMENT_LONG = 9;
         static final int LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET = 1;
         static final int LOAD_ARGUMENT_LONG_LENGTH = 2;
+        static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 10;
+        static final int LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET = 1;
+        static final int LOAD_ARGUMENT_BOOLEAN_LENGTH = 2;
         static final int INSTR_STORE_LOCAL_OBJECT = 11;
         static final int STORE_LOCAL_OBJECT_LOCALS_OFFSET = 1;
         static final int STORE_LOCAL_OBJECT_POP_INDEXED_OFFSET = 2;
         static final int STORE_LOCAL_OBJECT_LENGTH = 3;
-        static final int INSTR_STORE_LOCAL_BOOLEAN = 12;
-        static final int STORE_LOCAL_BOOLEAN_LOCALS_OFFSET = 1;
-        static final int STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET = 2;
-        static final int STORE_LOCAL_BOOLEAN_LENGTH = 3;
-        static final int INSTR_STORE_LOCAL_LONG = 13;
+        static final int INSTR_STORE_LOCAL_LONG = 12;
         static final int STORE_LOCAL_LONG_LOCALS_OFFSET = 1;
         static final int STORE_LOCAL_LONG_POP_INDEXED_OFFSET = 2;
         static final int STORE_LOCAL_LONG_LENGTH = 3;
+        static final int INSTR_STORE_LOCAL_BOOLEAN = 13;
+        static final int STORE_LOCAL_BOOLEAN_LOCALS_OFFSET = 1;
+        static final int STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET = 2;
+        static final int STORE_LOCAL_BOOLEAN_LENGTH = 3;
         static final int INSTR_STORE_LOCAL_UNINIT = 14;
         static final int STORE_LOCAL_UNINIT_LOCALS_OFFSET = 1;
         static final int STORE_LOCAL_UNINIT_POP_INDEXED_OFFSET = 2;
@@ -374,12 +374,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         static final int INSTR_LOAD_LOCAL_OBJECT = 15;
         static final int LOAD_LOCAL_OBJECT_LOCALS_OFFSET = 1;
         static final int LOAD_LOCAL_OBJECT_LENGTH = 2;
-        static final int INSTR_LOAD_LOCAL_BOOLEAN = 16;
-        static final int LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET = 1;
-        static final int LOAD_LOCAL_BOOLEAN_LENGTH = 2;
-        static final int INSTR_LOAD_LOCAL_LONG = 17;
+        static final int INSTR_LOAD_LOCAL_LONG = 16;
         static final int LOAD_LOCAL_LONG_LOCALS_OFFSET = 1;
         static final int LOAD_LOCAL_LONG_LENGTH = 2;
+        static final int INSTR_LOAD_LOCAL_BOOLEAN = 17;
+        static final int LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET = 1;
+        static final int LOAD_LOCAL_BOOLEAN_LENGTH = 2;
         static final int INSTR_LOAD_LOCAL_UNINIT = 18;
         static final int LOAD_LOCAL_UNINIT_LOCALS_OFFSET = 1;
         static final int LOAD_LOCAL_UNINIT_LENGTH = 2;
@@ -552,7 +552,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         // OBJECT
         {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_LONG, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_LONG, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // INT
         null,
         // DOUBLE
@@ -560,7 +560,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         // FLOAT
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, 0, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_BOOLEAN, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_STORE_LOCAL_BOOLEAN, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_DIV_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_MUL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_SUB_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), 0, 0, (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_ADD_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_UNBOX_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_INVOKE_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0) << 8) | 1), (short) (0x8000 | ((C_SL_LESS_THAN_STATE_BITS_OFFSET + 0) << 8) | 1)},
         // BYTE
         null};
 
@@ -3496,36 +3496,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
-            protected static boolean expectBoolean(VirtualFrame frame, int slot) throws UnexpectedResultException {
-                switch (frame.getTag(slot)) {
-                    case 5 /* BOOLEAN */ :
-                        return frame.getBoolean(slot);
-                    case 0 /* OBJECT */ :
-                        Object value = frame.getObject(slot);
-                        if (value instanceof Boolean) {
-                            return (boolean) value;
-                        }
-                        break;
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new UnexpectedResultException(frame.getValue(slot));
-            }
-
-            protected static boolean storeLocalBooleanCheck(VirtualFrame frame, int localSlot, int stackSlot) {
-                FrameDescriptor descriptor = frame.getFrameDescriptor();
-                if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Boolean) {
-                    try {
-                        frame.setBoolean(localSlot, expectBoolean(frame, stackSlot));
-                        return true;
-                    } catch (UnexpectedResultException ex) {
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
-                frame.setObject(localSlot, frame.getValue(stackSlot));
-                return false;
-            }
-
             protected static long expectLong(VirtualFrame frame, int slot) throws UnexpectedResultException {
                 switch (frame.getTag(slot)) {
                     case 1 /* LONG */ :
@@ -3546,6 +3516,36 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Long) {
                     try {
                         frame.setLong(localSlot, expectLong(frame, stackSlot));
+                        return true;
+                    } catch (UnexpectedResultException ex) {
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                descriptor.setSlotKind(localSlot, FrameSlotKind.Object);
+                frame.setObject(localSlot, frame.getValue(stackSlot));
+                return false;
+            }
+
+            protected static boolean expectBoolean(VirtualFrame frame, int slot) throws UnexpectedResultException {
+                switch (frame.getTag(slot)) {
+                    case 5 /* BOOLEAN */ :
+                        return frame.getBoolean(slot);
+                    case 0 /* OBJECT */ :
+                        Object value = frame.getObject(slot);
+                        if (value instanceof Boolean) {
+                            return (boolean) value;
+                        }
+                        break;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new UnexpectedResultException(frame.getValue(slot));
+            }
+
+            protected static boolean storeLocalBooleanCheck(VirtualFrame frame, int localSlot, int stackSlot) {
+                FrameDescriptor descriptor = frame.getFrameDescriptor();
+                if (descriptor.getSlotKind(localSlot) == FrameSlotKind.Boolean) {
+                    try {
+                        frame.setBoolean(localSlot, expectBoolean(frame, stackSlot));
                         return true;
                     } catch (UnexpectedResultException ex) {
                     }
@@ -3663,25 +3663,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                                 continue loop;
                             }
-                            // load.constant.boolean
-                            //   Constants:
-                            //     [ 0] constant
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
-                            //     LONG -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            //     INT -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            //     DOUBLE -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            //     FLOAT -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            //     BYTE -> INSTR_LOAD_CONSTANT_BOOLEAN
-                            case INSTR_LOAD_CONSTANT_BOOLEAN :
-                            {
-                                $frame.setBoolean($sp, (boolean) $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET) + 0]);
-                                $sp = $sp + 1;
-                                $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
-                                continue loop;
-                            }
                             // load.constant.long
                             //   Constants:
                             //     [ 0] constant
@@ -3701,6 +3682,25 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
                                 continue loop;
                             }
+                            // load.constant.boolean
+                            //   Constants:
+                            //     [ 0] constant
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_CONSTANT_OBJECT
+                            //     LONG -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     INT -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     DOUBLE -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     FLOAT -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     BOOLEAN -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            //     BYTE -> INSTR_LOAD_CONSTANT_BOOLEAN
+                            case INSTR_LOAD_CONSTANT_BOOLEAN :
+                            {
+                                $frame.setBoolean($sp, (boolean) $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET) + 0]);
+                                $sp = $sp + 1;
+                                $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
+                                continue loop;
+                            }
                             // load.argument.object
                             //   Pushed Values: 1
                             //   Boxing Elimination: Replace
@@ -3713,28 +3713,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 $frame.setObject($sp, value);
                                 $sp = $sp + 1;
                                 $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
-                                continue loop;
-                            }
-                            // load.argument.boolean
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
-                            //     LONG -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     INT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     FLOAT -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            //     BYTE -> INSTR_LOAD_ARGUMENT_BOOLEAN
-                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
-                            {
-                                Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]];
-                                if (value instanceof Boolean) {
-                                    $frame.setBoolean($sp, (boolean) value);
-                                } else {
-                                    $frame.setObject($sp, value);
-                                }
-                                $sp = $sp + 1;
-                                $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // load.argument.long
@@ -3759,6 +3737,28 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
                                 continue loop;
                             }
+                            // load.argument.boolean
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_ARGUMENT_OBJECT
+                            //     LONG -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     INT -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     DOUBLE -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     FLOAT -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     BOOLEAN -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            //     BYTE -> INSTR_LOAD_ARGUMENT_BOOLEAN
+                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                            {
+                                Object value = $frame.getArguments()[$bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]];
+                                if (value instanceof Boolean) {
+                                    $frame.setBoolean($sp, (boolean) value);
+                                } else {
+                                    $frame.setObject($sp, value);
+                                }
+                                $sp = $sp + 1;
+                                $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
+                                continue loop;
+                            }
                             // store.local.object
                             //   Locals:
                             //     [ 0] target
@@ -3773,32 +3773,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 $frame.setObject(localIdx, expectObject($frame, sourceSlot));
                                 $sp--;
                                 $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
-                                continue loop;
-                            }
-                            // store.local.boolean
-                            //   Locals:
-                            //     [ 0] target
-                            //   Indexed Pops:
-                            //     [ 0] value
-                            //   Pushed Values: 0
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
-                            //     LONG -> INSTR_STORE_LOCAL_OBJECT
-                            //     INT -> INSTR_STORE_LOCAL_OBJECT
-                            //     DOUBLE -> INSTR_STORE_LOCAL_OBJECT
-                            //     FLOAT -> INSTR_STORE_LOCAL_OBJECT
-                            //     BOOLEAN -> 0
-                            //     BYTE -> INSTR_STORE_LOCAL_OBJECT
-                            case INSTR_STORE_LOCAL_BOOLEAN :
-                            {
-                                int localIdx = $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0];
-                                int sourceSlot = $sp - 1;
-                                if (!storeLocalBooleanCheck($frame, localIdx, sourceSlot)) {
-                                    $bc[$bci] = (short) (INSTR_STORE_LOCAL_OBJECT);
-                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff), 0 /* OBJECT */);
-                                }
-                                $sp--;
-                                $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // store.local.long
@@ -3825,6 +3799,32 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                                 $sp--;
                                 $bci = $bci + STORE_LOCAL_LONG_LENGTH;
+                                continue loop;
+                            }
+                            // store.local.boolean
+                            //   Locals:
+                            //     [ 0] target
+                            //   Indexed Pops:
+                            //     [ 0] value
+                            //   Pushed Values: 0
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_STORE_LOCAL_OBJECT
+                            //     LONG -> INSTR_STORE_LOCAL_OBJECT
+                            //     INT -> INSTR_STORE_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_STORE_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_STORE_LOCAL_OBJECT
+                            //     BOOLEAN -> 0
+                            //     BYTE -> INSTR_STORE_LOCAL_OBJECT
+                            case INSTR_STORE_LOCAL_BOOLEAN :
+                            {
+                                int localIdx = $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0];
+                                int sourceSlot = $sp - 1;
+                                if (!storeLocalBooleanCheck($frame, localIdx, sourceSlot)) {
+                                    $bc[$bci] = (short) (INSTR_STORE_LOCAL_OBJECT);
+                                    doSetResultBoxed($bc, $bci, ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff), 0 /* OBJECT */);
+                                }
+                                $sp--;
+                                $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // store.local.uninit
@@ -3873,41 +3873,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                                 continue loop;
                             }
-                            // load.local.boolean
-                            //   Locals:
-                            //     [ 0] local
-                            //   Pushed Values: 1
-                            //   Boxing Elimination: Replace
-                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
-                            //     LONG -> INSTR_LOAD_LOCAL_OBJECT
-                            //     INT -> INSTR_LOAD_LOCAL_OBJECT
-                            //     DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
-                            //     FLOAT -> INSTR_LOAD_LOCAL_OBJECT
-                            //     BOOLEAN -> 0
-                            //     BYTE -> INSTR_LOAD_LOCAL_OBJECT
-                            case INSTR_LOAD_LOCAL_BOOLEAN :
-                            {
-                                int localIdx = $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0];
-                                FrameSlotKind localType = $frame.getFrameDescriptor().getSlotKind(localIdx);
-                                if (localType != FrameSlotKind.Boolean) {
-                                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                                    Object localValue;
-                                    if (localType == FrameSlotKind.Illegal && (localValue = $frame.getObject(localIdx)) instanceof Boolean) {
-                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Boolean);
-                                        $frame.setBoolean(localIdx, (boolean) localValue);
-                                        $frame.copyPrimitive(localIdx, $sp);
-                                    } else {
-                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
-                                        $bc[$bci] = (short) (INSTR_LOAD_LOCAL_OBJECT);
-                                        $frame.copyObject(localIdx, $sp);
-                                    }
-                                } else {
-                                    $frame.copyPrimitive(localIdx, $sp);
-                                }
-                                $sp++;
-                                $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
-                                continue loop;
-                            }
                             // load.local.long
                             //   Locals:
                             //     [ 0] local
@@ -3941,6 +3906,41 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 }
                                 $sp++;
                                 $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
+                                continue loop;
+                            }
+                            // load.local.boolean
+                            //   Locals:
+                            //     [ 0] local
+                            //   Pushed Values: 1
+                            //   Boxing Elimination: Replace
+                            //     OBJECT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     LONG -> INSTR_LOAD_LOCAL_OBJECT
+                            //     INT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     DOUBLE -> INSTR_LOAD_LOCAL_OBJECT
+                            //     FLOAT -> INSTR_LOAD_LOCAL_OBJECT
+                            //     BOOLEAN -> 0
+                            //     BYTE -> INSTR_LOAD_LOCAL_OBJECT
+                            case INSTR_LOAD_LOCAL_BOOLEAN :
+                            {
+                                int localIdx = $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0];
+                                FrameSlotKind localType = $frame.getFrameDescriptor().getSlotKind(localIdx);
+                                if (localType != FrameSlotKind.Boolean) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    Object localValue;
+                                    if (localType == FrameSlotKind.Illegal && (localValue = $frame.getObject(localIdx)) instanceof Boolean) {
+                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Boolean);
+                                        $frame.setBoolean(localIdx, (boolean) localValue);
+                                        $frame.copyPrimitive(localIdx, $sp);
+                                    } else {
+                                        $frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
+                                        $bc[$bci] = (short) (INSTR_LOAD_LOCAL_OBJECT);
+                                        $frame.copyObject(localIdx, $sp);
+                                    }
+                                } else {
+                                    $frame.copyPrimitive(localIdx, $sp);
+                                }
+                                $sp++;
+                                $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                                 continue loop;
                             }
                             // load.local.uninit
@@ -4602,16 +4602,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN :
-                        {
-                            $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
-                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_LONG :
                         {
                             $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
+                            $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
+                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_ARGUMENT_OBJECT :
@@ -4619,14 +4619,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
-                        {
-                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_LONG :
                         {
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
+                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_OBJECT :
@@ -4634,14 +4634,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN :
-                        {
-                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_STORE_LOCAL_LONG :
                         {
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
+                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_UNINIT :
@@ -4654,14 +4654,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN :
-                        {
-                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_LONG :
                         {
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
+                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_LOCAL_UNINIT :
@@ -4894,21 +4894,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.constant.boolean         ");
-                            sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET) + 0])));
-                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -4922,6 +4907,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.constant.long            ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_LONG_CONSTANT_OFFSET) + 0])));
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.constant.boolean         ");
+                            sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET) + 0])));
+                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_ARGUMENT_OBJECT :
@@ -4939,21 +4939,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.argument.boolean         ");
-                            sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]));
-                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -4967,6 +4952,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.argument.long            ");
                             sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]));
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.argument.boolean         ");
+                            sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]));
+                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_OBJECT :
@@ -4985,22 +4985,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append(String.format(" %04x", $bc[$bci + 2]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("store.local.boolean           ");
-                            sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
-                            sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff)));
-                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_STORE_LOCAL_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -5015,6 +4999,22 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_LONG_LOCALS_OFFSET + 0]));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff)));
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append(String.format(" %04x", $bc[$bci + 2]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("store.local.boolean           ");
+                            sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
+                            sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff)));
+                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_UNINIT :
@@ -5048,21 +5048,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.local.boolean            ");
-                            sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
-                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -5076,6 +5061,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.local.long               ");
                             sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_LONG_LOCALS_OFFSET + 0]));
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.local.boolean            ");
+                            sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
+                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_LOCAL_UNINIT :
@@ -9415,13 +9415,13 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static int storeLocalInitialization(VirtualFrame frame, int localIdx, int localTag, int sourceSlot) {
                 Object value = frame.getValue(sourceSlot);
-                if (localTag == 5 /* BOOLEAN */ && value instanceof Boolean) {
-                    frame.setBoolean(localIdx, (boolean) value);
-                    return 5 /* BOOLEAN */;
-                }
                 if (localTag == 1 /* LONG */ && value instanceof Long) {
                     frame.setLong(localIdx, (long) value);
                     return 1 /* LONG */;
+                }
+                if (localTag == 5 /* BOOLEAN */ && value instanceof Boolean) {
+                    frame.setBoolean(localIdx, (boolean) value);
+                    return 5 /* BOOLEAN */;
                 }
                 frame.setObject(localIdx, value);
                 return 0 /* OBJECT */;
@@ -10221,16 +10221,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN :
-                        {
-                            $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
-                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_LONG :
                         {
                             $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
+                            $bc[$bci] = (short) (INSTR_LOAD_CONSTANT_OBJECT);
+                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_ARGUMENT_OBJECT :
@@ -10238,14 +10238,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
-                        {
-                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_LONG :
                         {
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
+                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_OBJECT :
@@ -10253,14 +10253,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN :
-                        {
-                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_STORE_LOCAL_LONG :
                         {
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
+                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_UNINIT :
@@ -10273,14 +10273,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN :
-                        {
-                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_LONG :
                         {
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
+                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_LOCAL_UNINIT :
@@ -10513,21 +10513,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_CONSTANT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.constant.boolean         ");
-                            sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET) + 0])));
-                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -10541,6 +10526,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.constant.long            ");
                             sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_LONG_CONSTANT_OFFSET) + 0])));
                             $bci = $bci + LOAD_CONSTANT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.constant.boolean         ");
+                            sb.append(String.format(" const(%s)", formatConstant($consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_BOOLEAN_CONSTANT_OFFSET) + 0])));
+                            $bci = $bci + LOAD_CONSTANT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_ARGUMENT_OBJECT :
@@ -10558,21 +10558,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_ARGUMENT_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.argument.boolean         ");
-                            sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]));
-                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -10586,6 +10571,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.argument.long            ");
                             sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_LONG_ARGUMENT_OFFSET + 0]));
                             $bci = $bci + LOAD_ARGUMENT_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.argument.boolean         ");
+                            sb.append(String.format(" arg(%s)", $bc[$bci + LOAD_ARGUMENT_BOOLEAN_ARGUMENT_OFFSET + 0]));
+                            $bci = $bci + LOAD_ARGUMENT_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_OBJECT :
@@ -10604,22 +10604,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + STORE_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_STORE_LOCAL_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append(String.format(" %04x", $bc[$bci + 2]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("store.local.boolean           ");
-                            sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
-                            sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff)));
-                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_STORE_LOCAL_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -10634,6 +10618,22 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_LONG_LOCALS_OFFSET + 0]));
                             sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_LONG_POP_INDEXED_OFFSET + 0] & 0xff)));
                             $bci = $bci + STORE_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append(String.format(" %04x", $bc[$bci + 2]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("store.local.boolean           ");
+                            sb.append(String.format(" local(%s)", $bc[$bci + STORE_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
+                            sb.append(String.format(" pop(-%s)", ($bc[$bci + STORE_LOCAL_BOOLEAN_POP_INDEXED_OFFSET + 0] & 0xff)));
+                            $bci = $bci + STORE_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_STORE_LOCAL_UNINIT :
@@ -10667,21 +10667,6 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             $bci = $bci + LOAD_LOCAL_OBJECT_LENGTH;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_BOOLEAN :
-                        {
-                            sb.append(String.format(" %04x", $bc[$bci + 0]));
-                            sb.append(String.format(" %04x", $bc[$bci + 1]));
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("     ");
-                            sb.append("load.local.boolean            ");
-                            sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
-                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_LONG :
                         {
                             sb.append(String.format(" %04x", $bc[$bci + 0]));
@@ -10695,6 +10680,21 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("load.local.long               ");
                             sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_LONG_LOCALS_OFFSET + 0]));
                             $bci = $bci + LOAD_LOCAL_LONG_LENGTH;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_BOOLEAN :
+                        {
+                            sb.append(String.format(" %04x", $bc[$bci + 0]));
+                            sb.append(String.format(" %04x", $bc[$bci + 1]));
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("     ");
+                            sb.append("load.local.boolean            ");
+                            sb.append(String.format(" local(%s)", $bc[$bci + LOAD_LOCAL_BOOLEAN_LOCALS_OFFSET + 0]));
+                            $bci = $bci + LOAD_LOCAL_BOOLEAN_LENGTH;
                             break;
                         }
                         case INSTR_LOAD_LOCAL_UNINIT :
@@ -11708,13 +11708,13 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static int storeLocalInitialization(VirtualFrame frame, int localIdx, int localTag, int sourceSlot) {
                 Object value = frame.getValue(sourceSlot);
-                if (localTag == 5 /* BOOLEAN */ && value instanceof Boolean) {
-                    frame.setBoolean(localIdx, (boolean) value);
-                    return 5 /* BOOLEAN */;
-                }
                 if (localTag == 1 /* LONG */ && value instanceof Long) {
                     frame.setLong(localIdx, (long) value);
                     return 1 /* LONG */;
+                }
+                if (localTag == 5 /* BOOLEAN */ && value instanceof Boolean) {
+                    frame.setBoolean(localIdx, (boolean) value);
+                    return 5 /* BOOLEAN */;
                 }
                 frame.setObject(localIdx, value);
                 return 0 /* OBJECT */;
