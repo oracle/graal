@@ -69,8 +69,7 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     }
 
     private void parseNewConfiguration(Map<String, Object> listOfSerializationConfigurationObjects) {
-        if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY) ||
-                        !listOfSerializationConfigurationObjects.containsKey(PROXY_SERIALIZATION_TYPES_KEY)) {
+        if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY)) {
             throw new JSONParserException("second level of document must be arrays of serialization descriptor objects");
         }
 
@@ -79,7 +78,9 @@ public class SerializationConfigurationParser extends ConfigurationParser {
                         asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY), "lambdaCapturingTypes must be an array of serialization descriptor objects"),
                         true);
 
-        proxyConfigurationParser.parseAndRegister(listOfSerializationConfigurationObjects.get(PROXY_SERIALIZATION_TYPES_KEY), null);
+        if (listOfSerializationConfigurationObjects.containsKey(PROXY_SERIALIZATION_TYPES_KEY)) {
+            proxyConfigurationParser.parseAndRegister(listOfSerializationConfigurationObjects.get(PROXY_SERIALIZATION_TYPES_KEY), null);
+        }
     }
 
     private void parseSerializationTypes(List<Object> listOfSerializationTypes, boolean lambdaCapturingTypes) {
