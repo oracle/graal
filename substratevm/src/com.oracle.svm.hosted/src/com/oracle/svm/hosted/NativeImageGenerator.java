@@ -885,7 +885,7 @@ public class NativeImageGenerator {
                 } else {
                     aScanningObserver = new ReachabilityObjectScanner(bb, aMetaAccess);
                 }
-                ImageHeapScanner heapScanner = new SVMImageHeapScanner(imageHeap, loader, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver);
+                ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver);
                 aUniverse.setHeapScanner(heapScanner);
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
                 aUniverse.setHeapVerifier(heapVerifier);

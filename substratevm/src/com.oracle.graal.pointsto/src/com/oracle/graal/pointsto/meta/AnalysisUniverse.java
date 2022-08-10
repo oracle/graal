@@ -366,6 +366,28 @@ public class AnalysisUniverse implements Universe {
             AnalysisType declaringType = lookup(field.getDeclaringClass());
             declaringType.registerAsReachable();
             declaringType.ensureInitialized();
+
+            /*
+             * Ensure that all reachability handler that were present at the time the type was
+             * marked as reachable are executed before creating the field. This allows field value
+             * transformer to be installed reliably in reachability handler.
+             *
+             * This is necessary because field value transformer are currently implemented via
+             * ComputedValueField that are injected into the substitution universe. A
+             * ComputedValueField added after the AnalysisField is created would be ignored. In the
+             * future, we want a better implementation of field value transformer that do not rely
+             * on the substitution universe, then this code can be removed.
+             */
+            if (declaringType.scheduledTypeReachableNotifications != null) {
+                for (var callback : declaringType.scheduledTypeReachableNotifications) {
+                    callback.ensureDone();
+                }
+                /*
+                 * Now we know all the handlers have been executed, so subsequent field lookups do
+                 * not need to check anymore.
+                 */
+                declaringType.scheduledTypeReachableNotifications = null;
+            }
         }
 
         field = substitutions.lookup(field);

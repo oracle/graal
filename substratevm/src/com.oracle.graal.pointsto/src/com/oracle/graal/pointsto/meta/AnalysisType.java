@@ -195,6 +195,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     @SuppressWarnings("unused") private volatile Object overrideReachableNotifications;
 
+    /**
+     * The reachability handler that were registered at the time the type was marked as reachable.
+     * Reachability handler that are added by the user later on are not included in this list, i.e.,
+     * there is no guarantee that such handlers have finished execution before, e.g., reading values
+     * of fields in that type.
+     */
+    List<AnalysisFuture<Void>> scheduledTypeReachableNotifications;
+
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;
@@ -312,6 +320,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         uniqueConstant = null;
         unsafeAccessedFields = null;
         typeData = null;
+        scheduledTypeReachableNotifications = null;
     }
 
     public int getId() {
@@ -528,9 +537,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     protected void onReachable() {
-        notifyReachabilityCallbacks(universe);
+        List<AnalysisFuture<Void>> futures = new ArrayList<>();
+        notifyReachabilityCallbacks(universe, futures);
         forAllSuperTypes(type -> ConcurrentLightHashSet.forEach(type, subtypeReachableNotificationsUpdater,
-                        (SubtypeReachableNotification n) -> n.notifyCallback(universe, this)));
+                        (SubtypeReachableNotification n) -> futures.add(n.notifyCallback(universe, this))));
+
+        if (futures.size() > 0) {
+            scheduledTypeReachableNotifications = futures;
+        }
+
         universe.notifyReachableType();
         universe.hostVM.checkForbidden(this, UsageKind.Reachable);
         if (isArray()) {
@@ -634,7 +649,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              */
             AnalysisMethod clinit = this.getClassInitializer();
             if (clinit != null) {
-                clinit.notifyReachabilityCallbacks(universe);
+                clinit.notifyReachabilityCallbacks(universe, new ArrayList<>());
             }
         }
     }

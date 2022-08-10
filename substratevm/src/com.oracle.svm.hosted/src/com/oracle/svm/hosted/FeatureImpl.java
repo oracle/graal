@@ -260,8 +260,8 @@ public class FeatureImpl {
             getUniverse().getHeapScanner().rescanField(receiver, field);
         }
 
-        public Object rescanRoot(Field field) {
-            return getUniverse().getHeapScanner().rescanRoot(field);
+        public void rescanRoot(Field field) {
+            getUniverse().getHeapScanner().rescanRoot(field);
         }
 
         public Field findField(String declaringClassName, String fieldName) {

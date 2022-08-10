@@ -315,11 +315,6 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         return true;
     }
 
-    @Override
-    public void postTask(CompletionExecutor.DebugContextRunnable task) {
-        executor.execute(task);
-    }
-
     @SuppressWarnings("try")
     private void runReachability() throws InterruptedException {
         try (Timer.StopTimer t = reachabilityTimer.start()) {
