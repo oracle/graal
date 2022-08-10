@@ -68,7 +68,7 @@ public class Token implements JsonConvertible {
         charClass,
         inlineFlag,
         anchor,
-        placeholder
+        comment
     }
 
     private static final Token CARET = new Token(Kind.caret);
@@ -163,8 +163,8 @@ public class Token implements JsonConvertible {
     /**
      * place holder for an empty token
      */
-    public static Token createPlaceHolder() {
-        return new Token(Kind.placeholder);
+    public static Token createComment() {
+        return new Token(Kind.comment);
     }
 
     public final Kind kind;
