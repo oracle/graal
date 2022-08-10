@@ -22,15 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.profdiff.core.optimization;
+package org.graalvm.profdiff.matching.tree;
 
-import org.graalvm.profdiff.core.TreeNode;
+import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 
 /**
- * Marks a node in the optimization tree. The nodes in the optimization tree are phases and
- * individual optimizations, which are always leaf nodes. The children of an optimization phase are
- * its subphases and performed optimizations.
+ * Provides an equality test of two {@link OptimizationTreeNode optimization tree nodes} and
+ * determines costs of edit operations.
  */
-public interface OptimizationTreeNode extends TreeNode<OptimizationTreeNode> {
-
+public class OptimizationTreeEditPolicy extends TreeEditPolicy<OptimizationTreeNode> {
+    /**
+     * Tests the equality of two nodes. Phases are compared by name, other types are compared by
+     * content.
+     *
+     * @param node1 the first optimization tree node
+     * @param node2 the second optimization tree node
+     * @return true iff the nodes are equal
+     */
+    @Override
+    public boolean nodesEqual(OptimizationTreeNode node1, OptimizationTreeNode node2) {
+        if (node1 instanceof OptimizationPhase && node2 instanceof OptimizationPhase) {
+            return node1.getName().equals(node2.getName());
+        }
+        return node1.equals(node2);
+    }
 }

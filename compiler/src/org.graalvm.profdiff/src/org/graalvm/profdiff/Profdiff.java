@@ -30,10 +30,12 @@ import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.core.VerbosityLevel;
+import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.matching.method.GreedyMethodMatcher;
 import org.graalvm.profdiff.matching.method.MatchedCompilationUnit;
 import org.graalvm.profdiff.matching.method.MatchedMethod;
 import org.graalvm.profdiff.matching.method.MethodMatching;
+import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
 import org.graalvm.profdiff.matching.tree.TreeMatcher;
 import org.graalvm.profdiff.matching.tree.TreeMatching;
@@ -120,7 +122,7 @@ public class Profdiff {
 
         GreedyMethodMatcher matcher = new GreedyMethodMatcher();
         MethodMatching matching = matcher.match(experiment1, experiment2);
-        TreeMatcher treeMatcher = new SelkowTreeMatcher();
+        TreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy());
 
         for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
             writer.writeln();
@@ -132,16 +134,16 @@ public class Profdiff {
             if (verbosityLevel.shouldDiffCompilations()) {
                 for (MatchedCompilationUnit matchedCompilationUnit : matchedMethod.getMatchedCompilationUnits()) {
                     matchedCompilationUnit.writeHeader(writer);
-                    TreeMatching treeMatching = treeMatcher.match(matchedCompilationUnit.getFirstCompilationUnit(), matchedCompilationUnit.getSecondCompilationUnit());
-                    writer.increaseIndent();
-                    treeMatching.write(writer);
-                    writer.decreaseIndent();
+                    TreeMatching optimizationTreeMatching = optimizationTreeMatcher.match(
+                                    matchedCompilationUnit.getFirstCompilationUnit().getRootPhase(),
+                                    matchedCompilationUnit.getSecondCompilationUnit().getRootPhase());
+                    optimizationTreeMatching.write(writer);
                 }
-                matchedMethod.writeUnmatchedCompilationUnits(writer);
+                matchedMethod.getUnmatchedCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
             }
             writer.decreaseIndent();
         }
-        matching.getUnmatchedMethods().iterator().forEachRemaining(unmatchedMethod -> {
+        matching.getUnmatchedMethods().forEach(unmatchedMethod -> {
             writer.writeln();
             unmatchedMethod.write(writer, experiment1, experiment2);
         });

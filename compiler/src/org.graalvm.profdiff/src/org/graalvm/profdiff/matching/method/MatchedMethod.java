@@ -58,7 +58,7 @@ public class MatchedMethod {
     /**
      * Unmatched compilation units of this method.
      */
-    private final List<UnmatchedCompilationUnit> unmatchedCompilationUnits = new ArrayList<>();
+    private final List<CompilationUnit> unmatchedCompilationUnits = new ArrayList<>();
 
     /**
      * Constructs a matched method.
@@ -93,20 +93,17 @@ public class MatchedMethod {
     /**
      * Gets the list of compilations of this method that do not have a match.
      */
-    public List<UnmatchedCompilationUnit> getUnmatchedCompilationUnits() {
+    public List<CompilationUnit> getUnmatchedCompilationUnits() {
         return unmatchedCompilationUnits;
     }
 
-    public MatchedCompilationUnit addMatchedCompilationUnit(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
+    public void addMatchedCompilationUnit(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
         MatchedCompilationUnit matchedCompilationUnit = new MatchedCompilationUnit(compilationUnit1, compilationUnit2);
         matchedCompilationUnits.add(matchedCompilationUnit);
-        return matchedCompilationUnit;
     }
 
-    public UnmatchedCompilationUnit addUnmatchedCompilationUnit(CompilationUnit compilationUnit) {
-        UnmatchedCompilationUnit unmatchedCompilationUnit = new UnmatchedCompilationUnit(compilationUnit);
-        unmatchedCompilationUnits.add(unmatchedCompilationUnit);
-        return unmatchedCompilationUnit;
+    public void addUnmatchedCompilationUnit(CompilationUnit compilationUnit) {
+        unmatchedCompilationUnits.add(compilationUnit);
     }
 
     /**
@@ -122,20 +119,6 @@ public class MatchedMethod {
         experiment1.writeCompilationUnits(writer, compilationMethodName);
         experiment2.writeCompilationUnits(writer, compilationMethodName);
         writer.decreaseIndent();
-    }
-
-    /**
-     * Writes the header and the optimization tree for each unmatched compilation unit.
-     *
-     * @param writer the destination writer
-     */
-    public void writeUnmatchedCompilationUnits(Writer writer) {
-        for (UnmatchedCompilationUnit unmatchedCompilationUnit : unmatchedCompilationUnits) {
-            unmatchedCompilationUnit.writeHeader(writer);
-            writer.increaseIndent();
-            unmatchedCompilationUnit.getExecutedMethod().getRootPhase().writeRecursive(writer);
-            writer.decreaseIndent();
-        }
     }
 
     /**

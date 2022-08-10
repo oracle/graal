@@ -24,106 +24,67 @@
  */
 package org.graalvm.profdiff.matching.tree;
 
-import org.graalvm.profdiff.core.CompilationUnit;
-import org.graalvm.profdiff.core.optimization.OptimizationPhase;
-import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.graalvm.collections.EconomicMap;
+import org.graalvm.profdiff.core.TreeNode;
 
 /**
- * Creates a matching by computing an optimal edit script between two optimizations trees using
+ * Creates a matching by computing an optimal edit script between two trees using
  * <a href="https://doi.org/10.1016/0020-0190(77)90064-3">Selkow's tree edit distance</a>. The
  * allowed set of operations is leaf insertion, leaf deletion and node relabelling. The original
  * algorithm is extended with the collection of performed operations.
  */
-public class SelkowTreeMatcher implements TreeMatcher {
+public class SelkowTreeMatcher<T extends TreeNode<T>> implements TreeMatcher<T> {
     /**
-     * The cost of insertion or deletion per node.
+     * The policy that performs equality tests and determines costs of edit operations.
      */
-    private final long insertDeleteCost;
+    private final TreeEditPolicy<T> editPolicy;
 
-    /**
-     * The cost to rename a phase node.
-     */
-    private final long phaseRenameCost;
-
-    /**
-     * The cost to replace an optimization with a different optimization.
-     */
-    public final long optimizationReplaceCost;
-
-    /**
-     * Maps a node to the size of its subtree.
-     */
-    private EconomicMap<OptimizationTreeNode, Integer> treeSize = null;
-
-    /**
-     * Constructs the tree matcher with the default costs of operations. By default, relabelling
-     * operations are avoided.
-     */
-    public SelkowTreeMatcher() {
-        insertDeleteCost = 1;
-        phaseRenameCost = 1000000000;
-        optimizationReplaceCost = 1000000000;
-    }
-
-    /**
-     * Constructs the tree matcher with custom costs of operations.
-     *
-     * @param insertDeleteCost the cost of insertion or deletion per node
-     * @param phaseRenameCost the cost to rename a phase node
-     * @param optimizationReplaceCost the cost to replace an optimization with a different
-     *            optimization
-     */
-    public SelkowTreeMatcher(long insertDeleteCost, long phaseRenameCost, long optimizationReplaceCost) {
-        this.insertDeleteCost = insertDeleteCost;
-        this.phaseRenameCost = phaseRenameCost;
-        this.optimizationReplaceCost = optimizationReplaceCost;
+    public SelkowTreeMatcher(TreeEditPolicy<T> editPolicy) {
+        this.editPolicy = editPolicy;
     }
 
     @Override
-    public EditScript match(CompilationUnit method1, CompilationUnit method2) {
-        treeSize = EconomicMap.create();
-        EditScript editScript = new EditScript();
-        edit(method1.getRootPhase(), method2.getRootPhase(), editScript, 0);
-        treeSize = null;
+    public EditScript<T> match(T root1, T root2) {
+        EditScript<T> editScript = new EditScript<>();
+        edit(root1, root2, editScript, 0);
         return editScript;
     }
 
     /**
-     * Computes the edit distance and the {@link EditScript edit script} between two optimization
-     * trees using <a href="https://doi.org/10.1016/0020-0190(77)90064-3">Selkow's tree edit
-     * distance</a>. The original algorithm is extended with the collection of performed operations.
-     * The operations are collected in such an order that the {@link EditScript edit script} also
-     * represents the delta tree in dfs preorder.
+     * Computes the edit distance and the {@link EditScript edit script} between two trees using
+     * <a href="https://doi.org/10.1016/0020-0190(77)90064-3">Selkow's tree edit distance</a>. The
+     * original algorithm is extended with the collection of performed operations. The operations
+     * are collected in such an order that the {@link EditScript edit script} also represents the
+     * delta tree in dfs preorder.
      *
-     * @param node1 the root of the first (left) optimization subtree
-     * @param node2 the root of the second (right) optimization subtree
+     * @param node1 the root of the first (left) subtree
+     * @param node2 the root of the second (right) subtree
      * @param editScript the resulting edit script
      * @param depth the depth of the nodes in the tree, i.e, the distances from the respective roots
      * @return the edit distance
      */
-    private long edit(OptimizationTreeNode node1, OptimizationTreeNode node2, EditScript editScript, int depth) {
+    @SuppressWarnings("unchecked")
+    private long edit(T node1, T node2, EditScript<T> editScript, int depth) {
         int m = node1.getChildren().size();
         int n = node2.getChildren().size();
-        boolean rootsEqual = nodesEqual(node1, node2);
+        boolean rootsEqual = editPolicy.nodesEqual(node1, node2);
         long[][] delta = new long[m + 1][n + 1];
-        delta[0][0] = rootsEqual ? 0 : relabelCost(node1, node2);
+        delta[0][0] = rootsEqual ? 0 : editPolicy.relabelCost(node1, node2);
         // scripts[i][j] is the edit script between the (i - 1)-th and (j - 1)-th child's subtree
-        EditScript[][] scripts = new EditScript[m + 1][n + 1];
+        EditScript<T>[][] scripts = new EditScript[m + 1][n + 1];
         for (int k = 1; k <= n; ++k) {
-            delta[0][k] = delta[0][k - 1] + insertCost(node2.getChildren().get(k - 1));
+            delta[0][k] = delta[0][k - 1] + editPolicy.insertCost(node2.getChildren().get(k - 1));
         }
         for (int k = 1; k <= m; ++k) {
-            delta[k][0] = delta[k - 1][0] + deleteCost(node1.getChildren().get(k - 1));
+            delta[k][0] = delta[k - 1][0] + editPolicy.deleteCost(node1.getChildren().get(k - 1));
         }
         for (int i = 1; i <= m; ++i) {
             for (int j = 1; j <= n; ++j) {
-                OptimizationTreeNode left = node1.getChildren().get(i - 1);
-                OptimizationTreeNode right = node2.getChildren().get(j - 1);
-                EditScript subtreeScript = new EditScript();
+                T left = node1.getChildren().get(i - 1);
+                T right = node2.getChildren().get(j - 1);
+                EditScript<T> subtreeScript = new EditScript<>();
                 long relabelDelta = delta[i - 1][j - 1] + edit(left, right, subtreeScript, depth + 1);
-                long insertDelta = delta[i][j - 1] + insertCost(right);
-                long deleteDelta = delta[i - 1][j] + deleteCost(left);
+                long insertDelta = delta[i][j - 1] + editPolicy.insertCost(right);
+                long deleteDelta = delta[i - 1][j] + editPolicy.deleteCost(left);
                 delta[i][j] = Math.min(relabelDelta, Math.min(insertDelta, deleteDelta));
                 scripts[i][j] = subtreeScript;
             }
@@ -132,16 +93,16 @@ public class SelkowTreeMatcher implements TreeMatcher {
         int i = m;
         int j = n;
         while (i >= 0 && j >= 0 && i + j > 0) {
-            OptimizationTreeNode left = (i > 0) ? node1.getChildren().get(i - 1) : null;
-            OptimizationTreeNode right = (j > 0) ? node2.getChildren().get(j - 1) : null;
-            if (j > 0 && delta[i][j - 1] + insertCost(right) == delta[i][j]) {
+            T left = (i > 0) ? node1.getChildren().get(i - 1) : null;
+            T right = (j > 0) ? node2.getChildren().get(j - 1) : null;
+            if (j > 0 && delta[i][j - 1] + editPolicy.insertCost(right) == delta[i][j]) {
                 editScript.insert(right, depth + 1);
                 --j;
-            } else if (i > 0 && delta[i - 1][j] + deleteCost(left) == delta[i][j]) {
+            } else if (i > 0 && delta[i - 1][j] + editPolicy.deleteCost(left) == delta[i][j]) {
                 editScript.delete(left, depth + 1);
                 --i;
             } else {
-                editScript.concat(scripts[i][j]);
+                editScript.transferFrom(scripts[i][j]);
                 --i;
                 --j;
             }
@@ -152,74 +113,5 @@ public class SelkowTreeMatcher implements TreeMatcher {
             editScript.relabel(node1, node2, depth);
         }
         return delta[m][n];
-    }
-
-    /**
-     * Gets the size of the node's subtree with memoization.
-     *
-     * @param node the root of the subtree
-     * @return the size of the node's subtree
-     */
-    private int getTreeSize(OptimizationTreeNode node) {
-        if (node.getChildren().isEmpty()) {
-            return 1;
-        }
-        if (treeSize.containsKey(node)) {
-            return treeSize.get(node);
-        }
-        int result = 1 + node.getChildren().stream().mapToInt(this::getTreeSize).sum();
-        treeSize.put(node, result);
-        return result;
-    }
-
-    /**
-     * Gets the cost of the insertion of the node's subtree.
-     *
-     * @param node the root of the subtree to be inserted
-     * @return the cost to insert the node's subtree
-     */
-    private long insertCost(OptimizationTreeNode node) {
-        return getTreeSize(node) * insertDeleteCost;
-    }
-
-    /**
-     * Gets the cost of deletion of the node's subtree.
-     *
-     * @param node the root of the subtree to be deleted
-     * @return the cost to delete the node's subtree
-     */
-    private long deleteCost(OptimizationTreeNode node) {
-        return getTreeSize(node) * insertDeleteCost;
-    }
-
-    /**
-     * Gets the cost of relabelling the first node to the second node assuming that they are not
-     * {@link #nodesEqual equal}.
-     *
-     * @param node1 the first node
-     * @param node2 the second node
-     * @return the cost to relabel the first node to the second
-     */
-    private long relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
-        assert !nodesEqual(node1, node2);
-        if (node1 instanceof OptimizationPhase && node2 instanceof OptimizationPhase) {
-            return phaseRenameCost;
-        }
-        return optimizationReplaceCost;
-    }
-
-    /**
-     * Tests the equality of two nodes. Phases are compared by name, other types are compared by
-     * content.
-     *
-     * @param node1 the first node
-     * @param node2 the second node
-     * @return true iff the nodes are equal
-     */
-    private static boolean nodesEqual(OptimizationTreeNode node1, OptimizationTreeNode node2) {
-        if (node1 instanceof OptimizationPhase && node2 instanceof OptimizationPhase) {
-            return node1.getName().equals(node2.getName());
-        }
-        return node1.equals(node2);
     }
 }

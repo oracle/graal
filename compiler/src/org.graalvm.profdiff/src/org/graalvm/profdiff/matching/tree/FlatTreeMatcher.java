@@ -24,28 +24,30 @@
  */
 package org.graalvm.profdiff.matching.tree;
 
-import org.graalvm.profdiff.core.CompilationUnit;
+import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.matching.optimization.OptimizationMatching;
 import org.graalvm.profdiff.matching.optimization.SetBasedOptimizationMatcher;
 
 /**
  * Creates a matching between optimization trees by flattening them to lists of optimizations.
  */
-public class FlatTreeMatcher implements TreeMatcher {
+public class FlatTreeMatcher implements TreeMatcher<OptimizationTreeNode> {
     final SetBasedOptimizationMatcher optimizationMatcher = new SetBasedOptimizationMatcher();
 
     /**
      * Creates a matching between optimization trees by flattening them to lists of optimizations.
      *
-     * @param compilationUnit1 the compilation unit from the first experiment
-     * @param compilationUnit2 the compilation unit from the second experiment
-     * @return a description of matched and unmatched optimizations
+     * @param root1 the root of the first optimization tree
+     * @param root2 the root of the second optimization tree
+     * @return a description of matched and extra optimizations
      */
     @Override
-    public FlatTreeMatching match(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
+    public FlatTreeMatching match(OptimizationTreeNode root1, OptimizationTreeNode root2) {
+        assert root1 instanceof OptimizationPhase && root2 instanceof OptimizationPhase;
         OptimizationMatching optimizationMatching = optimizationMatcher.match(
-                        compilationUnit1.getOptimizationsRecursive(),
-                        compilationUnit2.getOptimizationsRecursive());
+                        ((OptimizationPhase) root1).getOptimizationsRecursive(),
+                        ((OptimizationPhase) root2).getOptimizationsRecursive());
         return new FlatTreeMatching(optimizationMatching);
     }
 }

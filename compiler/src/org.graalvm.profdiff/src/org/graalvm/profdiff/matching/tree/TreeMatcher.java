@@ -24,18 +24,18 @@
  */
 package org.graalvm.profdiff.matching.tree;
 
-import org.graalvm.profdiff.core.CompilationUnit;
+import org.graalvm.profdiff.core.TreeNode;
 
 /**
  * Creates a matching between optimization trees.
  */
-public interface TreeMatcher {
+public interface TreeMatcher<T extends TreeNode<T>> {
     /**
      * Computes a matching between two provided optimization trees.
      *
-     * @param method1 the method from the first experiment
-     * @param method2 the method from the second experiment
+     * @param root1 the root of the first optimization tree
+     * @param root2 the root of the second optimization tree
      * @return a description of the computed tree matching
      */
-    TreeMatching match(CompilationUnit method1, CompilationUnit method2);
+    TreeMatching match(T root1, T root2);
 }

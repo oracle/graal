@@ -26,7 +26,7 @@ package org.graalvm.profdiff.matching.tree;
 
 import java.util.Objects;
 
-import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
+import org.graalvm.profdiff.core.TreeNode;
 import org.graalvm.profdiff.util.ConcatList;
 import org.graalvm.profdiff.util.Writer;
 
@@ -43,7 +43,7 @@ import org.graalvm.profdiff.util.Writer;
  * <li>the order of operations in the edit script is the dfs preorder of the delta tree</li>
  * </ul>
  */
-public class EditScript implements TreeMatching {
+public class EditScript<T extends TreeNode<T>> implements TreeMatching {
     /**
      * An operation that modifies a rooted, ordered and labeled tree. It is a node of the delta
      * tree. Each operation works on at most one node from the first (left) tree and at most one
@@ -51,12 +51,12 @@ public class EditScript implements TreeMatching {
      * 0). Remembering the depth allows us to easily {@link DeltaNode#write write} the delta tree in
      * dfs preorder.
      */
-    public abstract static class DeltaNode {
-        protected final OptimizationTreeNode left;
-        protected final OptimizationTreeNode right;
+    public abstract static class DeltaNode<T extends TreeNode<T>> {
+        protected final T left;
+        protected final T right;
         protected final int depth;
 
-        protected DeltaNode(OptimizationTreeNode left, OptimizationTreeNode right, int depth) {
+        protected DeltaNode(T left, T right, int depth) {
             this.left = left;
             this.right = right;
             this.depth = depth;
@@ -71,7 +71,7 @@ public class EditScript implements TreeMatching {
                 return false;
             }
 
-            DeltaNode deltaNode = (DeltaNode) obj;
+            DeltaNode<?> deltaNode = (DeltaNode<?>) obj;
 
             if (!Objects.equals(left, deltaNode.left)) {
                 return false;
@@ -100,7 +100,7 @@ public class EditScript implements TreeMatching {
     /**
      * An identity operation, which represents a pair of matched nodes.
      */
-    public static class Identity extends DeltaNode {
+    public static class Identity<T extends TreeNode<T>> extends DeltaNode<T> {
         /**
          * Constructor of an identity operation.
          *
@@ -108,14 +108,14 @@ public class EditScript implements TreeMatching {
          * @param right the matched node from the second (right) tree
          * @param depth the depth of the nodes
          */
-        public Identity(OptimizationTreeNode left, OptimizationTreeNode right, int depth) {
+        public Identity(T left, T right, int depth) {
             super(left, right, depth);
         }
 
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent("  ");
+            writer.setPrefixAfterIndent("    ");
             left.writeHead(writer);
             writer.clearPrefixAfterIndent();
             writer.decreaseIndent(depth);
@@ -125,21 +125,21 @@ public class EditScript implements TreeMatching {
     /**
      * Insertion of a subtree.
      */
-    public static class Insert extends DeltaNode {
+    public static class Insert<T extends TreeNode<T>> extends DeltaNode<T> {
         /**
          * Constructor of a subtree insert operation.
          *
          * @param node the root of the subtree that is inserted
          * @param depth the depth of the root of the inserted subtree
          */
-        public Insert(OptimizationTreeNode node, int depth) {
+        public Insert(T node, int depth) {
             super(null, node, depth);
         }
 
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent("+ ");
+            writer.setPrefixAfterIndent("  + ");
             right.writeRecursive(writer);
             writer.clearPrefixAfterIndent();
             writer.decreaseIndent(depth);
@@ -149,7 +149,7 @@ public class EditScript implements TreeMatching {
     /**
      * Deletion of a subtree.
      */
-    public static class Delete extends DeltaNode {
+    public static class Delete<T extends TreeNode<T>> extends DeltaNode<T> {
 
         /**
          * Constructor of a subtree delete operation.
@@ -157,14 +157,14 @@ public class EditScript implements TreeMatching {
          * @param node the root of the subtree that is deleted
          * @param depth the depth of the root of the deleted subtree
          */
-        public Delete(OptimizationTreeNode node, int depth) {
+        public Delete(T node, int depth) {
             super(node, null, depth);
         }
 
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent("- ");
+            writer.setPrefixAfterIndent("  - ");
             left.writeRecursive(writer);
             writer.clearPrefixAfterIndent();
             writer.decreaseIndent(depth);
@@ -172,10 +172,9 @@ public class EditScript implements TreeMatching {
     }
 
     /**
-     * An operation that changes the label - the {@link OptimizationTreeNode#getName() name} of a
-     * node.
+     * An operation that changes the label - the {@link TreeNode#getName() name} of a node.
      */
-    public static class Relabel extends DeltaNode {
+    public static class Relabel<T extends TreeNode<T>> extends DeltaNode<T> {
         /**
          * Constructor of a relabelling operation.
          *
@@ -183,14 +182,14 @@ public class EditScript implements TreeMatching {
          * @param right the node which hold the new name from the second (right) tree
          * @param depth the depth of the nodes
          */
-        public Relabel(OptimizationTreeNode left, OptimizationTreeNode right, int depth) {
+        public Relabel(T left, T right, int depth) {
             super(left, right, depth);
         }
 
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.writeln("* " + left.getName() + " -> " + right.getName());
+            writer.writeln("  * " + left.getName() + " -> " + right.getName());
             writer.decreaseIndent(depth);
         }
 
@@ -203,7 +202,7 @@ public class EditScript implements TreeMatching {
                 return false;
             }
 
-            Relabel relabel = (Relabel) obj;
+            Relabel<?> relabel = (Relabel<?>) obj;
             return Objects.equals(left, relabel.left) && Objects.equals(right, relabel.right);
         }
 
@@ -215,7 +214,7 @@ public class EditScript implements TreeMatching {
         }
     }
 
-    private ConcatList<DeltaNode> operations = new ConcatList<>();
+    private ConcatList<DeltaNode<T>> operations = new ConcatList<>();
 
     /**
      * Prepends a subtree insert operation to this edit script.
@@ -223,8 +222,8 @@ public class EditScript implements TreeMatching {
      * @param node the root of the inserted subtree
      * @param depth the depth of the node
      */
-    public void insert(OptimizationTreeNode node, int depth) {
-        operations.prepend(new Insert(node, depth));
+    public void insert(T node, int depth) {
+        operations.prepend(new Insert<>(node, depth));
     }
 
     /**
@@ -233,8 +232,8 @@ public class EditScript implements TreeMatching {
      * @param node the root of the deleted subtree
      * @param depth the depth of the node
      */
-    public void delete(OptimizationTreeNode node, int depth) {
-        operations.prepend(new Delete(node, depth));
+    public void delete(T node, int depth) {
+        operations.prepend(new Delete<>(node, depth));
     }
 
     /**
@@ -244,8 +243,8 @@ public class EditScript implements TreeMatching {
      * @param node2 the node with the new name from the second (right) tree
      * @param depth the depth of the nodes
      */
-    public void relabel(OptimizationTreeNode node1, OptimizationTreeNode node2, int depth) {
-        operations.prepend(new Relabel(node1, node2, depth));
+    public void relabel(T node1, T node2, int depth) {
+        operations.prepend(new Relabel<>(node1, node2, depth));
     }
 
     /**
@@ -255,8 +254,8 @@ public class EditScript implements TreeMatching {
      * @param node2 the matched node from the second (right) tree
      * @param depth the depth of the nodes
      */
-    public void identity(OptimizationTreeNode node1, OptimizationTreeNode node2, int depth) {
-        operations.prepend(new Identity(node1, node2, depth));
+    public void identity(T node1, T node2, int depth) {
+        operations.prepend(new Identity<>(node1, node2, depth));
     }
 
     /**
@@ -265,7 +264,7 @@ public class EditScript implements TreeMatching {
      *
      * @param otherScript the other edit script which will be emptied
      */
-    public void concat(EditScript otherScript) {
+    public void transferFrom(EditScript<T> otherScript) {
         operations = otherScript.operations.transferFrom(operations);
         otherScript.operations = null;
     }
@@ -278,7 +277,7 @@ public class EditScript implements TreeMatching {
      */
     @Override
     public void write(Writer writer) {
-        for (DeltaNode operation : operations) {
+        for (DeltaNode<T> operation : operations) {
             operation.write(writer);
         }
     }
@@ -288,7 +287,7 @@ public class EditScript implements TreeMatching {
      *
      * @return the list of operations
      */
-    public ConcatList<DeltaNode> getDeltaNodes() {
+    public ConcatList<DeltaNode<T>> getDeltaNodes() {
         return operations;
     }
 }

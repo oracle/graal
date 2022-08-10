@@ -22,35 +22,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.profdiff.matching.method;
+package org.graalvm.profdiff.core;
 
-import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.util.Writer;
 
+import java.util.List;
+
 /**
- * Represents a compilation unit that was not matched with any other compilation unit from the other
- * experiment.
+ * Represents a named node in a tree.
  */
-public class UnmatchedCompilationUnit {
-    private final CompilationUnit compilationUnit;
-
-    UnmatchedCompilationUnit(CompilationUnit compilationUnit) {
-        this.compilationUnit = compilationUnit;
-    }
-
-    public CompilationUnit getExecutedMethod() {
-        return compilationUnit;
-    }
+public interface TreeNode<T extends TreeNode<T>> {
+    /**
+     * Gets the children of this node.
+     */
+    List<T> getChildren();
 
     /**
-     * Writes a string that describes the compilation ID of this method, including
-     * {@link CompilationUnit#createExecutionSummary() the summary of its execution} and its
-     * experiment ID.
+     * Gets the name of this node.
+     */
+    String getName();
+
+    /**
+     * Writes the subtree starting from this node in dfs preorder to the destination writer.
      *
      * @param writer the destination writer
      */
-    public void writeHeader(Writer writer) {
-        writer.writeln("Compilation " + compilationUnit.getCompilationId() + " (" + compilationUnit.createExecutionSummary() + ") only in experiment " +
-                        compilationUnit.getExperiment().getExperimentId());
+    default void writeRecursive(Writer writer) {
+        writeHead(writer);
+        if (getChildren() == null) {
+            return;
+        }
+        writer.increaseIndent();
+        for (T child : getChildren()) {
+            child.writeRecursive(writer);
+        }
+        writer.decreaseIndent();
+    }
+
+    /**
+     * Writes the representation of this node without its subtree to the destination writer.
+     *
+     * @param writer the destination writer
+     */
+    default void writeHead(Writer writer) {
+        writer.writeln(getName());
     }
 }

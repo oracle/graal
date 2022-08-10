@@ -69,12 +69,10 @@ public class MethodMatching {
      * @param compilationMethodName the compilation method name of the unmatched method to be added
      * @param experiment the experiment to which the unmatched method belongs
      * @param compilationUnits the compilation units of the method in its {@code experiment}
-     * @return the added unmatched method
      */
-    public UnmatchedMethod addUnmatchedMethod(String compilationMethodName, Experiment experiment, List<CompilationUnit> compilationUnits) {
+    public void addUnmatchedMethod(String compilationMethodName, Experiment experiment, List<CompilationUnit> compilationUnits) {
         UnmatchedMethod unmatchedMethod = new UnmatchedMethod(experiment, compilationMethodName, compilationUnits);
         unmatchedMethods.add(unmatchedMethod);
-        return unmatchedMethod;
     }
 
     /**

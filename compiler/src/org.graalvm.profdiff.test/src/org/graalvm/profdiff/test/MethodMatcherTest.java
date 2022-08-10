@@ -84,7 +84,7 @@ public class MethodMatcherTest {
         assertEquals("foo3", matchedFoo.getMatchedCompilationUnits().get(0).getFirstCompilationUnit().getCompilationId());
         assertEquals("foo4", matchedFoo.getMatchedCompilationUnits().get(0).getSecondCompilationUnit().getCompilationId());
         assertEquals(1, matchedFoo.getUnmatchedCompilationUnits().size());
-        assertEquals("foo2", matchedFoo.getUnmatchedCompilationUnits().get(0).getExecutedMethod().getCompilationId());
+        assertEquals("foo2", matchedFoo.getUnmatchedCompilationUnits().get(0).getCompilationId());
         assertEquals(2, matching.getUnmatchedMethods().size());
     }
 }

@@ -31,8 +31,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 
-import org.graalvm.profdiff.util.Writer;
-
 /**
  * Represents an optimization phase in the optimization tree. Allows the children (either
  * optimization phases or directly performed {@link Optimization optimizations}) to be incrementally
@@ -114,24 +112,6 @@ public class OptimizationPhase implements OptimizationTreeNode {
             }
         }
         return optimizations;
-    }
-
-    @Override
-    public void writeRecursive(Writer writer) {
-        writeHead(writer);
-        if (children == null) {
-            return;
-        }
-        writer.increaseIndent();
-        for (OptimizationTreeNode child : children) {
-            child.writeRecursive(writer);
-        }
-        writer.decreaseIndent();
-    }
-
-    @Override
-    public void writeHead(Writer writer) {
-        writer.writeln(name);
     }
 
     @Override
