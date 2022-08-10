@@ -761,10 +761,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void checkAccess(PolyglotLanguage accessingLanguage) {
         // Always check context first, as it might be invalidated.
-        context.checkClosed();
-        if (context.disposing) {
-            throw PolyglotEngineException.closedException("The Context is already closed.");
-        }
+        context.checkClosedOrDisposing();
         if (!context.config.isAccessPermitted(accessingLanguage, language)) {
             throw PolyglotEngineException.illegalArgument(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }
