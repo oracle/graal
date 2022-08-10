@@ -83,8 +83,8 @@ public class Token implements JsonConvertible {
     private static final Token GROUP_END = new Token(Kind.groupEnd);
 
 
-    public static Token createAnchor(CodePointSet ancCps) {
-        return new Anchor(ancCps);
+    public static Token createAnchor(char ancValue) {
+        return new Anchor(ancValue);
     }
 
     public static Token addInlineFlag(Token.Kind kind, boolean remove, String flags, boolean open) {
@@ -374,21 +374,21 @@ public class Token implements JsonConvertible {
 
         private final boolean remove;
         private final String flags;
-        private final boolean open;
+        private final boolean add;
 
-        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags, boolean open) {
+        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags, boolean add) {
             super(kind);
             this.remove = remove;
             this.flags = flags;
-            this.open = open;
+            this.add = add;
         }
 
         public boolean isRemove() {
             return remove;
         }
 
-        public boolean isOpen() {
-            return open;
+        public boolean isAdd() {
+            return add;
         }
 
         public String getFlags() {
@@ -411,15 +411,15 @@ public class Token implements JsonConvertible {
     }
 
     public static class Anchor extends Token {
-        private final CodePointSet ancCps;
+        private final char ancValue;
 
-        protected Anchor(CodePointSet ancCps) {
+        protected Anchor(char ancValue) {
             super(Kind.anchor);
-            this.ancCps = ancCps;
+            this.ancValue = ancValue;
         }
 
-        public CodePointSet getAncCps() {
-            return ancCps;
+        public char getAncValue() {
+            return ancValue;
         }
     }
 }

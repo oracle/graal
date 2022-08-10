@@ -40,12 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import java.math.BigInteger;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
-
-import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
@@ -55,47 +49,23 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.ErrorMessages;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
-public final class RegexLexer {
+import java.math.BigInteger;
+import java.util.Map;
+
+public final class RegexLexer extends BaseLexer {
 
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'S', 'W', 'd', 's', 'w');
-    private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '/', '?', '[', '\\', ']', '^', '{', '|', '}');
-
     private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start");
     private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue");
-
-    private final RegexSource source;
-    private final String pattern;
     private final RegexFlags flags;
-    private final Encoding encoding;
-    private Token lastToken;
-    private int curStartIndex = 0;
-    private int index = 0;
-    private int nGroups = 1;
-    private boolean identifiedAllGroups = false;
-    private Map<String, Integer> namedCaptureGroups = null;
     private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
     private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
 
     public RegexLexer(RegexSource source, RegexFlags flags) {
-        this.source = source;
-        this.pattern = source.getPattern();
+        super(source);
         this.flags = flags;
-        this.encoding = source.getEncoding();
-    }
-
-    public boolean hasNext() {
-        return !atEnd();
-    }
-
-    public Token next() throws RegexSyntaxException {
-        curStartIndex = index;
-        Token t = getNext();
-        setSourceSection(t, curStartIndex, index);
-        lastToken = t;
-        return t;
     }
 
     /**
@@ -103,155 +73,6 @@ public final class RegexLexer {
      */
     public int getLastTokenPosition() {
         return curStartIndex;
-    }
-
-    /**
-     * Sets the {@link com.oracle.truffle.api.source.SourceSection} of a given {@link Token} in
-     * respect of {@link RegexSource#getSource()}.
-     *
-     * @param startIndex inclusive start index of the source section in respect of
-     *            {@link RegexSource#getPattern()}.
-     * @param endIndex exclusive end index of the source section in respect of
-     *            {@link RegexSource#getPattern()}.
-     */
-    private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (source.getOptions().isDumpAutomataWithSourceSections()) {
-            // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
-            // offset of 1 here.
-            t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
-        }
-    }
-
-    /* input string access */
-
-    private char curChar() {
-        return pattern.charAt(index);
-    }
-
-    private char consumeChar() {
-        final char c = pattern.charAt(index);
-        advance();
-        return c;
-    }
-
-    private boolean findChars(char... chars) {
-        if (atEnd()) {
-            return false;
-        }
-        int i = ArrayUtils.indexOf(pattern, index, pattern.length(), chars);
-        if (i < 0) {
-            index = pattern.length();
-            return false;
-        }
-        index = i;
-        return true;
-    }
-
-    private void advance() {
-        advance(1);
-    }
-
-    private void retreat() {
-        advance(-1);
-    }
-
-    private void advance(int len) {
-        index += len;
-    }
-
-    private boolean lookahead(String match) {
-        if (pattern.length() - index < match.length()) {
-            return false;
-        }
-        return pattern.regionMatches(index, match, 0, match.length());
-    }
-
-    private boolean consumingLookahead(String match) {
-        final boolean matches = lookahead(match);
-        if (matches) {
-            advance(match.length());
-        }
-        return matches;
-    }
-
-    private boolean atEnd() {
-        return index >= pattern.length();
-    }
-
-    public int numberOfCaptureGroups() throws RegexSyntaxException {
-        if (!identifiedAllGroups) {
-            identifyCaptureGroups();
-            identifiedAllGroups = true;
-        }
-        return nGroups;
-    }
-
-    public Map<String, Integer> getNamedCaptureGroups() throws RegexSyntaxException {
-        if (!identifiedAllGroups) {
-            identifyCaptureGroups();
-            identifiedAllGroups = true;
-        }
-        return namedCaptureGroups;
-    }
-
-    /**
-     * Checks whether this regular expression contains any named capture groups.
-     * <p>
-     * This method is a way to check whether we are parsing the goal symbol Pattern[~U, +N] or
-     * Pattern[~U, ~N] (see the ECMAScript RegExp grammar).
-     */
-    private boolean hasNamedCaptureGroups() throws RegexSyntaxException {
-        return getNamedCaptureGroups() != null;
-    }
-
-    private void registerCaptureGroup() {
-        if (!identifiedAllGroups) {
-            nGroups++;
-        }
-    }
-
-    private void registerNamedCaptureGroup(String name) {
-        if (!identifiedAllGroups) {
-            if (namedCaptureGroups == null) {
-                namedCaptureGroups = new HashMap<>();
-            }
-            if (namedCaptureGroups.containsKey(name)) {
-                throw syntaxError(ErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
-            }
-            namedCaptureGroups.put(name, nGroups);
-        }
-        registerCaptureGroup();
-    }
-
-    private void identifyCaptureGroups() throws RegexSyntaxException {
-        // We are counting capture groups, so we only care about '(' characters and special
-        // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
-        // character classes (where '(' stands for a literal '(') and any characters after the '('
-        // which might turn into a non-capturing group or a look-around assertion.
-        boolean insideCharClass = false;
-        final int restoreIndex = index;
-        while (findChars('\\', '[', ']', '(')) {
-            switch (consumeChar()) {
-                case '\\':
-                    // skip escaped char
-                    advance();
-                    break;
-                case '[':
-                    insideCharClass = true;
-                    break;
-                case ']':
-                    insideCharClass = false;
-                    break;
-                case '(':
-                    if (!insideCharClass) {
-                        parseGroupBegin();
-                    }
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-        }
-        index = restoreIndex;
     }
 
     private Token charClass(int codePoint) {
@@ -286,7 +107,7 @@ public final class RegexLexer {
 
     /* lexer */
 
-    private Token getNext() throws RegexSyntaxException {
+    protected Token getNext() throws RegexSyntaxException {
         final char c = consumeChar();
         switch (c) {
             case '.':
@@ -390,7 +211,7 @@ public final class RegexLexer {
         }
     }
 
-    private Token parseGroupBegin() throws RegexSyntaxException {
+    protected Token parseGroupBegin() throws RegexSyntaxException {
         if (consumingLookahead("?=")) {
             return Token.createLookAheadAssertionBegin(false);
         } else if (consumingLookahead("?!")) {
@@ -455,55 +276,7 @@ public final class RegexLexer {
         return groupName.toString();
     }
 
-    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
-
-    private Token parseQuantifier(char c) throws RegexSyntaxException {
-        int min;
-        int max = -1;
-        boolean greedy;
-        if (c == '{') {
-            final int resetIndex = index;
-            BigInteger literalMin = parseDecimal();
-            if (literalMin.compareTo(BigInteger.ZERO) < 0) {
-                return countedRepetitionSyntaxError(resetIndex);
-            }
-            min = literalMin.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMin.intValue() : -1;
-            if (consumingLookahead(",}")) {
-                greedy = !consumingLookahead("?");
-            } else if (consumingLookahead("}")) {
-                max = min;
-                greedy = !consumingLookahead("?");
-            } else {
-                BigInteger literalMax;
-                if (!consumingLookahead(",") || (literalMax = parseDecimal()).compareTo(BigInteger.ZERO) < 0 || !consumingLookahead("}")) {
-                    return countedRepetitionSyntaxError(resetIndex);
-                }
-                max = literalMax.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMax.intValue() : -1;
-                greedy = !consumingLookahead("?");
-                if (literalMin.compareTo(literalMax) > 0) {
-                    throw syntaxError(ErrorMessages.QUANTIFIER_OUT_OF_ORDER);
-                }
-            }
-        } else {
-            greedy = !consumingLookahead("?");
-            min = c == '+' ? 1 : 0;
-            if (c == '?') {
-                max = 1;
-            }
-        }
-        if (lastToken == null) {
-            throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-        }
-        if (lastToken.kind == Token.Kind.quantifier) {
-            throw syntaxError(ErrorMessages.QUANTIFIER_ON_QUANTIFIER);
-        }
-        if (!QUANTIFIER_PREV.contains(lastToken.kind)) {
-            throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-        }
-        return Token.createQuantifier(min, max, greedy);
-    }
-
-    private Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
+    protected Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
         if (flags.isUnicode()) {
             throw syntaxError(ErrorMessages.INCOMPLETE_QUANTIFIER);
         }
@@ -767,22 +540,6 @@ public final class RegexLexer {
         return c;
     }
 
-    private BigInteger parseDecimal() {
-        if (atEnd() || !isDecimal(curChar())) {
-            return BigInteger.valueOf(-1);
-        }
-        return parseDecimal(BigInteger.ZERO);
-    }
-
-    private BigInteger parseDecimal(BigInteger firstDigit) {
-        BigInteger ret = firstDigit;
-        while (!atEnd() && isDecimal(curChar())) {
-            ret = ret.multiply(BigInteger.TEN);
-            ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
-        }
-        return ret;
-    }
-
     /**
      * Parses a non-negative decimal integer. The value of the integer is clamped to
      * {@link Integer#MAX_VALUE}. For all {@code i} in {0,1,..,9}, {@code parseInteger(i)} is
@@ -810,18 +567,6 @@ public final class RegexLexer {
                 return Integer.MAX_VALUE;
             }
             ret += nextDigit;
-        }
-        return ret;
-    }
-
-    private int parseOctal(int firstDigit) {
-        int ret = firstDigit;
-        for (int i = 0; !atEnd() && isOctal(curChar()) && i < 2; i++) {
-            if (ret * 8 > 255) {
-                return ret;
-            }
-            ret *= 8;
-            ret += consumeChar() - '0';
         }
         return ret;
     }
@@ -858,27 +603,11 @@ public final class RegexLexer {
         return ret;
     }
 
-    private static boolean isDecimal(char c) {
-        return '0' <= c && c <= '9';
-    }
-
-    private static boolean isOctal(char c) {
-        return '0' <= c && c <= '7';
-    }
-
-    private static boolean isHex(char c) {
-        return '0' <= c && c <= '9' || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F';
-    }
-
     private static boolean isPredefCharClass(char c) {
         return PREDEFINED_CHAR_CLASSES.get(c);
     }
 
     private boolean isEscapeCharClass(char c) {
         return isPredefCharClass(c) || (flags.isUnicode() && (c == 'p' || c == 'P'));
-    }
-
-    private RegexSyntaxException syntaxError(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, curStartIndex);
     }
 }

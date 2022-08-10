@@ -2,7 +2,6 @@ package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -14,6 +13,7 @@ import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.ErrorMessages;
 import com.oracle.truffle.regex.errors.JavaErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.BaseLexer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyCaseFoldingData;
@@ -33,18 +33,40 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
-public class JavaLexer {
+public class JavaLexer extends BaseLexer {
 
-    /**
-     * Characters that are considered special in Java regexes. To match these characters, they
-     * need to be escaped using a backslash.
-     */
-    private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '?', '[', '\\', ']', '^', '{', '|', '}');
-
-    private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '/', '?', '[', '\\', ']', '^', '{', '|', '}');
-
-    private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start");
-    private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue");
+    public static final CodePointSet PRE_DEF_H = CodePointSet.createNoDedup(
+            0x0000, 0x0008,
+            0x000a, 0x001f,
+            0x0021, 0x009f,
+            0x00a1, 0x180d,
+            0x180f, 0x1fff,
+            0x202b, 0x202e,
+            0x2030, 0x205e,
+            0x2060, 0x2fff,
+            0x3001, 0x10ffff
+    );
+    public static final CodePointSet PRE_DEF__H = CodePointSet.createNoDedup(
+            0x0009, 0x0009,
+            0x0020, 0x0020,
+            0x00a0, 0x00a0,
+            0x1680, 0x1680,
+            0x2000, 0x200a,
+            0x202f, 0x202f,
+            0x205f, 0x205f,
+            0x3000, 0x3000
+    );
+    public static final CodePointSet PRE_DEF_V = CodePointSet.createNoDedup(
+            0x0000, 0x0009,
+            0x000e, 0x0084,
+            0x0086, 0x2027,
+            0x202a, 0x10ffff
+    );
+    public static final CodePointSet PRE_DEF__V = CodePointSet.createNoDedup(
+            0x000a, 0x000d,
+            0x0085, 0x0085,
+            0x2028, 0x2029
+    );
 
     /**
      * A stack of the locally enabled flags. Java enables establishing new flags and modifying flags
@@ -132,83 +154,19 @@ public class JavaLexer {
      */
     private final List<CodePointSetAccumulator> charClassPool = new ArrayList<>();
 
-    private final RegexSource source;
-    private final String pattern;
     private final JavaFlags flags;
-    private final Encodings.Encoding encoding;
-    private Token lastToken;
-    private int curStartIndex = 0;
-    private int index = 0;
-    private int nGroups = 1;
-    private boolean identifiedAllGroups = false;
-    private Map<String, Integer> namedCaptureGroups = null;
-    //    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
-    private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
 
     public JavaLexer(RegexSource source, JavaFlags flags) {
-        this.source = source;
-        this.pattern = source.getPattern();
+        super(source);
         this.flags = flags;
-        this.encoding = source.getEncoding();
-
 
         this.flagsStack = new LinkedList<>();
         flagsStack.push(flags);
     }
 
-    public boolean hasNext() {
-        return !atEnd();
-    }
+    /* additional input string access */
 
-    public Token next() throws RegexSyntaxException {
-        curStartIndex = index;
-        Token t = getNext();
-        setSourceSection(t, curStartIndex, index);
-        lastToken = t;
-        return t;
-    }
-
-    /**
-     * Returns the last token's position in the pattern string.
-     */
-    public int getLastTokenPosition() {
-        return curStartIndex;
-    }
-
-    /**
-     * Sets the {@link com.oracle.truffle.api.source.SourceSection} of a given {@link Token} in
-     * respect of {@link RegexSource#getSource()}.
-     *
-     * @param startIndex inclusive start index of the source section in respect of
-     *                   {@link RegexSource#getPattern()}.
-     * @param endIndex   exclusive end index of the source section in respect of
-     *                   {@link RegexSource#getPattern()}.
-     */
-    private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (source.getOptions().isDumpAutomataWithSourceSections()) {
-            // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
-            // offset of 1 here.
-            t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
-        }
-    }
-
-    /* input string access */
-
-//    private char curChar() {
-//        return pattern.charAt(index);
-//    }
-
-    private int curChar() {
-        return pattern.codePointAt(index);
-    }
-
-    private char consumeChar() {
-        final char c = pattern.charAt(index);
-        advance();
-        return c;
-    }
-
-    private String getMany(Predicate<Integer> pred) {
+    private String getMany(Predicate<Character> pred) {
         StringBuilder out = new StringBuilder();
         while (!atEnd() && pred.test(curChar())) {
             out.appendCodePoint(consumeChar());
@@ -216,7 +174,7 @@ public class JavaLexer {
         return out.toString();
     }
 
-    private String getUpTo(int count, Predicate<Integer> pred) {
+    private String getUpTo(int count, Predicate<Character> pred) {
         StringBuilder out = new StringBuilder();
         int found = 0;
         while (found < count && !atEnd() && pred.test(curChar())) {
@@ -224,46 +182,6 @@ public class JavaLexer {
             found++;
         }
         return out.toString();
-    }
-
-    private boolean findChars(char... chars) {
-        if (atEnd()) {
-            return false;
-        }
-        int i = ArrayUtils.indexOf(pattern, index, pattern.length(), chars);
-        if (i < 0) {
-            index = pattern.length();
-            return false;
-        }
-        index = i;
-        return true;
-    }
-
-    private void advance() {
-        advance(1);
-    }
-
-    private void retreat() {
-        advance(-1);
-    }
-
-    private void advance(int len) {
-        index += len;
-    }
-
-    private boolean lookahead(String match) {
-        if (pattern.length() - index < match.length()) {
-            return false;
-        }
-        return pattern.regionMatches(index, match, 0, match.length());
-    }
-
-    private boolean consumingLookahead(String match) {
-        final boolean matches = lookahead(match);
-        if (matches) {
-            advance(match.length());
-        }
-        return matches;
     }
 
     private boolean match(String next) {
@@ -277,18 +195,50 @@ public class JavaLexer {
 
     private void mustMatchClosingCurlyBracket() {
         if (!match("}")) {
-            throw syntaxErrorHere(JavaErrorMessages.EXPECTED_BRACE);
+            throw syntaxError(JavaErrorMessages.EXPECTED_BRACE);
         }
     }
 
-    private boolean atEnd() {
-        return index >= pattern.length();
+    public int numberOfCaptureGroups() throws RegexSyntaxException {
+        if (!identifiedAllGroups) {
+            identifyCaptureGroups();
+            identifiedAllGroups = true;
+        }
+        return nGroups;
+    }
+
+    public Map<String, Integer> getNamedCaptureGroups() throws RegexSyntaxException {
+        if (!identifiedAllGroups) {
+            identifyCaptureGroups();
+            identifiedAllGroups = true;
+        }
+        return namedCaptureGroups;
+    }
+
+    private Token charClass(int codePoint) {
+        if (getLocalFlags().isIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.appendRange(codePoint, codePoint);
+            return charClass(false);
+        } else {
+            return Token.createCharClass(CodePointSet.create(codePoint), true);
+        }
+    }
+
+    private Token charClass(boolean invert) {
+        boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
+        if (getLocalFlags().isIgnoreCase()) {
+            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+            CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
+        }
+        CodePointSet cps = curCharClass.toCodePointSet();
+        return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);
     }
 
     /* lexer */
 
-    private Token getNext() throws RegexSyntaxException {
-        int ch = consumeChar();
+    protected Token getNext() throws RegexSyntaxException {
+        char ch = consumeChar();
 
 //        if (getLocalFlags().isExtended()) {
 //            if (WHITESPACE.get(ch)) {
@@ -304,15 +254,15 @@ public class JavaLexer {
                 comment();
                 return Token.createPlaceHolder();
             }
-            if(WHITESPACE.get(ch)) {
-               consumeChar();
-               return Token.createPlaceHolder();
+            if (WHITESPACE.get(ch)) {
+                consumeChar();
+                return Token.createPlaceHolder();
             }
         }
 
         switch (ch) {
             case '\\':
-                return escape();
+                return parseEscape();
             case '|':
                 return Token.createAlternation();
             case '[':
@@ -323,16 +273,11 @@ public class JavaLexer {
             case '{':
                 return parseQuantifier(ch);
             case '.':
-//                if (getLocalFlags().isMultiline()) {
-//                    addCharClass(inSource.getEncoding().getFullSet());
-//                } else {
-//                    addCharClass(CodePointSet.create('\n').createInverse(inSource.getEncoding()));
-//                }
                 if (getLocalFlags().isDotAll())
-                    return Token.createCharClass(source.getEncoding().getFullSet());
+                    return Token.createCharClass(encoding.getFullSet());
                 return Token.createCharClass(Constants.DOT);
             case '(':
-                return parens();
+                return parseGroupBegin();
             case ')':
                 return Token.createGroupEnd();
             case '^':
@@ -356,51 +301,6 @@ public class JavaLexer {
         }
     }
 
-    public JavaFlags getLocalFlags() {
-        return flagsStack.peek();
-    }
-
-    public void pushFlagsStack(JavaFlags flag) {
-        flagsStack.push(flag);
-    }
-
-    public void popFlagsStack() {
-        flagsStack.pop();
-    }
-
-    /**
-     * A comment starts with a '#' and ends at the end of the line. The leading '#' is assumed to
-     * have already been parsed.
-     */
-    private void comment() {
-        while (!atEnd()) {
-            int ch = consumeChar();
-            if (ch == '\\' && !atEnd()) {
-                advance();
-            } else if (ch == '\n') {
-                break;
-            }
-        }
-    }
-
-    // Error reporting
-
-    private RegexSyntaxException syntaxErrorAtEnd(String message) {
-        return RegexSyntaxException.createPattern(source, message, pattern.length() - 1);
-    }
-
-    private RegexSyntaxException syntaxErrorHere(String message) {
-        return RegexSyntaxException.createPattern(source, message, index);
-    }
-
-    private RegexSyntaxException syntaxErrorAt(String message, int pos) {
-        return RegexSyntaxException.createPattern(source, message, pos);
-    }
-
-    private void bailOut(String reason) throws UnsupportedRegexException {
-        throw new UnsupportedRegexException(reason);
-    }
-
     /**
      * Escape sequence are special sequences starting with a backslash character. When calling this
      * method, the backslash is assumed to have already been parsed.
@@ -419,11 +319,11 @@ public class JavaLexer {
      * <li>character escapes</li>
      * </ul>
      */
-    private Token escape() {
+    private Token parseEscape() {
         if (atEnd()) {
             throw syntaxErrorAtEnd(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
         }
-        int ch = consumeChar();
+        char ch = consumeChar();
         int restoreIndex = index;
         if ('1' <= ch && ch <= '9') {
             final int restoreIn = index;
@@ -431,7 +331,7 @@ public class JavaLexer {
             if (backRefNumber < numberOfCaptureGroups()) {
                 return Token.createBackReference(backRefNumber);
             } else if (getLocalFlags().isUnicode()) {
-                throw syntaxErrorHere(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+                throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
             }
             index = restoreIn;
         }
@@ -440,15 +340,14 @@ public class JavaLexer {
             case 'Z':
             case 'z':
             case 'G':
-//                addCaret();
-                return Token.createAnchor(CodePointSet.create(ch));
+                return Token.createAnchor(ch);
             case 'k':
                 if (getLocalFlags().isUnicode() || hasNamedCaptureGroups()) {
                     if (atEnd()) {
-                        throw syntaxErrorHere(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
+                        throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
                     }
                     if (consumeChar() != '<') {
-                        throw syntaxErrorHere(ErrorMessages.MISSING_GROUP_NAME);
+                        throw syntaxError(ErrorMessages.MISSING_GROUP_NAME);
                     }
                     String groupName = parseGroupName();
                     // backward reference
@@ -460,7 +359,7 @@ public class JavaLexer {
                     if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
                         return Token.createBackReference(allNamedCaptureGroups.get(groupName));
                     }
-                    throw syntaxErrorHere(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+                    throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
                 } else {
                     return charClass(ch);
                 }
@@ -483,15 +382,9 @@ public class JavaLexer {
                     }
                     unicodeParseProperty(capitalP, propertySpec);
                     CodePointSet property = unicodeParseProperty(capitalP, propertySpec);
-//                    if (inCharClass) {
-//                        curCharClass.addSet(property);
                     if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
                         fullyFoldableCharacters.addSet(property);
                     }
-//                    } else {
-//                        addCharClass(property);
-//                    }
-//                    return true;
                     return Token.createCharClass(property);
                 } else {
                     index = restoreIndex;
@@ -509,6 +402,98 @@ public class JavaLexer {
                     return Token.createCharClass(CodePointSet.create(parseEscapeChar(ch, false)), true);
                 }
         }
+    }
+
+    /**
+     * Parses one of the many syntactic forms that start with a parenthesis, assuming that the
+     * parenthesis was already parsed. These consist of the following:
+     * <ul>
+     * <li>non-capturing groups (?:...)</li>
+     * <li>comments (?#...)</li>
+     * <li>positive and negative lookbehind assertions, (?<=...) and (?<!...)</li>
+     * <li>positive and negative lookahead assertions (?=...) and (?!...)</li>
+     * <li>named capture groups (?P<name>...)</li>
+     * <li>atomic groups (?>...)</li>
+     * <li>conditional backreferences (?(id/name)yes-pattern|no-pattern)</li>
+     * <li>inline local and global flags, (?aiLmsux-imsx:...) and (?aiLmsux)</li>
+     * <li>regular capture groups (...)</li>
+     * </ul>
+     */
+    protected Token parseGroupBegin() {
+        if (atEnd()) {
+            throw syntaxErrorAtEnd(JavaErrorMessages.UNTERMINATED_SUBPATTERN);
+        }
+        if (match("?")) {
+            final char ch1 = consumeChar();
+            switch (ch1) {
+                case ':':
+                    return Token.createNonCaptureGroupBegin();
+                case '<': {
+                    final int ch2 = consumeChar();
+                    switch (ch2) {
+                        case '=':
+                            return Token.createLookBehindAssertionBegin(false);
+                        case '!':
+                            return Token.createLookBehindAssertionBegin(true);
+                        default:
+                            retreat();
+                            String groupName = parseGroupName();
+                            registerNamedCaptureGroup(groupName);
+                            return Token.createCaptureGroupBegin();
+                    }
+                }
+                case '=':
+                    return Token.createLookAheadAssertionBegin(false);
+                case '!':
+                    return Token.createLookAheadAssertionBegin(true);
+                case '>':
+                    if (!source.getOptions().isIgnoreAtomicGroups()) {
+                        bailOut("atomic groups are not supported");
+                    }
+                    return Token.createNonCaptureGroupBegin();
+                case '-':       // https://www.regular-expressions.info/refmodifiers.html
+                case 'm':
+                case 's':
+                case 'i':
+                case 'x':
+                case 'd':
+                case 'u':
+                case 'U':
+                    // use the InlineFlagToken, check if ":" or ")" and deal with it properly
+                    return inlineFlag(ch1);
+                default:
+                    throw syntaxErrorAt(JavaErrorMessages.unknownExtension(ch1), index - 1);
+            }
+        } else {
+            registerCaptureGroup();
+            return Token.createCaptureGroupBegin();
+        }
+    }
+
+    /**
+     * Parses a group name terminated by '>'.
+     *
+     * @return the group name
+     */
+    private String parseGroupName() {
+        String groupName = getMany(c -> c != '>');
+        if (!match(Character.toString('>'))) {
+            throw syntaxError(JavaErrorMessages.unterminatedName('>'));
+        }
+        if (groupName.isEmpty()) {
+            throw syntaxError(JavaErrorMessages.MISSING_GROUP_NAME);
+        }
+        return groupName;
+    }
+
+    // --- additional Quantifier ---
+
+    protected Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
+        if (getLocalFlags().isUnicode()) {
+            throw syntaxError(ErrorMessages.INCOMPLETE_QUANTIFIER);
+        }
+        index = resetIndex;
+        return charClass('{');
     }
 
     /**
@@ -545,7 +530,6 @@ public class JavaLexer {
 
             int restorePosition = index;
             if (ch == '\\') {
-//                advance();
                 int ch2 = consumeChar();
                 if (ch2 == 'P' || ch2 == 'p') {
                     boolean capitalP = curChar() == 'P';
@@ -559,15 +543,9 @@ public class JavaLexer {
                             advance();
                         }
                         CodePointSet property = unicodeParseProperty(capitalP, propertySpec);
-//                    if (inCharClass) {
-//                        curCharClass.addSet(property);
                         if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
                             fullyFoldableCharacters.addSet(property);
                         }
-//                    } else {
-//                        addCharClass(property);
-//                    }
-//                    return true;
                         curCharClass.addSet(property);
                     }
                 }
@@ -656,30 +634,11 @@ public class JavaLexer {
             caseClosure();
         }
         if (negated) {
-            curCharClass.invert(source.getEncoding());
+            curCharClass.invert(encoding);
         }
 
     }
 
-    private Token charClass(int codePoint) {
-        if (getLocalFlags().isIgnoreCase()) {
-            curCharClass.clear();
-            curCharClass.appendRange(codePoint, codePoint);
-            return charClass(false);
-        } else {
-            return Token.createCharClass(CodePointSet.create(codePoint), true);
-        }
-    }
-
-    private Token charClass(boolean invert) {
-        boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
-        if (getLocalFlags().isIgnoreCase()) {
-            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
-            CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
-        }
-        CodePointSet cps = curCharClass.toCodePointSet();
-        return Token.createCharClass(invert ? cps.createInverse(source.getEncoding()) : cps, wasSingleChar);
-    }
 
     /**
      * Parses a nested character class.
@@ -732,7 +691,7 @@ public class JavaLexer {
         }
 
         // Only include characters that are admissible in the given encoding.
-        charClassTmp.intersectWith(source.getEncoding().getFullSet());
+        charClassTmp.intersectWith(encoding.getFullSet());
 
         curCharClass.addSet(charClassTmp.get());
     }
@@ -775,12 +734,6 @@ public class JavaLexer {
         }
     }
 
-// private void curCharClassAddCodePoint(int... codepoints) {
-//     for (int codepoint : codepoints) {
-//         curCharClassAddCodePoint(codepoint);
-//     }
-// }
-
     private void curCharClassAddRange(int lower, int upper) {
         curCharClass.addRange(lower, upper);
         if (getLocalFlags().isIgnoreCase()) {
@@ -818,7 +771,6 @@ public class JavaLexer {
         }
     }
 
-
     private CodePointSet unicodeParseProperty(boolean capitalP, String propertySpec) {
         boolean caret = propertySpec.startsWith("^");
         boolean negative = (capitalP || caret) && (!capitalP || !caret);
@@ -845,10 +797,6 @@ public class JavaLexer {
         }
 
         return property;
-    }
-
-    private static boolean isPredefCharClass(int c) {
-        return PREDEFINED_CHAR_CLASSES.get(c);
     }
 
     private static String parseUnicodeCharacterClass(String property) {
@@ -902,56 +850,28 @@ public class JavaLexer {
                     return Constants.NON_WORD_CHARS;
                 }
             case 'v':
-                return CodePointSet.createNoDedup(
-                        0x000a, 0x000d,
-                        0x0085, 0x0085,
-                        0x2028, 0x2029
-                );
+                return PRE_DEF__V;
             case 'V':
-                return CodePointSet.createNoDedup(
-                        0x0000, 0x0009,
-                        0x000e, 0x0084,
-                        0x0086, 0x2027,
-                        0x202a, 0x10ffff
-                );
+                return PRE_DEF_V;
             case 'h':
-                return CodePointSet.createNoDedup(
-                        0x0009, 0x0009,
-                        0x0020, 0x0020,
-                        0x00a0, 0x00a0,
-                        0x1680, 0x1680,
-                        0x2000, 0x200a,
-                        0x202f, 0x202f,
-                        0x205f, 0x205f,
-                        0x3000, 0x3000
-                );
+                return PRE_DEF__H;
             case 'H':
-                return CodePointSet.createNoDedup(
-                        0x0000, 0x0008,
-                        0x000a, 0x001f,
-                        0x0021, 0x009f,
-                        0x00a1, 0x180d,
-                        0x180f, 0x1fff,
-                        0x202b, 0x202e,
-                        0x2030, 0x205e,
-                        0x2060, 0x2fff,
-                        0x3001, 0x10ffff
-                );
+                return PRE_DEF_H;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
-    private int parseEscapeChar(int c, boolean inCharClass) throws RegexSyntaxException {
+    private int parseEscapeChar(char c, boolean inCharClass) throws RegexSyntaxException {
         if (inCharClass && c == 'b') {
             return '\b';
         }
         switch (c) {
             case '0':
-                if (getLocalFlags().isUnicode() && !atEnd() && isDecDigit(curChar())) {
-                    throw syntaxErrorHere(ErrorMessages.INVALID_ESCAPE);
+                if (getLocalFlags().isUnicode() && !atEnd() && isDecimal(curChar())) {
+                    throw syntaxError(ErrorMessages.INVALID_ESCAPE);
                 }
-                if (!getLocalFlags().isUnicode() && !atEnd() && isOctDigit(curChar())) {
+                if (!getLocalFlags().isUnicode() && !atEnd() && isDecimal(curChar())) {
                     return parseOctal(0);
                 }
                 return '\0';
@@ -964,12 +884,12 @@ public class JavaLexer {
             case 'r':
                 return '\r';
             default:
-                if (!getLocalFlags().isUnicode() && isOctDigit(c)) {
+                if (!getLocalFlags().isUnicode() && isOctal(c)) {
                     return parseOctal(c - '0');
                 }
-                if (!SYNTAX_CHARACTERS.get(c)) {
+                if (!SYNTAX_CHARS.get(c)) {
                     if (getLocalFlags().isUnicode()) {
-                        throw syntaxErrorHere(ErrorMessages.INVALID_ESCAPE);
+                        throw syntaxError(ErrorMessages.INVALID_ESCAPE);
                     }
                 }
                 return c;
@@ -989,7 +909,7 @@ public class JavaLexer {
         switch (curChar()) {
             case 'x': {
                 advance();
-                String code = getUpTo(2, JavaLexer::isHexDigit);
+                String code = getUpTo(2, JavaLexer::isHex);
                 int byteValue = Integer.parseInt(code, 16);
 //                if (byteValue > 0x7F) {
 //                    bailOut("unsupported multibyte escape");
@@ -1000,10 +920,10 @@ public class JavaLexer {
                 advance();
                 String code;
                 if (match("{")) {
-                    code = getMany(JavaLexer::isHexDigit);
+                    code = getMany(JavaLexer::isHex);
                     mustMatchClosingCurlyBracket();
                 } else {
-                    code = getUpTo(4, JavaLexer::isHexDigit);
+                    code = getUpTo(4, JavaLexer::isHex);
                     if (code.length() < 4) {
                         throw syntaxErrorAt(JavaErrorMessages.incompleteEscape(code), beginPos);
                     }
@@ -1026,7 +946,7 @@ public class JavaLexer {
             case '5':
             case '6':
             case '7': {
-                String code = getUpTo(3, JavaLexer::isOctDigit);
+                String code = getUpTo(3, JavaLexer::isOctal);
                 int codePoint = Integer.parseInt(code, 8);
                 if (codePoint > 0xFF) {
                     throw syntaxErrorAt(JavaErrorMessages.TOO_BIG_NUMBER, beginPos);
@@ -1039,7 +959,7 @@ public class JavaLexer {
     }
 
     private CodePointSet getUnicodePosixCharClass(String className) {
-        if (source.getEncoding() == Encodings.ASCII) {
+        if (encoding == Encodings.ASCII) {
             return ASCII_POSIX_CHAR_CLASSES.get(className);
         }
 
@@ -1047,11 +967,11 @@ public class JavaLexer {
     }
 
     private CodePointSet trimToEncoding(CodePointSet codePointSet) {
-        return source.getEncoding().getFullSet().createIntersectionSingleRange(codePointSet);
+        return encoding.getFullSet().createIntersectionSingleRange(codePointSet);
     }
 
     /**
-     * Like {@link #escape}, but restricted to the forms of escapes usable in character classes.
+     * Like {@link #parseEscape}, but restricted to the forms of escapes usable in character classes.
      * This includes character escapes and character class escapes, but not assertion escapes or
      * backreferences.
      *
@@ -1073,161 +993,6 @@ public class JavaLexer {
     }
 
     /**
-     * Parses a group name terminated by '>'.
-     *
-     * @return the group name
-     */
-    private String parseGroupName() {
-        String groupName = getMany(c -> c != '>');
-        if (!match(Character.toString('>'))) {
-            throw syntaxErrorHere(JavaErrorMessages.unterminatedName('>'));
-        }
-        if (groupName.isEmpty()) {
-            throw syntaxErrorHere(JavaErrorMessages.MISSING_GROUP_NAME);
-        }
-        return groupName;
-    }
-
-    public int numberOfCaptureGroups() throws RegexSyntaxException {
-        if (!identifiedAllGroups) {
-            identifyCaptureGroups();
-            identifiedAllGroups = true;
-        }
-        return nGroups;
-    }
-
-    private void registerCaptureGroup() {
-        if (!identifiedAllGroups) {
-            nGroups++;
-        }
-    }
-
-    public Map<String, Integer> getNamedCaptureGroups() {
-//        return Collections.emptyMap();  // TODO what to be done here?
-        return namedCaptureGroups;
-    }
-
-    /**
-     * Checks whether this regular expression contains any named capture groups.
-     * <p>
-     * This method is a way to check whether we are parsing the goal symbol Pattern[~U, +N] or
-     * Pattern[~U, ~N] (see the ECMAScript RegExp grammar).
-     */
-    private boolean hasNamedCaptureGroups() throws RegexSyntaxException {
-        return getNamedCaptureGroups() != null;
-    }
-
-    private void registerNamedCaptureGroup(String name) {
-        if (!identifiedAllGroups) {
-            if (namedCaptureGroups == null) {
-                namedCaptureGroups = new HashMap<>();
-            }
-            if (namedCaptureGroups.containsKey(name)) {
-                throw syntaxErrorHere(ErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
-            }
-            namedCaptureGroups.put(name, nGroups);
-        }
-        registerCaptureGroup();
-    }
-
-    private void identifyCaptureGroups() throws RegexSyntaxException {
-        // We are counting capture groups, so we only care about '(' characters and special
-        // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
-        // character classes (where '(' stands for a literal '(') and any characters after the '('
-        // which might turn into a non-capturing group or a look-around assertion.
-        boolean insideCharClass = false;
-        final int restoreIndex = index;
-        while (findChars('\\', '[', ']', '(')) {
-            switch (consumeChar()) {
-                case '\\':
-                    // skip escaped char
-                    advance();
-                    break;
-                case '[':
-                    insideCharClass = true;
-                    break;
-                case ']':
-                    insideCharClass = false;
-                    break;
-                case '(':
-                    if (!insideCharClass) {
-                        parens();
-                    }
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-        }
-        index = restoreIndex;
-    }
-
-    /**
-     * Parses one of the many syntactic forms that start with a parenthesis, assuming that the
-     * parenthesis was already parsed. These consist of the following:
-     * <ul>
-     * <li>non-capturing groups (?:...)</li>
-     * <li>comments (?#...)</li>
-     * <li>positive and negative lookbehind assertions, (?<=...) and (?<!...)</li>
-     * <li>positive and negative lookahead assertions (?=...) and (?!...)</li>
-     * <li>named capture groups (?P<name>...)</li>
-     * <li>atomic groups (?>...)</li>
-     * <li>conditional backreferences (?(id/name)yes-pattern|no-pattern)</li>
-     * <li>inline local and global flags, (?aiLmsux-imsx:...) and (?aiLmsux)</li>
-     * <li>regular capture groups (...)</li>
-     * </ul>
-     */
-    private Token parens() {
-        if (atEnd()) {
-            throw syntaxErrorAtEnd(JavaErrorMessages.UNTERMINATED_SUBPATTERN);
-        }
-        if (match("?")) {
-            final char ch1 = consumeChar();
-            switch (ch1) {
-                case ':':
-                    return Token.createNonCaptureGroupBegin();
-                case '<': {
-                    final int ch2 = consumeChar();
-                    switch (ch2) {
-                        case '=':
-                            return Token.createLookBehindAssertionBegin(false);
-                        case '!':
-                            return Token.createLookBehindAssertionBegin(true);
-                        default:
-                            retreat();
-                            String groupName = parseGroupName();
-                            registerNamedCaptureGroup(groupName);
-                            return Token.createCaptureGroupBegin();
-                    }
-                }
-                case '=':
-                    return Token.createLookAheadAssertionBegin(false);
-                case '!':
-                    return Token.createLookAheadAssertionBegin(true);
-                case '>':
-                    if (!source.getOptions().isIgnoreAtomicGroups()) {
-                        bailOut("atomic groups are not supported");
-                    }
-                    return Token.createNonCaptureGroupBegin();
-                case '-':       // https://www.regular-expressions.info/refmodifiers.html
-                case 'm':
-                case 's':
-                case 'i':
-                case 'x':
-                case 'd':
-                case 'u':
-                case 'U':
-                    // use the InlineFlagToken, check if ":" or ")" and deal with it properly
-                    return inlineFlag(ch1);
-                default:
-                    throw syntaxErrorAt(JavaErrorMessages.unknownExtension(ch1), index - 1);
-            }
-        } else {
-            registerCaptureGroup();
-            return Token.createCaptureGroupBegin();
-        }
-    }
-
-    /**
      * Parses a local flag block or an inline declaration of a global flags. Assumes that the prefix
      * '(?' was already parsed, as well as the first flag which is passed as the argument.
      */
@@ -1244,16 +1009,16 @@ public class JavaLexer {
             if (JavaFlags.isValidFlagChar(ch)) {
                 if (negative) {
                     if (JavaFlags.isTypeFlag(ch)) {
-                        throw syntaxErrorHere(JavaErrorMessages.UNDEFINED_GROUP_OPTION);
+                        throw syntaxError(JavaErrorMessages.UNDEFINED_GROUP_OPTION);
                     }
                     newFlags = newFlags.delFlag(ch);
                 } else {
                     newFlags = newFlags.addFlag(ch);
                 }
             } else if (Character.isAlphabetic(ch)) {
-                throw syntaxErrorHere(JavaErrorMessages.UNDEFINED_GROUP_OPTION);
+                throw syntaxError(JavaErrorMessages.UNDEFINED_GROUP_OPTION);
             } else {
-                throw syntaxErrorHere(JavaErrorMessages.MISSING_DASH_COLON_PAREN);
+                throw syntaxError(JavaErrorMessages.MISSING_DASH_COLON_PAREN);
             }
 
             if (atEnd()) {
@@ -1265,105 +1030,59 @@ public class JavaLexer {
         return Token.addInlineFlag(negative, newFlags.toString(), ch == ')');
     }
 
-    // ---- Quantifier
-
-    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
-
-    private Token parseQuantifier(int c) throws RegexSyntaxException {
-        int min;
-        int max = -1;
-        boolean greedy;
-        if (c == '{') {
-            final int resetIndex = index;
-            BigInteger literalMin = parseDecimal();
-            if (literalMin.compareTo(BigInteger.ZERO) < 0) {
-                return countedRepetitionSyntaxError(resetIndex);
-            }
-            min = literalMin.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMin.intValue() : -1;
-            if (consumingLookahead(",}")) {
-                greedy = !consumingLookahead("?");
-            } else if (consumingLookahead("}")) {
-                max = min;
-                greedy = !consumingLookahead("?");
-            } else {
-                BigInteger literalMax;
-                if (!consumingLookahead(",") || (literalMax = parseDecimal()).compareTo(BigInteger.ZERO) < 0 || !consumingLookahead("}")) {
-                    return countedRepetitionSyntaxError(resetIndex);
-                }
-                max = literalMax.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMax.intValue() : -1;
-                greedy = !consumingLookahead("?");
-                if (literalMin.compareTo(literalMax) > 0) {
-                    throw syntaxErrorHere(ErrorMessages.QUANTIFIER_OUT_OF_ORDER);
-                }
-            }
-        } else {
-            greedy = !consumingLookahead("?");
-            min = c == '+' ? 1 : 0;
-            if (c == '?') {
-                max = 1;
+    /**
+     * A comment starts with a '#' and ends at the end of the line. The leading '#' is assumed to
+     * have already been parsed.
+     */
+    private void comment() {
+        while (!atEnd()) {
+            int ch = consumeChar();
+            if (ch == '\\' && !atEnd()) {
+                advance();
+            } else if (ch == '\n') {
+                break;
             }
         }
-        if (lastToken == null) {
-            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-        }
-        if (lastToken.kind == Token.Kind.quantifier) {
-            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_QUANTIFIER);
-        }
-        if (!QUANTIFIER_PREV.contains(lastToken.kind)) {
-            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-        }
-        return Token.createQuantifier(min, max, greedy);
     }
 
-    private Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
-        if (getLocalFlags().isUnicode()) {
-            throw syntaxErrorHere(ErrorMessages.INCOMPLETE_QUANTIFIER);
-        }
-        index = resetIndex;
-        return charClass('{');
+    public JavaFlags getLocalFlags() {
+        return flagsStack.peek();
+    }
+
+    public void pushFlagsStack(JavaFlags flag) {
+        flagsStack.push(flag);
+    }
+
+    public void popFlagsStack() {
+        flagsStack.pop();
+    }
+
+    public int getPosition() {
+        return index;
+    }
+
+    // Error reporting
+
+    private RegexSyntaxException syntaxErrorAtEnd(String message) {
+        return RegexSyntaxException.createPattern(source, message, pattern.length() - 1);
+    }
+
+    private RegexSyntaxException syntaxErrorAt(String message, int pos) {
+        return RegexSyntaxException.createPattern(source, message, pos);
+    }
+
+    private void bailOut(String reason) throws UnsupportedRegexException {
+        throw new UnsupportedRegexException(reason);
     }
 
     // Character predicates
-
-    private static boolean isOctDigit(int c) {
-        return c >= '0' && c <= '7';
-    }
-
-    private static boolean isDecDigit(int c) {
-        return c >= '0' && c <= '9';
-    }
-
-    private static boolean isHexDigit(int c) {
-        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
-    }
 
     static boolean isAscii(int c) {
         return c < 128;
     }
 
-    private BigInteger parseDecimal() {
-        if (atEnd() || !isDecDigit(curChar())) {
-            return BigInteger.valueOf(-1);
-        }
-
-        BigInteger ret = BigInteger.ZERO;
-        while (!atEnd() && isDecDigit(curChar())) {
-            ret = ret.multiply(BigInteger.TEN);
-            ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
-        }
-        return ret;
-    }
-
-    private int parseOctal(int firstDigit) {
-        int ret = firstDigit;
-        for (int i = 0; !atEnd() && isOctDigit(curChar()) && i < 2; i++) {
-            if (ret * 8 > 255) {
-                return ret;
-            }
-            ret *= 8;
-            ret += consumeChar() - '0';
-        }
-        return ret;
+    private static boolean isPredefCharClass(char c) {
+        return PREDEFINED_CHAR_CLASSES.get(c);
     }
 
 }
