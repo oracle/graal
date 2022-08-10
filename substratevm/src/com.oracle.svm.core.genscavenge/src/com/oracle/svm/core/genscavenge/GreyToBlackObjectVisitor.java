@@ -60,8 +60,8 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectInline(Object o) {
-        if (ParallelGCImpl.isEnabled()) {
-            ParallelGCImpl.queue(Word.objectToUntrackedPointer(o));
+        if (!ParallelGCImpl.isEnabled()) {
+            ParallelGCImpl.push(Word.objectToUntrackedPointer(o));
             return true;
         } else {
             return doVisitObject(o);

@@ -32,9 +32,10 @@ public class ParallelGCImpl extends ParallelGC {
     private static final VMCondition cond = new VMCondition(mutex);
     private static AtomicInteger busy = new AtomicInteger(0);
 
-    private static final CasQueue QUEUE = new CasQueue();
-    private static final CasQueue.Consumer PROMOTE_TASK =
-            obj -> getVisitor().doVisitObject(obj);
+    private static final ThreadLocalTaskStack[] STACKS =
+            IntStream.range(0, WORKERS_COUNT).mapToObj(i -> new ThreadLocalTaskStack()).toArray(ThreadLocalTaskStack[]::new);
+    private static final ThreadLocal<ThreadLocalTaskStack> localStack = new ThreadLocal<>();
+    private static int currentStack;
 
     private static volatile boolean enabled;
     private static volatile Throwable throwable;
@@ -49,6 +50,9 @@ public class ParallelGCImpl extends ParallelGC {
 //                VMThreads.ParallelGCSupport.setParallelGCThread();
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
                 log().string("WW start ").unsigned(n).newline();
+
+                final ThreadLocalTaskStack stack = STACKS[n];
+                localStack.set(STACKS[n]);
                 getStats().install();
                 try {
                     while (!stopped) {
@@ -59,7 +63,11 @@ public class ParallelGCImpl extends ParallelGC {
                         }
                         mutex.unlock();
 
-                        QUEUE.drain(PROMOTE_TASK);
+                        log().string("WW run ").unsigned(n).string(", count=").unsigned(stack.size()).newline();
+                        Object obj;
+                        while ((obj = stack.pop()) != null) {
+                            getVisitor().doVisitObject(obj);
+                        }
                         TLAB.set(WordFactory.nullPointer());
                         if (busy.decrementAndGet() <= 0) {
                             cond.broadcast();
@@ -79,9 +87,19 @@ public class ParallelGCImpl extends ParallelGC {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
-    public static void queue(Pointer ptr) {
-        if (!QUEUE.put(ptr)) {
-            PROMOTE_TASK.accept(ptr.toObject());
+    /// name, explain
+    public static void push(Pointer ptr) {
+        push(ptr, STACKS[currentStack]);
+        currentStack = (currentStack + 1) % WORKERS_COUNT;
+    }
+
+    public static void localPush(Pointer ptr) {
+        push(ptr, localStack.get());
+    }
+
+    private static void push(Pointer ptr, ThreadLocalTaskStack stack) {
+        if (!stack.push(ptr)) {
+            getVisitor().doVisitObject(ptr.toObject());
         }
     }
 

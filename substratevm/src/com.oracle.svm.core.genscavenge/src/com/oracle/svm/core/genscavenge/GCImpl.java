@@ -1055,17 +1055,15 @@ public final class GCImpl implements GC {
     private void scanGreyObjects(boolean isIncremental) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
-        ParallelGCImpl.setEnabled(true);
-        try {
-            if (isIncremental) {
-                heap.getYoungGeneration().scanGreyObjects();
-            }
-            heap.getOldGeneration().scanGreyObjects();
-        } finally {
-            ParallelGCImpl.waitForIdle();
-            ParallelGCImpl.setEnabled(false);
-            scanGreyObjectsTimer.close();
+        if (isIncremental) {
+            heap.getYoungGeneration().scanGreyObjects();
         }
+        heap.getOldGeneration().scanGreyObjects();
+
+        ParallelGCImpl.setEnabled(true);
+        ParallelGCImpl.waitForIdle();
+        ParallelGCImpl.setEnabled(false);
+        scanGreyObjectsTimer.close();
     }
 
     private static void scanGreyObjectsLoop() {

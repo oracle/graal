@@ -439,7 +439,7 @@ public final class Space {
                 AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
                 RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
             }
-            ParallelGCImpl.queue(copyMemory);
+            ParallelGCImpl.localPush(copyMemory);
             return copy;
         } else {
             // Retract speculatively allocated memory
