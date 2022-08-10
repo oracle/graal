@@ -54,13 +54,13 @@ public class ContinuationsFeature implements Feature {
             VMError.guarantee(JavaVersionUtil.JAVA_SPEC >= 19);
             ImageSingletons.add(VirtualThreads.class, new LoomVirtualThreads());
         } else if (JavaVersionUtil.JAVA_SPEC == 17) {
+            ImageSingletons.add(VirtualThreads.class, new SubstrateVirtualThreads());
+        } else {
             /*
-             * GR-37518: ForkJoinPool on 11 syncs on a String which doesn't have its own monitor
+             * GR-37518: on 11, ForkJoinPool syncs on a String which doesn't have its own monitor
              * field, and unparking a virtual thread in additionalMonitorsLock.unlock causes a
              * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
              */
-            ImageSingletons.add(VirtualThreads.class, new SubstrateVirtualThreads());
-        } else {
             throw UserError.abort("Continuations are currently supported only on JDK 17 with option %s, or on JDK 19 with preview features enabled (-J--enable-preview).",
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }

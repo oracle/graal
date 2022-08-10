@@ -42,10 +42,11 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * In a Project Loom JDK, code specific to virtual threads is part of the {@link Thread} methods,
- * e.g. {@code yield} or {@code sleep}, and the implementation for platform threads is generally in
- * methods named {@code yield0} or {@code sleep0}, so we only substitute that platform thread code
- * in {@link Target_java_lang_Thread}, and generally do not expect these methods to be reachable.
+ * In a JDK that supports Project Loom virtual threads (JEP 425, starting with JDK 19 as preview
+ * feature), code specific to virtual threads is part of {@link Thread} methods, e.g. {@code yield}
+ * or {@code sleep}, and the implementation for platform threads is generally in methods named
+ * {@code yield0} or {@code sleep0}, so we only substitute that platform thread code in
+ * {@link Target_java_lang_Thread}, and do not expect several methods here to be reachable.
  *
  * @see <a href="https://openjdk.java.net/projects/loom/">Project Loom (Wiki, code, etc.)</a>
  */
@@ -200,7 +201,7 @@ final class LoomVirtualThreads implements VirtualThreads {
         return stackTrace;
     }
 
-    private static StackTraceElement[] asyncMountedGetStackTrace(@SuppressWarnings("unused") Target_java_lang_VirtualThread thread) {
+    private static StackTraceElement[] asyncMountedGetStackTrace(Target_java_lang_VirtualThread thread) {
         return StackTraceUtils.asyncGetStackTrace(Thread.class.cast(thread));
     }
 

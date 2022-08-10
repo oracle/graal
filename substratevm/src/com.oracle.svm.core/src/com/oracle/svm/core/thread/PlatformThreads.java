@@ -105,10 +105,12 @@ import jdk.internal.misc.Unsafe;
  * @see JavaThreads
  */
 public abstract class PlatformThreads {
-    private static final Field FIELDHOLDER_STATUS_FIELD = (!ImageInfo.inImageCode() || JavaVersionUtil.JAVA_SPEC < 19) ? null
-                    : ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus");
-    private static final Field THREAD_STATUS_FIELD = (!ImageInfo.inImageCode() || JavaVersionUtil.JAVA_SPEC >= 19) ? null
-                    : ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus");
+    private static final Field FIELDHOLDER_STATUS_FIELD = (JavaVersionUtil.JAVA_SPEC >= 19 && ImageInfo.inImageCode())
+                    ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus")
+                    : null;
+    private static final Field THREAD_STATUS_FIELD = (JavaVersionUtil.JAVA_SPEC < 19 && ImageInfo.inImageCode())
+                    ? ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus")
+                    : null;
 
     @Fold
     public static PlatformThreads singleton() {
