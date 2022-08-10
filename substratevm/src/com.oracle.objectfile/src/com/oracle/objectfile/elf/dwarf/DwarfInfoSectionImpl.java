@@ -662,6 +662,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeMethodDeclaration(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
         String methodKey = method.getSymbolName();
+        String linkageName = uniqueDebugString(classEntry.getTypeName() + "::" + method.methodName());
         setMethodDeclarationIndex(method, pos);
         int modifiers = method.getModifiers();
         boolean isStatic = Modifier.isStatic(modifiers);
@@ -685,6 +686,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int line = method.getLine();
         log(context, "  [0x%08x]     line 0x%x", pos, line);
         pos = writeAttrData2((short) line, buffer, pos);
+        log(context, "  [0x%08x]     linkage_name %s", pos, linkageName);
+        pos = writeAttrStrp(linkageName, buffer, pos);
         TypeEntry returnType = method.getValueType();
         int retTypeIdx = getTypeIndex(returnType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnType.getTypeName());

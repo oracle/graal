@@ -169,6 +169,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_call_file = 0x58;
     public static final int DW_AT_call_line = 0x59;
     public static final int DW_AT_object_pointer = 0x64;
+    public static final int DW_AT_linkage_name = 0x6e;
 
     /*
      * Define all the Dwarf attribute forms we need for our DIEs.
