@@ -365,13 +365,13 @@ public interface OptimizationLog extends CompilationListener {
     void exitPartialEscapeAnalysis();
 
     /**
-     * Opens a scope and sets itself as the compilation listener, if the optimization log is
-     * enabled. When the scope is closed, the compilation listener is reset to {@code null} and the
-     * optimization tree is printed according to the {@link DebugOptions#OptimizationLog
-     * OptimizationLog} option.
+     * Opens a {@link DebugCloseable} and sets itself as the compilation listener, if the
+     * optimization log is enabled. When the closable is closed, the compilation listener is reset
+     * to {@code null} and the optimization tree is printed according to the
+     * {@link DebugOptions#OptimizationLog OptimizationLog} option.
      *
      * @param methodNameFormatter a function that formats method names
-     * @return a scope in whose lifespan the optimization log is set as the compilation listener
+     * @return a closable in whose lifespan the optimization log is set as the compilation listener
      */
     DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter);
 }
