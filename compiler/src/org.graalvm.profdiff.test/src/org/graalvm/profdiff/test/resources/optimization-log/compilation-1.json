@@ -1,6 +1,17 @@
 {
     "compilationId": "1",
-    "compilationMethodName": "foo.bar.Foo$Bar.methodName()", 
+    "compilationMethodName": "foo.bar.Foo$Bar.methodName()",
+    "inliningTreeRoot": {
+         "targetMethodName": "foo.bar.Foo$Bar.methodName()",
+         "bci": -1,
+         "inlinees": [
+            {
+               "targetMethodName": "java.lang.String.equals(Object)",
+               "bci": 44,
+               "inlinees": null
+            }
+         ]
+    },
     "rootPhase": { 
         "phaseName": "RootPhase", 
         "optimizations": [ 

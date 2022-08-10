@@ -55,12 +55,11 @@ public class SelkowTreeMatcherTest {
         Optimization foo = new Optimization("root", "foo", null, null);
         OptimizationPhase root1 = new OptimizationPhase("RootPhase");
         root1.addChild(foo);
-        CompilationUnit method1 = new CompilationUnit("1", "foo", root1, 0, null);
-
+        CompilationUnit method1 = new CompilationUnit("1", "foo", null, root1, 0, null);
         Optimization bar = new Optimization("root", "bar", null, null);
         OptimizationPhase root2 = new OptimizationPhase("RootPhase");
         root2.addChild(bar);
-        CompilationUnit method2 = new CompilationUnit("2", "bar", root2, 0, null);
+        CompilationUnit method2 = new CompilationUnit("2", "bar", null, root2, 0, null);
 
         SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
         EditScript<OptimizationTreeNode> editScript = matcher.match(method1.getRootPhase(), method2.getRootPhase());
@@ -110,7 +109,7 @@ public class SelkowTreeMatcherTest {
         root1.addChild(toBeDeleted);
         root1.addChild(toBeRelabeled);
         root1.addChild(toBeUnchaged);
-        CompilationUnit method1 = new CompilationUnit("1", "method1", root1, 0, null);
+        CompilationUnit method1 = new CompilationUnit("1", "method1", null, root1, 0, null);
 
         OptimizationPhase relabeled = new OptimizationPhase("Relabeled");
         Optimization foo1Clone = new Optimization("ToBeRelabeled", "foo", null, null);
@@ -125,7 +124,7 @@ public class SelkowTreeMatcherTest {
         OptimizationPhase toBeUnchagedClone = new OptimizationPhase("ToBeUnchanged");
         root2.addChild(toBeUnchagedClone);
         root2.addChild(toBeInserted);
-        CompilationUnit method2 = new CompilationUnit("2", "method2", root2, 0, null);
+        CompilationUnit method2 = new CompilationUnit("2", "method2", null, root2, 0, null);
 
         SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
         EditScript<OptimizationTreeNode> editScript = matcher.match(method1.getRootPhase(), method2.getRootPhase());

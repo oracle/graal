@@ -543,4 +543,11 @@ public class InliningLog {
             formatAsTree(child, indent + "  ", builder);
         }
     }
+
+    /**
+     * Gets the callsite representing the root method.
+     */
+    public Callsite getRootCallsite() {
+        return root;
+    }
 }

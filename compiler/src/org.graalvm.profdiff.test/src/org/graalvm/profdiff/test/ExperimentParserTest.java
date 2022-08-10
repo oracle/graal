@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
@@ -85,6 +87,9 @@ public class ExperimentParserTest {
                 case "1": {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
                                     compilationUnit.getCompilationMethodName());
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getCompilationMethodName(), -1);
+                    inliningTreeRoot.addInlinee(new InliningTreeNode("java.lang.String.equals(Object)", 44));
+                    assertEquals(inliningTreeRoot, compilationUnit.getInliningTreeRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     OptimizationPhase someTier = new OptimizationPhase("SomeTier");
                     rootPhase.addChild(someTier);
@@ -111,6 +116,7 @@ public class ExperimentParserTest {
                                     null,
                                     EconomicMap.of("unrollFactor", 2)));
                     assertEquals(rootPhase, compilationUnit.getRootPhase());
+                    assertNull(compilationUnit.getInliningTreeRoot());
                     break;
                 }
                 default:

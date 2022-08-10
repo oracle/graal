@@ -41,19 +41,19 @@ public class MethodMatcherTest {
     public void testGreedyMethodMatcher() {
         OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
         Experiment experiment1 = new Experiment("1", ExperimentId.ONE, 100, 100);
-        CompilationUnit foo1 = new CompilationUnit("foo1", "foo", rootPhase, 1, experiment1);
-        CompilationUnit foo2 = new CompilationUnit("foo2", "foo", rootPhase, 2, experiment1);
-        CompilationUnit foo3 = new CompilationUnit("foo3", "foo", rootPhase, 3, experiment1);
-        CompilationUnit bar1 = new CompilationUnit("bar1", "bar", rootPhase, 3, experiment1);
+        CompilationUnit foo1 = new CompilationUnit("foo1", "foo", null, rootPhase, 1, experiment1);
+        CompilationUnit foo2 = new CompilationUnit("foo2", "foo", null, rootPhase, 2, experiment1);
+        CompilationUnit foo3 = new CompilationUnit("foo3", "foo", null, rootPhase, 3, experiment1);
+        CompilationUnit bar1 = new CompilationUnit("bar1", "bar", null, rootPhase, 3, experiment1);
         experiment1.addCompilationUnit(foo1);
         experiment1.addCompilationUnit(foo2);
         experiment1.addCompilationUnit(foo3);
         experiment1.addCompilationUnit(bar1);
 
         Experiment experiment2 = new Experiment("2", ExperimentId.TWO, 100, 100);
-        CompilationUnit foo4 = new CompilationUnit("foo4", "foo", rootPhase, 1, experiment2);
-        CompilationUnit bar2 = new CompilationUnit("bar2", "bar", rootPhase, 2, experiment2);
-        CompilationUnit baz1 = new CompilationUnit("baz1", "baz", rootPhase, 3, experiment2);
+        CompilationUnit foo4 = new CompilationUnit("foo4", "foo", null, rootPhase, 1, experiment2);
+        CompilationUnit bar2 = new CompilationUnit("bar2", "bar", null, rootPhase, 2, experiment2);
+        CompilationUnit baz1 = new CompilationUnit("baz1", "baz", null, rootPhase, 3, experiment2);
         experiment2.addCompilationUnit(foo4);
         experiment2.addCompilationUnit(bar2);
         experiment2.addCompilationUnit(baz1);

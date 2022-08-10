@@ -59,6 +59,12 @@ public class CompilationUnitBuilder {
      */
     private long period = 0;
 
+    /**
+     * The root of the inlining tree if it is available. The root method in the inlining tree
+     * corresponds to this method.
+     */
+    private InliningTreeNode inliningTreeRoot;
+
     public void setCompilationId(String compilationId) {
         this.compilationId = compilationId;
     }
@@ -75,6 +81,10 @@ public class CompilationUnitBuilder {
         return compilationId;
     }
 
+    public void setInliningTreeRoot(InliningTreeNode inliningTreeRoot) {
+        this.inliningTreeRoot = inliningTreeRoot;
+    }
+
     public void setExperiment(Experiment experiment) {
         this.experiment = experiment;
     }
@@ -87,6 +97,6 @@ public class CompilationUnitBuilder {
         assert compilationId != null;
         assert compilationMethodName != null;
         assert experiment != null;
-        return new CompilationUnit(compilationId, compilationMethodName, rootPhase, period, experiment);
+        return new CompilationUnit(compilationId, compilationMethodName, inliningTreeRoot, rootPhase, period, experiment);
     }
 }

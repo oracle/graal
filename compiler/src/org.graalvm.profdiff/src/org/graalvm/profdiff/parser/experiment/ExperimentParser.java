@@ -34,6 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.profdiff.core.CompilationUnitBuilder;
 import org.graalvm.profdiff.core.Experiment;
+import org.graalvm.profdiff.core.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.util.json.JSONParser;
@@ -116,12 +117,31 @@ public class ExperimentParser {
             CompilationUnitBuilder builder = new CompilationUnitBuilder();
             builder.setCompilationId(expectString(log, "compilationId", false));
             builder.setCompilationMethodName(expectString(log, "compilationMethodName", false));
+            builder.setInliningTreeRoot(parseInliningTreeNode(log.get("inliningTreeRoot")));
             EconomicMap<String, Object> rootPhase = expectMap(log.get("rootPhase"), "the root phase of a method", false);
             builder.setRootPhase(parseOptimizationPhase(rootPhase));
             return builder;
         } catch (JSONParserException parserException) {
             throw new ExperimentParserError(experimentFiles.getExperimentId(), currentResourceName, parserException.getMessage());
         }
+    }
+
+    private InliningTreeNode parseInliningTreeNode(Object obj) throws ExperimentParserTypeError {
+        if (obj == null) {
+            return null;
+        }
+        EconomicMap<String, Object> map = expectMap(obj, "inliningTreeNode", false);
+        String methodName = expectString(map, "targetMethodName", false);
+        int bci = expectInteger(map, "bci");
+        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci);
+        List<Object> inlinees = expectList(map, "inlinees", true);
+        if (inlinees == null) {
+            return inliningTreeNode;
+        }
+        for (Object inlinee : inlinees) {
+            inliningTreeNode.addInlinee(parseInliningTreeNode(inlinee));
+        }
+        return inliningTreeNode;
     }
 
     private OptimizationPhase parseOptimizationPhase(EconomicMap<String, Object> log) throws ExperimentParserTypeError {

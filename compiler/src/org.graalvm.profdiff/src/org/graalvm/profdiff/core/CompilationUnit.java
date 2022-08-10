@@ -47,6 +47,12 @@ public class CompilationUnit {
     private final String compilationMethodName;
 
     /**
+     * The root of the inlining tree if it is available. The root method in the inlining tree
+     * corresponds to this method.
+     */
+    private final InliningTreeNode inliningTreeRoot;
+
+    /**
      * The root optimization phase of this compilation unit, which holds all optimization phases
      * applied in this compilation.
      */
@@ -69,11 +75,13 @@ public class CompilationUnit {
 
     public CompilationUnit(String compilationId,
                     String compilationMethodName,
+                    InliningTreeNode inliningTreeRoot,
                     OptimizationPhase rootPhase,
                     long period,
                     Experiment experiment) {
         this.compilationId = compilationId;
         this.compilationMethodName = compilationMethodName;
+        this.inliningTreeRoot = inliningTreeRoot;
         this.period = period;
         this.rootPhase = rootPhase;
         this.experiment = experiment;
@@ -134,6 +142,16 @@ public class CompilationUnit {
     }
 
     /**
+     * Gets the root of the inlining tree if it is available. The root method in the inlining tree
+     * corresponds to this method.
+     *
+     * @return the root of the inlining tree if it is available
+     */
+    public InliningTreeNode getInliningTreeRoot() {
+        return inliningTreeRoot;
+    }
+
+    /**
      * Gets the root optimization phase of this compilation unit, which holds all optimization
      * phases applied in this compilation.
      *
@@ -191,7 +209,17 @@ public class CompilationUnit {
     public void write(Writer writer) {
         writer.writeln("Compilation " + compilationId + " (" + createExecutionSummary() + ") in experiment " + experiment.getExperimentId());
         writer.increaseIndent();
+        if (inliningTreeRoot == null) {
+            writer.writeln("Inlining tree not available");
+        } else {
+            writer.writeln("Inlining tree");
+            writer.increaseIndent();
+            inliningTreeRoot.writeRecursive(writer);
+            writer.decreaseIndent();
+        }
+        writer.writeln("Optimization tree");
+        writer.increaseIndent();
         rootPhase.writeRecursive(writer);
-        writer.decreaseIndent();
+        writer.decreaseIndent(2);
     }
 }

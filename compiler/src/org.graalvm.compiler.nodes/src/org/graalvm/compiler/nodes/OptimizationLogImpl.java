@@ -562,6 +562,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         String compilationMethodName = methodNameFormatter.apply(graph.method());
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
+        map.put("inliningTreeRoot", inliningTreeAsJsonMap());
         map.put("rootPhase", currentPhase.asJsonMap(methodNameFormatter));
         return map;
     }
@@ -579,5 +580,44 @@ public class OptimizationLogImpl implements OptimizationLog {
             return fullCompilationId;
         }
         return fullCompilationId.substring(dash + 1);
+    }
+
+    /**
+     * Converts the inlining tree to a JSON map if the inlining log is enabled or returns
+     * {@code null}.
+     *
+     * @return the inlining tree as a map convertible to JSON or {@code null}
+     */
+    private EconomicMap<String, Object> inliningTreeAsJsonMap() {
+        if (graph.getInliningLog() == null) {
+            return null;
+        }
+        return callsiteAsJsonMap(graph.getInliningLog().getRootCallsite());
+    }
+
+    /**
+     * Converts an inlining subtree to a JSON map starting from a callsite.
+     *
+     * @param callsite the root of the inlining subtree
+     * @return inlining subtree as a JSON map
+     */
+    private EconomicMap<String, Object> callsiteAsJsonMap(InliningLog.Callsite callsite) {
+        EconomicMap<String, Object> map = EconomicMap.create();
+        map.put("targetMethodName", callsite.target.format("%H.%n(%p)"));
+        map.put("bci", callsite.getBci());
+        List<Object> inlined = null;
+        for (InliningLog.Callsite child : callsite.children) {
+            for (InliningLog.Decision decision : child.decisions) {
+                if (decision.isPositive()) {
+                    if (inlined == null) {
+                        inlined = new ArrayList<>();
+                    }
+                    inlined.add(callsiteAsJsonMap(child));
+                    break;
+                }
+            }
+        }
+        map.put("inlinees", inlined);
+        return map;
     }
 }
