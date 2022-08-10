@@ -67,7 +67,6 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.word.LocationIdentity;
 
@@ -121,7 +120,11 @@ import org.graalvm.word.LocationIdentity;
  * @see <a href="https://en.wikipedia.org/wiki/Loop-invariant_code_motion">Loop-invariant code
  *      motion</a>
  */
-public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProviders> {
+public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicalizationPhase<CoreProviders> {
+
+    public DominatorBasedGlobalValueNumberingPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
+    }
 
     public static final CounterKey earlyGVN = DebugContext.counter("EarlyGVN");
     public static final CounterKey earlyGVNLICM = DebugContext.counter("EarlyGVN_LICM");
