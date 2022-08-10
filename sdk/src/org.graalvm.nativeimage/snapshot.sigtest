@@ -1007,8 +1007,8 @@ CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
-meth public static void registerLambdaCapturingClass(java.lang.String)
-meth public static void registerProxyClass(java.lang.String[])
+meth public static void registerLambdaCapturingClass(java.lang.Class<?>)
+meth public !varargs static void registerProxyClass(java.lang.Class<?>[])
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeProxyCreation

@@ -40,8 +40,6 @@
  */
 package org.graalvm.nativeimage.hosted;
 
-import java.util.Arrays;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -108,8 +106,8 @@ public final class RuntimeSerialization {
      *
      * @since 22.3
      */
-    public static void registerLambdaCapturingClass(String lambdaCapturingClassName) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClassName);
+    public static void registerLambdaCapturingClass(Class<?> lambdaCapturingClass) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClass);
     }
 
     /**
@@ -119,8 +117,8 @@ public final class RuntimeSerialization {
      *
      * @since 22.3
      */
-    public static void registerProxyClass(String... implementedInterfaces) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), Arrays.asList(implementedInterfaces));
+    public static void registerProxyClass(Class<?>... implementedInterfaces) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), implementedInterfaces);
     }
 
     private RuntimeSerialization() {
