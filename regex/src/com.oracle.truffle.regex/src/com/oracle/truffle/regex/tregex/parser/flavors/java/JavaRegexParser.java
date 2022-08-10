@@ -321,6 +321,7 @@ public final class JavaRegexParser implements RegexParser {
                         case 'G':
                             bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
                     }
+                    break;
                 case alternation:
                     astBuilder.nextSequence();
                     break;
@@ -328,7 +329,7 @@ public final class JavaRegexParser implements RegexParser {
                     openInlineFlag = ((Token.InlineFlagToken) token).isOpen();
                     if (!openInlineFlag)
                         astBuilder.pushGroup();
-                    flagsStack.push(new JavaFlags(((Token.InlineFlagToken) token).getFlags()));
+                    lexer.pushFlagsStack(new JavaFlags(((Token.InlineFlagToken) token).getFlags()));
                     break;
                 case captureGroupBegin:
                     astBuilder.pushCaptureGroup(token);
@@ -344,7 +345,7 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 case groupEnd:
                     if (!openInlineFlag) {
-                        flagsStack.pop();
+                        lexer.popFlagsStack();
                         openInlineFlag = true;
                     } else if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
                         throw syntaxErrorHere(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
@@ -354,7 +355,8 @@ public final class JavaRegexParser implements RegexParser {
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
-
+                case placeholder:
+                    break;
             }
 //            lastToken = token;
         }
@@ -370,7 +372,8 @@ public final class JavaRegexParser implements RegexParser {
 
     @Override
     public AbstractRegexObject getFlags() {
-        return globalFlags;
+//        return globalFlags;
+        return lexer.getLocalFlags();
     }
 
     private JavaFlags getLocalFlags() {

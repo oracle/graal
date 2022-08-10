@@ -288,15 +288,25 @@ public class JavaLexer {
     /* lexer */
 
     private Token getNext() throws RegexSyntaxException {
-        final int ch = consumeChar();
+        int ch = consumeChar();
 
+//        if (getLocalFlags().isExtended()) {
+//            if (WHITESPACE.get(ch)) {
+//                return null;
+//            }
+//            if (ch == '#') {
+//                comment();
+//                return null;
+//            }
+//        }
         if (getLocalFlags().isExtended()) {
-            if (WHITESPACE.get(ch)) {
-                return null;
-            }
             if (ch == '#') {
                 comment();
-                return null;
+                return Token.createPlaceHolder();
+            }
+            if(WHITESPACE.get(ch)) {
+               consumeChar();
+               return Token.createPlaceHolder();
             }
         }
 
@@ -348,6 +358,14 @@ public class JavaLexer {
 
     public JavaFlags getLocalFlags() {
         return flagsStack.peek();
+    }
+
+    public void pushFlagsStack(JavaFlags flag) {
+        flagsStack.push(flag);
+    }
+
+    public void popFlagsStack() {
+        flagsStack.pop();
     }
 
     /**
@@ -494,7 +512,7 @@ public class JavaLexer {
     }
 
     /**
-     * Parses a character class. The syntax of Ruby character classes is quite different to the one
+     * Parses a character class. The syntax of Java character classes is quite different to the one
      * in ECMAScript (set intersections, nested char classes, POSIX brackets...). For that reason,
      * we do not transpile the character class expression piece-by-piece, but we parse it completely
      * to build up a character set representation and then we generate an ECMAScript character class
@@ -624,7 +642,7 @@ public class JavaLexer {
                     default:
                         upperBound = Optional.of(ch);
                 }
-                // if the right operand of a range operator was a nested char class, Ruby drops
+                // if the right operand of a range operator was a nested char class, Java drops
                 // both the left operand and the range operator
                 if (!wasNestedCharClass) {
                     if (lowerBound.isEmpty() || upperBound.isEmpty() || upperBound.get() < lowerBound.get()) {
@@ -681,6 +699,7 @@ public class JavaLexer {
 
     /**
      * This method modifies {@code curCharClass} to contains its closure on case mapping.
+     * As Ruby and Java have similar character classes, we take the advantage of Ruby's already existing classes (for caseFold for example)
      */
     private void caseClosure() {
         charClassTmp.clear();
@@ -720,6 +739,7 @@ public class JavaLexer {
 
     /**
      * Calls the argument on any element of the character class which has a case-folding.
+     * As Ruby and Java have similar character classes, we take the advantage of Ruby's already existing classes (for caseFold for example)
      */
     private void caseFoldCharClass(BiConsumer<Integer, int[]> caseFoldItem) {
         if (curCharClass.get().size() < RubyCaseFoldingData.CASE_FOLD.size()) {
@@ -971,17 +991,9 @@ public class JavaLexer {
                 advance();
                 String code = getUpTo(2, JavaLexer::isHexDigit);
                 int byteValue = Integer.parseInt(code, 16);
-                if (byteValue > 0x7F) {
-                    // This is a non-ASCII byte escape. The escaped character might be part of a
-                    // multibyte sequece. These sequences are encoding specific and supporting
-                    // them would mean having to include decoders for all of Ruby's encodings.
-                    // Fortunately, TruffleRuby decodes these for us and replaces them with
-                    // verbatim characters or other forms of escape. Therefore, this can be
-                    // trigerred by either:
-                    // *) TruffleRuby's ClassicRegexp#preprocess was not called on the input
-                    // *) TruffleRuby's ClassicRegexp#preprocess emitted a non-ASCII \\x escape
-                    bailOut("unsupported multibyte escape");
-                }
+//                if (byteValue > 0x7F) {
+//                    bailOut("unsupported multibyte escape");
+//                }
                 return Optional.of(byteValue);
             }
             case 'u': {
@@ -1169,7 +1181,7 @@ public class JavaLexer {
             throw syntaxErrorAtEnd(JavaErrorMessages.UNTERMINATED_SUBPATTERN);
         }
         if (match("?")) {
-            final int ch1 = consumeChar();
+            final char ch1 = consumeChar();
             switch (ch1) {
                 case ':':
                     return Token.createNonCaptureGroupBegin();
