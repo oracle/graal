@@ -200,7 +200,7 @@ public final class JavaRegexParser implements RegexParser {
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
-                case placeholder:
+                case comment:
                     break;
             }
         }

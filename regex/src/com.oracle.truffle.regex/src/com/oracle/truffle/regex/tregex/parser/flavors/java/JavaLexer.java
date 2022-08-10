@@ -1,6 +1,5 @@
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
-import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
@@ -21,10 +20,8 @@ import com.oracle.truffle.regex.tregex.parser.flavors.RubyCaseUnfoldingTrie;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -240,23 +237,14 @@ public class JavaLexer extends BaseLexer {
     protected Token getNext() throws RegexSyntaxException {
         char ch = consumeChar();
 
-//        if (getLocalFlags().isExtended()) {
-//            if (WHITESPACE.get(ch)) {
-//                return null;
-//            }
-//            if (ch == '#') {
-//                comment();
-//                return null;
-//            }
-//        }
         if (getLocalFlags().isExtended()) {
             if (ch == '#') {
                 comment();
-                return Token.createPlaceHolder();
+                return Token.createComment();
             }
             if (WHITESPACE.get(ch)) {
                 consumeChar();
-                return Token.createPlaceHolder();
+                return Token.createComment();
             }
         }
 
