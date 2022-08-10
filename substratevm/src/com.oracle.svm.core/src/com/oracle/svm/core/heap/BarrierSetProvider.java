@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,14 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
-@AutomaticFeature
-public class HeapFeature implements InternalFeature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(SubstrateAllocationSnippets.class)) {
-            ImageSingletons.add(SubstrateAllocationSnippets.class, new SubstrateAllocationSnippets());
-        }
-    }
-
-    @Override
-    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        ImageSingletons.lookup(SubstrateAllocationSnippets.class).registerForeignCalls(foreignCalls);
-    }
+public interface BarrierSetProvider {
+    /**
+     * Returns a suitable {@link org.graalvm.compiler.nodes.gc.BarrierSet} for the used garbage
+     * collector.
+     */
+    BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
 }

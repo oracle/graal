@@ -210,7 +210,7 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -1078,7 +1078,7 @@ public class NativeImageGenerator {
          * added to the universe.
          */
         aMetaAccess.lookupJavaType(Reference.class).registerAsReachable();
-        BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(aMetaAccess);
+        BarrierSet barrierSet = ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(aMetaAccess);
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
         MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);

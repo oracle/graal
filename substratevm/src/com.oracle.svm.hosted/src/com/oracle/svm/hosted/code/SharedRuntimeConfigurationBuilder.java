@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.code;
 import java.util.EnumMap;
 import java.util.function.Function;
 
-import com.oracle.svm.hosted.HostedConfiguration;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -57,7 +56,8 @@ import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.BarrierSetProvider;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -111,7 +111,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider();
         ForeignCallsProvider foreignCalls = createForeignCallsProvider(registerConfigs.get(ConfigKind.NORMAL));
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null, null);
-        BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(metaAccess);
+        BarrierSet barrierSet = ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(metaAccess);
         PlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
         MetaAccessExtensionProvider metaAccessExtensionProvider = HostedConfiguration.instance().createCompilationMetaAccessExtensionProvider(metaAccess);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
