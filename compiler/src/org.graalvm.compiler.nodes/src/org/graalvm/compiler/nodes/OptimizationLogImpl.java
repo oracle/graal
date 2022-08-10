@@ -429,23 +429,20 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     @Override
-    public void enterPartialEscapeAnalysis() {
+    public DebugCloseable enterPartialEscapeAnalysis() {
         assert partialEscapeLog == null;
-        if (optimizationLogEnabled) {
-            partialEscapeLog = new PartialEscapeLogImpl();
+        if (!optimizationLogEnabled) {
+            return DebugCloseable.VOID_CLOSEABLE;
         }
-    }
-
-    @Override
-    public void exitPartialEscapeAnalysis() {
-        if (optimizationLogEnabled) {
+        partialEscapeLog = new PartialEscapeLogImpl();
+        return () -> {
             assert partialEscapeLog != null;
             MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.virtualNodes.getEntries();
             while (cursor.advance()) {
                 report(PartialEscapeLog.class, "AllocationVirtualization", cursor.getKey()).setProperty("materializations", cursor.getValue());
             }
             partialEscapeLog = null;
-        }
+        };
     }
 
     @Override

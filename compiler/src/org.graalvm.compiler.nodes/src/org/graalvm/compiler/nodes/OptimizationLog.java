@@ -211,14 +211,13 @@ public interface OptimizationLog extends CompilationListener {
             return null;
         }
 
+        /**
+         * Returns a {@link DebugCloseable#VOID_CLOSEABLE} because the optimization log is disabled
+         * and there is nothing to do.
+         */
         @Override
-        public void enterPartialEscapeAnalysis() {
-
-        }
-
-        @Override
-        public void exitPartialEscapeAnalysis() {
-
+        public DebugCloseable enterPartialEscapeAnalysis() {
+            return DebugCloseable.VOID_CLOSEABLE;
         }
 
         /**
@@ -327,8 +326,8 @@ public interface OptimizationLog extends CompilationListener {
 
     /**
      * Gets the log that keeps track of virtualized allocations during partial escape analysis. Must
-     * be called between {@link #enterPartialEscapeAnalysis()} and
-     * {@link #exitPartialEscapeAnalysis()}.
+     * be called after {@link #enterPartialEscapeAnalysis()} and before the {@link DebugCloseable}
+     * is closed.
      *
      * @return the log that keeps track of virtualized allocations during partial escape analysis
      */
@@ -353,16 +352,12 @@ public interface OptimizationLog extends CompilationListener {
     OptimizationPhaseScope getCurrentPhase();
 
     /**
-     * Notifies the log that virtual escape analysis will be entered. If the optimization log is
-     * enabled, it prepares an object that keeps track of virtualized allocations.
+     * Notifies the log that partial escape analysis will be entered and returns a
+     * {@link DebugCloseable} that should be closed after the analysis. If the optimization log is
+     * enabled, it prepares an object that keeps track of virtualized allocations. After closing,
+     * virtualized allocations are reported.
      */
-    void enterPartialEscapeAnalysis();
-
-    /**
-     * Notifies the log that virtual escape analysis has ended. If the optimization log is enabled,
-     * it reports all virtualized allocations.
-     */
-    void exitPartialEscapeAnalysis();
+    DebugCloseable enterPartialEscapeAnalysis();
 
     /**
      * Opens a {@link DebugCloseable} and sets itself as the compilation listener, if the
