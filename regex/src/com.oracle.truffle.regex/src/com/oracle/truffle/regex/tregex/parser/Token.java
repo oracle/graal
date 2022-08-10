@@ -52,7 +52,6 @@ import java.util.Objects;
 
 public class Token implements JsonConvertible {
 
-
     public enum Kind {
         caret,
         dollar,
@@ -68,7 +67,8 @@ public class Token implements JsonConvertible {
         groupEnd,
         charClass,
         inlineFlag,
-        anchor
+        anchor,
+        placeholder
     }
 
     private static final Token CARET = new Token(Kind.caret);
@@ -158,6 +158,13 @@ public class Token implements JsonConvertible {
 
     public static Token createLookBehindAssertionBegin(boolean negated) {
         return negated ? NEGATIVE_LOOK_BEHIND_ASSERTION_BEGIN : LOOK_BEHIND_ASSERTION_BEGIN;
+    }
+
+    /**
+     * place holder for an empty token
+     */
+    public static Token createPlaceHolder() {
+        return new Token(Kind.placeholder);
     }
 
     public final Kind kind;
