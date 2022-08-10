@@ -34,7 +34,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -138,12 +137,12 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
             return value;
         }
         if (accessKind == JavaKind.Boolean) {
-            // special handling for boolean slots.
+            // Special handling for boolean slots.
+            // Canonically equivalent to:
+            // (int) value != 0;
             LogicNode logicNode = new IntegerEqualsNode(value, ConstantNode.forLong(0, graph()));
             tool.addNode(logicNode);
-            logicNode = new LogicNegationNode(logicNode);
-            tool.addNode(logicNode);
-            ValueNode conditional = new ConditionalNode(logicNode, ConstantNode.forInt(1, graph()), ConstantNode.forInt(0, graph()));
+            ValueNode conditional = new ConditionalNode(logicNode, ConstantNode.forInt(0, graph()), ConstantNode.forInt(1, graph()));
             tool.addNode(conditional);
             return conditional;
         }
