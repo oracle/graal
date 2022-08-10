@@ -81,7 +81,7 @@ public class UnmatchedMethod {
      * @param experiment1 the first experiment
      * @param experiment2 the second experiment
      */
-    public void writeHeaderAndCompilationList(Writer writer, Experiment experiment1, Experiment experiment2) {
+    private void writeHeaderAndCompilationList(Writer writer, Experiment experiment1, Experiment experiment2) {
         writer.writeln("Method " + compilationMethodName + " is hot only in experiment " + experiment.getExperimentId());
         writer.increaseIndent();
         experiment1.writeCompilationUnits(writer, compilationMethodName);

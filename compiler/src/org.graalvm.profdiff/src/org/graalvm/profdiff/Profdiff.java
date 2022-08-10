@@ -129,7 +129,8 @@ public class Profdiff {
             matchedMethod.writeHeaderAndCompilationUnits(writer, experiment1, experiment2);
             writer.increaseIndent();
             if (verbosityLevel.shouldPrintOptimizationTree()) {
-                matchedMethod.writeAllHotCompilationUnits(writer);
+                matchedMethod.getFirstHotCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
+                matchedMethod.getSecondHotCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
             }
             if (verbosityLevel.shouldDiffCompilations()) {
                 for (MatchedCompilationUnit matchedCompilationUnit : matchedMethod.getMatchedCompilationUnits()) {

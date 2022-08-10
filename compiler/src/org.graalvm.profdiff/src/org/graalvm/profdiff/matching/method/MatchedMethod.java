@@ -41,22 +41,22 @@ public class MatchedMethod {
     private final String compilationMethodName;
 
     /**
-     * Hot compilation units of the method in the first experiment.
+     * Hot compilation units of this method in the first experiment.
      */
     private final List<CompilationUnit> compilationUnits1;
 
     /**
-     * Hot compilation units of the method in the second experiment.
+     * Hot compilation units of this method in the second experiment.
      */
     private final List<CompilationUnit> compilationUnits2;
 
     /**
-     * Pairs of matched compilation units of this method.
+     * Pairs of matched hot compilation units of this method.
      */
     private final List<MatchedCompilationUnit> matchedCompilationUnits = new ArrayList<>();
 
     /**
-     * Unmatched compilation units of this method.
+     * Unmatched hot compilation units of this method.
      */
     private final List<CompilationUnit> unmatchedCompilationUnits = new ArrayList<>();
 
@@ -84,17 +84,31 @@ public class MatchedMethod {
     }
 
     /**
-     * Gets the list of pairs of matched compilations of this method.
+     * Gets the list of pairs of matched hot compilations of this method.
      */
     public List<MatchedCompilationUnit> getMatchedCompilationUnits() {
         return matchedCompilationUnits;
     }
 
     /**
-     * Gets the list of compilations of this method that do not have a match.
+     * Gets the list of hot compilations of this method that do not have a match.
      */
     public List<CompilationUnit> getUnmatchedCompilationUnits() {
         return unmatchedCompilationUnits;
+    }
+
+    /**
+     * Gets the list of hot compilations units of this method in the first experiment.
+     */
+    public List<CompilationUnit> getFirstHotCompilationUnits() {
+        return compilationUnits1;
+    }
+
+    /**
+     * Gets the list of hot compilations units of this method in the second experiment.
+     */
+    public List<CompilationUnit> getSecondHotCompilationUnits() {
+        return compilationUnits2;
     }
 
     public void addMatchedCompilationUnit(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
@@ -119,20 +133,5 @@ public class MatchedMethod {
         experiment1.writeCompilationUnits(writer, compilationMethodName);
         experiment2.writeCompilationUnits(writer, compilationMethodName);
         writer.decreaseIndent();
-    }
-
-    /**
-     * Writes all hot compilation units including optimization trees from both experiments to the
-     * destination writer.
-     *
-     * @param writer the destination writer
-     */
-    public void writeAllHotCompilationUnits(Writer writer) {
-        for (CompilationUnit compilationUnit : compilationUnits1) {
-            compilationUnit.write(writer);
-        }
-        for (CompilationUnit compilationUnit : compilationUnits2) {
-            compilationUnit.write(writer);
-        }
     }
 }
