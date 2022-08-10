@@ -1851,7 +1851,7 @@ suite = {
       "testProject" : True,
     },
 
-    "org.graalvm.bisect" : {
+    "org.graalvm.profdiff" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.util"],
@@ -1859,11 +1859,11 @@ suite = {
       "javaCompliance" : "11+",
     },
 
-    "org.graalvm.bisect.test" : {
+    "org.graalvm.profdiff.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.bisect",
+        "org.graalvm.profdiff",
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -2170,10 +2170,10 @@ suite = {
       },
     },
 
-    "GRAAL_BISECT": {
+    "GRAAL_PROFDIFF": {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.bisect",
+        "org.graalvm.profdiff",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
@@ -2184,13 +2184,13 @@ suite = {
       "maven" : False,
     },
 
-    "GRAAL_BISECT_TEST" : {
+    "GRAAL_PROFDIFF_TEST" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.bisect.test",
+        "org.graalvm.profdiff.test",
       ],
       "distDependencies" : [
-        "GRAAL_BISECT",
+        "GRAAL_PROFDIFF",
       ],
       "exclude" : [
         "mx:JUNIT",

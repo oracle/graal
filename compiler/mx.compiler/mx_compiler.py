@@ -1381,10 +1381,10 @@ def print_graaljdk_config(args):
     """print the GraalJDK config"""
     mx_sdk_vm_impl.graalvm_show([], _graaljdk_dist(_parse_graaljdk_edition('Print the GraalJDK config', args)))
 
-def prof_bisect(args):
+def profdiff(args):
     """compare the optimization log of hot compilation units of two experiments"""
-    cp = mx.classpath('GRAAL_BISECT', jdk=jdk)
-    vm_args = ['-cp', cp, 'org.graalvm.bisect.ProfBisect'] + args
+    cp = mx.classpath('GRAAL_PROFDIFF', jdk=jdk)
+    vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
 mx.update_commands(_suite, {
@@ -1401,7 +1401,7 @@ mx.update_commands(_suite, {
     'graaljdk-home': [print_graaljdk_home, '[options]'],
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
-    'profbisect': [prof_bisect, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
+    'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
 })
 
 def mx_post_parse_cmd_line(opts):
