@@ -139,7 +139,6 @@ else()
   target_link_options(sulong++ PRIVATE -nostdlib)
 
   target_sources(sulong++ PRIVATE libsulongxx/windows/sulong++.def)
-  target_sources(sulong++ PRIVATE ${VCRUNTIME_SRC}/thread_safe_statics.cpp ${VCRUNTIME_SRC}/new_scalar.cpp)
   target_sources(sulong++ PRIVATE libsulongxx/windows/type_info.cpp)
 
   set_source_files_properties(libsulongxx/windows/type_info.cpp PROPERTIES COMPILE_FLAGS -fno-rtti)
