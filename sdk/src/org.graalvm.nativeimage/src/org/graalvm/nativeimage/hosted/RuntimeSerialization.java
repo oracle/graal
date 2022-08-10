@@ -103,21 +103,6 @@ public final class RuntimeSerialization {
     }
 
     /**
-     * Makes the class provided via className available for serialization at runtime but uses the
-     * custom TargetConstructor provided via customTargetConstructorClassName for deserialization.
-     * <p>
-     * In some cases an application might explicitly make calls to
-     * {@code ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall)}
-     * where the passed `constructorToCall` differs from what would automatically be used if regular
-     * deserialization of `cl` would happen. This method exists to also support such usecases.
-     *
-     * @since 22.3
-     */
-    public static void registerWithTargetConstructorClass(String className, String customTargetConstructorClassName) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), className, customTargetConstructorClassName);
-    }
-
-    /**
      * Makes class available for serialization at runtime that is created for the lambda expressions
      * (a class that has a $deserializeLambda$ method) specified by the lambdaCapturingClassName.
      *
