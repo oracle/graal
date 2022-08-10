@@ -98,7 +98,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>code = builtin_unit, TAG = compile_unit<code> - Java primitive and header type
          * compile unit
          *
-         * <li><code>code = class_unit1/2/3, tag = compile_unit<code> - Java instance type compile
+         * <li><code>code = class_unit1/2, tag = compile_unit<code> - Java instance type compile
          * unit
          *
          * <li><code>code = array_unit, tag = compile_unit<code> - Java array type compile unit
@@ -263,12 +263,13 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * Instance Classes: For each class there is a level 0 DIE defining the class compilation
          * unit. low_pc and hi_pc are only included if the class has compiled methods i.e. for
-         * variants 1 and 2. stmt_list is is only included if the class has an associated source
-         * file and may therefore have line info i.e. for variant 1.
+         * variants 1 and 2. stmt_list is included for all classes, even when they have no compiled
+         * methods, to ensure that a basic line entry record exists for the class. This is needed to
+         * ensure some tools report a file name for methods that may only exist inlined.
          *
          * <ul>
          *
-         * <li><code>abbrev_code == class_unit1/2/3, tag == DW_TAG_compilation_unit,
+         * <li><code>abbrev_code == class_unit1/2, tag == DW_TAG_compilation_unit,
          * has_children</code>
          *
          * <li><code>DW_AT_language : ... DW_FORM_data1</code>
@@ -278,15 +279,14 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>DW_AT_comp_dir : ... DW_FORM_strp</code>
          *
          * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code> n.b only for <code>abbrev-code ==
-         * class_unit1/2</code>
+         * class_unit1</code>
          *
          * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code> n.b only for <code>abbrev-code ==
-         * class_unit1/2</code>
+         * class_unit1</code>
          *
          * <li><code>DW_AT_use_UTF8 : ... DW_FORM_flag</code>
          *
-         * <li><code>DW_AT_stmt_list : .. DW_FORM_sec_offset</code> n.b only for <code>abbrev-code
-         * == class_unit1</code>
+         * <li><code>DW_AT_stmt_list : .. DW_FORM_sec_offset</code>
          *
          * </ul>
          *
@@ -897,10 +897,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         int pos = p;
         /* class compile unit with compiled methods and line info */
         pos = writeClassUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit1, buffer, pos);
-        /* class compile unit with compiled methods but without line info */
+        /* class compile unit without compiled methods */
         pos = writeClassUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit2, buffer, pos);
-        /* class compile unit without compiled methods and without line info */
-        pos = writeClassUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit3, buffer, pos);
         return pos;
     }
 
@@ -917,16 +915,14 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_comp_dir, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
-        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 || abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit2) {
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_low_pc, buffer, pos);
             pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
             pos = writeAttrType(DwarfDebugInfo.DW_AT_hi_pc, buffer, pos);
             pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
         }
-        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
-            pos = writeAttrType(DwarfDebugInfo.DW_AT_stmt_list, buffer, pos);
-            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
-        }
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_stmt_list, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
         /*
          * Now terminate.
          */

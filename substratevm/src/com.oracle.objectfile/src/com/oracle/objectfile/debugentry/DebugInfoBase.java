@@ -113,13 +113,14 @@ public abstract class DebugInfoBase {
      */
     private Map<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
     /**
-     * List of class entries detailing class info for primary ranges.
+     * List of all instance classes found in debug info. These classes do not necessarily include
+     * top level or inline compiled methods.
      */
-    private List<ClassEntry> primaryClasses = new ArrayList<>();
+    private List<ClassEntry> instanceClasses = new ArrayList<>();
     /**
      * Index of already seen classes.
      */
-    private Map<ResolvedJavaType, ClassEntry> primaryClassesIndex = new HashMap<>();
+    private Map<ResolvedJavaType, ClassEntry> instanceClassesIndex = new HashMap<>();
     /**
      * Handle on class entry for java.lang.Object.
      */
@@ -337,6 +338,9 @@ public abstract class DebugInfoBase {
             if (typeName.equals("java.lang.Object")) {
                 objectClass = (ClassEntry) typeEntry;
             }
+            if (typeEntry instanceof ClassEntry) {
+                indexInstanceClass(idType, (ClassEntry) typeEntry);
+            }
         } else {
             if (!(typeEntry.isClass())) {
                 assert ((ClassEntry) typeEntry).getFileName().equals(fileName);
@@ -419,17 +423,21 @@ public abstract class DebugInfoBase {
     }
 
     private ClassEntry ensureClassEntry(ResolvedJavaType type) {
-        /* See if we already have an entry. */
-        ClassEntry classEntry = primaryClassesIndex.get(type);
+        /* We should already have an entry  -- TODO prove that claim. */
+        ClassEntry classEntry = instanceClassesIndex.get(type);
         if (classEntry == null) {
+            /* We must have a type entry -- TODO prove we never reach here. */
             TypeEntry typeEntry = typesIndex.get(type);
             assert (typeEntry != null && typeEntry.isClass());
             classEntry = (ClassEntry) typeEntry;
-            primaryClasses.add(classEntry);
-            primaryClassesIndex.put(type, classEntry);
+            indexInstanceClass(type, classEntry);
         }
         assert (classEntry.getTypeName().equals(type.toJavaName()));
         return classEntry;
+    }
+    private void indexInstanceClass(ResolvedJavaType idType, ClassEntry classEntry) {
+        instanceClasses.add(classEntry);
+        instanceClassesIndex.put(idType, classEntry);
     }
 
     private FileEntry addFileEntry(String fileName, Path filePath, Path cachePath) {
@@ -500,8 +508,8 @@ public abstract class DebugInfoBase {
         return types;
     }
 
-    public List<ClassEntry> getPrimaryClasses() {
-        return primaryClasses;
+    public List<ClassEntry> getInstanceClasses() {
+        return instanceClasses;
     }
 
     @SuppressWarnings("unused")

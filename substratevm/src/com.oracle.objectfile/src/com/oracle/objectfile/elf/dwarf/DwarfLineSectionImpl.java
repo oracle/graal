@@ -160,20 +160,19 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * Write entries for each file listed in the primary list.
          */
         int pos = 0;
-        for (ClassEntry classEntry : getPrimaryClasses()) {
-            if (classEntry.getFileName().length() != 0) {
-                int startPos = pos;
-                setLineIndex(classEntry, startPos);
-                int headerSize = headerSize();
-                int dirTableSize = computeDirTableSize(classEntry);
-                int fileTableSize = computeFileTableSize(classEntry);
-                int prologueSize = headerSize + dirTableSize + fileTableSize;
-                setLinePrologueSize(classEntry, prologueSize);
-                int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
-                int totalSize = prologueSize + lineNumberTableSize;
-                setLineSectionSize(classEntry, totalSize);
-                pos += totalSize;
-            }
+        for (ClassEntry classEntry : getInstanceClasses()) {
+            assert classEntry.getFileName().length() != 0;
+            int startPos = pos;
+            setLineIndex(classEntry, startPos);
+            int headerSize = headerSize();
+            int dirTableSize = computeDirTableSize(classEntry);
+            int fileTableSize = computeFileTableSize(classEntry);
+            int prologueSize = headerSize + dirTableSize + fileTableSize;
+            setLinePrologueSize(classEntry, prologueSize);
+            int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
+            int totalSize = prologueSize + lineNumberTableSize;
+            setLineSectionSize(classEntry, totalSize);
+            pos += totalSize;
         }
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
@@ -296,24 +295,22 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         enableLog(context, pos);
         log(context, "  [0x%08x] DEBUG_LINE", pos);
 
-        for (ClassEntry classEntry : getPrimaryClasses()) {
-            if (classEntry.getFileName().length() != 0) {
-                int startPos = pos;
-                assert getLineIndex(classEntry) == startPos;
-                log(context, "  [0x%08x] Compile Unit for %s", pos, classEntry.getFileName());
-                pos = writeHeader(classEntry, buffer, pos);
-                log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos - startPos);
-                int dirTablePos = pos;
-                pos = writeDirTable(context, classEntry, buffer, pos);
-                log(context, "  [0x%08x] dirTableSize = 0x%08x", pos, pos - dirTablePos);
-                int fileTablePos = pos;
-                pos = writeFileTable(context, classEntry, buffer, pos);
-                log(context, "  [0x%08x] fileTableSize = 0x%08x", pos, pos - fileTablePos);
-                int lineNumberTablePos = pos;
-                pos = writeLineNumberTable(context, classEntry, buffer, pos);
-                log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
-                log(context, "  [0x%08x] size = 0x%x", pos, pos - startPos);
-            }
+        for (ClassEntry classEntry : getInstanceClasses()) {
+            int startPos = pos;
+            assert getLineIndex(classEntry) == startPos;
+            log(context, "  [0x%08x] Compile Unit for %s", pos, classEntry.getFileName());
+            pos = writeHeader(classEntry, buffer, pos);
+            log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos - startPos);
+            int dirTablePos = pos;
+            pos = writeDirTable(context, classEntry, buffer, pos);
+            log(context, "  [0x%08x] dirTableSize = 0x%08x", pos, pos - dirTablePos);
+            int fileTablePos = pos;
+            pos = writeFileTable(context, classEntry, buffer, pos);
+            log(context, "  [0x%08x] fileTableSize = 0x%08x", pos, pos - fileTablePos);
+            int lineNumberTablePos = pos;
+            pos = writeLineNumberTable(context, classEntry, buffer, pos);
+            log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
+            log(context, "  [0x%08x] size = 0x%x", pos, pos - startPos);
         }
         assert pos == buffer.length;
     }
@@ -439,18 +436,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
-        // if the class has no associated file then don't generate line info
-        if (classEntry.getFileEntry() == null) {
-            return pos;
-        }
         /*
          * The class file entry should always be first in the local files list.
          */
         assert classEntry.localFilesIdx() == 1;
-        String primaryClassName = classEntry.getTypeName();
-        String primaryFileName = classEntry.getFileName();
-        log(context, "  [0x%08x] primary class %s", pos, primaryClassName);
-        log(context, "  [0x%08x] primary class file %s", pos, primaryFileName);
+        String className = classEntry.getTypeName();
+        String fileName = classEntry.getFileName();
+        String classLabel = classEntry.isPrimary() ? "primary class" : "non-primary class";
+        log(context, "  [0x%08x] %s %s", pos, classLabel, className);
+        log(context, "  [0x%08x] %s file %s", pos, className, fileName);
         for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
 
             Range primaryRange = primaryEntry.getPrimary();
@@ -645,7 +639,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             }
             pos = writeEndSequenceOp(context, buffer, pos);
         }
-        log(context, "  [0x%08x] primary class processed %s", pos, primaryClassName);
+        log(context, "  [0x%08x] processed %s %s", pos, classLabel, className);
 
         return pos;
     }

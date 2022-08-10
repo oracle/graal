@@ -73,7 +73,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_builtin_unit = 1;
     public static final int DW_ABBREV_CODE_class_unit1 = 2;
     public static final int DW_ABBREV_CODE_class_unit2 = 3;
-    public static final int DW_ABBREV_CODE_class_unit3 = 4;
+    // public static final int DW_ABBREV_CODE_class_unit3 = 4;
     public static final int DW_ABBREV_CODE_array_unit = 5;
     /* Level 1 DIEs. */
     public static final int DW_ABBREV_CODE_primitive_type = 6;

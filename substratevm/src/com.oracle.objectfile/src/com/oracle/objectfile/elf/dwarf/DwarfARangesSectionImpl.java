@@ -97,7 +97,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          * contains two zeroes.
          */
 
-        for (ClassEntry classEntry : getPrimaryClasses()) {
+        for (ClassEntry classEntry : getInstanceClasses()) {
             if (classEntry.isPrimary()) {
                 pos += DW_AR_HEADER_SIZE;
                 /*
@@ -119,7 +119,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             }
         }
         /* Now allow for deopt target ranges. */
-        for (ClassEntry classEntry : getPrimaryClasses()) {
+        for (ClassEntry classEntry : getInstanceClasses()) {
             if (classEntry.isPrimary() && classEntry.includesDeoptTarget()) {
                 pos += DW_AR_HEADER_SIZE;
                 /*
@@ -166,7 +166,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         enableLog(context, pos);
 
         List<ClassEntry> classEntries = new ArrayList<>();
-        for (ClassEntry classEntry : getPrimaryClasses()) {
+        for (ClassEntry classEntry : getInstanceClasses()) {
             if (classEntry.isPrimary()) {
                 classEntries.add(classEntry);
             }
@@ -224,7 +224,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         }
         /* now write ranges for deopt targets */
         classEntries.clear();
-        for (ClassEntry classEntry : getPrimaryClasses()) {
+        for (ClassEntry classEntry : getInstanceClasses()) {
             if (classEntry.isPrimary() && classEntry.includesDeoptTarget()) {
                 classEntries.add(classEntry);
             }

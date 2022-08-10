@@ -621,8 +621,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getTypes().stream();
     }
 
-    protected Iterable<? extends ClassEntry> getPrimaryClasses() {
-        return dwarfSections.getPrimaryClasses();
+    protected Iterable<? extends ClassEntry> getInstanceClasses() {
+        return dwarfSections.getInstanceClasses();
     }
 
     protected int debugStringIndex(String str) {

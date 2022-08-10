@@ -56,7 +56,7 @@ final class CVSymbolSubsectionBuilder {
      */
     void build() {
         /* loop over all classes defined in this module. */
-        for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
+        for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
             build(classEntry);
         }
         cvDebugInfo.getCVSymbolSection().addRecord(cvSymbolSubsection);

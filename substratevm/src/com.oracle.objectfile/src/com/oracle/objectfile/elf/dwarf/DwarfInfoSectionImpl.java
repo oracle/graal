@@ -161,7 +161,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * because they are compiled later and hence inhabit a range that extends beyond the normal
          * method address range.
          */
-        for (ClassEntry classEntry : getPrimaryClasses()) {
+        for (ClassEntry classEntry : getInstanceClasses()) {
             if (classEntry.includesDeoptTarget()) {
                 /*
                  * Save the offset of this file's CU so it can be used when writing the aranges
@@ -343,14 +343,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeNonPrimaryClassUnit(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
+        int lineIndex = getLineIndex(classEntry);
         cuStart = pos;
         setCUIndex(classEntry, cuStart);
         int lengthPos = pos;
         log(context, "  [0x%08x] non primary class unit %s", pos, classEntry.getTypeName());
         pos = writeCUHeader(buffer, pos);
         assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-        /* Non-primary classes have no compiled methods so they also have no line section entry. */
-        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_unit3;
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_unit2;
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
@@ -362,6 +362,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String compilationDirectory = classEntry.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeAttrStrp(compilationDirectory, buffer, pos);
+        /* Non-primary classes have no compiled methods so they have no low or high pc. */
+        /* However, we still generate a statement list in cae they include inlined methods */
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+        pos = writeLineSectionOffset(lineIndex, buffer, pos);
 
         /* Now write the child DIEs starting with the layout and pointer type. */
 
@@ -406,15 +410,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         int lineIndex = getLineIndex(classEntry);
         String fileName = classEntry.getFileName();
-        /*
-         * Primary classes only have a line section entry if they have method and an associated
-         * file.
-         */
         int lo = classEntry.lowpc();
         int hi = classEntry.hipc();
         // we must have at least one compiled method
         assert hi > 0;
-        int abbrevCode = (fileName.length() > 0 ? DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 : DwarfDebugInfo.DW_ABBREV_CODE_class_unit2);
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_unit1;
         cuStart = pos;
         setCUIndex(classEntry, cuStart);
         int lengthPos = pos;
@@ -440,11 +440,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrAddress(lo, buffer, pos);
         log(context, "  [0x%08x]     hi_pc  0x%08x", pos, hi);
         pos = writeAttrAddress(hi, buffer, pos);
-        /* Only write stmt_list if the entry actually has line number info. */
-        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
-            log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
-            pos = writeLineSectionOffset(lineIndex, buffer, pos);
-        }
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+        pos = writeLineSectionOffset(lineIndex, buffer, pos);
 
         /* Now write the child DIEs starting with the layout and pointer type. */
 
@@ -1307,13 +1304,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert classEntry.includesDeoptTarget();
         List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         assert !classPrimaryEntries.isEmpty();
-        String fileName = classEntry.getFileName();
         int lineIndex = getLineIndex(classEntry);
         int lo = classEntry.lowpcDeopt();
         int hi = classEntry.hipcDeopt();
         // we must have at least one compiled deopt method
         assert hi > 0 : hi;
-        int abbrevCode = (fileName.length() > 0 ? DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 : DwarfDebugInfo.DW_ABBREV_CODE_class_unit2);
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_unit1;
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DwarfDebugInfo.DW_LANG_Java");
@@ -1329,10 +1325,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrAddress(lo, buffer, pos);
         log(context, "  [0x%08x]     hi_pc  0x%08x", pos, hi);
         pos = writeAttrAddress(hi, buffer, pos);
-        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
-            log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
-            pos = writeAttrData4(lineIndex, buffer, pos);
-        }
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+        pos = writeAttrData4(lineIndex, buffer, pos);
 
         /* Write all method locations. */
 

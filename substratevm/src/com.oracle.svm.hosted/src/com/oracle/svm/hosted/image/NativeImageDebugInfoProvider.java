@@ -29,6 +29,7 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeCh
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 import java.lang.reflect.Modifier;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -351,7 +352,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
-                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                Path filePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                if (filePath == null && hostedType instanceof HostedInstanceClass) {
+                    filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
+                }
+                fullFilePath = filePath;
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
@@ -419,6 +424,23 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public Path cachePath() {
             return cachePath;
         }
+    }
+
+    private final static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
+        String[] elements = hostedInstanceClass.toJavaName().split("\\.");
+        int count = elements.length;
+        String name = elements[count - 1];
+        while (name.startsWith("$")) {
+            name = name.substring(1);
+        }
+        if (name.contains("$")) {
+            name = name.substring(0, name.indexOf('$'));
+        }
+        if (name.equals("")) {
+            name = "_nofile_";
+        }
+        elements[count - 1] = name + ".java";
+        return FileSystems.getDefault().getPath("", elements);
     }
 
     private abstract class NativeImageDebugTypeInfo extends NativeImageDebugFileInfo implements DebugTypeInfo {

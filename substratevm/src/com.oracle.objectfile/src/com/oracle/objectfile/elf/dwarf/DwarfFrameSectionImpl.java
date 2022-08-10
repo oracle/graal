@@ -140,7 +140,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     private int writeMethodFrames(byte[] buffer, int p) {
         int pos = p;
         /* Write frames for normal methods. */
-        for (ClassEntry classEntry : getPrimaryClasses()) {
+        for (ClassEntry classEntry : getInstanceClasses()) {
             for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
                 Range range = primaryEntry.getPrimary();
                 if (!range.isDeoptTarget()) {
@@ -155,7 +155,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             }
         }
         /* Now write frames for deopt targets. */
-        for (ClassEntry classEntry : getPrimaryClasses()) {
+        for (ClassEntry classEntry : getInstanceClasses()) {
             for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
                 Range range = primaryEntry.getPrimary();
                 if (range.isDeoptTarget()) {
