@@ -81,20 +81,27 @@ public final class RuntimeResourceAccess {
     }
 
     /**
-     * Make Java ResourceBundles that are specified by a {@code baseBundleName} and optional
-     * {@code locales} available at run time. If the given {@code baseBundleName} starts with
-     * {@code <module-name>:} then only the ResourceBundle from Java module named
-     * {@code <module-name>} will be added (i.e. ResourceBundles with the same name from other
-     * modules will not be added).
+     * Make Java ResourceBundles that are specified by a {@code baseBundleName} and {@code locales}
+     * available at run time. If the given {@code baseBundleName} starts with {@code <module-name>:}
+     * then only the ResourceBundles from Java module named {@code <module-name>} will be added
+     * (i.e. ResourceBundles with the same name from other modules will not be added).
      *
      * @since 22.3
      */
-    public static void addResourceBundles(String baseBundleName, Locale... locales) {
-        if (locales.length > 0) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), baseBundleName, Arrays.asList(locales));
-        } else {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), baseBundleName);
-        }
+    public static void addResourceBundles(String baseBundleName, Locale[] locales) {
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), baseBundleName, Arrays.asList(locales));
+    }
+
+    /**
+     * Make Java ResourceBundles that are specified by a {@code bundleName} available at run time.
+     * If the given {@code bundleName} starts with {@code <module-name>:} then only the
+     * ResourceBundles from Java module named {@code <module-name>} will be added (i.e.
+     * ResourceBundles with the same name from other modules will not be added).
+     *
+     * @since 22.3
+     */
+    public static void addResourceBundles(String bundleName) {
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), bundleName);
     }
 
     private RuntimeResourceAccess() {

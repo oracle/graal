@@ -1019,7 +1019,8 @@ supr java.lang.Object
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeResourceAccess
 meth public static void includeResources(java.lang.String)
 meth public static void excludeResources(java.lang.String)
-meth public !varargs static void addResourceBundles(java.lang.String,java.util.Locale[])
+meth public static void addResourceBundles(java.lang.String,java.util.Locale[])
+meth public static void addResourceBundles(java.lang.String)
 supr java.lang.Object
 
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
