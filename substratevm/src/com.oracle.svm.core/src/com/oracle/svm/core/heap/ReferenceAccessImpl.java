@@ -118,7 +118,8 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
             int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             return WordFactory.unsigned(1L << (referenceSize * Byte.SIZE)).shiftLeft(compressionShift);
         }
-        return UnsignedUtils.MAX_VALUE;
+        // Assume that 48 bit is the maximum address space that can be used.
+        return WordFactory.unsigned((1L << 48) - 1);
     }
 }
 

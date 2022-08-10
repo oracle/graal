@@ -22,34 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.jvmstat;
+package com.oracle.svm.core.jvmstat;
 
-import java.util.Collections;
-import java.util.List;
+import java.nio.ByteBuffer;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.InternalFeature;
-import com.oracle.svm.core.jvmstat.PerfDataFeature;
-import com.oracle.svm.core.jvmstat.PerfManager;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 
-public class GenScavengePerfDataFeature implements InternalFeature {
+/**
+ * Allocates a buffer with a minimal size that only contains the performance data header (see
+ * {@link PerfMemoryPrologue}).
+ */
+public class CHeapPerfMemoryProvider implements PerfMemoryProvider {
+    private Pointer memory;
+
     @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(PerfDataFeature.class);
+    public ByteBuffer create() {
+        int size = PerfMemoryPrologue.getPrologueSize();
+        memory = UnmanagedMemory.calloc(size);
+        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(memory.rawValue(), size), ByteBuffer.class);
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        if (ImageSingletons.contains(PerfManager.class)) {
-            PerfManager manager = ImageSingletons.lookup(PerfManager.class);
-            if (SubstrateOptions.UseEpsilonGC.getValue()) {
-                manager.register(new EpsilonGCPerfData());
-            } else if (SubstrateOptions.UseSerialGC.getValue()) {
-                manager.register(new SerialGCPerfData());
-            }
+    public void teardown() {
+        if (memory.isNonNull()) {
+            UnmanagedMemory.free(memory);
+            memory = WordFactory.nullPointer();
         }
     }
 }

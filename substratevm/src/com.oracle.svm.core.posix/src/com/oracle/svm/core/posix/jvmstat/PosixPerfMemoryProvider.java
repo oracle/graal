@@ -144,18 +144,17 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
                 continue;
             }
 
-            // We now have a file name that converts to a valid integer
-            // that could represent a process id. If this process id
-            // matches the current process id or the process is not running,
-            // then remove the stale file resources.
-            //
-            // Process liveness is detected by sending signal number 0 to
-            // the process id (see kill(2)). If kill determines that the
-            // process does not exist, then the file resources are removed.
-            // If kill determines that that we don't have permission to
-            // signal the process, then the file resources are assumed to
-            // be stale and are removed because the resources for such a
-            // process should be in a different user specific directory.
+            /*
+             * We now have a file name that converts to a valid integer that could represent a
+             * process id. If this process id matches the current process id or the process is not
+             * running, then remove the stale file resources.
+             * 
+             * Process liveness is detected by sending signal number 0 to the process id (see
+             * kill(2)). If kill determines that the process does not exist, then the file resources
+             * are removed. If kill determines that we don't have permission to signal the process,
+             * then the file resources are assumed to be stale and are removed because the resources
+             * for such a process should be in a different user specific directory.
+             */
             if (name.equals(selfName)) {
                 f.delete();
             } else {
