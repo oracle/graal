@@ -423,7 +423,7 @@ public abstract class DebugInfoBase {
     }
 
     private ClassEntry ensureClassEntry(ResolvedJavaType type) {
-        /* We should already have an entry  -- TODO prove that claim. */
+        /* We should already have an entry -- TODO prove that claim. */
         ClassEntry classEntry = instanceClassesIndex.get(type);
         if (classEntry == null) {
             /* We must have a type entry -- TODO prove we never reach here. */
@@ -435,6 +435,7 @@ public abstract class DebugInfoBase {
         assert (classEntry.getTypeName().equals(type.toJavaName()));
         return classEntry;
     }
+
     private void indexInstanceClass(ResolvedJavaType idType, ClassEntry classEntry) {
         instanceClasses.add(classEntry);
         instanceClassesIndex.put(idType, classEntry);

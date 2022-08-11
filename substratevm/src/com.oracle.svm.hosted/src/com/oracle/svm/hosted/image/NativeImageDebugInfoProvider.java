@@ -426,7 +426,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private final static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
+    private static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
         String[] elements = hostedInstanceClass.toJavaName().split("\\.");
         int count = elements.length;
         String name = elements[count - 1];
