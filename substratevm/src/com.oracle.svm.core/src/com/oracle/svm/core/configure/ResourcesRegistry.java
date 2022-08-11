@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.configure;
 
+import java.util.Collection;
 import java.util.Locale;
 
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
@@ -57,4 +58,20 @@ public interface ResourcesRegistry extends RuntimeResourceSupport {
     }
 
     void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
+
+    /**
+     * Although the interface-methods below are already defined in the super-interface
+     * {@link RuntimeResourceSupport} they are also needed here for backwards compatibility.
+     */
+    @Override
+    void addResources(ConfigurationCondition condition, String pattern);
+
+    @Override
+    void ignoreResources(ConfigurationCondition condition, String pattern);
+
+    @Override
+    void addResourceBundles(ConfigurationCondition condition, String name);
+
+    @Override
+    void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
 }
