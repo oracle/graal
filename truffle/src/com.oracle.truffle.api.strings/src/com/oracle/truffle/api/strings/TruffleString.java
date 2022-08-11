@@ -76,7 +76,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -4841,12 +4840,15 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
+                        @Cached ConditionProfile lengthAndCodeRangeCheckProfile,
+                        @Cached ConditionProfile compareHashProfile,
+                        @Cached ConditionProfile checkFirstByteProfile) {
             final int codeRangeA = getCodeRangeANode.execute(a);
             final int codeRangeB = getCodeRangeBNode.execute(b);
             a.looseCheckEncoding(expectedEncoding, codeRangeA);
             b.looseCheckEncoding(expectedEncoding, codeRangeB);
-            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, this);
+            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, lengthAndCodeRangeCheckProfile, compareHashProfile, checkFirstByteProfile, this);
         }
 
         static boolean checkContentEquals(
@@ -4854,13 +4856,16 @@ public final class TruffleString extends AbstractTruffleString {
                         AbstractTruffleString b, int codeRangeB,
                         ToIndexableNode toIndexableNodeA,
                         ToIndexableNode toIndexableNodeB,
+                        ConditionProfile lengthAndCodeRangeCheckProfile,
+                        ConditionProfile compareHashProfile,
+                        ConditionProfile checkFirstByteProfile,
                         EqualNode equalNode) {
             assert TSCodeRange.isKnown(codeRangeA, codeRangeB);
             int lengthCMP = a.length();
-            if (lengthCMP != b.length() || codeRangeA != codeRangeB ||
-                            !CompilerDirectives.isCompilationConstant(a) && !CompilerDirectives.isCompilationConstant(b) &&
-                                            a.isHashCodeCalculated() && b.isHashCodeCalculated() &&
-                                            a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+            if (lengthAndCodeRangeCheckProfile.profile(lengthCMP != b.length() || codeRangeA != codeRangeB)) {
+                return false;
+            }
+            if (compareHashProfile.profile(a.isHashCodeCalculated() && b.isHashCodeCalculated()) && a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
                 return false;
             }
             if (lengthCMP == 0) {
@@ -4870,7 +4875,7 @@ public final class TruffleString extends AbstractTruffleString {
             Object arrayB = toIndexableNodeB.execute(b, b.data());
             int strideA = a.stride();
             int strideB = b.stride();
-            if (arrayA instanceof byte[] && arrayB instanceof byte[] && (strideA | strideB) == 0) {
+            if (checkFirstByteProfile.profile(arrayA instanceof byte[] && arrayB instanceof byte[] && (strideA | strideB) == 0)) {
                 // fast path: check first byte
                 if (((byte[]) arrayA)[a.offset()] != ((byte[]) arrayB)[b.offset()]) {
                     return false;
