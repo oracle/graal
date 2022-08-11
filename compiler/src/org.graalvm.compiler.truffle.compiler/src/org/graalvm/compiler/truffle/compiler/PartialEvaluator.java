@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -479,20 +479,28 @@ public abstract class PartialEvaluator {
             ResolvedJavaType memorySegmentProxyType = TruffleCompilerRuntime.getRuntime().resolveType(config.lastTier().providers().getMetaAccess(), "jdk.internal.access.foreign.MemorySegmentProxy");
             for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods()) {
                 if (m.getName().equals("scope")) {
-                    appendMemorySegmentProxyScopePlugin(plugins, m);
+                    appendMemorySegmentScopePlugin(plugins, m);
+                }
+            }
+        } else if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            ResolvedJavaType memorySegmentType = TruffleCompilerRuntime.getRuntime().resolveType(config.lastTier().providers().getMetaAccess(), "jdk.internal.foreign.Scoped");
+            for (ResolvedJavaMethod m : memorySegmentType.getDeclaredMethods()) {
+                if (m.getName().equals("sessionImpl")) {
+                    appendMemorySegmentScopePlugin(plugins, m);
                 }
             }
         }
     }
 
     /**
-     * The calls to MemorySegmentProxy.scope() from {@link Buffer} are problematic for Truffle
-     * because they would remain as non-inlineable invokes after PE. Because these are virtual
-     * calls, we can also not use a {@link InvocationPlugin} during PE to intrinsify the invoke to a
-     * deoptimization. Therefore, we already do the intrinsification during bytecode parsing using a
-     * {@link NodePlugin}, because that is also invoked for virtual calls.
+     * The calls to MemorySegmentProxy.scope() (JDK 17) or Scoped.sessionImpl() (JDK 19) from
+     * {@link Buffer} are problematic for Truffle because they would remain as non-inlineable
+     * invokes after PE. Because these are virtual calls, we can also not use a
+     * {@link InvocationPlugin} during PE to intrinsify the invoke to a deoptimization. Therefore,
+     * we already do the intrinsification during bytecode parsing using a {@link NodePlugin},
+     * because that is also invoked for virtual calls.
      */
-    private static void appendMemorySegmentProxyScopePlugin(Plugins plugins, ResolvedJavaMethod scopeMethod) {
+    private static void appendMemorySegmentScopePlugin(Plugins plugins, ResolvedJavaMethod scopeMethod) {
         plugins.appendNodePlugin(new NodePlugin() {
             @Override
             public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
