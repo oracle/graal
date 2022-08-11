@@ -384,7 +384,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         self.jimage_jars = set()
         self.jimage_ignore_jars = set()
         if is_graalvm and _src_jdk_version >= 9:
-            for component in self.components:
+            for component in mx_sdk_vm.graalvm_components():
                 if component.jlink:
                     self.jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
                     if isinstance(component, mx_sdk.GraalVmJvmciComponent):
@@ -2636,11 +2636,6 @@ def get_stage1_graalvm_distribution():
         _stage1_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, stage1=True)
         _stage1_graalvm_distribution.description = "GraalVM distribution (stage1)"
         _stage1_graalvm_distribution.maven = False
-        global _final_graalvm_distribution
-        assert _final_graalvm_distribution
-        # Ensure final_graalvm_distribution knows about jars that must not be jlinked that were added during stage1
-        # (this ensures we are not jlinking of SVM_DRIVER component)
-        _final_graalvm_distribution.jimage_ignore_jars.update(_stage1_graalvm_distribution.jimage_ignore_jars)
     return _stage1_graalvm_distribution
 
 
