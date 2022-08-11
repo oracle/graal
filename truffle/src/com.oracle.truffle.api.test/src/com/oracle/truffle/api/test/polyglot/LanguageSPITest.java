@@ -890,26 +890,28 @@ public class LanguageSPITest {
                 setInnerPrivilege(builder, privilege, allowPrivilege);
             }
 
-            boolean actualOuterPrivilege = getPrivilege(env, privilege);
+            Boolean actualOuterPrivilege = getPrivilege(env, privilege);
 
             TruffleContext c = builder.build();
             Object prev = c.enter(null);
             try {
                 ExecutableContext innerContext = CONTEXT_REFERENCE.get(null);
-                boolean actualInnerPrivilege = getPrivilege(innerContext.env, privilege);
+                Boolean actualInnerPrivilege = getPrivilege(innerContext.env, privilege);
 
-                assertEquals(expectedPrivilege, actualInnerPrivilege);
+                if (actualInnerPrivilege != null) {
+                    assertEquals("Privilege " + privilege, expectedPrivilege, actualInnerPrivilege);
 
-                // check invariants
-                if (inheritPrivileges) {
-                    if (allowPrivilege == null) {
-                        assertEquals(actualOuterPrivilege, actualInnerPrivilege);
+                    // check invariants
+                    if (inheritPrivileges) {
+                        if (allowPrivilege == null) {
+                            assertEquals(actualOuterPrivilege, actualInnerPrivilege);
+                        } else {
+                            assertEquals(allowPrivilege && actualOuterPrivilege, actualInnerPrivilege);
+                        }
                     } else {
-                        assertEquals(allowPrivilege && actualOuterPrivilege, actualInnerPrivilege);
-                    }
-                } else {
-                    if (allowPrivilege == null || !allowPrivilege) {
-                        assertEquals(false, actualInnerPrivilege);
+                        if (allowPrivilege == null || !allowPrivilege) {
+                            assertEquals(false, actualInnerPrivilege);
+                        }
                     }
                 }
 
@@ -959,7 +961,7 @@ public class LanguageSPITest {
 
         }
 
-        private static boolean getPrivilege(Env env, int privilege) {
+        private static Boolean getPrivilege(Env env, int privilege) {
             switch (privilege) {
                 case CREATE_PROCESS:
                     return env.isCreateProcessAllowed();
@@ -973,7 +975,11 @@ public class LanguageSPITest {
                         env.addToHostClassPath(file);
                         return true;
                     } catch (AbstractTruffleException e) {
-                        return false;
+                        if ("Cannot add classpath entry  in native mode.".equals(e.getMessage())) {
+                            return null;
+                        } else {
+                            return false;
+                        }
                     }
                 case HOST_LOOKUP:
                     return env.isHostLookupAllowed();
