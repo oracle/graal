@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.function.Function;
 
 import org.graalvm.home.HomeFinder;
 
@@ -40,10 +39,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
 final class Target_jdk_internal_module_SystemModuleFinders {
-
-    private static final ModuleExtension[] ESPRESSO_EXTENSION_MODULES = new ModuleExtension[]{
-                    new ModuleExtension("hotswap.jar", (meta) -> meta.getContext().JDWPOptions != null),
-                    new ModuleExtension("polyglot.jar", (meta) -> meta.getContext().Polyglot)};
 
     @Substitution
     abstract static class Of extends SubstitutionNode {
@@ -92,10 +87,8 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     @TruffleBoundary
     private static StaticObject getEspressoExtensionPaths(Meta meta) {
         ArrayList<StaticObject> extensionPaths = new ArrayList<>(2);
-        for (ModuleExtension extension : ESPRESSO_EXTENSION_MODULES) {
-            if (extension.isEnabled.apply(meta)) {
-                extensionPaths.add(getEspressoModulePath(meta, extension.name));
-            }
+        for (ModuleExtension me : ModuleExtension.get(meta.getContext())) {
+            extensionPaths.add(getEspressoModulePath(meta, me.jarName()));
         }
         if (!extensionPaths.isEmpty()) {
             return meta.java_nio_file_Path.allocateReferenceArray(extensionPaths.size(), extensionPaths::get);
@@ -126,13 +119,4 @@ final class Target_jdk_internal_module_SystemModuleFinders {
         return (StaticObject) meta.java_nio_file_Paths_get.invokeDirect(StaticObject.NULL, guestPath, emptyArray);
     }
 
-    private static class ModuleExtension {
-        private final String name;
-        private final Function<Meta, Boolean> isEnabled;
-
-        ModuleExtension(String name, Function<Meta, Boolean> isEnabled) {
-            this.name = name;
-            this.isEnabled = isEnabled;
-        }
-    }
 }

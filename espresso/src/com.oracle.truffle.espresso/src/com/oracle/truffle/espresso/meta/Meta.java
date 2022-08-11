@@ -323,6 +323,8 @@ public final class Meta extends ContextAccessImpl {
             java_lang_ClassLoader_name = null;
         }
 
+        java_net_URL = knownKlass(Type.java_net_URL);
+
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
         java_lang_ClassLoader_loadClass = java_lang_ClassLoader.requireDeclaredMethod(Name.loadClass, Signature.Class_String);
         java_io_InputStream = knownKlass(Type.java_io_InputStream);
@@ -1024,6 +1026,8 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
     public final Method java_lang_ClassLoader_getResourceAsStream;
     public final Method java_lang_ClassLoader_loadClass;
+
+    public final ObjectKlass java_net_URL;
 
     public final ObjectKlass sun_launcher_LauncherHelper;
     public final Method sun_launcher_LauncherHelper_printHelpMessage;

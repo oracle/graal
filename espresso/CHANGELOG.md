@@ -1,5 +1,13 @@
 # Espresso Changelog
 
+## Version 22.3.0
+### User-visible changes
+* Interop invokable members of espresso objects can now also be read.
+* Added the `addPath` invokable member to Espresso Bindings if `java.UseBindingsLoader=true`. Allows adding new path to the classloader associated with the bindings.
+### Internal changes
+### Noteworthy fixes
+* Fix some conversions at interop boundaries: when an espresso-to-espresso conversion was seen, then an espresso-to-primitive conversion happens. The latter would fail.  
+
 ## Version 22.1.0
 ### User-visible changes
 * Added HotSwap support for changing the super class and implemented interfaces.
