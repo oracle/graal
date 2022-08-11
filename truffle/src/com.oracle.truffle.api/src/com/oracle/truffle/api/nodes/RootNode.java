@@ -63,7 +63,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-
 /**
  * Represents the root node in a Truffle AST. The root node is a {@link Node node} that allows to be
  * {@link #execute(VirtualFrame) executed} using a {@link VirtualFrame frame} instance created by
@@ -553,8 +552,40 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     *  TODO
-     * @return
+     * If this root node has a lexical scope parent, this method returns its frame descriptor.
+     * 
+     * As an example, consider the following pseudocode:
+     * 
+     * <pre>
+     * def m {
+     *   # For the "m" root node:
+     *   # getFrameDescriptor       returns FrameDescriptor(m)
+     *   # getParentFrameDescriptor returns null
+     *   var_method = 0
+     *   a = () -> {
+     *     # For the "a lambda" root node:
+     *     # getFrameDescriptor       returns FrameDescriptor(a)
+     *     # getParentFrameDescriptor returns FrameDescriptor(m)
+     *     var_lambda1 = 1
+     *     b = () -> {
+     *       # For the "b lambda" root node:
+     *       # getFrameDescriptor       returns FrameDescriptor(b)
+     *       # getParentFrameDescriptor returns FrameDescriptor(a)
+     *       var_method + var_lambda1
+     *     }
+     *     b.call
+     *   }
+     *   a.call
+     * }
+     * </pre>
+     *
+     * This info is used by the runtime to optimize compilation order by giving more priority to
+     * lexical parents which are likely to inline the child thus resulting in better performance
+     * sooner rather than waiting for the lexical parent to get hot on its own.
+     *
+     * @return The frame descriptor of the lexical parent scope if it exists. <code>null</code>
+     *         otherwise.
+     * @since 22.3.0
      */
     public FrameDescriptor getParentFrameDescriptor() {
         return null;

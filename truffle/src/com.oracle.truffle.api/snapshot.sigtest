@@ -1179,6 +1179,7 @@ meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.Virtu
 meth public boolean isCaptureFramesForTrace()
 meth public boolean isCloningAllowed()
 meth public boolean isInternal()
+meth public com.oracle.truffle.api.frame.FrameDescriptor getParentFrameDescriptor()
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public final com.oracle.truffle.api.RootCallTarget getCallTarget()
 meth public final com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
