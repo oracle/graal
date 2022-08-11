@@ -209,4 +209,8 @@ final class TStringUnsafe {
     static void copyFromNative(long arraySrc, int offsetSrc, byte[] arrayDst, long offsetDst, int byteLength) {
         UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, Unsafe.ARRAY_BYTE_BASE_OFFSET + offsetDst, byteLength);
     }
+
+    static void copyToNative(byte[] arraySrc, int offsetSrc, long arrayDst, long offsetDst, int byteLength) {
+        UNSAFE.copyMemory(arraySrc, Unsafe.ARRAY_BYTE_BASE_OFFSET + offsetSrc, null, arrayDst + offsetDst, byteLength);
+    }
 }

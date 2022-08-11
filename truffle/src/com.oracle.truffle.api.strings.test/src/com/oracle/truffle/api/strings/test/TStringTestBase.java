@@ -421,6 +421,10 @@ public class TStringTestBase {
                         MutableTruffleString.fromNativePointerUncached(PointerObject.create(arrayPadded), 1, array.length, encoding, true),
         }) {
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            if ((encoding == UTF_16 || encoding == UTF_32) && string.isImmutable() && string.isManaged()) {
+                ((TruffleString) string).toNativeUncached(PointerObject::create, encoding);
+                test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            }
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
             byte[] bytesUTF16 = new byte[(codepoints.length + 1) * 2];
@@ -432,7 +436,6 @@ public class TStringTestBase {
                             true).switchEncodingUncached(encoding);
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
-
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding) || codeRange == TruffleString.CodeRange.LATIN_1 && isUTF16(encoding)) {
             byte[] bytesUTF32 = new byte[(codepoints.length + 1) * 4];
             for (int i = 0; i < codepoints.length; i++) {
