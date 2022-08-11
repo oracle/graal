@@ -648,24 +648,29 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        propagateCallAndLoopCount(this, rootNode.getParentFrameDescriptor());
+        propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor());
         return compile(true);
     }
 
-    private boolean propagateCallAndLoopCount(OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor) {
-        if (!engine.propagateCallAndLoopCount || parentFrameDescriptor == null || current.singleCallNode == NO_CALL || current.singleCallNode == MULTIPLE_CALLS) {
+    private static boolean propagateCallAndLoopCount(OptimizedCallTarget original, OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor) {
+        WeakReference<OptimizedDirectCallNode> singleCallNode = current.singleCallNode;
+        if (!original.engine.propagateCallAndLoopCount || parentFrameDescriptor == null || singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
             return false;
         }
-        OptimizedDirectCallNode callerCallNode = current.singleCallNode.get();
+        OptimizedDirectCallNode callerCallNode = singleCallNode.get();
         assert callerCallNode != null;
         RootNode callerRootNode = callerCallNode.getRootNode();
         if (callerRootNode == null) {
             return false;
         }
         OptimizedCallTarget callerCallTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || propagateCallAndLoopCount(callerCallTarget, parentFrameDescriptor)) {
+        // Recursive
+        if (original.equals(callerCallTarget)) {
+            return false;
+        }
+        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || propagateCallAndLoopCount(original, callerCallTarget, parentFrameDescriptor)) {
             callerCallNode.forceInlining();
-            callerCallTarget.callAndLoopCount += this.callAndLoopCount;
+            callerCallTarget.callAndLoopCount += original.callAndLoopCount;
             return true;
         }
         return false;
