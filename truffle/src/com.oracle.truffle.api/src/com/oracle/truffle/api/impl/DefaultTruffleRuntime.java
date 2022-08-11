@@ -264,15 +264,16 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
                 }
             } else {
                 ModuleLayer moduleLayer = truffleModule.getLayer();
+                Iterable<S> services;
                 if (moduleLayer != null) {
-                    return ServiceLoader.load(moduleLayer, service);
+                    services = ServiceLoader.load(moduleLayer, service);
                 } else {
-                    Iterable<S> services = ServiceLoader.load(service, DefaultTruffleRuntime.class.getClassLoader());
-                    if (!services.iterator().hasNext()) {
-                        return ServiceLoader.load(service);
-                    }
-                    return services;
+                    services = ServiceLoader.load(service, DefaultTruffleRuntime.class.getClassLoader());
                 }
+                if (!services.iterator().hasNext()) {
+                    services = ServiceLoader.load(service);
+                }
+                return services;
             }
         }
     }

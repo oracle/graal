@@ -122,12 +122,16 @@ public final class Truffle {
                     }
                 }
 
+                Class<?> lookupClass = Truffle.class;
+                ModuleLayer moduleLayer = lookupClass.getModule().getLayer();
                 TruffleRuntimeAccess access;
-                ModuleLayer moduleLayer = Truffle.class.getModule().getLayer();
                 if (moduleLayer != null) {
                     access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
                 } else {
-                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class, Truffle.class.getClassLoader()), ServiceLoader.load(TruffleRuntimeAccess.class)));
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class, lookupClass.getClassLoader())));
+                }
+                if (access == null) {
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class)));
                 }
 
                 if (access != null) {
