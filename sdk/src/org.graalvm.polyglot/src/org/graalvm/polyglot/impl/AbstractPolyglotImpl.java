@@ -769,6 +769,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
                         boolean hostLookupAllowed);
 
+        public abstract void throwHostLanguageException(String message);
+
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 
         public abstract Object toGuestValue(Object context, Object hostValue, boolean asValue);

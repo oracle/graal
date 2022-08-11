@@ -611,6 +611,9 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object lookupHostSymbol(Object polyglotLanguageContext, TruffleLanguage.Env env, String symbolName) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
+            if (!context.config.hostLookupAllowed) {
+                context.engine.host.throwHostLanguageException("Host class access is not allowed.");
+            }
             return context.engine.host.findStaticClass(context.getHostContextImpl(), symbolName);
         }
 
@@ -1223,6 +1226,12 @@ final class EngineAccessor extends Accessor {
         @Override
         public void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entry) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
+            if (!context.config.hostLookupAllowed) {
+                context.engine.host.throwHostLanguageException("Host class access is not allowed.");
+            }
+            if (!context.config.hostClassLoadingAllowed) {
+                context.engine.host.throwHostLanguageException("Host class loading is not allowed.");
+            }
             context.engine.host.addToHostClassPath(context.getHostContextImpl(), entry);
         }
 
