@@ -149,6 +149,7 @@ public class TruffleGraphBuilderPlugins {
         registerTruffleSafepointPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerNodePlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
         registerDynamicObjectPlugins(plugins, metaAccess, canDelayIntrinsification);
+        registerBufferPlugins(plugins, metaAccess, canDelayIntrinsification);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
@@ -857,9 +858,31 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
+    private static void registerBufferPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
+        ResolvedJavaType bufferType = getRuntime().resolveType(metaAccess, "java.nio.Buffer");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(bufferType));
+
+        final class CreateExceptionPlugin extends RequiredInvocationPlugin {
+            CreateExceptionPlugin(String name, Type... argumentTypes) {
+                super(name, argumentTypes);
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newLimit) {
+                if (canDelayIntrinsification || b.needsExplicitException()) {
+                    return false;
+                }
+                b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint));
+                return true;
+            }
+        }
+
+        r.register(new CreateExceptionPlugin("createLimitException", Receiver.class, int.class));
+        r.register(new CreateExceptionPlugin("createPositionException", Receiver.class, int.class));
+    }
+
     private static void registerDynamicObjectPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
-        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-        ResolvedJavaType unsafeAccessType = rt.resolveType(metaAccess, "com.oracle.truffle.object.UnsafeAccess");
+        ResolvedJavaType unsafeAccessType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.object.UnsafeAccess");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(unsafeAccessType));
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Long);
     }
