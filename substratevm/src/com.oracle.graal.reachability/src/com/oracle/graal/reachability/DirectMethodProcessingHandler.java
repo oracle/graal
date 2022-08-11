@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,11 @@
  */
 package com.oracle.graal.reachability;
 
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.GuardedAnnotationAccess;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.graph.Node;
@@ -57,63 +54,54 @@ import java.lang.reflect.Modifier;
 import java.util.Optional;
 
 /**
- * Extracts method summaries from methods by parsing their bytecode and walking the structured
- * graphs.
+ * This handler walks the structured graphs of methods and directly calls back into the
+ * ReachabilityAnalysisEngine instead of creating summaries.
  */
-public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvider {
+public class DirectMethodProcessingHandler implements ReachabilityMethodProcessingHandler {
 
     @Override
-    public MethodSummary getSummary(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method) {
+    public void onMethodReachable(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method) {
         StructuredGraph decoded = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
-        return createSummaryFromGraph(bb, decoded, method);
+        analyzeStructuredGraph(bb, method, decoded);
     }
 
     @Override
-    public MethodSummary getSummary(ReachabilityAnalysisEngine bb, StructuredGraph graph) {
-        return createSummaryFromGraph(bb, graph, null);
+    public void processGraph(ReachabilityAnalysisEngine bb, StructuredGraph graph) {
+        analyzeStructuredGraph(bb, (ReachabilityAnalysisMethod) graph.method(), graph);
     }
 
-    private static MethodSummary createSummaryFromGraph(ReachabilityAnalysisEngine bb, StructuredGraph graph, ReachabilityAnalysisMethod method) {
-        EconomicSet<AnalysisType> accessedTypes = EconomicSet.create();
-        EconomicSet<AnalysisType> instantiatedTypes = EconomicSet.create();
-        EconomicSet<AnalysisField> readFields = EconomicSet.create();
-        EconomicSet<AnalysisField> writtenFields = EconomicSet.create();
-        EconomicSet<AnalysisMethod> invokedMethods = EconomicSet.create();
-        EconomicSet<AnalysisMethod> implementationInvokedMethods = EconomicSet.create();
-        EconomicSet<JavaConstant> embeddedConstants = EconomicSet.create();
-        EconomicSet<AnalysisMethod> foreignCallTargets = EconomicSet.create();
-
+    private static void analyzeStructuredGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, StructuredGraph graph) {
         if (method != null) {
             boolean isStatic = Modifier.isStatic(method.getModifiers());
             int parameterCount = method.getSignature().getParameterCount(!isStatic);
             int offset = isStatic ? 0 : 1;
             for (int i = offset; i < parameterCount; i++) {
-                accessedTypes.add((ReachabilityAnalysisType) method.getSignature().getParameterType(i - offset, method.getDeclaringClass()));
+                bb.markTypeReachable((ReachabilityAnalysisType) method.getSignature().getParameterType(i - offset, method.getDeclaringClass()));
             }
 
-            accessedTypes.add((ReachabilityAnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()));
+            bb.markTypeReachable((ReachabilityAnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()));
         }
 
         for (Node n : graph.getNodes()) {
             if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
-                instantiatedTypes.add((ReachabilityAnalysisType) node.instanceClass());
+                bb.markTypeInstantiated((ReachabilityAnalysisType) node.instanceClass());
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
-                instantiatedTypes.add(((ReachabilityAnalysisType) node.elementType()).getArrayClass());
+                bb.markTypeInstantiated(((ReachabilityAnalysisType) node.elementType()).getArrayClass());
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 ResolvedJavaType type = node.type();
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    instantiatedTypes.add((ReachabilityAnalysisType) type);
+                    bb.markTypeInstantiated((ReachabilityAnalysisType) type);
                     type = type.getComponentType();
                 }
             } else if (n instanceof VirtualInstanceNode) {
                 VirtualInstanceNode node = (VirtualInstanceNode) n;
-                instantiatedTypes.add((ReachabilityAnalysisType) node.type());
+                bb.markTypeInstantiated((ReachabilityAnalysisType) node.type());
             } else if (n instanceof VirtualArrayNode) {
                 VirtualArrayNode node = (VirtualArrayNode) n;
-                instantiatedTypes.add(((ReachabilityAnalysisType) node.componentType()).getArrayClass());
+                bb.markTypeInstantiated(((ReachabilityAnalysisType) node.componentType()).getArrayClass());
             } else if (n instanceof ConstantNode) {
                 ConstantNode node = (ConstantNode) n;
                 if (!(node.getValue() instanceof JavaConstant)) {
@@ -125,16 +113,17 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                      */
                     continue;
                 }
-                embeddedConstants.add(((JavaConstant) node.getValue()));
+                JavaConstant constant = (JavaConstant) node.getValue();
+                bb.handleEmbeddedConstant(method, constant);
             } else if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
-                accessedTypes.add((ReachabilityAnalysisType) node.type().getType());
+                bb.markTypeReachable((ReachabilityAnalysisType) node.type().getType());
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
-                readFields.add((ReachabilityAnalysisField) node.field());
+                bb.markFieldRead((ReachabilityAnalysisField) node.field());
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
-                writtenFields.add((ReachabilityAnalysisField) node.field());
+                bb.markFieldWritten((ReachabilityAnalysisField) node.field());
             } else if (n instanceof Invoke) {
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();
@@ -146,9 +135,9 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     method.addInvoke(new ReachabilityInvokeInfo(targetMethod, ReachabilityAnalysisMethod.sourcePosition(node, method), kind.isDirect()));
                 }
                 if (kind.isDirect()) {
-                    implementationInvokedMethods.add(targetMethod);
+                    bb.markMethodImplementationInvoked(targetMethod);
                 } else {
-                    invokedMethods.add(targetMethod);
+                    bb.markMethodInvoked(targetMethod);
                 }
             } else if (n instanceof FrameState) {
                 FrameState node = (FrameState) n;
@@ -161,33 +150,31 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                      * scanning during static analysis does not see these classes.
                      */
                     ReachabilityAnalysisMethod analysisMethod = (ReachabilityAnalysisMethod) frameMethod;
-                    accessedTypes.add(analysisMethod.getDeclaringClass());
+                    bb.markTypeReachable(analysisMethod.getDeclaringClass());
                 }
             } else if (n instanceof MacroInvokable) {
                 MacroInvokable node = (MacroInvokable) n;
                 ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
                 if (node.getInvokeKind().isDirect()) {
-                    implementationInvokedMethods.add(targetMethod);
+                    bb.markMethodImplementationInvoked(targetMethod);
                 } else {
-                    invokedMethods.add(targetMethod);
+                    bb.markMethodInvoked(targetMethod);
                 }
             } else if (n instanceof ForeignCall) {
-                handleForeignCall(bb, foreignCallTargets, ((ForeignCall) n).getDescriptor());
+                handleForeignCall(bb, ((ForeignCall) n).getDescriptor());
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((UnaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
-                handleForeignCall(bb, foreignCallTargets, bb.getProviders().getForeignCalls().getDescriptor(signature));
+                handleForeignCall(bb, bb.getProviders().getForeignCalls().getDescriptor(signature));
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((BinaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
-                handleForeignCall(bb, foreignCallTargets, bb.getProviders().getForeignCalls().getDescriptor(signature));
+                handleForeignCall(bb, bb.getProviders().getForeignCalls().getDescriptor(signature));
 
             }
         }
-
-        return new MethodSummary(invokedMethods, implementationInvokedMethods, accessedTypes, instantiatedTypes, readFields, writtenFields, embeddedConstants, foreignCallTargets);
     }
 
-    private static void handleForeignCall(ReachabilityAnalysisEngine bb, EconomicSet<AnalysisMethod> foreignCallTargets, ForeignCallDescriptor descriptor) {
+    private static void handleForeignCall(ReachabilityAnalysisEngine bb, ForeignCallDescriptor descriptor) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(descriptor, bb.getProviders().getForeignCalls());
-        targetMethod.ifPresent(foreignCallTargets::add);
+        targetMethod.ifPresent(method -> bb.addRootMethod(method, false));
     }
 }
