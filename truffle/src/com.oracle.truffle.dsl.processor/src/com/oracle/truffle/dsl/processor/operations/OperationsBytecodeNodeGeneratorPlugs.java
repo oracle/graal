@@ -610,6 +610,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         parentBuilder.startCall(method.getSimpleName().toString());
         addNodeCallParameters(parentBuilder, false, false);
         addStateParameters.run();
+        frameState.addReferencesTo(parentBuilder);
         parentBuilder.end(2);
 
         if (needsReturn) {

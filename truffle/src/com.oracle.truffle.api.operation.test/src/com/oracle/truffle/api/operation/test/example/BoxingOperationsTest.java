@@ -436,4 +436,22 @@ final class BoxingOperations {
             return value;
         }
     }
+
+    @Operation
+    public static final class SecondValueBoxingElim {
+        @Specialization
+        public static Object doInt(Object a, int b) {
+            return null;
+        }
+
+        @Specialization
+        public static Object doLong(Object a, long b) {
+            return null;
+        }
+
+        @Specialization
+        public static Object doGeneric(Object a, Object b) {
+            return null;
+        }
+    }
 }
