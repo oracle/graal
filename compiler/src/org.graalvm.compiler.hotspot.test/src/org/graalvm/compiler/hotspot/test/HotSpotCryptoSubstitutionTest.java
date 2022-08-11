@@ -32,6 +32,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.AlgorithmParameters;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -59,11 +60,11 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     private final byte[] input;
 
-    public HotSpotCryptoSubstitutionTest() throws Exception {
+    public HotSpotCryptoSubstitutionTest() throws IOException {
         input = readClassfile16(getClass());
     }
 
-    private void testEncryptDecrypt(String className, String methodName, String generatorAlgorithm, int keySize, String algorithm) throws Exception {
+    private void testEncryptDecrypt(String className, String methodName, String generatorAlgorithm, int keySize, String algorithm) throws GeneralSecurityException {
         Class<?> klass = null;
         try {
             klass = Class.forName(className);
@@ -84,7 +85,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     }
 
     @Test
-    public void testAESencryptBlock() throws Exception {
+    public void testAESEncryptBlock() throws Exception {
         Assume.assumeTrue(runtime().getVMConfig().useAESIntrinsics);
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/PKCS5Padding");
@@ -144,7 +145,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     AlgorithmParameters algorithmParameters;
 
-    private byte[] encrypt(byte[] indata, SecretKey key, String algorithm) throws Exception {
+    private byte[] encrypt(byte[] indata, SecretKey key, String algorithm) throws GeneralSecurityException {
         byte[] result = indata;
 
         Cipher c = Cipher.getInstance(algorithm);
@@ -161,7 +162,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         return result;
     }
 
-    private byte[] decrypt(byte[] indata, SecretKey key, String algorithm) throws Exception {
+    private byte[] decrypt(byte[] indata, SecretKey key, String algorithm) throws GeneralSecurityException {
         byte[] result = indata;
 
         Cipher c = Cipher.getInstance(algorithm);
@@ -186,7 +187,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         return classFile;
     }
 
-    public Result runEncryptDecrypt(SecretKey key, String algorithm) throws Exception {
+    public Result runEncryptDecrypt(SecretKey key, String algorithm) throws GeneralSecurityException {
         try {
             byte[] indata = input.clone();
             byte[] cipher = encrypt(indata, key, algorithm);

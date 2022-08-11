@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.cpufeature;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
@@ -57,7 +58,8 @@ public final class Stubs {
                     SSE4_2,
                     POPCNT,
                     AVX,
-                    AVX2);
+                    AVX2,
+                    AES);
     public static final EnumSet<AArch64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
 
     @Fold

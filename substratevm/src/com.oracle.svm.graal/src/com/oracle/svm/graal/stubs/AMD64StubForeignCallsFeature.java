@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.stubs;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 
 import java.util.EnumSet;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCa
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
@@ -60,6 +62,8 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AMD64, true, BASELINE),
                         new StubDescriptor(ArrayRegionCompareToForeignCalls.STUBS, true, BASELINE),
                         new StubDescriptor(VectorizedMismatchForeignCalls.STUB, true, BASELINE),
+                        new StubDescriptor(VectorizedMismatchForeignCalls.STUB, true, BASELINE),
+                        new StubDescriptor(CryptoForeignCalls.STUBS, false, EnumSet.of(AES)),
         });
     }
 }

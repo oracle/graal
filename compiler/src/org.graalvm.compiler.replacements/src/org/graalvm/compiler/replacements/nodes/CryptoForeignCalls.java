@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.stubs;
+package org.graalvm.compiler.replacements.nodes;
 
-import static jdk.vm.ci.aarch64.AArch64.CPUFeature.AES;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 
-import java.util.EnumSet;
+import jdk.vm.ci.meta.JavaKind;
 
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
-import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
-import org.graalvm.nativeimage.Platform.AARCH64;
-import org.graalvm.nativeimage.Platforms;
+public class CryptoForeignCalls {
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+    public static final ForeignCallDescriptor STUB_AES_ENCRYPT = foreignCallDescriptor("aesEncrypt", Pointer.class, Pointer.class, Pointer.class);
+    public static final ForeignCallDescriptor STUB_AES_DECRYPT = foreignCallDescriptor("aesDecrypt", Pointer.class, Pointer.class, Pointer.class);
 
-import jdk.vm.ci.aarch64.AArch64;
+    public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
 
-@AutomaticFeature
-@Platforms(AARCH64.class)
-public class AARCH64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
+    public static final ForeignCallDescriptor[] STUBS = {
+                    STUB_AES_ENCRYPT,
+                    STUB_AES_DECRYPT};
 
-    public AARCH64StubForeignCallsFeature() {
-        super(new StubDescriptor[]{
-                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, true, EnumSet.noneOf(AArch64.CPUFeature.class)),
-                        new StubDescriptor(CryptoForeignCalls.STUBS, false, EnumSet.of(AES)),
-        });
+    private static ForeignCallDescriptor foreignCallDescriptor(String name, Class<?>... argTypes) {
+        return new ForeignCallDescriptor(name, void.class, argTypes, false, KILLED_LOCATIONS, false, false);
     }
 }

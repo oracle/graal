@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import org.graalvm.compiler.lir.GeneratedStubsHolder;
+import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
@@ -41,6 +42,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 ArrayRegionCompareToNode.class,
                 ArrayCopyWithConversionsNode.class,
                 VectorizedMismatchNode.class,
+                AESNode.class,
 })
 public final class IntrinsicStubs {
 }

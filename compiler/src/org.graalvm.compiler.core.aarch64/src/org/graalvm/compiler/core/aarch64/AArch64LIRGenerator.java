@@ -47,6 +47,8 @@ import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.aarch64.AArch64AESDecryptOp;
+import org.graalvm.compiler.lir.aarch64.AArch64AESEncryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayCompareToOp;
@@ -567,6 +569,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
         return result;
+    }
+
+    @Override
+    public void emitAESEncrypt(Value from, Value to, Value key) {
+        append(new AArch64AESEncryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public void emitAESDecrypt(Value from, Value to, Value key) {
+        append(new AArch64AESDecryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
     }
 
     @Override

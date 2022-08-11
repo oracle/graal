@@ -806,6 +806,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 emitMove(result, value);
             }
         }
+
+        @Override
+        public int getArrayLengthOffset() {
+            return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
+        }
     }
 
     public final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {

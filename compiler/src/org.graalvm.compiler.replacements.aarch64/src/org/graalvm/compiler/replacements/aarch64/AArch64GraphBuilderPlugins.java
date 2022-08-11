@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.replacements.aarch64;
 
+
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
@@ -67,6 +70,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
@@ -108,6 +112,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
                 registerStringCodingPlugins(invocationPlugins, replacements);
+                registerAESPlugins(invocationPlugins, replacements);
             }
         });
     }
@@ -540,5 +545,11 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             }
         });
+    }
+
+    private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
+        r.register(new AESCryptPlugin(ENCRYPT));
+        r.register(new AESCryptPlugin(DECRYPT));
     }
 }
