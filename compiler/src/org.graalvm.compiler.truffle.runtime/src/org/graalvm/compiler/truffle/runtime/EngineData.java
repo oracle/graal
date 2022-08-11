@@ -46,6 +46,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Multi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PriorityQueue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PropagateLoopCountsToLexicalSingleCaller;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
@@ -140,6 +141,7 @@ public final class EngineData {
     @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
     @CompilationFinal public boolean firstTierOnly;
+    @CompilationFinal public boolean propagateCallAndLoopCount;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
@@ -268,6 +270,7 @@ public final class EngineData {
         this.multiTier = !compileImmediately && options.get(MultiTier);
         this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
         this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
+        this.propagateCallAndLoopCount = options.get(PropagateLoopCountsToLexicalSingleCaller);
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);

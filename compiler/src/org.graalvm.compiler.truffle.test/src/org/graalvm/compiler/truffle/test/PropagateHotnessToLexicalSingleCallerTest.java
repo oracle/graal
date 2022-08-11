@@ -1,17 +1,15 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
-import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -22,7 +20,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
+public class PropagateHotnessToLexicalSingleCallerTest extends TestWithPolyglotOptions {
 
     public static final int COMPILATION_THRESHOLD = 100;
     private ByteArrayOutputStream err;
@@ -31,13 +29,11 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
     public void before() {
         err = new ByteArrayOutputStream();
         setupContext(Context.newBuilder().//
-                        option("engine.TraceCompilationDetails", Boolean.TRUE.toString()).//
-                        option("engine.SubmitLexicalSingleCaller", Boolean.TRUE.toString()).//
+                        option("engine.PropagateLoopCountsToLexicalSingleCaller", Boolean.TRUE.toString()).//
                         option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
                         option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
                         option("engine.FirstTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD / 10)).//
-                        option("engine.LastTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
-                        err(err));
+                        option("engine.LastTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)));
     }
 
     static class SimpleLoopNode extends Node implements RepeatingNode {
@@ -91,6 +87,7 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
 
         private final Function<FrameDescriptor, NamedRootNode> rootNodeFactory;
         @Child DirectCallNode callNode;
+        OptimizedCallTarget target;
 
         protected CallerRootNode(String name, Function<FrameDescriptor, NamedRootNode> rootNodeFactory, FrameDescriptor parentFrameDescriptor) {
             super(name, parentFrameDescriptor);
@@ -108,8 +105,8 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
 
         @CompilerDirectives.TruffleBoundary
         private void createCallNode(FrameDescriptor frameDescriptor) {
-            CallTarget callTarget = rootNodeFactory.apply(frameDescriptor).getCallTarget();
-            callNode = insert(GraalTruffleRuntime.getRuntime().createDirectCallNode(callTarget));
+            target = (OptimizedCallTarget) rootNodeFactory.apply(frameDescriptor).getCallTarget();
+            callNode = insert(GraalTruffleRuntime.getRuntime().createDirectCallNode(target));
         }
     }
 
@@ -117,26 +114,20 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
     public void basicTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        compile(new CallerRootNode(callerName, frameDescriptor -> new RootNodeWithLoop(calleeName, frameDescriptor), null).getCallTarget());
-        List<String> tierTwoCompilation = getTierTwoCompilationQueues();
-        int callerIndex = getIndex(tierTwoCompilation, callerName);
-        int calleeIndex = getIndex(tierTwoCompilation, calleeName);
-        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
-        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
-        Assert.assertTrue("Caller should be scheduled before callee", callerIndex < calleeIndex);
+        CallerRootNode callerRootNode = new CallerRootNode(callerName, frameDescriptor -> new RootNodeWithLoop(calleeName, frameDescriptor), null);
+        OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
+        compile(callerTarget);
+        Assert.assertTrue(callerTarget.getCallAndLoopCount() > callerRootNode.target.getCallAndLoopCount());
     }
 
     @Test
     public void basicNoReorderTest() {
         final String callerName = "Caller";
         final String calleeName = "Callee";
-        compile(new CallerRootNode(callerName, frameDescriptor -> new RootNodeWithLoop(calleeName, null), null).getCallTarget());
-        List<String> tierTwoCompilation = getTierTwoCompilationQueues();
-        int callerIndex = getIndex(tierTwoCompilation, callerName);
-        int calleeIndex = getIndex(tierTwoCompilation, calleeName);
-        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
-        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
-        Assert.assertTrue("Callee should be scheduled before caller", callerIndex > calleeIndex);
+        CallerRootNode callerRootNode = new CallerRootNode(callerName, frameDescriptor -> new RootNodeWithLoop(calleeName, null), null);
+        OptimizedCallTarget callTarget = ((OptimizedCallTarget) callerRootNode.getCallTarget());
+        compile(callTarget);
+        Assert.assertTrue(callTarget.getCallAndLoopCount() < callerRootNode.target.getCallAndLoopCount());
     }
 
     @Test
@@ -144,21 +135,18 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
         final String callerName = "Caller";
         final String intermediateName = "Intermediate";
         final String calleeName = "Callee";
-        compile(new CallerRootNode(callerName, frameDescriptor -> {
+        CallerRootNode callerRootNode = new CallerRootNode(callerName, frameDescriptor -> {
             return new CallerRootNode(intermediateName, ignored -> {
                 return new RootNodeWithLoop(calleeName, frameDescriptor);
             }, null);
-        }, null).getCallTarget());
-        List<String> tierTwoCompilationQueues = getTierTwoCompilationQueues();
-        int callerIndex = getIndex(tierTwoCompilationQueues, callerName);
-        int intermediateIndex = getIndex(tierTwoCompilationQueues, intermediateName);
-        int calleeIndex = getIndex(tierTwoCompilationQueues, calleeName);
-        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
-        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
-        Assert.assertNotEquals("Intermediate not scheduled", -1, intermediateIndex);
-        Assert.assertTrue("Caller should be scheduled before callee", callerIndex < calleeIndex);
-        Assert.assertTrue("Caller should be scheduled before intermediate", callerIndex < intermediateIndex);
-        Assert.assertTrue("Intermediate should be scheduled before callee", intermediateIndex < calleeIndex);
+        }, null);
+        OptimizedCallTarget caller = (OptimizedCallTarget) callerRootNode.getCallTarget();
+        compile(caller);
+        OptimizedCallTarget intermediate = callerRootNode.target;
+        Assert.assertEquals(caller.getCallAndLoopCount(), intermediate.getCallAndLoopCount());
+        OptimizedCallTarget callee = ((CallerRootNode) intermediate.getRootNode()).target;
+        Assert.assertTrue(caller.getCallAndLoopCount() > callee.getCallAndLoopCount());
+        Assert.assertTrue(intermediate.getCallAndLoopCount() > callee.getCallAndLoopCount());
     }
 
     @Test
@@ -166,44 +154,23 @@ public class SubmitLexicalSingleCallerTest extends TestWithPolyglotOptions {
         final String callerName = "Caller";
         final String intermediateName = "Intermediate";
         final String calleeName = "Callee";
-        compile(new CallerRootNode(callerName, callerFD -> {
+        CallerRootNode callerRootNode = new CallerRootNode(callerName, callerFD -> {
             return new CallerRootNode(intermediateName, intermediateFD -> {
                 return new RootNodeWithLoop(calleeName, intermediateFD);
             }, callerFD);
-        }, null).getCallTarget());
-        List<String> tierTwoCompilationQueues = getTierTwoCompilationQueues();
-        int callerIndex = getIndex(tierTwoCompilationQueues, callerName);
-        int intermediateIndex = getIndex(tierTwoCompilationQueues, intermediateName);
-        int calleeIndex = getIndex(tierTwoCompilationQueues, calleeName);
-        Assert.assertNotEquals("Caller not scheduled", -1, callerIndex);
-        Assert.assertNotEquals("Callee not scheduled", -1, calleeIndex);
-        Assert.assertNotEquals("Intermediate not scheduled", -1, intermediateIndex);
-        Assert.assertTrue("Caller should be scheduled before callee", callerIndex < calleeIndex);
-        Assert.assertTrue("Caller should be scheduled before intermediate", callerIndex < intermediateIndex);
-        Assert.assertTrue("Intermediate should be scheduled before callee", intermediateIndex < calleeIndex);
-    }
-
-    private static int getIndex(List<String> tierTwoCompilation, String callerName) {
-        int callerIndex = -1;
-        for (int i = 0; i < tierTwoCompilation.size(); i++) {
-            String s = tierTwoCompilation.get(i);
-            if (s.contains(callerName)) {
-                callerIndex = i;
-            }
-        }
-        return callerIndex;
+        }, null);
+        OptimizedCallTarget caller = (OptimizedCallTarget) callerRootNode.getCallTarget();
+        compile(caller);
+        OptimizedCallTarget intermediate = callerRootNode.target;
+        Assert.assertTrue(caller.getCallAndLoopCount() > intermediate.getCallAndLoopCount());
+        OptimizedCallTarget callee = ((CallerRootNode) intermediate.getRootNode()).target;
+        Assert.assertTrue(caller.getCallAndLoopCount() > callee.getCallAndLoopCount());
+        Assert.assertTrue(intermediate.getCallAndLoopCount() > callee.getCallAndLoopCount());
     }
 
     private static void compile(RootCallTarget callTarget) {
         for (int i = 0; i < COMPILATION_THRESHOLD; i++) {
             callTarget.call();
         }
-    }
-
-    private List<String> getTierTwoCompilationQueues() {
-        return err.toString().lines().//
-                        filter(s -> s.contains("Tier 2")).//
-                        filter(s -> s.contains("opt queued")).//
-                        collect(Collectors.toList());
     }
 }

@@ -648,15 +648,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        maybeSubmitCallerForCompilation(this, rootNode.getParentFrameDescriptor());
+        propagateCallAndLoopCount(this, rootNode.getParentFrameDescriptor());
         return compile(true);
     }
 
-    private static boolean maybeSubmitCallerForCompilation(OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor) {
-        if (!PolyglotCompilerOptions.SubmitLexicalSingleCaller.getValue(current.getOptionValues()) ||
-                        parentFrameDescriptor == null ||
-                        current.singleCallNode == NO_CALL ||
-                        current.singleCallNode == MULTIPLE_CALLS) {
+    private boolean propagateCallAndLoopCount(OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor) {
+        if (!engine.propagateCallAndLoopCount || parentFrameDescriptor == null || current.singleCallNode == NO_CALL || current.singleCallNode == MULTIPLE_CALLS) {
             return false;
         }
         OptimizedDirectCallNode callerCallNode = current.singleCallNode.get();
@@ -666,14 +663,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return false;
         }
         OptimizedCallTarget callerCallTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || maybeSubmitCallerForCompilation(callerCallTarget, parentFrameDescriptor)) {
+        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || propagateCallAndLoopCount(callerCallTarget, parentFrameDescriptor)) {
             callerCallNode.forceInlining();
-            /**
-             * TODO BS This call will prevent first tier compilations
-             * 
-             * We need a way to have queue first and second tier compilations at the same time
-             */
-            callerCallTarget.lastTierCompile();
+            callerCallTarget.callAndLoopCount += this.callAndLoopCount;
             return true;
         }
         return false;
