@@ -57,15 +57,10 @@ public class JavaRegexBenchmark extends BenchmarkBase {
 
     // see if it makes a difference to check for capture groups or just "isMatch"
     // add another @Benchmark method
-    // TODO arrange a meeting with Wirth for bachelor thesis (via mail)
-
-    // describe TRegex
-    // differences TRegex (ECMA-Script-Regex) and Java Regex
-    // how did the applying process work
     @Benchmark
     public boolean tregex(BenchState state) {
         return state.tregexPattern.invokeMember("exec", state.input, 0).getMember("isMatch").asBoolean();
-        //
+//
 //        Value mem = state.tregexPattern.invokeMember("exec", state.input, 0);
 //        if(mem.getMember("isMatch").asBoolean()) {
 //            // print as well to illustrate

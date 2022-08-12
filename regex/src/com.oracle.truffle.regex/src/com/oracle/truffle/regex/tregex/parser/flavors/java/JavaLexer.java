@@ -384,7 +384,7 @@ public class JavaLexer extends BaseLexer {
                 // escapes. Both result in sets of characters, but in the former case, we can skip
                 // the case-folding step in the `charClass` method and call `Token::createCharClass`
                 // directly.
-                if (isPredefCharClass(ch)) {        // TODO combine those two paths and make the function return Token.createCharClass?
+                if (isPredefCharClass(ch)) {
                     return Token.createCharClass(parsePredefCharClass(ch));
                 } else {
                     return Token.createCharClass(CodePointSet.create(parseEscapeChar(ch, false)), true);
@@ -495,7 +495,7 @@ public class JavaLexer extends BaseLexer {
     private Token characterClass() {
         curCharClassClear();
         collectCharClass();
-        return Token.createCharClass(curCharClass.toCodePointSet(), curCharClass.matchesSingleChar());  // TODO maybe change to !invert && curCharClass.matchesSingleChar()
+        return Token.createCharClass(curCharClass.toCodePointSet(), curCharClass.matchesSingleChar());
     }
 
     private void collectCharClass() {
@@ -520,7 +520,7 @@ public class JavaLexer extends BaseLexer {
             if (ch == '\\') {
                 int ch2 = consumeChar();
                 if (ch2 == 'P' || ch2 == 'p') {
-                    boolean capitalP = curChar() == 'P';
+                    boolean capitalP = ch2 == 'P';
                     ch2 = consumeChar();
                     if (ch2 == '{') {
                         String propertySpec = getMany(c -> c != '}');
@@ -788,8 +788,7 @@ public class JavaLexer extends BaseLexer {
     }
 
     private static String parseUnicodeCharacterClass(String property) {
-        String propertyBegin = property.toLowerCase().substring(0, 2);
-        if (propertyBegin.equals("is") || propertyBegin.equals("in")) {
+        if (property.toLowerCase().startsWith("is") || property.toLowerCase().startsWith("in")) {
             return property.substring(2);
         } else if (property.contains("=")) {
             return property.substring(property.indexOf('=') + 1);
