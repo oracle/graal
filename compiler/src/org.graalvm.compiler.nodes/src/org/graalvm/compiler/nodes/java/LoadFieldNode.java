@@ -36,7 +36,6 @@ import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.interpreter.value.InterpreterValueFactory;
-import org.graalvm.compiler.interpreter.value.JVMContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -241,19 +240,15 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             // TODO: default values?
             fieldVal = interpreter.loadStaticFieldValue(field());
         } else {
-            // 获取 jvmContext 和 valueFactory，valueFactory 是在 getFieldValue 方法里用来把 native object 转换为 InterpterValue
-            JVMContext jvmContext = interpreter.getJVMContext();
-            InterpreterValueFactory valueFactory = interpreter.getRuntimeValueFactory();
             InterpreterValue objectVal = interpreter.interpretExpr(object());
             // Test if object is null
-            // 测试 object 是否是 null
             if (objectVal.isNull()) {
                 throw new InterpreterException(new NullPointerException());
             }
             GraalError.guarantee(objectVal instanceof InterpreterValueMutableObject, "LoadFieldNode input doesn't interpret to object");
-            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(jvmContext, field()), "LoadFieldNode field doesn't exist on object");
+            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "LoadFieldNode field doesn't exist on object");
 
-            fieldVal = ((InterpreterValueObject) objectVal).getFieldValue(jvmContext, valueFactory, field());
+            fieldVal = ((InterpreterValueObject) objectVal).getFieldValue(field());
         }
 
         interpreter.setNodeLookupValue(this, fieldVal);
