@@ -96,12 +96,12 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
 
     @Override
     public FixedNode interpret(InterpreterState interpreter) {
-        interpreter.setHeapValue(this, interpreter.getRuntimeValueFactory().createObject(instanceClass()));
+        interpreter.setNodeLookupValue(this, interpreter.getRuntimeValueFactory().createObject(instanceClass()));
         return next();
     }
 
     @Override
     public InterpreterValue interpretExpr(InterpreterState interpreter) {
-        return interpreter.getHeapValue(this);
+        return interpreter.getNodeLookupValue(this);
     }
 }
