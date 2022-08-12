@@ -54,6 +54,7 @@ import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
+import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNode;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
@@ -65,9 +66,14 @@ public class BoxingOperationsTest {
     // than it needs to
 
     private static RootCallTarget parse(OperationParser<BoxingOperationsBuilder> parser) {
+        OperationNode node = parseNode(parser);
+        return new TestRootNode(node).getCallTarget();
+    }
+
+    private static OperationNode parseNode(OperationParser<BoxingOperationsBuilder> parser) {
         OperationNodes nodes = BoxingOperationsBuilder.create(OperationConfig.DEFAULT, parser);
         OperationNode node = nodes.getNodes().get(0);
-        return new TestRootNode(node).getCallTarget();
+        return node;
     }
 
     @Test
@@ -251,6 +257,33 @@ public class BoxingOperationsTest {
             root.call(ObjectProducer.PRODUCE_INT);
             Assert.fail();
         } catch (UnsupportedSpecializationException e) {
+        }
+    }
+
+    @Test
+    public void testLBEMultipleLoads() {
+        OperationNode node = parseNode(b -> {
+            OperationLocal local = b.createLocal();
+
+            b.beginStoreLocal(local);
+            b.emitConstObject(1L);
+            b.endStoreLocal();
+
+            b.beginLongOperator();
+            b.emitLoadLocal(local);
+            b.endLongOperator();
+
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+
+            b.publish();
+        });
+
+        RootCallTarget root = new TestRootNode(node).getCallTarget();
+
+        for (int i = 0; i < 100; i++) {
+            Assert.assertEquals(1L, root.call());
         }
     }
 }

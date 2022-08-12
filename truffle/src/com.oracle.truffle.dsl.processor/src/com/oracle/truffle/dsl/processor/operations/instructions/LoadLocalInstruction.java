@@ -40,27 +40,17 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
-import javax.lang.model.type.TypeKind;
-
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadLocalInstruction extends Instruction {
 
     private final OperationsContext ctx;
-    private final FrameKind kind;
 
-    public LoadLocalInstruction(OperationsContext ctx, int id, FrameKind kind) {
-        super("load.local." + (kind == null ? "uninit" : kind.getTypeName().toLowerCase()), id, 1);
+    public LoadLocalInstruction(OperationsContext ctx, int id) {
+        super("load.local", id, 1);
         this.ctx = ctx;
-        this.kind = kind;
         addLocal("local");
     }
 
@@ -72,97 +62,8 @@ public class LoadLocalInstruction extends Instruction {
         b.tree(createLocalIndex(vars, 0));
         b.end();
 
-        if (OperationGeneratorFlags.INTERPRETER_ONLY_BOXING_ELIMINATION) {
-            b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock(); // {
-        }
+        createCopyObject(vars, b);
 
-        if (kind == null) {
-            if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
-                b.statement("System.err.printf(\" local load  %2d : %s [uninit]%n\", localIdx, $frame.getValue(localIdx))");
-            }
-            createCopyAsObject(vars, b);
-        } else if (kind == FrameKind.OBJECT) {
-            b.startIf();
-            // {
-            b.startCall(vars.frame, "getFrameDescriptor().getSlotKind").string("localIdx").end();
-            b.string(" != ");
-            b.staticReference(StoreLocalInstruction.FrameSlotKind, "Object");
-            // }
-            b.end().startBlock();
-            // {
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-
-            if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.err.printf(\" local load  %2d : %s [init object]%n\", localIdx, $frame.getValue(localIdx))");
-            }
-
-            createSetSlotKind(vars, b, "FrameSlotKind.Object");
-            createReplaceObject(vars, b);
-            // }
-            b.end();
-
-            if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
-                b.statement("System.err.printf(\" local load  %2d : %s [generic]%n\", localIdx, $frame.getValue(localIdx))");
-            }
-
-            createCopyObject(vars, b);
-        } else {
-
-            b.declaration(StoreLocalInstruction.FrameSlotKind, "localType",
-                            b.create().startCall(vars.frame, "getFrameDescriptor().getSlotKind").string("localIdx").end().build());
-
-            b.startIf();
-            b.string("localType != ").staticReference(StoreLocalInstruction.FrameSlotKind, kind.getFrameName());
-            b.end().startBlock();
-            // {
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-
-            b.declaration("Object", "localValue", (CodeTree) null);
-
-            b.startIf();
-            // {
-            b.string("localType == ").staticReference(StoreLocalInstruction.FrameSlotKind, "Illegal");
-            b.string(" && ");
-            b.string("(localValue = $frame.getObject(localIdx))").instanceOf(ElementUtils.boxType(kind.getType()));
-            // }
-            b.end().startBlock();
-            // {
-
-            if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.err.printf(\" local load  %2d : %s [init " + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
-            }
-
-            createSetSlotKind(vars, b, "FrameSlotKind." + kind.getFrameName());
-
-            b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
-            b.string("localIdx");
-            b.startGroup().cast(kind.getType()).string("localValue").end();
-            b.end(2);
-
-            createCopyPrimitive(vars, b);
-            // }
-            b.end().startElseBlock();
-            // {
-
-            if (OperationGeneratorFlags.LOG_LOCAL_LOADS || OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
-                b.statement("System.err.printf(\" local load  %2d : %s [" + kind + " -> generic]%n\", localIdx, $frame.getValue(localIdx))");
-            }
-
-            createSetSlotKind(vars, b, "FrameSlotKind.Object");
-            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
-            createCopyObject(vars, b);
-
-            b.end(); // }
-            b.end().startElseBlock(); // } else {
-
-            if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
-                b.statement("System.err.printf(\" local load  %2d : %s [" + kind + "]%n\", localIdx, $frame.getValue(localIdx))");
-            }
-
-            createCopyPrimitive(vars, b);
-            b.end(); // }
-
-        }
         b.startStatement().variable(vars.sp).string("++").end();
 
         return b.build();
@@ -171,11 +72,7 @@ public class LoadLocalInstruction extends Instruction {
 
     @Override
     public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        if (kind == FrameKind.OBJECT) {
-            return BoxingEliminationBehaviour.DO_NOTHING;
-        } else {
-            return BoxingEliminationBehaviour.REPLACE;
-        }
+        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     private static final boolean USE_SPEC_FRAME_COPY = true;
@@ -216,29 +113,13 @@ public class LoadLocalInstruction extends Instruction {
     }
 
     @Override
-    public CodeVariableElement boxingEliminationReplacement(FrameKind targetKind) {
-        if (kind == null) {
-            // unitialized -> anything
-            return ctx.loadLocalInstructions[targetKind.ordinal()].opcodeIdField;
-        } else {
-            if (targetKind == kind || kind == FrameKind.OBJECT) {
-                // do nothing
-                return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "0");
-            } else {
-                // prim -> anything different = object
-                return ctx.loadLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField;
-            }
-        }
-    }
-
-    @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
     }
 
     @Override
     public boolean neverInUncached() {
-        return kind != null;
+        return false;
     }
 
 }

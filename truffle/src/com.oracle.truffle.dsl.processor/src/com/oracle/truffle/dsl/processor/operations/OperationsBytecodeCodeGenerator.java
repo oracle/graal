@@ -71,7 +71,6 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
 
 public class OperationsBytecodeCodeGenerator {
 
@@ -553,8 +552,6 @@ public class OperationsBytecodeCodeGenerator {
         for (CodeVariableElement element : staticConstants.elements()) {
             builderBytecodeNodeType.add(element);
         }
-
-        builderBytecodeNodeType.add(StoreLocalInstruction.createStoreLocalInitialization(m.getOperationsContext()));
     }
 
     private static TypeMirror arrayOf(TypeMirror el) {

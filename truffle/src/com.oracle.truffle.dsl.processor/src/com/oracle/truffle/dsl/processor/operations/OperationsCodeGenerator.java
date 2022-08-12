@@ -548,7 +548,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement mCreateFrameDescriptor = GeneratorUtils.overrideImplement(types.OperationNode, "createFrameDescriptor");
         CodeTreeBuilder b = mCreateFrameDescriptor.createBuilder();
         b.statement("FrameDescriptor.Builder builder = FrameDescriptor.newBuilder()");
-        b.statement("builder.addSlots(_maxLocals + _maxStack, FrameSlotKind.Illegal)");
+        b.startStatement().string("builder.addSlots(_maxLocals + _maxStack,").type(types.FrameSlotKind).string(".Illegal)").end();
         b.statement("return builder.build()");
         return mCreateFrameDescriptor;
     }
@@ -1500,7 +1500,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         for (TypeKind kind : m.getBoxingEliminatedTypes()) {
             FrameKind frameKind = FrameKind.valueOfPrimitive(kind);
             baseClass.add(createExpectPrimitive(frameKind));
-            baseClass.add(createStoreLocalCheck(frameKind));
+            // baseClass.add(createStoreLocalCheck(frameKind));
         }
 
         return baseClass;
