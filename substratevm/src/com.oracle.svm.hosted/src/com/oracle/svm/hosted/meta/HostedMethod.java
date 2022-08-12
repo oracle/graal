@@ -102,7 +102,8 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     private final LocalVariableTable localVariableTable;
 
     private final String name;
-    private final String uniqueShortName;
+    // TODO BS should be private, currently used to compare duplicated host methods.
+    final String uniqueShortName;
 
     public static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, HostedMethod deoptOrigin) {
@@ -158,7 +159,8 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         /**
          * TODO BS should probably integrate with
          * com.oracle.svm.core.SubstrateUtil.uniqueShortName(jdk.vm.ci.meta.ResolvedJavaMethod)
-         * somehow
+         * somehow. We currently use uniqueShortName in the {@link HostedUniverse.MethodComparator}
+         * and we really shouldn't.
          */
         this(original.wrapped, original.holder, original.signature, original.constantPool, original.handlers, original.compilationInfo.getDeoptOrigin(), original.name,
                         original.uniqueShortName + System.identityHashCode(context), original.localVariableTable);
