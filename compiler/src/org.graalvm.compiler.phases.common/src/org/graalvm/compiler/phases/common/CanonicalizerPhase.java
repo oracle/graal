@@ -307,10 +307,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
             for (Node n : tool.workList) {
-                boolean changed = processNode(n, tool);
-                if (changed && tool.debug.isDumpEnabled(DebugContext.DETAILED_LEVEL)) {
-                    tool.debug.dump(DebugContext.DETAILED_LEVEL, graph, "%s %s", getName(), n);
-                }
+                processNode(n, tool);
                 ++sum;
             }
         }
