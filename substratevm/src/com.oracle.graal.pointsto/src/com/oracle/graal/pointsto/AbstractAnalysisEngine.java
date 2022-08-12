@@ -24,6 +24,22 @@
  */
 package com.oracle.graal.pointsto;
 
+import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
+
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -38,22 +54,8 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import java.io.PrintWriter;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ForkJoinPool;
-import java.util.function.Function;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**
  * This abstract class is shared between Reachability and Points-to. It contains generic methods
@@ -289,6 +291,16 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     protected void schedule(Runnable task) {
         executor.execute((d) -> task.run());
+    }
+
+    @Override
+    public final void postTask(CompletionExecutor.DebugContextRunnable task) {
+        executor.execute(task);
+    }
+
+    @Override
+    public final boolean executorIsStarted() {
+        return executor.isStarted();
     }
 
     @Override
