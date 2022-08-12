@@ -69,8 +69,6 @@ public class GraalInterpreterTest extends GraalCompilerTest {
         checkAgainstInterpreter(expect, true, "fact", 17);
     }
 
-    // 这下面加了几个测试 object
-
     public static class Foo {
         public int value;
         public boolean neg;
@@ -87,6 +85,12 @@ public class GraalInterpreterTest extends GraalCompilerTest {
             } else {
                 return fact1(n - 1) * n;
             }
+        }
+
+        public Foo getObj(int n) {
+            Foo foo = new Foo();
+            foo.value = -n;
+            return foo;
         }
     }
 
@@ -144,6 +148,42 @@ public class GraalInterpreterTest extends GraalCompilerTest {
     public void testFooFact5() {
         Result expect = new Result(120000, null);
         checkAgainstInterpreter(expect, true, "fooFact", 5, 1000, false);
+    }
+
+    public static final int returnObj(int n) {
+        Foo foo = new Foo();
+        Foo foo2 = foo.getObj(n);
+        return foo2.value;
+    }
+
+    @Test
+    public void testReturnObject() {
+        Result expect = new Result(-13, null);
+        checkAgainstInterpreter(expect, true, "returnObj", 13);
+    }
+
+
+    public static int unwrapObj(Foo foo) {
+        return foo.neg ? -foo.value : foo.value;
+    }
+
+    public static final int passObj(int n, boolean neg) {
+        Foo foo = new Foo();
+        foo.value = n;
+        foo.neg = neg;
+        return unwrapObj(foo);
+    }
+
+    @Test
+    public void testPassObject13() {
+        Result expect = new Result(13, null);
+        checkAgainstInterpreter(expect, true, "passObj", 13, false);
+    }
+
+    @Test
+    public void testPassObject29() {
+        Result expect = new Result(-29, null);
+        checkAgainstInterpreter(expect, true, "passObj", 29, true);
     }
 
     public static class Bar {
