@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.v0;
+import static jdk.vm.ci.aarch64.AArch64.v1;
+import static jdk.vm.ci.aarch64.AArch64.v2;
+import static jdk.vm.ci.aarch64.AArch64.v3;
+import static jdk.vm.ci.aarch64.AArch64.v4;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -72,7 +77,7 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
         this.originalKeyValue = originalKeyValue;
         this.keyValue = tool.newVariable(originalKeyValue.getValueKind());
         this.lengthOffset = lengthOffset;
-        this.temps = new Value[]{AArch64.v0.asValue(), AArch64.v1.asValue(), AArch64.v2.asValue(), AArch64.v3.asValue(), AArch64.v4.asValue()};
+        this.temps = new Value[]{v0.asValue(), v1.asValue(), v2.asValue(), v3.asValue(), v4.asValue()};
     }
 
     @Override
@@ -95,76 +100,76 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
             AArch64Address ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
             masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v2, AArch64.v3, AArch64.v4, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v2, AArch64.v2);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v3, AArch64.v3);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v4, AArch64.v4);
-            masm.neon.aese(AArch64.v0, AArch64.v1);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v2);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v3);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v4);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v3, v3);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v4, v4);
+            masm.neon.aese(v0, v1);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v2);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v3);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v4);
+            masm.neon.aesmc(v0, v0);
 
             ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
-            masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v2, AArch64.v3, AArch64.v4, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v2, AArch64.v2);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v3, AArch64.v3);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v4, AArch64.v4);
-            masm.neon.aese(AArch64.v0, AArch64.v1);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v2);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v3);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v4);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
+            masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, v3, v4, ld1Addr);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v3, v3);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v4, v4);
+            masm.neon.aese(v0, v1);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v2);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v3);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v4);
+            masm.neon.aesmc(v0, v0);
 
             ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
-            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v2, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v2, AArch64.v2);
+            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, ld1Addr);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
 
             masm.compare(32, keylen, 44);
             masm.branchConditionally(ConditionFlag.EQ, labelDoLast);
 
-            masm.neon.aese(AArch64.v0, AArch64.v1);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v2);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
+            masm.neon.aese(v0, v1);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v2);
+            masm.neon.aesmc(v0, v0);
 
             ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
-            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v2, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v2, AArch64.v2);
+            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, ld1Addr);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
 
             masm.compare(32, keylen, 52);
             masm.branchConditionally(ConditionFlag.EQ, labelDoLast);
 
-            masm.neon.aese(AArch64.v0, AArch64.v1);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v2);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
+            masm.neon.aese(v0, v1);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v2);
+            masm.neon.aesmc(v0, v0);
 
             ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
-            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v2, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v2, AArch64.v2);
+            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, ld1Addr);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
 
             masm.bind(labelDoLast);
 
-            masm.neon.aese(AArch64.v0, AArch64.v1);
-            masm.neon.aesmc(AArch64.v0, AArch64.v0);
-            masm.neon.aese(AArch64.v0, AArch64.v2);
+            masm.neon.aese(v0, v1);
+            masm.neon.aesmc(v0, v0);
+            masm.neon.aese(v0, v2);
 
-            masm.fldr(128, AArch64.v1, AArch64Address.createBaseRegisterOnlyAddress(128, key));
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v1);
-            masm.neon.eorVVV(ASIMDSize.FullReg, AArch64.v0, AArch64.v0, AArch64.v1);
+            masm.fldr(128, v1, AArch64Address.createBaseRegisterOnlyAddress(128, key));
+            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
+            masm.neon.eorVVV(ASIMDSize.FullReg, v0, v0, v1);
 
-            masm.fstr(128, AArch64.v0, AArch64Address.createBaseRegisterOnlyAddress(128, to));
+            masm.fstr(128, v0, AArch64Address.createBaseRegisterOnlyAddress(128, to));
         }
     }
 }

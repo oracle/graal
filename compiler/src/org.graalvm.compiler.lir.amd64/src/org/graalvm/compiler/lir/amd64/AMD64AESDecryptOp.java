@@ -46,9 +46,9 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 3589,
-          lineEnd   = 3681,
-          commit    = "069f180a85655beba41a32c3ae05eeac31989682",
+          lineStart = 3684,
+          lineEnd   = 3776,
+          commit    = "61e072d11c8e0cb5879bb733ed1fdd2144326bfd",
           sha1      = "ca1c96010b6fa47fa166a8dc7d771ead41a04337")
 // @formatter:on
 public final class AMD64AESDecryptOp extends AMD64LIRInstruction {
