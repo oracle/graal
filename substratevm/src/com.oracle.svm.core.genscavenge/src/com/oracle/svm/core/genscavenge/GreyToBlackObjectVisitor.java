@@ -25,8 +25,6 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

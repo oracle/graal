@@ -27,21 +27,10 @@ package com.oracle.svm.core.genscavenge;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.Continuation;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -234,6 +223,7 @@ public final class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         ///assert owns mutex || pargc thread ?
+        ///use thread mutex to protect appendNewChunk
 //        if (SubstrateOptions.MultiThreaded.getValue()) {
 //            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
 //        }

@@ -826,20 +826,6 @@ public abstract class VMThreads {
         }
     }
 
-    public static class ParallelGCSupport {///unused
-        private static final FastThreadLocalInt isParallelGCThreadTL = FastThreadLocalFactory.createInt("ParallelGCSupport.isParallelGCThreadTL");
-        private static final int REGULAR_THREAD = 0;
-        private static final int PARALLEL_GC_THREAD = 1;
-
-        public static boolean isParallelGCThread(IsolateThread vmThread) {
-            return isParallelGCThreadTL.getVolatile(vmThread) == PARALLEL_GC_THREAD;
-        }
-
-        public static void setParallelGCThread() {
-            isParallelGCThreadTL.setVolatile(PARALLEL_GC_THREAD);
-        }
-    }
-
     public static class SafepointBehavior {
         /** Determines how this thread interacts with the safepoint handling. */
         private static final FastThreadLocalInt safepointBehaviorTL = FastThreadLocalFactory.createInt("StatusSupport.safepointBehaviorTL");

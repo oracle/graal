@@ -47,7 +47,6 @@ public class ParallelGCImpl extends ParallelGC {
 
     public void startWorkerThread(int n) {
         Thread t = new Thread(() -> {
-//                VMThreads.ParallelGCSupport.setParallelGCThread();
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
                 log().string("WW start ").unsigned(n).newline();
 

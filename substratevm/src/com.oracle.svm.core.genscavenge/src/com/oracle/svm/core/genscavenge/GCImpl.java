@@ -26,20 +26,12 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
-import com.oracle.svm.core.genscavenge.parallel.Stats;
-import com.oracle.svm.core.genscavenge.parallel.TaskQueue;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -377,10 +369,9 @@ public final class GCImpl implements GC {
             verboseGCLog.string("      MinimumHeapSize: ").unsigned(getPolicy().getMinimumHeapSize()).newline();
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).string("]").newline();
-            boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
+            boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();///rm
             boolean hasShift = ReferenceAccess.singleton().getCompressEncoding().hasShift();
             verboseGCLog.string("  has compressed refs: ").bool(compressed).string(", has shift: ").bool(hasShift).newline();
-            verboseGCLog.string("]").newline();
             if (SerialGCOptions.PrintHeapShape.getValue()) {
                 HeapImpl.getHeapImpl().logImageHeapPartitionBoundaries(verboseGCLog);
             }
@@ -1052,6 +1043,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    /// queue objects as they are copied?
     private void scanGreyObjects(boolean isIncremental) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
@@ -1155,7 +1147,7 @@ public final class GCImpl implements GC {
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces(chunkReleaser);
         }
-        ParallelGCImpl.TLAB.set(WordFactory.nullPointer());
+        ParallelGCImpl.TLAB.set(WordFactory.nullPointer()); ///rm?
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
