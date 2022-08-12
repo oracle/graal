@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+OpenIDE-Module: org.graalvm.visualizer.coordinator
+OpenIDE-Module-Install: org/graalvm/visualizer/coordinator/impl/Installer.class
+OpenIDE-Module-Layer: org/graalvm/visualizer/coordinator/layer.xml
+OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/coordinator/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.2
+

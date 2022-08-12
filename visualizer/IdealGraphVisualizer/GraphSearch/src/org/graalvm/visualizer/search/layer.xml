@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.2//EN" "http://www.netbeans.org/dtds/filesystem-1_2.dtd">
+<filesystem>
+    <folder name="QuickSearch">
+        <file name="MavenRepositories_hidden"/>
+        <file name="Actions_hidden"/>
+        <file name="GoToOption_hidden"/>
+        <file name="GoToSymbol_hidden"/>
+        <file name="GoToType_hidden"/>
+        <file name="Help_hidden"/>
+        <file name="Hudson_hidden"/>
+        <folder name="Nodes">
+            <attr name="command" stringvalue="n"/>
+            <attr name="position" intvalue="0"/>
+            <file name="org-graalvm-visualizer-search-quicksearch-NodeQuickSearch.instance"/>
+        </folder>
+        <file name="Projects_hidden"/>
+    </folder>
+</filesystem>
