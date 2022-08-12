@@ -4124,6 +4124,8 @@ public class FlatNodeGenFactory {
                 LocalVariable materializedFrame = new LocalVariable(types.MaterializedFrame, FRAME_VALUE, read.build());
                 frameState.set(includeFrameParameter, materializedFrame);
             }
+        } else {
+            includeFrameParameter = null;
         }
 
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
