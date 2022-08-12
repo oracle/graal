@@ -106,13 +106,13 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
 
         // TODO: is type() the elemental type?
         InterpreterValueArray newArray = interpreter.getRuntimeValueFactory().createMultiArray(type(), dimensionsEvaluated);
-        interpreter.setHeapValue(this, newArray);
+        interpreter.setNodeLookupValue(this, newArray);
 
         return next();
     }
 
     @Override
     public InterpreterValue interpretExpr(InterpreterState interpreter) {
-        return interpreter.getHeapValue(this);
+        return interpreter.getNodeLookupValue(this);
     }
 }
