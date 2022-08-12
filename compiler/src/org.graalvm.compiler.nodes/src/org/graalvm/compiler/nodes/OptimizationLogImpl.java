@@ -285,7 +285,8 @@ public class OptimizationLogImpl implements OptimizationLog {
                 DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {
-                StringBuilder msg = new StringBuilder("Performed ").append(optimizationName).append(' ').append(eventName);
+                StringBuilder msg = new StringBuilder("Performed ").append(optimizationName).append(' ').append(eventName)
+                                .append(" for node ").append(node);
                 if (position != null) {
                     msg.append(" at bci ").append(position.getBCI());
                 }
