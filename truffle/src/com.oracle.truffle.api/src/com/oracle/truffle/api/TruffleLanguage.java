@@ -41,6 +41,7 @@
 package com.oracle.truffle.api;
 
 import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -64,8 +65,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -3852,8 +3855,6 @@ class TruffleLanguageSnippets {
 
         final Assumption singleThreaded = Truffle.getRuntime().createAssumption();
         final List<Thread> startedThreads = new ArrayList<>();
-
-        final List<Thread> systemThreads = new ArrayList<>();
     }
 
     // @formatter:off
@@ -4051,9 +4052,22 @@ class TruffleLanguageSnippets {
     }
     // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
 
-    abstract
+    abstract static
     // BEGIN: TruffleLanguageSnippets.SystemThreadLanguage
-    class SystemThreadLanguage extends TruffleLanguage<Context> {
+    class SystemThreadLanguage extends
+            TruffleLanguage<SystemThreadLanguage.Context> {
+
+        static class Context {
+            private final BlockingQueue<Runnable> tasks;
+            private final Env env;
+            private volatile Thread systemThread;
+            private volatile boolean cancelled;
+
+            Context(Env env) {
+                this.tasks = new LinkedBlockingQueue<>();
+                this.env = env;
+            }
+        }
 
         @Override
         protected Context createContext(Env env) {
@@ -4061,21 +4075,33 @@ class TruffleLanguageSnippets {
         }
 
         @Override
-        protected void initializeContext(Context context) throws Exception {
+        protected void initializeContext(Context context) {
             // Create and start a Thread for the asynchronous internal task.
             // Remember the Thread to stop and join it in the disposeContext.
-            Thread t = context.env.createSystemThread(() -> {
-                // asynchronous task
+            context.systemThread = context.env.createSystemThread(() -> {
+                while (!context.cancelled) {
+                    try {
+                        Runnable task = context.tasks.
+                                poll(Integer.MAX_VALUE, SECONDS);
+                        if (task != null) {
+                            task.run();
+                        }
+                    } catch (InterruptedException ie) {
+                        // pass to cancelled check
+                    }
+                }
             });
-            context.systemThreads.add(t);
-            t.start();
+            context.systemThread.start();
         }
 
         @Override
         protected void disposeContext(Context context) {
-            // Stop and join all system threads.
-            boolean interrupted = false;
-            for (Thread threadToJoin : context.systemThreads) {
+            // Stop and join system thread.
+            context.cancelled = true;
+            Thread threadToJoin = context.systemThread;
+            if (threadToJoin != null) {
+                threadToJoin.interrupt();
+                boolean interrupted = false;
                 boolean terminated = false;
                 while (!terminated) {
                     try {
@@ -4085,9 +4111,9 @@ class TruffleLanguageSnippets {
                         interrupted = true;
                     }
                 }
-            }
-            if (interrupted) {
-                Thread.currentThread().interrupt();
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }

@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.instrumentation;
 
 import static com.oracle.truffle.api.instrumentation.InstrumentAccessor.ENGINE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,15 +54,14 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -1335,37 +1335,43 @@ class TruffleInstrumentSnippets {
     // BEGIN: TruffleInstrumentSnippets.SystemThreadInstrument
     class SystemThreadInstrument extends TruffleInstrument {
 
-        private final Set<Thread> systemThreads;
-
-        SystemThreadInstrument() {
-            systemThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        }
+        private volatile Thread systemThread;
+        private volatile boolean cancelled;
+        private final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
 
         @Override
         protected void onCreate(Env env) {
             // Create and start a Thread for the asynchronous task.
             // Remember the Thread reference to stop and join it in
             // the finalizeContext
-            Thread t = env.createSystemThread(() -> {
-                // asynchronous task
+            systemThread = env.createSystemThread(() -> {
+                while (!cancelled) {
+                    try {
+                        Runnable task = tasks.poll(Integer.MAX_VALUE, SECONDS);
+                        if (task != null) {
+                            task.run();
+                        }
+                    } catch (InterruptedException ie) {
+                        // pass to cancelled check
+                    }
+                }
             });
-            systemThreads.add(t);
-            t.start();
+            systemThread.start();
         }
 
         @Override
         protected void onDispose(Env env) {
-            // Stop and join all system threads.
+            // Stop and join system thread.
+            cancelled = true;
+            systemThread.interrupt();
             boolean interrupted = false;
-            for (Thread threadToJoin : systemThreads) {
-                boolean terminated = false;
-                while (!terminated) {
-                    try {
-                        threadToJoin.join();
-                        terminated = true;
-                    } catch (InterruptedException ie) {
-                        interrupted = true;
-                    }
+            boolean terminated = false;
+            while (!terminated) {
+                try {
+                    systemThread.join();
+                    terminated = true;
+                } catch (InterruptedException ie) {
+                    interrupted = true;
                 }
             }
             if (interrupted) {
