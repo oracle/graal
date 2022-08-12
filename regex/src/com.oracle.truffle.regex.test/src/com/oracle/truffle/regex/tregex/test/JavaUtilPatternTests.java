@@ -63,11 +63,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("[Hh]ello [Ww]orld!", 0, "hello World!");
     }
 
-//    @Test
-//    public void halloWelt() {
-//        test("rege(x(es)?|xps?)", 0, "regexes");
-//    }
-
     @Test
     public void dotTest() {
         test(".", 0, "x");
@@ -147,6 +142,26 @@ public class JavaUtilPatternTests extends RegexTestBase {
     }
 
     @Test
+    public void furtherCC() {
+        test("[\\p{ASCII}&&\\p{L}]", 0, "(*abAb[");
+        test("[\\p{ASCII}&&[^\\P{L}]]", 0, "(*abAb[");
+        test("[0[^\\W\\d]]", 0, "asd_0");
+        test("[0-9&&[^345]]", 0, "(*abAb[23421413asdf21387652315asdf23");
+        test("[2-8&&[4-6]]", 0, "(*abAb[23421413asdf21387652315asdf23");
+        test("[0-9&&[345]]", 0, "(*abAb[23421413asdf21387652315asdf23");
+        test("[0-4[6-8]]", 0, "(*abAb[23421413asdf21387652315asdf23");
+        test("[[\\p{ASCII}&&[^\\p{L}]]&&[0-4[6-8]]]", 0, "(*abAb[23421413asdf21387652315asdf23");
+        test("[a-d&&[\\p{L}]]", 0, "asf12305afec32");
+        test("[[\\p{ASCII}&&[^\\p{L}]]&&[0-4[6-8]]](\\.){1}[0-4[6-8]]+[a-d&&[\\p{L}]]", 0, "asf12305afec32.321a");
+    }
+
+    @Test
+    public void randomTests() {
+        test("^([a-z0-9_\\.\\-]+)@([\\da-z\\.\\-]+)\\.([a-z\\.]{2,5})$", 0, "daniel.jaburek@gmail.com");
+        test("[A-Fa-f0-9]{64}", 0, "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
+    }
+
+    @Test
     public void posixCC() {
         test("[\\p{Digit}\\p{Lower}]", 0, "2");
     }
@@ -154,7 +169,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Test
     public void posix2CC() {
         test("\\p{Digit}", 0, "1");
-        // TODO add block support?
         test("\\p{gc=Nd}", 0, "234");
     }
 
@@ -185,7 +199,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     }
 
 //    @Test
-//    public void matchAnchor() {
+//    public void matchAnchor() { // not supported yet
 //        test("\\G\\w", 0, "abc def");
 //    }
 
@@ -199,7 +213,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     public void quantifiers() {
         test("abc?", 0, "ab");
         test("abc??", 0, "ab");
-//        test("abc?+c", 0, "abcc");  // TODO not supported yet --> bailout (possive quantifiers)
+//        test("abc?+c", 0, "abcc");  // not supported yet --> bailout (possive quantifiers)
         test("\".*\"", 0, "abc \"def\" \"ghi\" jkl");
         test("\".*?\"", 0, "abc \"def\" \"ghi\" jkl");
         test("\".+?\"", 0, "abc \"def\" \"ghi\" jkl");
@@ -241,14 +255,9 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("(abc|def)=\\1", 0, "def=abc");
     }
 
-//    @Test   // TODO do I need to implement this as JavaScript does not support it and it's only useful to help the engine not to backtrack
+//    @Test   // atomic groups are not supported in TRegex
 //    public void atomicGroup() {       // no need to support that!
 //        test("a(?>bc|b)c", 0, "abcc");
-//    }
-
-//    @Test(expected = Exception.class)
-//    public void atomicGroupFail() {
-//        test("a(?>bc|b)c", 0, "abc");
 //    }
 
     @Test
@@ -286,7 +295,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("(?dm)^.", 0, "a\rb\nc");
     }
 
-//    @Test(expected = Exception.class)
     public void modeModifierFail() {
         test("te(?i)st", 0, "TEst");
         test("te(?i)st", 0, "TEST");
@@ -297,11 +305,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     }
 
-//    @Test
-//    public void helloWorld() {
-//        test("[Hh]ello [Ww]orld!", 0, "hello World!");
-//    }
-
     @Test
     public void dTest() {
         Pattern p = Pattern.compile("\\d", Pattern.UNICODE_CHARACTER_CLASS);
@@ -310,9 +313,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
             StringBuilder sb = new StringBuilder();
             sb.appendCodePoint(i);
             Matcher m = p.matcher(sb.toString());
-//            if(m.find()) {
-//                System.out.println(sb.toString() + " has matched");
-//            }
         }
 
         Assert.assertEquals(UnicodeProperties.getProperty("sc=Brai", true), UnicodeProperties.getProperty("Script=Brai", true));
@@ -336,15 +336,13 @@ public class JavaUtilPatternTests extends RegexTestBase {
             groupBoundaries = EmptyArrays.INT;
         }
         test(pattern, flagsToString(flags), input, fromIndex, isMatch, groupBoundaries);
-
-        // TODO auch an Java-Matcher intern weiterleiten und vergleichen ob beide gleich sind
     }
 
     String flagsToString(int javaUtilPatternFlags) {
         if (javaUtilPatternFlags == 0) {
             return "";
         }
-        // TODO
+
         if ((javaUtilPatternFlags & Pattern.UNIX_LINES) != 0) {
             return "d";
         }
@@ -369,7 +367,4 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
         throw new UnsupportedOperationException();
     }
-
-    // TODO create wrapper class which creates Context, and stuff as in RegexTestBase to make a function .compile(..,..);
-    // URLBenchmark-Klasse als Vorbild
 }
