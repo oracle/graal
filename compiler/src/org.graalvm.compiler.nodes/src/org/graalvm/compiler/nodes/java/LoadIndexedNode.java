@@ -211,7 +211,6 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         InterpreterValue arrayVal = interpreter.interpretExpr(array());
 
         // Test if array is null.
-        // 测试 array 是否是 null
         if (arrayVal.isNull()) {
             throw new InterpreterException(new NullPointerException());
         }
