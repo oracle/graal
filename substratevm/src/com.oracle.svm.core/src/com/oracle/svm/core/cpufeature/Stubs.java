@@ -28,8 +28,6 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
@@ -39,6 +37,7 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -50,26 +49,32 @@ import jdk.vm.ci.code.Architecture;
 public final class Stubs {
 
     public static final EnumSet<AMD64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AMD64 = EnumSet.of(
-                    SSE,
-                    SSE2,
                     SSE3,
                     SSSE3,
                     SSE4_1,
                     SSE4_2,
                     POPCNT,
                     AVX,
-                    AVX2,
-                    AES);
-    public static final EnumSet<AArch64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
+                    AVX2);
+    public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(SSSE3, AVX, AES);
+
+    public static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
+    public static final EnumSet<AArch64.CPUFeature> AES_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.ASIMD, AArch64.CPUFeature.AES);
 
     @Fold
-    public static EnumSet<?> getRuntimeCheckedCPUFeatures() {
+    public static EnumSet<?> getRuntimeCheckedCPUFeatures(Class<?> klass) {
         Architecture arch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
         if (arch instanceof AMD64) {
+            if (AESNode.class.equals(klass)) {
+                return AES_CPU_FEATURES_AMD64;
+            }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
         }
         if (arch instanceof AArch64) {
-            return RUNTIME_CHECKED_CPU_FEATURES_AARCH64;
+            if (AESNode.class.equals(klass)) {
+                return AES_CPU_FEATURES_AARCH64;
+            }
+            return EMPTY_CPU_FEATURES_AARCH64;
         }
         throw GraalError.shouldNotReachHere();
     }

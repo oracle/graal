@@ -54,16 +54,18 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private final ForeignCallDescriptor[] foreignCallDescriptors;
         private final boolean isReexecutable;
         private final EnumSet<?> minimumRequiredFeatures;
+        private final EnumSet<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
-        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures) {
-            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures);
+        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures, runtimeCheckedCPUFeatures);
         }
 
-        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures) {
+        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this.foreignCallDescriptors = foreignCallDescriptors;
             this.isReexecutable = isReexecutable;
             this.minimumRequiredFeatures = minimumRequiredFeatures;
+            this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         }
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs() {
@@ -76,7 +78,7 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
             boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || DeoptimizationSupport.enabled();
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(Stubs.getRuntimeCheckedCPUFeatures()) && DeoptimizationSupport.enabled();
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled();
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {
