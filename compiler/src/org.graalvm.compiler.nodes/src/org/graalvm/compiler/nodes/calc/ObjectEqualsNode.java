@@ -230,6 +230,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             return InterpreterValuePrimitive.ofBoolean(false);
         }
 
-        return InterpreterValuePrimitive.ofBoolean(xVal == yVal);
+        // compare native objects instead of InterpreterValueMutableObjects.
+        return InterpreterValuePrimitive.ofBoolean(xVal.asObject() == yVal.asObject());
     }
 }
