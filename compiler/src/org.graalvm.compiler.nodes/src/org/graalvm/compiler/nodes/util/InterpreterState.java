@@ -45,11 +45,6 @@ import java.util.List;
  */
 public interface InterpreterState {
 
-    // Used for nodes such NewArrayNode and NewInstanceNode
-    void setHeapValue(Node node, InterpreterValue value);
-
-    InterpreterValue getHeapValue(Node node);
-
     /**
      * Associate a control flow node with its current value.
      *
@@ -101,7 +96,4 @@ public interface InterpreterState {
 
     /** Get the factory for creating interpreter values. */
     InterpreterValueFactory getRuntimeValueFactory();
-
-    // 获取 JVMContext，在 LoadFieldNode , StoreFieldNode, LoadIndexedNode, StoreIndexedNode 里会用到
-    JVMContext getJVMContext();
 }
