@@ -95,11 +95,11 @@ public final class AArch64AESDecryptOp extends AArch64LIRInstruction {
         try (ScratchRegister sr = masm.getScratchRegister()) {
             Register keylen = sr.getRegister();
             masm.ldr(32, keylen, AArch64Address.createImmediateAddress(32, IMMEDIATE_SIGNED_UNSCALED, key, lengthOffset));
-            aesecb_decrypt(masm, from, to, key, keylen);
+            aesecbDecrypt(masm, from, to, key, keylen);
         }
     }
 
-    private static void aesecb_decrypt(AArch64MacroAssembler masm, Register from, Register to, Register key, Register keylen) {
+    private static void aesecbDecrypt(AArch64MacroAssembler masm, Register from, Register to, Register key, Register keylen) {
         Label labelDoLast = new Label();
 
         masm.fldr(128, v0, AArch64Address.createBaseRegisterOnlyAddress(128, from));

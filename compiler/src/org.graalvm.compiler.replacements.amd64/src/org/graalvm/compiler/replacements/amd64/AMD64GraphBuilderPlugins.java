@@ -38,6 +38,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
@@ -623,13 +624,19 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static boolean supports(AMD64 arch, CPUFeature feature) {
-        return arch.getFeatures().contains(feature);
+    private static boolean supports(AMD64 arch, CPUFeature... features) {
+        EnumSet<CPUFeature> supportedFeatures = arch.getFeatures();
+        for (CPUFeature feature : features) {
+            if (!supportedFeatures.contains(feature)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, AMD64 arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.registerConditional(supports(arch, CPUFeature.SSSE3) && supports(arch, CPUFeature.AVX) && supports(arch, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
-        r.registerConditional(supports(arch, CPUFeature.SSSE3) && supports(arch, CPUFeature.AVX) && supports(arch, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
+        r.registerConditional(supports(arch, CPUFeature.SSSE3, CPUFeature.AVX, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
+        r.registerConditional(supports(arch, CPUFeature.SSSE3, CPUFeature.AVX, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
     }
 }

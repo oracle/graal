@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.replacements.aarch64;
 
-
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
@@ -37,6 +36,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
 import java.lang.reflect.Type;
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
@@ -87,6 +87,8 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
@@ -96,10 +98,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
     public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, OptionValues options) {
-        register(plugins, replacements, registerForeignCallMath, options);
+        register(plugins, replacements, (AArch64) arch, registerForeignCallMath, options);
     }
 
-    public static void register(Plugins plugins, Replacements replacements, boolean registerForeignCallMath, OptionValues options) {
+    public static void register(Plugins plugins, Replacements replacements, AArch64 arch, boolean registerForeignCallMath, OptionValues options) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
@@ -112,7 +114,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
                 registerStringCodingPlugins(invocationPlugins, replacements);
-                registerAESPlugins(invocationPlugins, replacements);
+                registerAESPlugins(invocationPlugins, replacements, arch);
             }
         });
     }
@@ -547,9 +549,19 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static boolean supports(AArch64 arch, CPUFeature... features) {
+        EnumSet<CPUFeature> supportedFeatures = arch.getFeatures();
+        for (CPUFeature feature : features) {
+            if (!supportedFeatures.contains(feature)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, AArch64 arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.register(new AESCryptPlugin(ENCRYPT));
-        r.register(new AESCryptPlugin(DECRYPT));
+        r.registerConditional(supports(arch, CPUFeature.ASIMD, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
+        r.registerConditional(supports(arch, CPUFeature.ASIMD, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
     }
 }

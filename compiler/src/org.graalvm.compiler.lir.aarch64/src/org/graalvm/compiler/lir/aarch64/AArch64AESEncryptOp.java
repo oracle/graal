@@ -25,11 +25,9 @@
 package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.v0;
-import static jdk.vm.ci.aarch64.AArch64.v1;
 import static jdk.vm.ci.aarch64.AArch64.v17;
 import static jdk.vm.ci.aarch64.AArch64.v18;
 import static jdk.vm.ci.aarch64.AArch64.v19;
-import static jdk.vm.ci.aarch64.AArch64.v2;
 import static jdk.vm.ci.aarch64.AArch64.v20;
 import static jdk.vm.ci.aarch64.AArch64.v21;
 import static jdk.vm.ci.aarch64.AArch64.v22;
@@ -40,10 +38,8 @@ import static jdk.vm.ci.aarch64.AArch64.v26;
 import static jdk.vm.ci.aarch64.AArch64.v27;
 import static jdk.vm.ci.aarch64.AArch64.v28;
 import static jdk.vm.ci.aarch64.AArch64.v29;
-import static jdk.vm.ci.aarch64.AArch64.v3;
 import static jdk.vm.ci.aarch64.AArch64.v30;
 import static jdk.vm.ci.aarch64.AArch64.v31;
-import static jdk.vm.ci.aarch64.AArch64.v4;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -98,7 +94,9 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
         this.toValue = toValue;
         this.keyValue = keyValue;
         this.lengthOffset = lengthOffset;
-        this.temps = new Value[]{v0.asValue(), v1.asValue(), v2.asValue(), v3.asValue(), v4.asValue()};
+        this.temps = new Value[]{v0.asValue(), v17.asValue(), v18.asValue(), v19.asValue(), v20.asValue(), v21.asValue(),
+                        v22.asValue(), v23.asValue(), v24.asValue(), v25.asValue(), v26.asValue(), v27.asValue(),
+                        v28.asValue(), v29.asValue(), v30.asValue(), v31.asValue()};
     }
 
     @Override
@@ -174,7 +172,7 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
      * {@link #generate(int)}, {@link #length()}, and {@link #next()} to generate unrolled and
      * interleaved functions.
      */
-    public static abstract class KernelGenerator {
+    public abstract static class KernelGenerator {
         protected final int unrolls;
 
         public KernelGenerator(int unrolls) {
