@@ -392,9 +392,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 else:
                     self.jimage_ignore_jars.update(component.jar_distributions)
                     self.jimage_ignore_jars.update(component.builder_jar_distributions)
-                    for launcher_config in component.launcher_configs:
-                        if launcher_config.jar_distributions:
-                            self.jimage_ignore_jars.update(launcher_config.jar_distributions)
+                    for config in component.launcher_configs + component.library_configs:
+                        if config.jar_distributions:
+                            self.jimage_ignore_jars.update(config.jar_distributions)
 
         def _add(_layout, dest, src, component=None, with_sources=False):
             """
