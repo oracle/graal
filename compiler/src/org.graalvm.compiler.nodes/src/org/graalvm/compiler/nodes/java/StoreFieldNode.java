@@ -32,7 +32,6 @@ import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueFactory;
-import org.graalvm.compiler.interpreter.value.JVMContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -142,18 +141,15 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
         if (isStatic()) {
             interpreter.storeStaticFieldValue(field(), val);
         } else {
-            // 获取 jvmContext 和 valueFactory，valueFactory 是在 getFieldValue 方法里用来把 native object 转换为 InterpterValue
-            JVMContext jvmContext = interpreter.getJVMContext();
             InterpreterValue objectVal = interpreter.interpretExpr(object());
             // Test if object is null
-            // 测试 object 是否是 null
             if (objectVal.isNull()) {
                 throw new InterpreterException(new NullPointerException());
             }
             GraalError.guarantee(objectVal instanceof InterpreterValueMutableObject, "StoreFieldNode input doesn't interpret to object");
-            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(jvmContext, field()), "StoreFieldNode field doesn't exist on object");
+            GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "StoreFieldNode field doesn't exist on object");
 
-            ((InterpreterValueObject) objectVal).setFieldValue(jvmContext, field(), val);
+            ((InterpreterValueObject) objectVal).setFieldValue(field(), val);
         }
         return next();
     }
