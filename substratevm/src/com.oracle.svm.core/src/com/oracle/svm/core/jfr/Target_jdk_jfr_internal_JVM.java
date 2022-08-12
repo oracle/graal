@@ -207,7 +207,6 @@ public final class Target_jdk_jfr_internal_JVM {
     public void setForceInstrumentation(boolean force) {
     }
 
-    /** See {@link JVM#setSampleThreads}. */
     @Substitute
     public void setSampleThreads(boolean sampleThreads) throws IllegalStateException {
         SubstrateJVM.get().setSampleThreads(sampleThreads);

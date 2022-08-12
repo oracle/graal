@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted;
 
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Objects;
 
@@ -55,6 +56,10 @@ public class NativeImageSystemIOWrappers {
 
     public static NativeImageSystemIOWrappers singleton() {
         return NativeImageSystemClassLoader.singleton().systemIOWrappers;
+    }
+
+    public static NativeImageSystemIOWrappers disabled() {
+        return new NativeImageSystemIOWrappersDisabled();
     }
 
     public PrintStream getOut() {
@@ -101,6 +106,20 @@ public class NativeImageSystemIOWrappers {
                 progressReporter.beforeNextStdioWrite();
                 progressReporter = null;
             }
+        }
+    }
+
+    private static class NativeImageSystemIOWrappersDisabled extends NativeImageSystemIOWrappers {
+        private static final PrintStream NULL_PRINT_STREAM = new PrintStream(OutputStream.nullOutputStream());
+
+        @Override
+        public PrintStream getOut() {
+            return NULL_PRINT_STREAM;
+        }
+
+        @Override
+        public PrintStream getErr() {
+            return NULL_PRINT_STREAM;
         }
     }
 }

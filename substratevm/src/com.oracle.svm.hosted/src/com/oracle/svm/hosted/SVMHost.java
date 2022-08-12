@@ -393,49 +393,34 @@ public class SVMHost extends HostVM {
         boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
 
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
-                        isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
-                        type.declaresDefaultMethods(), isSealed, simpleBinaryName);
+                        superHub, componentHub, sourceFileName, modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus,
+                        type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, simpleBinaryName, getDeclaringClass(javaClass));
         ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }
 
-    private Object isLocalClass(Class<?> javaClass) {
+    private final Method getDeclaringClass0 = ReflectionUtil.lookupMethod(Class.class, "getDeclaringClass0");
+
+    private Object getDeclaringClass(Class<?> javaClass) {
         try {
-            return javaClass.isLocalClass();
-        } catch (InternalError e) {
-            return e;
-        } catch (LinkageError e) {
-            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
-                return e;
-            } else {
-                return unsupportedMethod(javaClass, "isLocalClass");
+            return getDeclaringClass0.invoke(javaClass);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof LinkageError) {
+                return handleLinkageError(javaClass, getDeclaringClass0.getName(), (LinkageError) e.getCause());
             }
+            throw VMError.shouldNotReachHere(e);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
-    /**
-     * @return boolean if class is available or LinkageError if class' parents are not on the
-     *         classpath or InternalError if the class is invalid.
-     */
-    private Object isAnonymousClass(Class<?> javaClass) {
-        try {
-            return javaClass.isAnonymousClass();
-        } catch (InternalError e) {
-            return e;
-        } catch (LinkageError e) {
-            if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
-                return e;
-            } else {
-                return unsupportedMethod(javaClass, "isAnonymousClass");
-            }
+    private LinkageError handleLinkageError(Class<?> javaClass, String methodName, LinkageError linkageError) {
+        if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
+            return linkageError; /* It's rethrown at run time. */
         }
-    }
-
-    private Object unsupportedMethod(Class<?> javaClass, String methodName) {
         String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
                         linkAtBuildTimeSupport.errorMessageFor(javaClass);
-        throw new UnsupportedFeatureException(message);
+        throw new UnsupportedFeatureException(message, linkageError);
     }
 
     private final Method getSimpleBinaryName0 = ReflectionUtil.lookupMethod(Class.class, "getSimpleBinaryName0");

@@ -61,6 +61,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -130,6 +131,9 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
@@ -164,6 +168,11 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * Defines the {@link Plugins} used when running on HotSpot.
  */
 public class HotSpotGraphBuilderPlugins {
+
+    public static class Options {
+        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Expert) //
+        public static final OptionKey<Boolean> ForceExplicitReachabilityFence = new OptionKey<>(false);
+    }
 
     /**
      * Creates a {@link Plugins} object that should be used when running on HotSpot.
@@ -1081,7 +1090,7 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode index = new AndNode(new XorNode(arg, c), ConstantNode.forInt(0xff));
                 ValueNode offset = new LeftShiftNode(index, ConstantNode.forInt(2));
                 AddressNode address = new OffsetAddressNode(crcTableRawAddress, new SignExtendNode(offset, 32, 64));
-                ValueNode result = b.add(new JavaReadNode(JavaKind.Int, address, CRC_TABLE_LOCATION, BarrierType.NONE, false));
+                ValueNode result = b.add(new JavaReadNode(JavaKind.Int, address, CRC_TABLE_LOCATION, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
                 result = new XorNode(result, new UnsignedRightShiftNode(c, ConstantNode.forInt(8)));
                 b.addPush(JavaKind.Int, new XorNode(result, ConstantNode.forInt(-1)));
                 return true;
@@ -1143,13 +1152,19 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
+        r.register(new StandardGraphBuilderPlugins.ReachabilityFencePlugin() {
+            @Override
+            protected boolean useExplicitReachabilityFence(GraphBuilderContext b) {
+                return Options.ForceExplicitReachabilityFence.getValue(b.getOptions());
+            }
+        });
         r.register(new InlineOnlyInvocationPlugin("refersTo0", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
                 AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
                 FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
-                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_FIELD, true));
+                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_FIELD, MemoryOrderMode.PLAIN, true));
                 LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
                 b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                 return true;
@@ -1167,7 +1182,7 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
                 AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
                 FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
-                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
+                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, MemoryOrderMode.PLAIN, true));
                 LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
                 b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                 return true;

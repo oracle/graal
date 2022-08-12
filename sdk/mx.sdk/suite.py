@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.2.0",
+  "mxversion" : "6.4.0",
   "name" : "sdk",
   "version" : "22.3.0",
   "release" : False,
@@ -84,6 +84,7 @@ suite = {
       },
     ]
   },
+  "ignore_suite_commit_info": True,
   "libraries" : {
     "WRK_MULTIARCH": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch.tar.gz"],
@@ -102,6 +103,32 @@ suite = {
       "sha1": "17480a0905d9d485bc8ce8e7be9daec2de98c251",
       "packedResource": True,
       "license": "Apache-2.0",
+    },
+    "UPX": {
+      "packedResource": True,
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "sha1": "bbec782ba0864d71fe49ffbba85fbb1b1f8fb734",
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-amd64_linux.tar.gz"],
+          },
+          "aarch64" : {
+            "sha1" : "91acc0b24ae5fe9b13d1d313c851b7b308b66aa6",
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-arm64_linux.tar.gz"],
+          }
+        },
+        "windows" : {
+          "amd64" : {
+            "sha1": "7db7a58c4edd9f772f1d9dda77ec18adc6b8ce78",
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-win64.zip"],
+          }
+        },
+        "<others>" : {
+          "<others>" : {
+            "optional": True,
+          }
+        }
+      }
     },
     "JLINE" : {
       "sha1" : "c3aeac59c022bdc497c8c48ed86fa50450e4896a",

@@ -126,7 +126,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  *    |                                |   a method which called it
  *    :     ...                        :
  * </pre>
- *
+ * <p>
  * From now on, the frame of the deoptimized method is no longer valid and the GC will ignore it.
  * Instead the GC will also visit the pointer to the {@link DeoptimizedFrame}. In other words: the
  * frame of the deoptimized method is "replaced" by a single entry, a pointer to
@@ -148,7 +148,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * </ol>
  */
 public final class Deoptimizer {
-
+    private static final int MAX_DEOPTIMIZATION_EVENT_PRINT_LENGTH = 1000;
     private static final RingBuffer<char[]> recentDeoptimizationEvents = new RingBuffer<>();
 
     private static final int actionShift = 0;
@@ -515,7 +515,7 @@ public final class Deoptimizer {
 
         /**
          * Custom prologue: set the stack pointer to the first method parameter.
-         *
+         * <p>
          * Custom epilogue: restore all of the architecture's return registers from the
          * {@link DeoptimizedFrame}.
          */
@@ -597,7 +597,7 @@ public final class Deoptimizer {
     /**
      * Performs the actual stack rewriting. The custom prologue of this method sets the stack
      * pointer to the new value passed in as the first parameter.
-     *
+     * <p>
      * The custom epilogue of this method restores the return value registers from the returned
      * frame handle.
      */
@@ -767,13 +767,19 @@ public final class Deoptimizer {
     }
 
     private static final RingBuffer.Consumer<char[]> deoptEventsConsumer = (context, entry) -> {
-        Log l = (Log) context;
-        for (char c : entry) {
+        Log log = (Log) context;
+        int length = Math.min(entry.length, MAX_DEOPTIMIZATION_EVENT_PRINT_LENGTH);
+        for (int i = 0; i < length; i++) {
+            char c = entry[i];
             if (c == '\n') {
-                l.newline();
+                log.newline();
             } else {
-                l.character(c);
+                log.character(c);
             }
+        }
+
+        if (length < entry.length) {
+            log.string("...").newline();
         }
     };
 
@@ -1196,7 +1202,6 @@ public final class Deoptimizer {
             }
         }
 
-        /** A constructor. */
         protected TargetContent(int targetContentSize, ByteOrder byteOrder) {
             /* Sanity checks. */
             if (byteOrder != ByteOrder.nativeOrder()) {

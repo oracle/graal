@@ -556,6 +556,10 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         blocklistMethod(metaAccess, Object.class, "toString");
         blocklistMethod(metaAccess, String.class, "valueOf", Object.class);
         blocklistMethod(metaAccess, String.class, "getBytes");
+        blocklistMethod(metaAccess, String.class, "indexOf", int.class);
+        blocklistMethod(metaAccess, String.class, "indexOf", int.class, int.class);
+        blocklistMethod(metaAccess, String.class, "indexOf", String.class);
+        blocklistMethod(metaAccess, String.class, "indexOf", String.class, int.class);
         blocklistMethod(metaAccess, Throwable.class, "fillInStackTrace");
         blocklistMethod(metaAccess, Throwable.class, "initCause", Throwable.class);
         blocklistMethod(metaAccess, Throwable.class, "addSuppressed", Throwable.class);
@@ -834,7 +838,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         truffleRuntime.initializeHostedKnownMethods(config.getMetaAccess());
 
         runtimeCompiledMethods = new LinkedHashSet<>();
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods()));
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods()));
+
         for (CallTreeNode runtimeCompiledMethod : ImageSingletons.lookup(GraalFeature.class).getRuntimeCompiledMethods().values()) {
+
             runtimeCompiledMethods.add(runtimeCompiledMethod.getImplementationMethod());
 
             /*
@@ -887,8 +895,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
     @Override
     public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
         if (hosted && TruffleHostInliningPhase.Options.TruffleHostInlining.getValue(HostedOptionValues.singleton()) && suites.getHighTier() instanceof HighTier) {
-            CanonicalizerPhase canonicalizer = ((HighTier) suites.getHighTier()).createCanonicalizerPhase();
-            suites.getHighTier().prependPhase(new SubstrateTruffleHostInliningPhase(canonicalizer));
+            suites.getHighTier().prependPhase(new SubstrateTruffleHostInliningPhase(CanonicalizerPhase.create()));
         }
     }
 }

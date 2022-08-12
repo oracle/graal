@@ -358,7 +358,7 @@ public final class ComponentInfo {
 
             int n = o1.getVersion().compareTo(o2.getVersion());
             if (n == 0) {
-                return o1.getPriority() - o2.getPriority();
+                return o2.getPriority() - o1.getPriority();
             } else {
                 return n;
             }

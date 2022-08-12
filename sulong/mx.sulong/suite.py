@@ -834,29 +834,59 @@ suite = {
       "class" : "CMakeNinjaProject",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
-      "ninja_targets" : ["cxxabi", "cxx"],
-      "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
-      "results" : ["native"],
-      "cmakeConfig" : {
-        "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
-        "LIBCXXABI_INCLUDE_TESTS": "NO",
-        "LIBCXXABI_ENABLE_STATIC" : "NO",
-        "LIBCXX_INCLUDE_BENCHMARKS": "NO",
-        "LIBCXX_INCLUDE_TESTS": "NO",
-        "LIBCXX_ENABLE_STATIC" : "NO",
-        "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
-        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
-        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang++",
-        "CMAKE_INSTALL_PREFIX" : "native",
-        # workaround for build problem with cmake >=3.22
-        # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
-        "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
+      "os_arch" : {
+        "<others>" : {
+          "<others>" : {
+            "ninja_targets" : ["cxxabi", "cxx"],
+            "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
+            "results" : ["native"],
+            "cmakeConfig" : {
+              "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+              "LIBCXXABI_INCLUDE_TESTS": "NO",
+              "LIBCXXABI_ENABLE_STATIC" : "NO",
+              "LIBCXX_INCLUDE_BENCHMARKS": "NO",
+              "LIBCXX_INCLUDE_TESTS": "NO",
+              "LIBCXX_ENABLE_STATIC" : "NO",
+              "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+              "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+              "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
+              "CMAKE_INSTALL_PREFIX" : "native",
+              # workaround for build problem with cmake >=3.22
+              # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
+              "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
+            },
+          },
+        },
+        "windows" : {
+          "<others>" : {
+            "ninja_targets" : ["cxx"],
+            "ninja_install_targets" : ["install-cxx"],
+            "results" : ["native/lib/c++.lib", "native/bin/<lib:c++>", "native/include"],
+            "cmakeConfig" : {
+              "LLVM_ENABLE_RUNTIMES" : "libcxx",
+              "LIBCXXABI_INCLUDE_TESTS": "NO",
+              "LIBCXXABI_ENABLE_STATIC" : "NO",
+              "LIBCXX_INCLUDE_BENCHMARKS": "NO",
+              "LIBCXX_INCLUDE_TESTS": "NO",
+              "LIBCXX_ENABLE_STATIC" : "NO",
+              "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+              "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
+              "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
+              "CMAKE_LINKER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:lld-link>",
+              "CMAKE_C_FLAGS" : "-flto -gdwarf-5 -O1",
+              "CMAKE_CXX_FLAGS" : "-flto -gdwarf-5 -O1",
+              "CMAKE_INSTALL_PREFIX" : "native",
+              # workaround for build problem with cmake >=3.22
+              # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
+              "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
+            }
+          },
+        },
       },
       "buildDependencies" : [
         "sdk:LLVM_ORG_SRC",
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "sdk:LLVM_TOOLCHAIN",
-        "NATIVE_MODE_SUPPORT",
       ],
       "clangFormat" : False,
     },
@@ -1588,7 +1618,12 @@ suite = {
         "windows" : {
           "<others>": {
             "layout" : {
+              "./" : [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/include"
+              ],
               "./native/lib/" : [
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/bin/*",
+                "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/lib/*",
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
                 "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
               ],

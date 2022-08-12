@@ -48,9 +48,10 @@ public final class ReusableTypeReader extends AbstractTypeReader {
         this.byteIndex = byteIndex;
     }
 
-    public void reset() {
+    public ReusableTypeReader reset() {
         data = NonmovableArrays.nullArray();
         byteIndex = -1;
+        return this;
     }
 
     public boolean isValid() {

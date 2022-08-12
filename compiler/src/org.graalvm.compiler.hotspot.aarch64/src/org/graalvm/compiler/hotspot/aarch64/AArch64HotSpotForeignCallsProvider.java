@@ -37,11 +37,11 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Tra
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.stubs.IntrinsicStubsGen;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.word.WordTypes;
@@ -79,7 +79,7 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
 
         for (ForeignCallDescriptor descriptor : ArrayIndexOfForeignCalls.STUBS_AARCH64) {
-            link(new ArrayIndexOfStub(options, providers, registerStubCall(descriptor.getSignature(), LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+            link(new IntrinsicStubsGen(options, providers, registerStubCall(descriptor.getSignature(), LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         }
 
         super.initialize(providers, options);

@@ -182,7 +182,7 @@ final class ReferenceObjectProcessing {
     static void afterCollection(UnsignedWord freeBytes) {
         assert rememberedRefsList == null;
         UnsignedWord unused = freeBytes.unsignedDivide(1024 * 1024 /* MB */);
-        maxSoftRefAccessIntervalMs = unused.multiply(HeapOptions.SoftRefLRUPolicyMSPerMB.getValue());
+        maxSoftRefAccessIntervalMs = unused.multiply(SerialGCOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
         if (initialSoftRefClock == 0) {
             initialSoftRefClock = ReferenceInternals.getSoftReferenceClock();

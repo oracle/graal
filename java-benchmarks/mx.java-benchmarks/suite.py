@@ -1,6 +1,8 @@
 suite = {
-  "mxversion" : "6.0.1",
+  "mxversion" : "6.4.0",
   "name": "java-benchmarks",
+
+  "ignore_suite_commit_info": True,
 
   "javac.lint.overrides": "none",
 

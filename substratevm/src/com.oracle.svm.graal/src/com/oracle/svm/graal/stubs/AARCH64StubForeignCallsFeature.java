@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.graal.stubs;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+
+import jdk.vm.ci.aarch64.AArch64;
 
 @AutomaticFeature
 @Platforms(AARCH64.class)
@@ -36,7 +40,7 @@ public class AARCH64StubForeignCallsFeature extends StubForeignCallsFeatureBase 
 
     public AARCH64StubForeignCallsFeature() {
         super(new StubDescriptor[]{
-                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, SVMArrayIndexOfForeignCalls.class, true, null)
+                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, true, EnumSet.noneOf(AArch64.CPUFeature.class))
         });
     }
 }

@@ -29,6 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -67,7 +75,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemorySizedOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
@@ -75,18 +83,12 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
-
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
@@ -208,10 +210,30 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
+    public static class LLVMThreadLocalAllocation {
+        private LLVMPointer pointer;
+        private long size;
+
+        public LLVMThreadLocalAllocation(LLVMPointer pointer, long size) {
+            this.pointer = pointer;
+            this.size = size;
+        }
+
+        public LLVMPointer getPointer() {
+            return pointer;
+        }
+
+        public long getSize() {
+            return size;
+        }
+    }
+
     public static class LLVMThreadLocalValue {
 
         final LLVMContext context;
-        LLVMPointer[] sections = new LLVMPointer[10];
+
+        LLVMThreadLocalAllocation[] sections = new LLVMThreadLocalAllocation[10];
+
         final WeakReference<Thread> thread;
         boolean isDisposed;
         LLVMStack stack;
@@ -225,19 +247,27 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             localStorage = LLVMNativePointer.createNull();
         }
 
-        public void addSection(LLVMPointer sectionBase, BitcodeID bitcodeID) {
+        public void addSection(LLVMPointer sectionBase, long size, BitcodeID bitcodeID) {
+            assert sectionBase != null;
+            assert size > 0;
+
             int index = bitcodeID.getId();
             if (index >= sections.length) {
                 int newLength = (index + 1) + ((index + 1) / 2);
                 sections = Arrays.copyOf(sections, newLength);
             }
-            sections[index] = sectionBase;
+            sections[index] = new LLVMThreadLocalAllocation(sectionBase, size);
         }
 
-        public LLVMPointer getSection(BitcodeID bitcodeID) {
+        public LLVMThreadLocalAllocation getSection(BitcodeID bitcodeID) {
             int index = bitcodeID.getId();
-            assert index < sections.length;
-            return sections[index];
+            // if index is out of range, then it does not have a TL section
+            return index < sections.length ? sections[index] : null;
+        }
+
+        public LLVMPointer getSectionBase(BitcodeID bitcodeID) {
+            LLVMThreadLocalAllocation section = getSection(bitcodeID);
+            return section == null ? null : section.getPointer();
         }
 
         public void setDisposed() {
@@ -510,35 +540,28 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     static class FreeGlobalsNode extends RootNode {
 
-        @Child LLVMMemoryOpNode freeRo;
-        @Child LLVMMemoryOpNode freeRw;
+        @Child LLVMMemorySizedOpNode freeNode;
 
         FreeGlobalsNode(LLVMLanguage language, NodeFactory nodeFactory) {
             super(language);
-            this.freeRo = nodeFactory.createFreeGlobalsBlock(true);
-            this.freeRw = nodeFactory.createFreeGlobalsBlock(false);
+            this.freeNode = nodeFactory.createFreeGlobalsBlock();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             // Executed in dispose(), therefore can read unsynchronized
             LLVMContext context = LLVMContext.get(this);
-            for (LLVMPointer store : context.globalsReadOnlyStore.getValues()) {
+            for (int i = 0; i < context.globalsBlockStore.size(); i++) {
+                Pair<LLVMPointer, Long> store = getElement(context.globalsBlockStore, i);
                 if (store != null) {
-                    freeRo.execute(store);
-                }
-            }
-            for (int i = 0; i < context.globalsNonPointerStore.size(); i++) {
-                LLVMPointer store = getElement(context.globalsNonPointerStore, i);
-                if (store != null) {
-                    freeRw.execute(store);
+                    freeNode.doPair(store);
                 }
             }
             return null;
         }
 
         @TruffleBoundary(allowInlining = true)
-        private static LLVMPointer getElement(EconomicMap<Integer, LLVMPointer> list, int idx) {
+        private static <T> T getElement(EconomicMap<Integer, T> list, int idx) {
             return list.get(idx);
         }
     }
@@ -547,9 +570,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (threadLocalValue != null) {
             synchronized (threadLocalValue) {
                 if (!threadLocalValue.isDisposed()) {
-                    for (LLVMPointer section : threadLocalValue.sections) {
+                    for (LLVMThreadLocalAllocation section : threadLocalValue.sections) {
                         if (section != null) {
-                            freeOpNode.execute(section);
+                            freeOpNode.execute(section.getPointer(), section.getSize());
                         }
                     }
                     for (LLVMGlobalContainer[] globalContainers : threadLocalValue.globalContainers) {
@@ -607,7 +630,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     private CallTarget freeGlobalBlocks;
-    private LLVMMemoryOpNode freeOpNode;
+    private LLVMMemorySizedOpNode freeOpNode;
 
     protected void initFreeGlobalBlocks(NodeFactory nodeFactory) {
         // lazily initialized, this is not necessary if there are no global blocks allocated
@@ -615,7 +638,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             freeGlobalBlocks = new FreeGlobalsNode(this, nodeFactory).getCallTarget();
         }
         if (freeOpNode == null) {
-            freeOpNode = nodeFactory.getFreeGlobalsBlockUncached(false);
+            freeOpNode = nodeFactory.getFreeGlobalsBlockUncached();
         }
     }
 

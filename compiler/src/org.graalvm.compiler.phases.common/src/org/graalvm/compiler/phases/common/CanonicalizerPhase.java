@@ -574,7 +574,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         private final NodeWorkList workList;
         private final NodeView nodeView;
         private final DebugContext debug;
-        private final boolean afterMidTierLowering;
 
         Tool(StructuredGraph graph, CoreProviders context, NodeWorkList workList) {
             super(context);
@@ -582,7 +581,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             this.assumptions = graph.getAssumptions();
             this.options = graph.getOptions();
             this.nodeView = getNodeView();
-            this.afterMidTierLowering = graph.isAfterStage(StageFlag.MID_TIER_LOWERING);
             this.context = context;
             this.workList = workList;
         }
@@ -626,7 +624,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
         @Override
         public boolean trySinkWriteFences() {
-            return afterMidTierLowering && context.getLowerer().writesStronglyOrdered();
+            return context.getLowerer().writesStronglyOrdered();
         }
 
         @Override

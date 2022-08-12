@@ -41,7 +41,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,6 +67,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
@@ -84,6 +84,8 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
@@ -103,7 +105,7 @@ public class SerializationFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ReflectionFeature.class);
+        return List.of(ReflectionFeature.class, DynamicProxyFeature.class);
     }
 
     @Override
@@ -112,10 +114,10 @@ public class SerializationFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader);
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
-        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
+        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver, ImageSingletons.lookup(ProxyRegistry.class));
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
-
         SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser(serializationDenyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
+
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
                         ConfigurationFile.SERIALIZATION_DENY.getFileName());
@@ -306,6 +308,10 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
         }
     }
 
+    @Override
+    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+    }
+
     public boolean isAllowed(Class<?> clazz) {
         boolean denied = deniedClasses.containsKey(clazz);
         if (denied && deniedClasses.get(clazz)) {
@@ -330,8 +336,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private final ConfigurationTypeResolver typeResolver;
     private final FeatureImpl.DuringSetupAccessImpl access;
     private boolean sealed;
+    private final ProxyRegistry proxyRegistry;
 
-    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver) {
+    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver, ProxyRegistry proxyRegistry) {
         this.access = access;
         Class<?> classDataSlotClazz = access.findClassByName("java.io.ObjectStreamClass$ClassDataSlot");
         descField = ReflectionUtil.lookupField(classDataSlotClazz, "desc");
@@ -339,6 +346,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
         this.denyRegistry = serializationDenyRegistry;
         this.typeResolver = typeResolver;
+        this.proxyRegistry = proxyRegistry;
 
         serializationSupport = new SerializationSupport(stubConstructor);
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
@@ -436,6 +444,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             RuntimeReflection.register(serializationTargetClass);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(serializationTargetClass, "$deserializeLambda$", SerializedLambda.class));
         });
+    }
+
+    @Override
+    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+        Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(new ConditionalElement<>(condition, implementedInterfaces));
+        registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
     }
 
     @Override

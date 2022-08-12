@@ -124,6 +124,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
@@ -768,6 +769,11 @@ final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
             timestamp.compareAndSwapLong(0, 0, System.currentTimeMillis(), LocationIdentity.ANY_LOCATION);
         }
         return timestamp.readLong(0);
+    }
+
+    @Substitute
+    private static void notifyLowMemoryPoint(boolean fullGC) {
+        Heap.getHeap().getGC().maybeCauseUserRequestedCollection(GCCause.HintedGC, fullGC);
     }
 }
 

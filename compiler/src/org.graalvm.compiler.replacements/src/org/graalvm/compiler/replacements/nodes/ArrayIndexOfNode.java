@@ -36,6 +36,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -324,6 +325,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     }
 
     @NodeIntrinsic
+    @GenerateStub(name = "indexOf1S1", parameters = {"Void", "S1", "false", "false"})
+    @GenerateStub(name = "indexOf1S2", parameters = {"Void", "S2", "false", "false"})
+    @GenerateStub(name = "indexOf1S4", parameters = {"Void", "S4", "false", "false"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
@@ -341,6 +345,15 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1);
 
     @NodeIntrinsic
+    @GenerateStub(name = "indexOf2S1", parameters = {"Void", "S1", "false", "false"})
+    @GenerateStub(name = "indexOf2S2", parameters = {"Void", "S2", "false", "false"})
+    @GenerateStub(name = "indexOf2S4", parameters = {"Void", "S4", "false", "false"})
+    @GenerateStub(name = "indexOfWithMaskS1", parameters = {"Void", "S1", "false", "true"})
+    @GenerateStub(name = "indexOfWithMaskS2", parameters = {"Void", "S2", "false", "true"})
+    @GenerateStub(name = "indexOfWithMaskS4", parameters = {"Void", "S4", "false", "true"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS1", parameters = {"Void", "S1", "true", "false"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS2", parameters = {"Void", "S2", "true", "false"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS4", parameters = {"Void", "S4", "true", "false"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
@@ -358,6 +371,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2);
 
     @NodeIntrinsic
+    @GenerateStub(name = "indexOf3S1", parameters = {"Void", "S1", "false", "false"})
+    @GenerateStub(name = "indexOf3S2", parameters = {"Void", "S2", "false", "false"})
+    @GenerateStub(name = "indexOf3S4", parameters = {"Void", "S4", "false", "false"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
@@ -375,6 +391,12 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3);
 
     @NodeIntrinsic
+    @GenerateStub(name = "indexOf4S1", parameters = {"Void", "S1", "false", "false"})
+    @GenerateStub(name = "indexOf4S2", parameters = {"Void", "S2", "false", "false"})
+    @GenerateStub(name = "indexOf4S4", parameters = {"Void", "S4", "false", "false"})
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS1", parameters = {"Void", "S1", "true", "true"})
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS2", parameters = {"Void", "S2", "true", "true"})
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS4", parameters = {"Void", "S4", "true", "true"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,

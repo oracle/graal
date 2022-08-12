@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -55,7 +56,10 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 @ExportLibrary(InteropLibrary.class)
 public final class RubyFlags extends AbstractConstantKeysObject {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("EXTENDED", "IGNORECASE", "MULTILINE");
+    private static final String PROP_EXTENDED = "EXTENDED";
+    private static final String PROP_IGNORECASE = "IGNORECASE";
+    private static final String PROP_MULTILINE = "MULTILINE";
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXTENDED, PROP_IGNORECASE, PROP_MULTILINE);
 
     private final int value;
     private final Mode mode;
@@ -68,7 +72,7 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         public static final Mode[] VALUES = Mode.values();
 
         public static Mode fromFlagChar(int ch) {
-            return VALUES[TYPE_FLAGS.indexOf(ch)];
+            return VALUES[indexOfUnrolled(TYPE_FLAGS, ch)];
         }
     }
 
@@ -95,7 +99,7 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     }
 
     private static int maskForFlag(int flagChar) {
-        return 1 << BIT_FLAGS.indexOf(flagChar);
+        return 1 << indexOfUnrolled(BIT_FLAGS, flagChar);
     }
 
     public boolean hasFlag(int flagChar) {
@@ -148,15 +152,26 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     }
 
     public static boolean isValidFlagChar(int candidateChar) {
-        return FLAGS.indexOf(candidateChar) >= 0;
+        return indexOfUnrolled(FLAGS, candidateChar) >= 0;
     }
 
     public static boolean isBitFlag(int candidateChar) {
-        return BIT_FLAGS.indexOf(candidateChar) >= 0;
+        return indexOfUnrolled(BIT_FLAGS, candidateChar) >= 0;
     }
 
     public static boolean isTypeFlag(int candidateChar) {
-        return TYPE_FLAGS.indexOf(candidateChar) >= 0;
+        return indexOfUnrolled(TYPE_FLAGS, candidateChar) >= 0;
+    }
+
+    @ExplodeLoop
+    private static int indexOfUnrolled(String flags, int candidateChar) {
+        for (int i = 0; i < flags.length(); i++) {
+            int c = flags.charAt(i);
+            if (candidateChar == c) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @Override
@@ -195,13 +210,25 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_EXTENDED:
+            case PROP_IGNORECASE:
+            case PROP_MULTILINE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "EXTENDED":
+            case PROP_EXTENDED:
                 return isExtended();
-            case "IGNORECASE":
+            case PROP_IGNORECASE:
                 return isIgnoreCase();
-            case "MULTILINE":
+            case PROP_MULTILINE:
                 return isMultiline();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();

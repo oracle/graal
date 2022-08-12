@@ -55,7 +55,6 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.JavaOrderedReadNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -489,7 +488,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
          * above an explicit zero check on its base address or any other test that ensures the read
          * is safe.
          */
-        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrierType, compressible));
+        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrierType, MemoryOrderMode.PLAIN, compressible));
         return read;
     }
 
@@ -502,7 +501,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
          * cannot float above an explicit zero check on its base address or any other test that
          * ensures the read is safe.
          */
-        JavaReadNode read = b.add(new JavaOrderedReadNode(readKind, address, location, barrier, MemoryOrderMode.VOLATILE, compressible));
+        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrier, MemoryOrderMode.VOLATILE, compressible));
         return read;
     }
 

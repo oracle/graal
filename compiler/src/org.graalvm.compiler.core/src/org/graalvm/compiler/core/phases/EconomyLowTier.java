@@ -33,7 +33,7 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
 public class EconomyLowTier extends BaseTier<LowTierContext> {
 
     public EconomyLowTier() {
-        CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(new LowTierLoweringPhase(canonicalizer));
         appendPhase(new ExpandLogicPhase(canonicalizer));
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));

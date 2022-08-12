@@ -148,10 +148,15 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public final void checkNotForeign() {
+        assert checkNotForeignImpl();
+    }
+
+    private boolean checkNotForeignImpl() {
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
+        return true;
     }
 
     public final boolean isForeignObject() {

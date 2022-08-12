@@ -65,7 +65,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self._config_name = config_name
         self.extra_java_args = extra_java_args or []
         self.extra_launcher_args = extra_launcher_args or []
-        self.debug_args = mx.java_debug_args() if config_name == "jvm" else []
+        self.debug_args = mx.java_debug_args() if "jvm" in config_name else []
 
     def name(self):
         return self._name
@@ -204,6 +204,7 @@ class NativeImageVM(GraalVm):
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
+        self.use_upx = False
         self.graalvm_edition = None
         self.config = None
         self.ml = None
@@ -226,7 +227,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
@@ -246,6 +247,10 @@ class NativeImageVM(GraalVm):
         if matching.group("gate") is not None:
             mx.logv("'gate' mode is enabled for {}".format(config_name))
             self.is_gate = True
+
+        if matching.group("upx") is not None:
+            mx.logv("'upx' is enabled for {}".format(config_name))
+            self.use_upx = True
 
         if matching.group("quickbuild") is not None:
             mx.logv("'quickbuild' is enabled for {}".format(config_name))
@@ -773,6 +778,13 @@ class NativeImageVM(GraalVm):
         final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
+            if self.use_upx:
+                image_path = os.path.join(config.output_dir, config.final_image_name)
+                upx_directory = mx.library("UPX", True).get_path(True)
+                upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
+                upx_cmd = [upx_path, image_path]
+                mx.log("Compressing image: {0}".format(' '.join(upx_cmd)))
+                mx.run(upx_cmd, s.stdout(True), s.stderr(True))
 
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
@@ -976,6 +988,12 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
+            graal_test = mx.distribution('GRAAL_TEST', fatalIfMissing=False)
+            polybench_ee = mx.distribution('POLYBENCH_EE', fatalIfMissing=False)
+            if graal_test and polybench_ee and mx.get_env('ENABLE_POLYBENCH_HPC') == 'yes':
+                # If the GRAAL_TEST and POLYBENCH_EE (for instructions metric) distributions
+                # are present, the CompileTheWorld benchmark is available.
+                self._benchmarks = ['CompileTheWorld']
             for group in ["interpreter", "compiler", "warmup", "nfi"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
@@ -991,8 +1009,29 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if benchmarks is None or len(benchmarks) != 1:
             mx.abort("Must specify one benchmark at a time.")
         vmArgs = self.vmArgs(bmSuiteArgs)
-        benchmark_path = os.path.join(self._get_benchmark_root(), benchmarks[0])
-        return ["--path=" + benchmark_path] + vmArgs
+        benchmark = benchmarks[0]
+        if benchmark == 'CompileTheWorld':
+            # Run CompileTheWorld as a polybench benchmark, using instruction counting to get a stable metric.
+            # The CompileTheWorld class has been reorganized to have separate "prepare" and
+            # "compile" steps such that only the latter is measured by polybench.
+            # PAPI instruction counters are thread-local so CTW is run on the same thread as
+            # the polybench harness (i.e., CompileTheWorld.MultiThreaded=false).
+            import mx_compiler
+            res = mx_compiler._ctw_jvmci_export_args(arg_prefix='--vm.-') + [
+                   '--ctw',
+                   '--vm.cp=' + mx.distribution('GRAAL_ONLY_TEST').path + os.pathsep + mx.distribution('GRAAL_TEST').path,
+                   '--vm.DCompileTheWorld.MaxCompiles=10000',
+                   '--vm.DCompileTheWorld.Classpath=' + mx.library('DACAPO_MR1_BACH').get_path(resolve=True),
+                   '--vm.DCompileTheWorld.Verbose=false',
+                   '--vm.DCompileTheWorld.MultiThreaded=false',
+                   '--vm.Dlibgraal.ShowConfiguration=info',
+                   '--metric=instructions',
+                   '-w', '1',
+                   '-i', '5'] + vmArgs
+        else:
+            benchmark_path = os.path.join(self._get_benchmark_root(), benchmark)
+            res = ["--path=" + benchmark_path] + vmArgs
+        return res
 
     def get_vm_registry(self):
         return _polybench_vm_registry
@@ -1168,6 +1207,13 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 
 class PolyBenchVm(GraalVm):
+    def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
+        super(PolyBenchVm, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
+        if self.debug_args:
+            # The `arg[1:]` is to strip the first '-' from the args since it's
+            # re-added by the subsequent processing of `--vm`
+            self.debug_args = ['--vm.{}'.format(arg[1:]) for arg in self.debug_args]
+
     def run(self, cwd, args):
         return self.run_launcher('polybench', args, cwd)
 
@@ -1287,7 +1333,7 @@ def register_graalvm_vms():
             break
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
-    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'quickbuild', 'quickbuild-g1gc']:
+    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
         mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 

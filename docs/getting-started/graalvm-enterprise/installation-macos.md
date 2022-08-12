@@ -14,7 +14,7 @@ Follow these steps to install Oracle GraalVM Enterprise Edition on the macOS ope
 
 1. Navigate to[ Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
 2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **11** or **17** for the Java version, and **macOS** for the operating system.
-3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
+3. Click on the **GraalVM Enterprise JDK** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-darwin-amd64-<version>.tar.gz**.
 5. Unzip the archive:
   ```shell
@@ -55,22 +55,22 @@ Within a specific version, the sort order appears to be stable but is unspecifie
 ## Supported Functionalities
 
 The base distribution of GraalVM Enterprise for macOS platforms includes Oracle JDK with the GraalVM compiler enabled.
-The base installation can be extended with:
+The base installation can be additionally extended with:
 
 Tools/Utilities:
 * [Native Image](../../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
 * [LLVM toolchain](../../reference-manual/llvm/Compiling.md#llvm-toolchain-for-compiling-cc) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime
 
-Runtimes:
-* [Java on Truffle](../../reference-manual/java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
-* [JavaScript](../../reference-manual/js/README.md) -- JavaScript runtime
-* [Node.js](../../reference-manual/js/NodeJS.md) -- Node.js v16.14.2 compatible
-* [LLVM](../../reference-manual/llvm/README.md) -- LLVM runtime
-* [Python](../../reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](../../reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible
-* [R](/../../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
-* [Wasm](../../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
-​
+Language runtimes:
+* [Java on Truffle](../../reference-manual/java-on-truffle/README.md)
+* [JavaScript](../../reference-manual/js/README.md)
+* [Node.js](../../reference-manual/js/NodeJS.md)
+* [LLVM](../../reference-manual/llvm/README.md)
+* [Python](../../reference-manual/python/README.md)
+* [Ruby](../../reference-manual/ruby/README.md)
+* [R](/../../reference-manual/r/README.md)
+* [Wasm](../../reference-manual/wasm/README.md)
+
 These runtimes are not part of the GraalVM Enterprise base distribution and must be installed separately.
 
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.

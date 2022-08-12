@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolate;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateParameters;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolatePointer;
@@ -55,6 +57,36 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.UnchangedNameTransforma
 @CHeader(PolyglotIsolateHeader.class)
 public final class PolyglotNativeAPIEntryPoints {
     private static final String UNINTERRUPTIBLE_REASON = "Unsafe state in case of failure";
+
+    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
+    @CEntryPoint(name = "poly_set_isolate_params", documentation = {
+                    "Initializes passed poly_isolate_params with the provided arguments.",
+                    "Later, when the isolate is created, these arguments will be passed to the isolate creation process.",
+                    "Note the first passed argument is reserved and must be a null pointer.",
+                    "",
+                    " @param params pointer to the poly_isolate_params struct to initialize.",
+                    " @param argc number of arguments within argv.",
+                    " @param argv a char** containing the arguments. Note the first argument is reserved",
+                    " and must be a null pointer.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "@since 22.3",
+    })
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
+    public static @CTypedef(name = "poly_status") int polySetIsolateParams(PolyglotIsolateParameters params, int argc, CCharPointerPointer argv) {
+        if (argc > 0) {
+            CCharPointer arg = argv.read(0);
+            if (arg.isNonNull()) {
+                return Poly.generic_failure();
+            }
+        }
+
+        params.setVersion(4);
+        params.setArgc(argc);
+        params.setArgv(argv);
+        params.setIgnoreUnrecognizedArguments(false);
+        params.setExitWhenArgumentParsingFails(false);
+        return Poly.ok();
+    }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "poly_create_isolate", documentation = {

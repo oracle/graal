@@ -1132,14 +1132,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisType getEnclosingType() {
-        ResolvedJavaType wrappedEnclosingType;
-        try {
-            wrappedEnclosingType = wrapped.getEnclosingType();
-        } catch (LinkageError e) {
-            /* Ignore LinkageError thrown by enclosing type resolution. */
-            return null;
-        }
-        return universe.lookup(wrappedEnclosingType);
+        return universe.lookup(wrapped.getEnclosingType());
     }
 
     @Override

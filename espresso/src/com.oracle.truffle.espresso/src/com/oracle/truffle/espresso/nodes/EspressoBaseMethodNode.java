@@ -34,9 +34,13 @@ import com.oracle.truffle.espresso.impl.Method;
  */
 @GenerateWrapper
 public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode {
-    abstract Object executeBody(VirtualFrame frame);
+    @Override
+    public abstract Object execute(VirtualFrame frame);
 
-    abstract void initializeBody(VirtualFrame frame);
+    @SuppressWarnings("unused")
+    public void initializeFrame(VirtualFrame frame) {
+        // nop
+    }
 
     public abstract Method.MethodVersion getMethodVersion();
 
@@ -47,12 +51,6 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
     public abstract boolean canSplit();
 
     public abstract EspressoBaseMethodNode split();
-
-    @Override
-    public final Object execute(VirtualFrame frame) {
-        initializeBody(frame);
-        return executeBody(frame);
-    }
 
     @Override
     public WrapperNode createWrapper(ProbeNode probeNode) {

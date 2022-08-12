@@ -169,17 +169,17 @@ public class CheckGraalIntrinsics extends GraalTest {
         Formatter errorMsgBuf = new Formatter();
         if (!missing.isEmpty()) {
             Collections.sort(missing);
-            String missingString = missing.stream().collect(Collectors.joining(String.format("%n    ")));
+            String missingString = missing.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("missing Graal intrinsics for:%n    %s%n", missingString);
         }
         if (!mischaracterizedAsToBeInvestigated.isEmpty()) {
             Collections.sort(mischaracterizedAsToBeInvestigated);
-            String missingString = mischaracterizedAsToBeInvestigated.stream().collect(Collectors.joining(String.format("%n    ")));
+            String missingString = mischaracterizedAsToBeInvestigated.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("found plugins for intrinsics characterized as toBeInvestigated:%n    %s%n", missingString);
         }
         if (!mischaracterizedAsIgnored.isEmpty()) {
             Collections.sort(mischaracterizedAsIgnored);
-            String missingString = mischaracterizedAsIgnored.stream().collect(Collectors.joining(String.format("%n    ")));
+            String missingString = mischaracterizedAsIgnored.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("found plugins for intrinsics characterized as IGNORED:%n    %s%n", missingString);
         }
         String errorMsg = errorMsgBuf.toString();

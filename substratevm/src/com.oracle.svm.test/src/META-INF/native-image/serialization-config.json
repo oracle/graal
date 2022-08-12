@@ -20,6 +20,12 @@
     },
     {
       "name":"java.util.HashMap"
+    },
+    {
+      "name":"com.oracle.svm.test.proxy.ProxyHandler"
+    },
+    {
+      "name":"java.lang.reflect.Proxy"
     }
   ],
   "lambdaCapturingTypes":[
@@ -28,6 +34,11 @@
     },
     {
       "name":"com.oracle.svm.test.LambdaClassDeserializationTest$SerializeLambda"
+    }
+  ],
+  "proxies":[
+    {
+      "interfaces":["java.io.Serializable","java.lang.Comparable"]
     }
   ]
 }

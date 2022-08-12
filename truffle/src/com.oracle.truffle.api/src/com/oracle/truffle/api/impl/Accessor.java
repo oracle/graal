@@ -228,6 +228,10 @@ public abstract class Accessor {
         public abstract void mergeLoadedSources(Source[] sources);
 
         public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
+
+        public abstract void setURL(SourceBuilder builder, URL url);
+
+        public abstract void setPath(SourceBuilder builder, String path);
     }
 
     public abstract static class InteropSupport extends Support {
@@ -562,8 +566,6 @@ public abstract class Accessor {
         public abstract Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
-
-        public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
 
         public abstract boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage);
 

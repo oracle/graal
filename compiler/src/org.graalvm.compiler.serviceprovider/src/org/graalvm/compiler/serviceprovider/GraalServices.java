@@ -563,4 +563,16 @@ public final class GraalServices {
             throw new InternalError("Exception when instantiating implicit exception dispatch", e);
         }
     }
+
+    /**
+     * Notifies that the compiler is at a point where memory usage is expected to be relatively low
+     * (e.g., just before/after a compilation). The garbage collector might be able to make use of
+     * such a hint to optimize its performance.
+     *
+     * @param fullGC controls whether the hinted GC should be a full GC.
+     */
+    public static void notifyLowMemoryPoint(@SuppressWarnings("unused") boolean fullGC) {
+        // Substituted by
+        // com.oracle.svm.hotspot.libgraal.Target_org_graalvm_compiler_serviceprovider_GraalServices
+    }
 }

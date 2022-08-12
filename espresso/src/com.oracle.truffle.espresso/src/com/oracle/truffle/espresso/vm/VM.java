@@ -104,6 +104,7 @@ import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EntryTable;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -495,16 +496,18 @@ public final class VM extends NativeEnv {
 
     @TruffleBoundary(allowInlining = true)
     @VmImpl(isJni = true)
-    public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object) {
+    public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object, @Inject EspressoLanguage lang) {
         /*
          * On SVM + Windows, the System.identityHashCode substitution calls methods blocked for PE
          * (System.currentTimeMillis?).
          */
         if (object.isForeignObject()) {
-            InteropLibrary library = InteropLibrary.getUncached(object);
-            if (library.hasIdentity(object.rawForeignObject(object.getKlass().getLanguage()))) {
+            EspressoLanguage language = lang == null ? EspressoLanguage.get(null) : lang;
+            Object foreignObject = object.rawForeignObject(language);
+            InteropLibrary library = InteropLibrary.getUncached(foreignObject);
+            if (library.hasIdentity(foreignObject)) {
                 try {
-                    return library.identityHashCode(object);
+                    return library.identityHashCode(foreignObject);
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -1902,11 +1905,15 @@ public final class VM extends NativeEnv {
         StaticObject loader = lookup.getMirrorKlass(getMeta()).getDefiningClassLoader();
 
         ObjectKlass k;
-        if (isHidden) {
-            // Special handling
-            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
-        } else {
-            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+        try {
+            if (isHidden) {
+                // Special handling
+                k = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
+            } else {
+                k = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+            }
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(getMeta());
         }
 
         if (initialize) {
@@ -1929,7 +1936,12 @@ public final class VM extends NativeEnv {
 
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
 
-        StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+        StaticObject clazz;
+        try {
+            clazz = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(getMeta());
+        }
         assert clazz != null;
         return clazz;
     }
@@ -3349,7 +3361,7 @@ public final class VM extends NativeEnv {
         PackageTable packageTable = registry.packages();
         ModuleTable moduleTable = registry.modules();
         assert moduleTable != null && packageTable != null;
-        boolean loaderIsBootOrPlatform = ClassRegistry.loaderIsBootOrPlatform(loader, meta);
+        boolean loaderIsBootOrPlatform = getContext().getClassLoadingEnv().loaderIsBootOrPlatform(loader);
 
         ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
         try (EntryTable.BlockLock block = packageTable.write()) {

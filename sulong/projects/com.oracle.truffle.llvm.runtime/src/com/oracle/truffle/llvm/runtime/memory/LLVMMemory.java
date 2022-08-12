@@ -65,6 +65,8 @@ public abstract class LLVMMemory implements LLVMCapability {
     @Deprecated
     public abstract LLVMNativePointer reallocateMemory(Node location, LLVMNativePointer addr, long size);
 
+    public abstract int getPageSize();
+
     public final boolean getI1(Node location, LLVMNativePointer addr) {
         return getI1(location, addr.asNative());
     }

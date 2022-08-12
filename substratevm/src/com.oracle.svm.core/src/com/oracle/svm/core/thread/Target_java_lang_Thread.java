@@ -59,6 +59,10 @@ public final class Target_java_lang_Thread {
     // Checkstyle: stop
     @Alias //
     static StackTraceElement[] EMPTY_STACK_TRACE;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    static int NO_INHERIT_THREAD_LOCALS;
     // Checkstyle: resume
 
     /** This field is initialized when the thread actually starts executing. */
@@ -333,9 +337,11 @@ public final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
 
-        // TODO: derive from characteristics bitset
-        boolean inheritThreadLocals = false;
-        /* Initialize the rest of the Thread object, ignoring `characteristics`. */
+        boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
+        /*
+         * Initialize the rest of the Thread object, ignoring `characteristics` except for inherit
+         * thread locals.
+         */
         String nameLocal = (name != null) ? name : genThreadName();
         JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, inheritThreadLocals);
     }

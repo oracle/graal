@@ -26,6 +26,7 @@ package com.oracle.svm.core.c;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
@@ -82,6 +83,16 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
             return null;
         } else {
             return toJavaStringWithCharset(cString, length, charset);
+        }
+    }
+
+    @Override
+    public String utf8ToJavaString(CCharPointer utf8String) {
+        if (utf8String.isNull()) {
+            return null;
+        } else {
+            // UTF-8 does not break zero-terminated strings.
+            return toJavaStringWithCharset(utf8String, SubstrateUtil.strlen(utf8String), StandardCharsets.UTF_8);
         }
     }
 

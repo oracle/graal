@@ -28,6 +28,7 @@ import java.lang.reflect.InvocationHandler;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
@@ -48,6 +49,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     private static final String proxyConfigFilesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationFiles, "<comma-separated-config-files>");
     private static final String proxyConfigResourcesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                     "<comma-separated-config-resources>");
+
+    public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile(".*\\$Proxy[0-9]+");
 
     static final class ProxyCacheKey {
 
@@ -94,17 +97,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
          */
         final Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
+
         proxyCache.computeIfAbsent(key, k -> {
-            Class<?> clazz;
-            try {
-                clazz = getJdkProxyClass(classLoader, intfs);
-            } catch (Throwable e) {
-                try {
-                    clazz = getJdkProxyClass(getCommonClassLoader(intfs), intfs);
-                } catch (Throwable e2) {
-                    return e;
-                }
-            }
+            Class<?> clazz = createProxyClassFromImplementedInterfaces(intfs);
 
             /*
              * Treat the proxy as a predefined class so that we can set its class loader to the
@@ -133,6 +128,28 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
             return clazz;
         });
+    }
+
+    @Override
+    public Class<?> createProxyClassForSerialization(Class<?>... interfaces) {
+        final Class<?>[] intfs = interfaces.clone();
+
+        return createProxyClassFromImplementedInterfaces(intfs);
+    }
+
+    private Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
+        Class<?> clazz;
+        try {
+            clazz = getJdkProxyClass(classLoader, interfaces);
+        } catch (Throwable e) {
+            try {
+                clazz = getJdkProxyClass(getCommonClassLoader(interfaces), interfaces);
+            } catch (Throwable e2) {
+                throw e;
+            }
+        }
+
+        return clazz;
     }
 
     private static ClassLoader getCommonClassLoader(Class<?>... intfs) {

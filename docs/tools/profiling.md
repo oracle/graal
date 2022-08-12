@@ -75,9 +75,9 @@ algorithm.
 
     This program takes a moment to compute. Next you will check where the time is spent.
 
-3. Run `js primes.js --cpusampler` to enable CPU sampling. CPU Sampler should print output for the example application as follows:
+3. Run `js --cpusampler primes.js` to enable CPU sampling. CPU Sampler should print output for the example application as follows:
     ```shell
-    js primes.js --cpusampler
+    js --cpusampler primes.js
 
     Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
     ----------------------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ algorithm.
 
     You can produce a flame graph in SVG format by requesting that with the `--cpusampler=flamegraph` option:
     ```shell
-    js primes.js --cpusampler=flamegraph
+    js --cpusampler=flamegraph primes.js
     ```
     It should produce a file called `flamegraph.svg` containing something like this:
 
@@ -121,6 +121,8 @@ algorithm.
         return true;
     }
     ```
+    See this [blog post](https://medium.com/graalvm/where-has-all-my-run-time-gone-245f0ccde853) for more details.
+
     Now use the CPU Tracer to collect execution counts of each statement:
 
 4. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=*accept` to collect execution counts for all statements in methods ending with `accept`:

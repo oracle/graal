@@ -33,7 +33,6 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
-import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
@@ -124,7 +123,6 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
-import org.graalvm.compiler.nodes.extended.RawOrderedLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
@@ -207,7 +205,6 @@ public class StandardGraphBuilderPlugins {
                     boolean arrayEqualsSubstitution,
                     LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
-        registerReferencePlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
         registerStrictMathPlugins(plugins);
@@ -290,7 +287,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
                                 new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, PLAIN, false));
                 return true;
             }
         });
@@ -309,7 +306,7 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Byte, new JavaReadNode(JavaKind.Byte, new IndexAddressNode(arg1, arg2, JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, PLAIN, false));
                 return true;
             }
         });
@@ -1110,15 +1107,38 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerReferencePlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Reference.class);
-        r.register(new InvocationPlugin("reachabilityFence", Object.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode value) {
+    public abstract static class ReachabilityFencePlugin extends InvocationPlugin {
+        protected ReachabilityFencePlugin() {
+            super("reachabilityFence", Object.class);
+        }
+
+        @Override
+        public final boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode value) {
+            if (useExplicitReachabilityFence(b)) {
+                /*
+                 * For AOT compilation, relying on FrameState to keep the object alive is not
+                 * sufficient. Since AOT compilation does not need deoptimization, keeping values
+                 * alive based on bytecode liveness is not necessary, i.e., FrameState can be pruned
+                 * more aggressively. From a correctness point of view, all local variables could
+                 * always be cleared in all FrameState (but we do not do that because it would
+                 * degrade the debugging experience). Therefore, a separate node is necessary to
+                 * keep the object alive.
+                 *
+                 * Why a different behavior between JIT and AOT compilation? Using the separate node
+                 * also for JIT compilation causes performance regressions for Truffle compilations.
+                 */
                 b.add(ReachabilityFenceNode.create(value));
-                return true;
+            } else {
+                /*
+                 * For JIT compilation, the reachabilityFence can be a no-op. Local variable
+                 * liveness is always based on bytecode to allow deoptimization, so all the
+                 * FrameState before the reachabilityFence have the object in a local variable.
+                 */
             }
-        });
+            return true;
+        }
+
+        protected abstract boolean useExplicitReachabilityFence(GraphBuilderContext b);
     }
 
     private static void registerClassPlugins(InvocationPlugins plugins) {
@@ -1361,12 +1381,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             // Note that non-ordered raw accesses can be turned into floatable field accesses.
-            UnsafeNodeConstructor unsafeNodeConstructor;
-            if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
-                unsafeNodeConstructor = (obj, loc) -> new RawOrderedLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
-            } else {
-                unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc);
-            }
+            UnsafeNodeConstructor unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
             createUnsafeAccess(object, b, unsafeNodeConstructor);
             return true;
         }

@@ -63,25 +63,26 @@ public final class GuestClassRegistry extends ClassRegistry {
     private final Method loadClass;
     private final Method addClass;
 
-    public GuestClassRegistry(EspressoContext context, @JavaType(ClassLoader.class) StaticObject classLoader) {
-        super(context);
+    public GuestClassRegistry(ClassLoadingEnv env, @JavaType(ClassLoader.class) StaticObject classLoader) {
+        super(env.getNewLoaderId());
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
         this.loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
         this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
-        if (getJavaVersion().modulesEnabled()) {
-            StaticObject unnamedModule = getMeta().java_lang_ClassLoader_unnamedModule.getObject(classLoader);
+        if (env.getJavaVersion().modulesEnabled()) {
+            StaticObject unnamedModule = env.getMeta().java_lang_ClassLoader_unnamedModule.getObject(classLoader);
             initUnnamedModule(unnamedModule);
-            getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(unnamedModule, getUnnamedModule());
+            env.getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(unnamedModule, getUnnamedModule());
         }
     }
 
     @Override
-    public Klass loadKlassImpl(Symbol<Type> type) {
+    public Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) {
         assert StaticObject.notNull(classLoader);
-        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
+        ClassLoadingEnv env = context.getClassLoadingEnv();
+        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, env.getMeta().toGuestString(Types.binaryName(type)));
         Klass klass = guestClass.getMirrorKlass();
-        getRegistries().recordConstraint(type, klass, getClassLoader());
+        context.getRegistries().recordConstraint(type, klass, getClassLoader());
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
         assert previous == null || previous.klass() == klass;
@@ -95,8 +96,8 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     @SuppressWarnings("sync-override")
     @Override
-    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
-        ObjectKlass klass = super.defineKlass(typeOrNull, bytes, info);
+    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
+        ObjectKlass klass = super.defineKlass(context, typeOrNull, bytes, info);
         // Register class in guest CL. Mimics HotSpot behavior.
         if (info.addedToRegistry()) {
             addClass.invokeDirect(classLoader, klass.mirror());

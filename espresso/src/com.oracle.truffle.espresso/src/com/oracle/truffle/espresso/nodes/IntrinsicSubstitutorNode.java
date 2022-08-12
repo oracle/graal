@@ -61,12 +61,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     @Override
-    void initializeBody(VirtualFrame frame) {
-        // nop
-    }
-
-    @Override
-    public Object executeBody(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         return substitution.invoke(frame.getArguments());
     }
 

@@ -204,11 +204,18 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                     if (isOsrLoopExit(begin) || isCountedLoopExit(ifNode, lazyLoops)) {
                         moveAsDeoptAfter(begin, deopt);
                     } else {
-                        if (begin instanceof LoopExitNode && ifNode.condition() instanceof IntegerEqualsNode && ((IntegerEqualsNode) ifNode.condition()).getX() instanceof BranchProbabilityNode) {
-                            // This loop exit is associated with an injected profile, which will get
-                            // lost if this loop exit and the subsequent DeoptimizeNode are
-                            // converted into a guard within the loop.
-                            return;
+                        if (begin instanceof LoopExitNode && ifNode.condition() instanceof IntegerEqualsNode) {
+                            StructuredGraph graph = ifNode.graph();
+                            IntegerEqualsNode integerEqualsNode = (IntegerEqualsNode) ifNode.condition();
+                            // If this loop exit is associated with an injected profile, propagate
+                            // before converting to guard.
+                            if (integerEqualsNode.getX() instanceof BranchProbabilityNode) {
+                                SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(providers, false, graph.getAssumptions(), graph.getOptions());
+                                ((BranchProbabilityNode) integerEqualsNode.getX()).simplify(simplifierTool);
+                            } else if (integerEqualsNode.getY() instanceof BranchProbabilityNode) {
+                                SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(providers, false, graph.getAssumptions(), graph.getOptions());
+                                ((BranchProbabilityNode) integerEqualsNode.getY()).simplify(simplifierTool);
+                            }
                         }
                         // Prioritize the source position of the IfNode
                         try (DebugCloseable closable = ifNode.withNodeSourcePosition()) {

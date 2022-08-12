@@ -37,6 +37,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ArrayScan;
 import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
 import com.oracle.graal.pointsto.ObjectScanner.FieldScan;
@@ -44,6 +45,7 @@ import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -84,6 +86,9 @@ public abstract class ImageHeapScanner {
     protected final SnippetReflectionProvider hostedSnippetReflection;
 
     protected ObjectScanningObserver scanningObserver;
+
+    /** Marker object installed when encountering scanning issues like illegal objects. */
+    private static final ImageHeapObject NULL_IMAGE_HEAP_OBJECT = new ImageHeapInstance(JavaConstant.NULL_POINTER, 0);
 
     public ImageHeapScanner(ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
@@ -214,6 +219,10 @@ public abstract class ImageHeapScanner {
 
         Optional<JavaConstant> replaced = maybeReplace(constant, reason);
         if (replaced.isPresent()) {
+            if (replaced.get().isNull()) {
+                /* There was some problem during replacement, install a marker object. */
+                return NULL_IMAGE_HEAP_OBJECT;
+            }
             /*
              * This ensures that we have a unique ImageHeapObject for the original and replaced
              * object. As a side effect, this runs all object transformer again on the replaced
@@ -292,11 +301,17 @@ public abstract class ImageHeapScanner {
 
         /* Run all registered object replacers. */
         if (constant.getJavaKind() == JavaKind.Object) {
-            Object replaced = universe.replaceObject(unwrapped);
-            if (replaced != unwrapped) {
-                JavaConstant replacedConstant = universe.getSnippetReflection().forObject(replaced);
-                return Optional.of(replacedConstant);
+            try {
+                Object replaced = universe.replaceObject(unwrapped);
+                if (replaced != unwrapped) {
+                    JavaConstant replacedConstant = universe.getSnippetReflection().forObject(replaced);
+                    return Optional.of(replacedConstant);
+                }
+            } catch (UnsupportedFeatureException e) {
+                ObjectScanner.unsupportedFeatureDuringConstantScan(universe.getBigbang(), constant, e, reason);
+                return Optional.of(JavaConstant.NULL_POINTER);
             }
+
         }
         return Optional.empty();
     }
@@ -327,7 +342,13 @@ public abstract class ImageHeapScanner {
          */
         AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for " + field.format("%H.%n"));
 
-        JavaConstant transformedValue = transformFieldValue(field, receiver, rawValue.get());
+        JavaConstant transformedValue;
+        try {
+            transformedValue = transformFieldValue(field, receiver, rawValue.get());
+        } catch (UnsupportedFeatureException e) {
+            ObjectScanner.unsupportedFeatureDuringFieldScan(universe.getBigbang(), field, receiver, e, reason);
+            transformedValue = JavaConstant.NULL_POINTER;
+        }
         /* Add the transformed value to the image heap. */
         JavaConstant fieldValue = markConstantReachable(transformedValue, reason, onAnalysisModified);
 
@@ -476,6 +497,10 @@ public abstract class ImageHeapScanner {
             JavaConstant receiverConstant = asConstant(receiver);
             Optional<JavaConstant> replaced = maybeReplace(receiverConstant, OtherReason.RESCAN);
             if (replaced.isPresent()) {
+                if (replaced.get().isNull()) {
+                    /* There was some problem during replacement, bailout. */
+                    return;
+                }
                 receiverConstant = replaced.get();
             }
             JavaConstant fieldValue = readHostedFieldValue(field, universe.toHosted(receiverConstant)).get();

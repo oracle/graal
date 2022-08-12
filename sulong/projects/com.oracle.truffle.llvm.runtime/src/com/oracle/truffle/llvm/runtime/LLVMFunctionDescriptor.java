@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,7 +62,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
  * {@link LLVMFunctionDescriptor}s.
  */
 @ExportLibrary(InteropLibrary.class)
-@ExportLibrary(value = LLVMNativeLibrary.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(value = LLVMNativeLibrary.class, useForAOT = false)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @SuppressWarnings("static-method")
 public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject implements Comparable<LLVMFunctionDescriptor> {
@@ -121,7 +121,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     }
 
     @ExportMessage
-    long asPointer(@Cached @Exclusive BranchProfile exception) throws UnsupportedMessageException {
+    public long asPointer(@Cached @Exclusive BranchProfile exception) throws UnsupportedMessageException {
         if (isPointer()) {
             return nativePointer;
         }
@@ -130,7 +130,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     }
 
     @ExportMessage
-    boolean isPointer() {
+    public boolean isPointer() {
         return nativeWrapper != null;
     }
 
@@ -154,15 +154,19 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     @ExportMessage
     public LLVMNativePointer toNativePointer(@CachedLibrary("this") LLVMNativeLibrary self,
                     @Cached @Exclusive BranchProfile exceptionProfile) {
-        if (!isPointer()) {
-            toNative();
-        }
         try {
-            return LLVMNativePointer.create(asPointer(exceptionProfile));
+            return asNativePointer(exceptionProfile);
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
             throw new LLVMPolyglotException(self, "Cannot convert %s to native pointer.", this);
         }
+    }
+
+    public LLVMNativePointer asNativePointer(BranchProfile exceptionProfile) throws UnsupportedMessageException {
+        if (!isPointer()) {
+            toNative();
+        }
+        return LLVMNativePointer.create(asPointer(exceptionProfile));
     }
 
     @ExportMessage

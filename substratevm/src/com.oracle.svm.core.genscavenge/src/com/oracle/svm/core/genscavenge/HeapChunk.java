@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.function.IntUnaryOperator;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -83,15 +82,15 @@ public final class HeapChunk {
     }
 
     static class Options {
-        @Option(help = "Number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider.") //
-        public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0);
+        // Accessed via reflection by legacy code (see GR-40046).
+        public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = SerialAndEpsilonGCOptions.HeapChunkHeaderPadding;
     }
 
     static class HeaderPaddingSizeProvider implements IntUnaryOperator {
         @Override
         public int applyAsInt(int operand) {
             assert operand == 0 : "padding structure does not declare any fields";
-            return Options.HeapChunkHeaderPadding.getValue();
+            return SerialAndEpsilonGCOptions.HeapChunkHeaderPadding.getValue();
         }
     }
 

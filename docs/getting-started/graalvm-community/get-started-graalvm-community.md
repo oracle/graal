@@ -8,7 +8,7 @@ permalink: /docs/getting-started/
 # Get Started with GraalVM
 
 Get started with GraalVM -- is a high-performance JDK designed to accelerate Java application performance while consuming fewer resources.
-GraalVM offers two ways to run Java applications: on the HotSpot JVM with Graal just-in-time (JIT) compiler or as an ahead-of-time (AOT) compiled native exectuable.
+GraalVM offers two ways to run Java applications: on the HotSpot JVM with Graal just-in-time (JIT) compiler or as an ahead-of-time (AOT) compiled native executable.
 Besides Java, it provides runtimes for JavaScript, Ruby, Python, and a number of other popular languages.
 GraalVM's polyglot capabilities make it possible to mix programming languages in a single application while eliminating any foreign language call costs.
 
@@ -23,8 +23,8 @@ If you have GraalVM already installed and have experience using it, you can skip
 
 Getting GraalVM installed and ready-to-go should take a few minutes.
 Choose the operating system and proceed to the installation steps:
+
 * [Linux](linux.md)
-* [Linux AArch64](linux-aarch64.md)
 * [macOS](macos.md)
 * [Windows](windows.md)
 * [Docker Container](container-images/graalvm-ce-container-images.md)

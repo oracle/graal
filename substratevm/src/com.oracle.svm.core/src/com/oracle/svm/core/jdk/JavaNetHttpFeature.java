@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 
 @AutomaticFeature
 public class JavaNetHttpFeature extends JNIRegistrationUtil implements Feature {
@@ -50,5 +53,27 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements Feature {
         RuntimeReflection.registerForReflectiveInstantiation(clazz(a, "jdk.internal.net.http.AuthenticationFilter"));
         RuntimeReflection.registerForReflectiveInstantiation(clazz(a, "jdk.internal.net.http.RedirectFilter"));
         RuntimeReflection.registerForReflectiveInstantiation(clazz(a, "jdk.internal.net.http.CookieFilter"));
+    }
+}
+
+@AutomaticFeature
+class SimpleWebServerFeature implements Feature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC >= 19;
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        rci.initializeAtRunTime("sun.net.httpserver.simpleserver.SimpleFileServerImpl", "Allocates InetAddress in class initializer");
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        access.registerReachabilityHandler(a -> {
+            ImageSingletons.lookup(ResourcesRegistry.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "sun.net.httpserver.simpleserver.resources.simpleserver");
+        }, access.findClassByName("sun.net.httpserver.simpleserver.SimpleFileServerImpl"));
     }
 }

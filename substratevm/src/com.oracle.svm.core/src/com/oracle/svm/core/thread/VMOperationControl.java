@@ -221,8 +221,8 @@ public final class VMOperationControl {
         } else if (allowJavaHeapAccess) {
             log.string("VMOperation in progress: ").string(op.getName()).indent(true);
             log.string("Safepoint: ").bool(op.getCausesSafepoint()).newline();
-            log.string("QueuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
-            log.string("ExecutingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
+            log.string("QueuingThread: ").zhex(control.inProgress.queueingThread).newline();
+            log.string("ExecutingThread: ").zhex(control.inProgress.executingThread).newline();
             log.redent(false);
         } else {
             log.string("VMOperation in progress: ").zhex(Word.objectToUntrackedPointer(op)).newline();
@@ -255,6 +255,8 @@ public final class VMOperationControl {
         inProgress.executingThread = executingThread;
         inProgress.operation = operation;
         inProgress.queueingThread = queueingThread;
+
+        VMOperationListenerSupport.get().vmOperationChanged(operation);
     }
 
     void enqueue(JavaVMOperation operation) {
@@ -910,7 +912,7 @@ public final class VMOperationControl {
             VMOpStatusChange entry = history.next();
             entry.timestamp = System.currentTimeMillis();
             entry.status = status;
-            entry.operation = operation.getName();
+            entry.name = operation.getName();
             entry.causesSafepoint = operation.getCausesSafepoint();
             entry.queueingThread = queueingThread;
             entry.executingThread = executingThread;
@@ -952,7 +954,7 @@ public final class VMOperationControl {
     private static class VMOpStatusChange {
         long timestamp;
         VMOpStatus status;
-        String operation;
+        String name;
         boolean causesSafepoint;
         IsolateThread queueingThread;
         IsolateThread executingThread;
@@ -968,11 +970,11 @@ public final class VMOperationControl {
             if (localStatus != null) {
                 log.unsigned(timestamp).string(" - ").spaces(nestingLevel * 2).string(localStatus.name());
                 if (allowJavaHeapAccess) {
-                    log.string(" ").string(operation);
+                    log.string(" ").string(name);
                 }
                 log.string(" (safepoint: ").bool(causesSafepoint)
-                                .string(", queueingThread: ").zhex(queueingThread.rawValue())
-                                .string(", executingThread: ").zhex(executingThread.rawValue())
+                                .string(", queueingThread: ").zhex(queueingThread)
+                                .string(", executingThread: ").zhex(executingThread)
                                 .string(", safepointId: ").unsigned(safepointId)
                                 .string(")").newline();
             }

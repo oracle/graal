@@ -29,7 +29,7 @@ import static org.junit.Assume.assumeTrue;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.memory.OrderedWriteNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -71,7 +71,7 @@ public class AMD64VolatileWriteMembarEliminationTest extends GraalCompilerTest {
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
         assertDeepEquals("Wrong number of membars", expectedVolatiles,
-                        graph.getNodes().filter(OrderedWriteNode.class).filter(n -> ((OrderedWriteNode) n).getMemoryOrder() == MemoryOrderMode.VOLATILE).count());
+                        graph.getNodes().filter(WriteNode.class).filter(n -> ((WriteNode) n).getMemoryOrder() == MemoryOrderMode.VOLATILE).count());
     }
 
     public static int testMethod2() {

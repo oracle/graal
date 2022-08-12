@@ -1227,7 +1227,15 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
         assert !graphBuilderConfig.unresolvedIsError();
+
+        // The CHECKCAST byte code refers to a type that could not be resolved.
+        // CHECKCAST must throw an exception if, and only if, the object is not null.
+
+        // Deoptimize (to throw an exception) if the object is non-null. Continue otherwise.
         append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)), Unresolved, InvalidateRecompile));
+
+        // Case where the object is null: CHECKCAST does not care about the type.
+        // Push "null" to the byte code stack, then continue running normally.
         frameState.push(JavaKind.Object, appendConstant(JavaConstant.NULL_POINTER));
     }
 
@@ -1237,11 +1245,15 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
         assert !graphBuilderConfig.unresolvedIsError();
-        AbstractBeginNode successor = graph.add(new BeginNode());
-        DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
-        append(new IfNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)), successor, deopt, BranchProbabilityNode.ALWAYS_TAKEN_PROFILE));
-        lastInstr = successor;
+
+        // The INSTANCEOF byte code refers to a type that could not be resolved.
+        // INSTANCEOF must not throw an exception if the object is null.
+
+        // Deoptimize (to throw an exception) if the object is non-null. Continue otherwise.
+        append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)), Unresolved, InvalidateRecompile));
+
+        // Case where the object is null: INSTANCEOF does not care about the type.
+        // Push zero to the byte code stack, then continue running normally.
         frameState.push(JavaKind.Int, appendConstant(JavaConstant.INT_0));
     }
 

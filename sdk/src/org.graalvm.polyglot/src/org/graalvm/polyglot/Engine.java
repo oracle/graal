@@ -1055,7 +1055,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+        public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding, URL url,
+                        String path)
                         throws IOException {
             throw noPolyglotImplementationFound();
         }

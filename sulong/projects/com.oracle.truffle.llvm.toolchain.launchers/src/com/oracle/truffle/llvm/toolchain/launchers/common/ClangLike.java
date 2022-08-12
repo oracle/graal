@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,15 +34,19 @@ import java.util.List;
 public class ClangLike extends ClangLikeBase {
 
     public static void runClangXX(String[] args) {
-        new ClangLike(args, true, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangLike(args, ClangLikeBase.Tool.ClangXX, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     public static void runClang(String[] args) {
-        new ClangLike(args, false, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangLike(args, ClangLikeBase.Tool.Clang, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
-    protected ClangLike(String[] args, boolean cxx, OS os, String platform) {
-        super(args, cxx, os, platform);
+    public static void runClangCL(String[] args) {
+        new ClangLike(args, ClangLikeBase.Tool.ClangCL, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+    }
+
+    protected ClangLike(String[] args, ClangLikeBase.Tool tool, OS os, Arch arch, String platform) {
+        super(args, tool, os, arch, platform);
     }
 
     @Override
@@ -53,7 +57,11 @@ public class ClangLike extends ClangLikeBase {
         sulongArgs.add("-stdlib=libc++");
         // Suppress warning because of libc++
         sulongArgs.add("-Wno-unused-command-line-argument");
-        super.getCompilerArgs(sulongArgs);
+        if (tool != Tool.ClangCL) {
+            // clang-cl does not support any of these when using CMakeTestCCompiler.cmake
+            // set CMAKE_C_FLAGS or CMAKE_CXX_FLAGS instead
+            super.getCompilerArgs(sulongArgs);
+        }
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -44,8 +46,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class GraalVMResolveFunction extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doNativeResolve(LLVMNativePointer pointer) {
-        return LLVMManagedPointer.create(getContext().getFunctionDescriptor(pointer));
+    protected Object doNativeResolve(LLVMNativePointer pointer,
+                    @Cached ConditionProfile isFunction) {
+        LLVMFunctionDescriptor descriptor = getContext().getFunctionDescriptor(pointer);
+        if (isFunction.profile(descriptor != null)) {
+            return LLVMManagedPointer.create(descriptor);
+        } else {
+            return pointer;
+        }
     }
 
     @Specialization(guards = "pointsToFunctionDescriptor(pointer)")

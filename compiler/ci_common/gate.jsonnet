@@ -41,14 +41,6 @@
     timelimit: "1:30:00",
   },
 
-  # Configures env vars such that `mx unittest` persists results in a json file
-  save_as_json:: {
-    environment+: {
-      "MX_TEST_RESULT_TAGS": "compiler"
-    }
-  },
-
-
   test:: s.base(no_warning_as_error=true),
 
   coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacocout", "html"]) + {
@@ -128,28 +120,28 @@
 
   builds: [
     # Darwin AMD64
-    {name: "gate-compiler-test-labsjdk-17-darwin-amd64"} +              s.test +           c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + s.save_as_json + c.mach5_target,
+    {name: "gate-compiler-test-labsjdk-17-darwin-amd64"} +              s.test +           c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + c.mach5_target,
     {name: "weekly-compiler-test-labsjdk-11-darwin-amd64"} +            s.test +           c.labsjdk11 +      c.darwin_amd64 + s.weekly,
 
     # Darwin AArch64
-    {name: "gate-compiler-test-labsjdk-17-darwin-aarch64"} +            s.test +           c.labsjdk17 +      c.darwin_aarch64 + t("1:00:00") + s.save_as_json,
+    {name: "gate-compiler-test-labsjdk-17-darwin-aarch64"} +            s.test +           c.labsjdk17 +      c.darwin_aarch64 + t("1:00:00"),
     {name: "weekly-compiler-test-labsjdk-11-darwin-aarch64"} +          s.test +           c.labsjdk11 +      c.darwin_aarch64 + s.weekly,
 
     # Windows AMD64
-    {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"] + s.save_as_json + c.mach5_target,
-    {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk17"] + s.save_as_json + c.mach5_target,
+    {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"],
+    {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk17"] + c.mach5_target,
 
     # Linux AMD64
-    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("55:00") + s.save_as_json + c.mach5_target,
-    {name: "gate-compiler-test-labsjdk-17-linux-amd64"} +               s.test +           c.labsjdk17 +      c.linux_amd64 + t("55:00") + s.save_as_json + c.mach5_target,
-    {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.linux_amd64 + c.mach5_target,
+    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("55:00"),
+    {name: "gate-compiler-test-labsjdk-17-linux-amd64"} +               s.test +           c.labsjdk17 +      c.linux_amd64 + t("55:00") + c.mach5_target,
+    {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-ctw-labsjdk-17-linux-amd64"} +                s.ctw +            c.labsjdk17 +      c.linux_amd64 + c.mach5_target,
     {name: "gate-compiler-ctw-economy-labsjdk-11-linux-amd64"} +        s.ctw_economy +    c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-ctw-economy-labsjdk-17-linux-amd64"} +        s.ctw_economy +    c.labsjdk17 +      c.linux_amd64,
     {name: "gate-compiler-benchmarktest-labsjdk-11-linux-amd64"} +      s.benchmark +      c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-benchmarktest-labsjdk-17-linux-amd64"} +      s.benchmark +      c.labsjdk17 +      c.linux_amd64,
     {name: "gate-compiler-style-linux-amd64"} +                         s.style +          c.labsjdk17 +      c.linux_amd64 + t("45:00"),
-    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:15:00") + s.save_as_json + {environment+: {"TRACE_COMPILATION": "true"}, logs+: ['*/*_compilation.log']},
+    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:30:00") + {environment+: {"TRACE_COMPILATION": "true"}, logs+: ['*/*_compilation.log']},
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-vector16"} +    s.test_vec16 +     c.labsjdk17 +      c.linux_amd64 + s.weekly,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx0"} +        s.test_avx0 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx1"} +        s.test_avx1 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,
@@ -161,14 +153,14 @@
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-fastdebug"} +   s.test +           c.labsjdk17Debug + c.linux_amd64 + s.weekly + t("3:00:00"),
 
     # Linux AArch64
-    {name: "gate-compiler-test-labsjdk-11-linux-aarch64"} +             s.test +           c.labsjdk11 +      c.linux_aarch64 + t("1:50:00") + s.save_as_json,
+    {name: "gate-compiler-test-labsjdk-11-linux-aarch64"} +             s.test +           c.labsjdk11 +      c.linux_aarch64 + t("1:50:00"),
     {name: "gate-compiler-ctw-labsjdk-11-linux-aarch64"} +              s.ctw +            c.labsjdk11 +      c.linux_aarch64 + t("1:50:00"),
     {name: "gate-compiler-ctw-economy-labsjdk-11-linux-aarch64"} +      s.ctw_economy +    c.labsjdk11 +      c.linux_aarch64 + t("1:50:00"),
     {name: "weekly-compiler-coverage-labsjdk-11-linux-aarch64"} +       s.coverage +       c.labsjdk11 +      c.linux_aarch64 + s.weekly + t("1:50:00"),
     {name: "weekly-compiler-test-ctw-labsjdk-11-linux-aarch64"} +       s.coverage_ctw +   c.labsjdk11 +      c.linux_aarch64 + s.weekly,
 
     # Bootstrap testing
-    {name: "gate-compiler-bootstraplite-labsjdk-11-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk11 +      c.darwin_amd64 + t("1:00:00") + c.mach5_target,
+    {name: "gate-compiler-bootstraplite-labsjdk-11-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk11 +      c.darwin_amd64 + t("1:00:00"),
     {name: "gate-compiler-bootstraplite-labsjdk-17-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + c.mach5_target,
     {name: "gate-compiler-bootstrapfullverify-labsjdk-17-linux-amd64"} +s.bootstrap_full + c.labsjdk17 +      c.linux_amd64  + s.many_cores + c.mach5_target,
 

@@ -88,6 +88,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -1096,6 +1097,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
         return getAnnotation(BytecodeInterpreterSwitch.class, method) != null;
+    }
+
+    @Override
+    public boolean isInliningCutoff(ResolvedJavaMethod method) {
+        return getAnnotation(InliningCutoff.class, method) != null;
     }
 
     /**

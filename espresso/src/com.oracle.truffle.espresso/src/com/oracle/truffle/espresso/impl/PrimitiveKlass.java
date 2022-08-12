@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.impl.ObjectKlass.KlassVersion;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -56,18 +57,12 @@ public final class PrimitiveKlass extends Klass {
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
+        assert getMeta().java_lang_Class != null;
+        initializeEspressoClass();
     }
 
     public JavaKind getPrimitiveJavaKind() {
         return primitiveKind;
-    }
-
-    @Override
-    protected ArrayKlass createArrayKlass() {
-        if (getJavaKind() == JavaKind.Void) {
-            return null;
-        }
-        return super.createArrayKlass();
     }
 
     @Override
@@ -159,5 +154,23 @@ public final class PrimitiveKlass extends Klass {
     public StaticObject allocatePrimitiveArray(int length) {
         GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length);
         return getAllocator().createNewPrimitiveArray(this, length);
+    }
+
+    @Override
+    protected Klass[] getSuperTypes() {
+        // default implementation for primitive classes
+        return new Klass[]{this};
+    }
+
+    @Override
+    protected int getHierarchyDepth() {
+        // default implementation for primitive classes
+        return 0;
+    }
+
+    @Override
+    protected KlassVersion[] getTransitiveInterfacesList() {
+        // default implementation for primitive classes
+        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
     }
 }

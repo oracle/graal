@@ -38,8 +38,8 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.substitutions.ModuleExtension;
 
 /**
  * All VM properties are overridable via options, some properties (e.g. boot classpath) are derived
@@ -240,7 +240,7 @@ public interface EspressoProperties {
                         .extDirs(EspressoOptions.parsePaths(System.getProperty("java.ext.dirs")));
     }
 
-    static Builder processOptions(Builder builder, OptionValues options) {
+    static Builder processOptions(Builder builder, OptionValues options, EspressoContext context) {
         // Always set JavaHome first.
         Path javaHome = options.hasBeenSet(EspressoOptions.JavaHome)
                         ? options.get(EspressoOptions.JavaHome)
@@ -275,30 +275,14 @@ public interface EspressoProperties {
 
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
 
-        // Inject hotswap.jar
-        if (options.get(EspressoOptions.JDWPOptions) != null) {
-            Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
-            if (Files.isReadable(hotswapJar)) {
-                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
-                bootClasspath.add(hotswapJar);
+        for (ModuleExtension me : ModuleExtension.get(context)) {
+            Path jarPath = espressoHome.resolve("lib").resolve(me.jarName());
+            if (Files.isReadable(jarPath)) {
+                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding " + me.jarName() + " to the boot classpath");
+                bootClasspath.add(jarPath);
             } else {
-                TruffleLogger.getLogger(EspressoLanguage.ID).warning("hotswap.jar (HotSwap API) not found at " + espressoHome.resolve("lib"));
+                TruffleLogger.getLogger(EspressoLanguage.ID).warning(jarPath + " not found at " + espressoHome.resolve("lib"));
             }
-        } else {
-            JDWP.LOGGER.fine(() -> "Espresso HotSwap Plugin support is disabled. HotSwap is only supported in debug mode.");
-        }
-
-        // Inject polyglot.jar
-        if (options.get(EspressoOptions.Polyglot)) {
-            Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
-            if (Files.isReadable(polyglotJar)) {
-                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);
-                bootClasspath.add(polyglotJar);
-            } else {
-                TruffleLogger.getLogger(EspressoLanguage.ID).warning("polyglot.jar (Polyglot API) not found at " + espressoHome.resolve("lib"));
-            }
-        } else {
-            TruffleLogger.getLogger(EspressoLanguage.ID).fine("Polyglot support is (--java.Poylglot=false) disabled.");
         }
 
         // Process boot classpath + append and prepend options.

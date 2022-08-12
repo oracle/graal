@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,19 +32,24 @@ package com.oracle.truffle.llvm.toolchain.launchers.darwin;
 import java.util.List;
 
 import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLikeBase;
 
 public class DarwinClangLike extends ClangLike {
 
-    protected DarwinClangLike(String[] args, boolean cxx, OS os, String platform) {
-        super(args, cxx, os, platform);
+    protected DarwinClangLike(String[] args, ClangLikeBase.Tool tool, OS os, Arch arch, String platform) {
+        super(args, tool, os, arch, platform);
     }
 
     public static void runClangXX(String[] args) {
-        new DarwinClangLike(args, true, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new DarwinClangLike(args, ClangLikeBase.Tool.ClangXX, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     public static void runClang(String[] args) {
-        new DarwinClangLike(args, false, OS.getCurrent(), NATIVE_PLATFORM).run();
+        new DarwinClangLike(args, ClangLikeBase.Tool.Clang, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+    }
+
+    public static void runClangCL(String[] args) {
+        new DarwinClangLike(args, ClangLikeBase.Tool.ClangCL, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     @Override

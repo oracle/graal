@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -62,22 +63,31 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings("static-method")
 final class DefaultNodeExports {
 
-    @TruffleBoundary
     @ExportMessage
     @SuppressWarnings("unused")
     static boolean hasScope(Node node, Frame frame) {
-        RootNode root = node.getRootNode();
-        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        return language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node));
+        return hasScopeSlowPath(node);
     }
 
     @TruffleBoundary
-    @ExportMessage
-    @SuppressWarnings({"unchecked", "unused"})
-    static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+    private static boolean hasScopeSlowPath(Node node) {
         RootNode root = node.getRootNode();
         TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        if (language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node))) {
+        return language != null && (node == root || InteropAccessor.INSTRUMENT.isInstrumentable(node));
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+        return getScopeSlowPath(node, frame != null ? frame.materialize() : null);
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unchecked")
+    private static Object getScopeSlowPath(Node node, MaterializedFrame frame) throws UnsupportedMessageException {
+        RootNode root = node.getRootNode();
+        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+        if (language != null && (node == root || InteropAccessor.INSTRUMENT.isInstrumentable(node))) {
             return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
         }
         throw UnsupportedMessageException.create();
@@ -94,7 +104,7 @@ final class DefaultNodeExports {
     }
 
     @TruffleBoundary
-    private static Object createDefaultScope(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+    private static Object createDefaultScope(RootNode root, MaterializedFrame frame, Class<? extends TruffleLanguage<?>> language) {
         LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
         FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
         for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {

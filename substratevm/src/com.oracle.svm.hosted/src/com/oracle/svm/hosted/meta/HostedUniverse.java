@@ -91,7 +91,7 @@ import jdk.vm.ci.meta.Signature;
  * {@link ResolvedJavaType types}, {@link ResolvedJavaMethod methods} and {@link ResolvedJavaField
  * fields}. In this documentation, we use the term "element" to refer to a type, method, or field.
  * All elements of one particular layer are called a "universe".
- * 
+ *
  * There are 4 layers in use:
  * <ol>
  * <li>The "HotSpot universe": the original source of elements, as parsed from class files.</li>
@@ -100,29 +100,29 @@ import jdk.vm.ci.meta.Signature;
  * <li>The "analysis universe": elements that the static analysis operates on.</li>
  * <li>The "hosted universe": elements that the AOT compilation operates on.</li>
  * </ol>
- * 
+ *
  * Not covered in this documentation is the "substrate universe", i.e., elements that are used for
  * JIT compilation at image run time when a native image contains the GraalVM compiler itself. JIT
  * compilation is only used when a native image contains a Truffle language, e.g., the JavaScript
  * implementation that is part of GraalVM. For "normal" applications, all code is AOT compiled and
  * no JIT compilation is necessary.
- * 
+ *
  * <h1>Navigating the Layers</h1>
- * 
+ *
  * Elements of higher layers wrap elements of lower layers. There is generally a method available
  * that returns the wrapped element, e.g., {@link HostedMethod#getWrapped()} and
  * {@link AnalysisMethod#getWrapped()}. The conversion from a lower layer to a higher layer is done
  * via the universe classes, e.g., {@link HostedUniverse#lookup(JavaMethod)} and
  * {@link AnalysisUniverse#lookup(JavaMethod)}.
- * 
+ *
  * There is no standard way to navigate the substitution layer, because each element there has a
  * different behaviour. In general it should be avoided as much as possible to reach directly into
  * the substitution layer. But sometimes it is unavoidable, and then code needs to be written for a
  * specific substitution element. For example, when it is necessary to introspect a method
  * substitution, a direct cast to {@link SubstitutionMethod} is necessary.
- * 
+ *
  * <h1>JVMCI vs. Reflection</h1>
- * 
+ *
  * The JVMCI interfaces are similar to the reflection objects: {@link ResolvedJavaType} for
  * {@link Class}, {@link ResolvedJavaMethod} for {@link Method}, {@link ResolvedJavaField} for
  * {@link Field}. But using the JVCMI interfaces has many advantages over reflection. It provides
@@ -130,7 +130,7 @@ import jdk.vm.ci.meta.Signature;
  * class; the offset of a field. But more importantly, it is not necessary that there is an actual
  * bytecode representation (and therefore a reflection object) of a JVMCI element. We make use of
  * that in the substitution layer.
- * 
+ *
  * In general, it is always easy and possible to convert a reflection object to a JVMCI object.
  * {@link MetaAccessProvider} has all the appropriate lookup methods for it. In JVMCI itself, there
  * is no link back from a JVMCI object to a reflection object. But in the native image generator, it
@@ -146,9 +146,9 @@ import jdk.vm.ci.meta.Signature;
  * like the name of an element. For example, the reflection class for {@link DynamicHub} is
  * {@link java.lang.Class}, due to the {@link Substitute} and {@link TargetClass} annotations on
  * {@link DynamicHub}.
- * 
+ *
  * <h1>The HotSpot Universe</h1>
- * 
+ *
  * Most elements in a native image originate from .class files. The native image generator does not
  * contain a class file parser, so the only way information from class files flows in is via JVMCI
  * from the Java HotSpot VM. Since JVMCI is VM independent, in theory any other Java VM that
@@ -156,7 +156,7 @@ import jdk.vm.ci.meta.Signature;
  * known and supported VM for now. Still, it is frowned upon to reach into any JVMCI object of the
  * HotSpot universe. Many of the HotSpot implementation classes are not public anyway, but even the
  * public ones must not be used directly.
- * 
+ *
  * Using the HotSpot universe keeps a lot of complexity out of the native image generator. Here are
  * some examples of code that does not exist in the native image generator:
  * <ul>
@@ -166,22 +166,22 @@ import jdk.vm.ci.meta.Signature;
  * class method and a concrete implementation type.</li>
  * <li>Code for subtype check, i.e., is type A assignable from type B.</li>
  * </ul>
- * 
+ *
  * <h1>The Analysis Universe</h1>
- * 
+ *
  * The {@link AnalysisUniverse} manages the {@link AnalysisType types}, {@link AnalysisMethod
  * methods}, and {@link AnalysisField fields} that the static analysis operates on. These elements
  * store information used during static analysis as well as the static analysis results, for example
  * {@link AnalysisType#isReachable()} returns if that type was seen as reachable by the static
  * analysis.
- * 
+ *
  * A static analysis implements {@link BigBang}. Currently, the only analysis in the project is
  * {@link PointsToAnalysis}, but ongoing research projects investigate different kinds of static
  * analysis. Therefore, the element types are extensible, for example there is
  * {@link PointsToAnalysisMethod} as the implementation class used by {@link PointsToAnalysis}.
  * Using these implementation classes should be avoided as much as possible, to keep the static
  * analysis implementation exchangeable.
- * 
+ *
  * The elements in the analysis universe generally do not change the behavior of the elements they
  * wrap. One could therefore argue that there should not be an analysis universe at all, and
  * information used and computed by the static analysis should be stored in classes that do not
@@ -192,20 +192,20 @@ import jdk.vm.ci.meta.Signature;
  * if a {@link AnalysisType#isInitialized() type is initialized}. The analysis layer also implements
  * caches for a few operations that are expensive in the HotSpot layer, to reduce the time spent in
  * the static analysis.
- * 
+ *
  * <h1>The Hosted Universe</h1>
- * 
+ *
  * The {@link HostedUniverse} manages the {@link HostedType types}, {@link HostedMethod methods},
  * and {@link HostedField fields} that the ahead-of-time (AOT) compilation operates on. These
  * elements are created by the {@link UniverseBuilder} after the static analysis has finished. They
  * store information such as the layout of objects (offsets of fields), the vtable used for virtual
  * method calls, or information for is-assignable type checks in AOT compiled code.
- * 
+ *
  * For historic reasons, {@link HostedType} has subclasses for different kinds of types:
  * {@link HostedInstanceClass}, {@link HostedArrayClass}, {@link HostedInterface}, and
  * {@link HostedPrimitiveType}. There is not necessity to keep this class hierarchy, but also no
  * need to remove it.
- * 
+ *
  * Having a separate analysis universe and hosted universe complicates some things. For example,
  * {@link StructuredGraph graphs} parsed for static analysis need to be "transplanted" from the
  * analysis universe to the hosted universe (see code around
@@ -215,7 +215,7 @@ import jdk.vm.ci.meta.Signature;
  * example are methods compiled as {@link HostedMethod#isDeoptTarget() deoptimization entry points}.
  * Therefore, no code must assume a 1:1 relationship between analysis and hosted elements, but a 1:n
  * relationship where there are multiple hosted elements for a single analysis element.
- * 
+ *
  * In theory, only analysis elements that are found reachable by the static analysis would need a
  * corresponding hosted element. But in practice, this optimization did not work: for example,
  * snippets and graph builder plugins reference elements that are not reachable themselves, because
@@ -223,13 +223,13 @@ import jdk.vm.ci.meta.Signature;
  * {@link UniverseBuilder} creates hosted elements also for unreachable analysis elements. It is
  * therefore safe to assume that {@link HostedUniverse} returns a hosted element for every analysis
  * element that is passed as an argument.
- * 
+ *
  * {@link HostedUniverse} returns the hosted element that was created by {@link UniverseBuilder} for
  * the corresponding analysis element. If multiple hosted elements exist for an analysis element,
  * the additional elements must be maintained in a secondary storage used by the AOT compilation
  * phases that need them. For example, the mapping between a regular method and a deoptimization
  * entry point method is maintained in {@link CompilationInfo}.
- * 
+ *
  * <h1>The Substitution Layer</h1>
  *
  * The substitution layer is a not-so-well-defined set of elements that sit between the HotSpot
@@ -237,7 +237,7 @@ import jdk.vm.ci.meta.Signature;
  * that for the majority of elements that are not affected by any substitution, the analysis element
  * directly wraps the HotSpot element. For example, for most types
  * {@link AnalysisType#getWrapped()}} returns a {@link HotSpotResolvedJavaType}.
- * 
+ *
  * Substitutions are processed by a chain of {@link SubstitutionProcessor} that are typically
  * registered by a {@link Feature} via {@link DuringSetupAccessImpl#registerSubstitutionProcessor}
  * (note that this is not an API exposed to application developers). Pairs of lookup/resolve methods
@@ -339,7 +339,9 @@ public class HostedUniverse implements Universe {
     @Override
     public HostedType lookup(JavaType type) {
         JavaType result = lookupAllowUnresolved(type);
-        if (result instanceof ResolvedJavaType) {
+        if (result == null) {
+            return null;
+        } else if (result instanceof ResolvedJavaType) {
             return (HostedType) result;
         }
         throw new UnsupportedFeatureException("Unresolved type found. Probably there are some compilation or classpath problems. " + type.toJavaName(true));

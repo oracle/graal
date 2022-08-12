@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
+import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -80,6 +82,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -100,12 +103,16 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String SUPER = "super";
 
     @ExportMessage
-    boolean isMemberReadable(String member, @Shared("lookupField") @Cached LookupFieldNode lookupField) {
+    boolean isMemberReadable(String member,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod) {
         Field field = lookupField.execute(this, member, true);
         if (field != null) {
             return true;
         }
-
+        if (isMemberInvocable(member, lookupMethod)) {
+            return true;
+        }
         if (STATIC_TO_CLASS.equals(member)) {
             return true;
         }
@@ -128,6 +135,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     Object readMember(String member,
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException {
 
         Field field = lookupFieldNode.execute(this, member, true);
@@ -138,6 +146,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return ((StaticObject) result).rawForeignObject(language);
             }
             return result;
+        }
+        try {
+            Method.MethodVersion m = lookupMethod.execute(this, member, true, true, -1 /*- skip */);
+            if (m != null) {
+                return EspressoFunction.createStaticInvocable(m.getMethod());
+            }
+        } catch (ArityException e) {
+            /* ignore and continue */
         }
 
         // Klass<T>.class == Class<T>
@@ -192,14 +208,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     final boolean isMemberInvocable(String member,
-                    @Exclusive @Cached LookupDeclaredMethod lookupMethod) {
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod) {
         return lookupMethod.isInvocable(this, member, true);
     }
 
     @ExportMessage
     final Object invokeMember(String member,
                     Object[] arguments,
-                    @Exclusive @Cached LookupDeclaredMethod lookupMethod,
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method.MethodVersion methodVersion = lookupMethod.execute(this, member, true, true, arguments.length);
@@ -228,7 +244,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         members.add(CLASS_TO_STATIC);
         for (Method m : getDeclaredMethods()) {
             if (m.isStatic() && m.isPublic()) {
-                members.add(m.getName().toString());
+                members.add(m.getInteropString());
             }
         }
         if (getMeta()._void != this) {
@@ -365,7 +381,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
-                        @Exclusive @Cached LookupDeclaredMethod lookupMethod,
+                        @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
             Method.MethodVersion init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
@@ -430,7 +446,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // In unit tests, Truffle performs additional sanity checks, this assert causes stack
         // overflow.
         // assert InteropLibrary.getUncached().hasIdentity(this);
-        return VM.JVM_IHashCode(mirror());
+        return VM.JVM_IHashCode(mirror(), null /*- path where language is needed is never reached through here. */);
     }
 
     // endregion ### Identity/hashCode
@@ -465,14 +481,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(Klass k1, Klass k2) {
-            return Integer.compare(k1.id, k2.id);
+            return Long.compare(k1.id, k2.id);
         }
     };
 
     static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(ObjectKlass.KlassVersion k1, ObjectKlass.KlassVersion k2) {
-            return Integer.compare(k1.getKlass().getId(), k2.getKlass().getId());
+            return Long.compare(k1.getKlass().getId(), k2.getKlass().getId());
         }
     };
 
@@ -486,13 +502,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     protected Symbol<Name> name;
     protected Symbol<Type> type;
 
-    private final int id;
+    private final long id;
 
     @CompilationFinal //
-    private volatile ArrayKlass arrayClass;
+    private ArrayKlass arrayKlass;
 
     @CompilationFinal //
-    private volatile StaticObject mirrorCache;
+    private StaticObject espressoClass;
 
     @CompilationFinal //
     private Class<?> dispatch;
@@ -501,6 +517,25 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     // Raw modifiers provided by the VM.
     private final int modifiers;
+
+    protected static boolean hasFinalInstanceField(Class<?> clazz) {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            for (java.lang.reflect.Field f : clazz.getDeclaredFields()) {
+                int modifiers = f.getModifiers();
+                if (!Modifier.isStatic(modifiers) && Modifier.isFinal(modifiers)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static {
+        // Ensures that the 'arrayKlass' field can be non-volatile. This uses
+        // "Unsafe Local DCL + Safe Singleton" as described in
+        // https://shipilev.net/blog/2014/safe-public-construction
+        assert hasFinalInstanceField(ArrayKlass.class);
+    }
 
     /**
      * A class or interface C is accessible to a class or interface D if and only if either of the
@@ -602,11 +637,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         this(context, name, type, modifiers, -1);
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, int possibleID) {
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, long possibleID) {
         super(context);
         this.name = name;
         this.type = type;
-        this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
+        this.id = (possibleID >= 0) ? possibleID : context.getClassLoadingEnv().getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
     }
@@ -634,43 +669,64 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return ModifiersProvider.super.isInterface();
     }
 
-    public StaticObject mirror() {
-        if (mirrorCache == null) {
-            mirrorCreate();
-        }
-        return mirrorCache;
+    /**
+     * Returns the guest {@link Class} object associated with this {@link Klass} instance.
+     */
+    public final @JavaType(Class.class) StaticObject mirror() {
+        StaticObject result = this.espressoClass;
+        assert result != null;
+        assert getMeta().java_lang_Class != null;
+        return result;
     }
 
-    private synchronized void mirrorCreate() {
-        if (mirrorCache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.mirrorCache = getAllocator().createClass(this);
-        }
-    }
-
-    public final ArrayKlass getArrayClass() {
-        ArrayKlass ak = arrayClass;
-        if (ak == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+    public final StaticObject initializeEspressoClass() {
+        CompilerAsserts.neverPartOfCompilation();
+        StaticObject result = this.espressoClass;
+        if (result == null) {
             synchronized (this) {
-                ak = arrayClass;
-                if (ak == null) {
-                    ak = createArrayKlass();
-                    arrayClass = ak;
+                result = this.espressoClass;
+                if (result == null) {
+                    this.espressoClass = result = getAllocator().createClass(this);
                 }
             }
         }
-        return ak;
+        return result;
     }
 
+    /**
+     * Gets the array class type representing an array with elements of this type.
+     * 
+     * This method is equivalent to {@link Klass#getArrayClass()}.
+     */
     public final ArrayKlass array() {
         return getArrayClass();
+    }
+
+    /**
+     * Gets the array class type representing an array with elements of this type.
+     */
+    public final ArrayKlass getArrayClass() {
+        ArrayKlass result = this.arrayKlass;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            result = createArrayKlass();
+        }
+        return result;
+    }
+
+    private synchronized ArrayKlass createArrayKlass() {
+        CompilerAsserts.neverPartOfCompilation();
+        ArrayKlass result = this.arrayKlass;
+        if (result == null && Type._void != getType()) { // ignore void[]
+            this.arrayKlass = result = new ArrayKlass(this);
+        }
+        return result;
     }
 
     @Override
     public ArrayKlass getArrayClass(int dimensions) {
         assert dimensions > 0;
-        ArrayKlass array = getArrayClass();
+        ArrayKlass array = array();
 
         // Careful with of impossible void[].
         if (array == null) {
@@ -683,10 +739,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return array;
     }
 
-    protected ArrayKlass createArrayKlass() {
-        return new ArrayKlass(this);
-    }
-
     @Override
     public final boolean equals(Object that) {
         return this == that;
@@ -697,6 +749,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return getType().hashCode();
     }
 
+    @HostCompilerDirectives.InliningCutoff
     public final StaticObject tryInitializeAndGetStatics() {
         safeInitialize();
         return getStatics();
@@ -726,7 +779,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      */
     @Override
     public final boolean isPrimitive() {
-        return getJavaKind().isPrimitive();
+        return this instanceof PrimitiveKlass;
     }
 
     /*
@@ -797,13 +850,16 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             assert this.getContext() == other.getContext();
             return this == other;
         }
-        if (this.isArray() && other.isArray()) {
-            return ((ArrayKlass) this).arrayTypeChecks((ArrayKlass) other);
+        if (this.isArray()) {
+            if (other.isArray()) {
+                return ((ArrayKlass) this).arrayTypeChecks((ArrayKlass) other);
+            }
+        } else {
+            if (this.isFinalFlagSet()) {
+                return this == other;
+            }
         }
-        if (!this.isArray() && ModifiersProvider.super.isFinalFlagSet()) {
-            return this == other;
-        }
-        if (isInterface()) {
+        if (Modifier.isInterface(getModifiers())) {
             return checkInterfaceSubclassing(other);
         }
         return checkOrdinaryClassSubclassing(other);
@@ -831,7 +887,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return fastLookup(this, interfaces) >= 0;
     }
 
-    public final int getId() {
+    public final long getId() {
         return id;
     }
 
@@ -979,13 +1035,18 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         try {
             initialize();
         } catch (EspressoException e) {
-            StaticObject cause = e.getGuestException();
-            Meta meta = getMeta();
-            if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                throw throwExceptionInInitializerError(meta, cause);
-            } else {
-                throw e;
-            }
+            throw initializationFailed(e);
+        }
+    }
+
+    @HostCompilerDirectives.InliningCutoff
+    private RuntimeException initializationFailed(EspressoException e) {
+        StaticObject cause = e.getGuestException();
+        Meta meta = getMeta();
+        if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
+            throw throwExceptionInInitializerError(meta, cause);
+        } else {
+            throw e;
         }
     }
 
@@ -1020,20 +1081,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     // index 0 is Object, index hierarchyDepth is this
-    protected Klass[] getSuperTypes() {
-        // default implementation for primitive classes
-        return new Klass[]{this};
-    }
+    protected abstract Klass[] getSuperTypes();
 
-    protected int getHierarchyDepth() {
-        // default implementation for primitive classes
-        return 0;
-    }
+    protected abstract int getHierarchyDepth();
 
-    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
-        // default implementation for primitive classes
-        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
-    }
+    protected abstract ObjectKlass.KlassVersion[] getTransitiveInterfacesList();
 
     @TruffleBoundary
     public StaticObject allocateReferenceArray(int length) {
@@ -1318,10 +1370,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
     @Override
-    public int getModifiers() {
-        // Note: making this method non-final
-        // may cause heavy performance issues
-        return modifiers;
+    public final int getModifiers() {
+        if (this instanceof ObjectKlass && getContext().advancedRedefinitionEnabled()) {
+            // getKlassVersion().getModifiers() introduces a ~10%
+            // perf hit on some benchmarks, so put behind a check
+            return this.getClassModifiers();
+        } else {
+            return modifiers;
+        }
     }
 
     /**

@@ -45,6 +45,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -102,6 +103,12 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal //
     private StaticObject statics;
+
+    static {
+        // Ensures that 'statics' field can be non-volatile. This uses "Unsafe Local DCL + Safe
+        // Singleton" as described in https://shipilev.net/blog/2014/safe-public-construction
+        assert hasFinalInstanceField(StaticObject.class);
+    }
 
     private final Klass hostKlass;
 
@@ -205,10 +212,10 @@ public final class ObjectKlass extends Klass {
         if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
             // Protection domain should not be host null, and will be initialized to guest null on
             // mirror creation.
-            getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(mirror(), info.protectionDomain);
+            getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(initializeEspressoClass(), info.protectionDomain);
         }
         if (info.classData != null) {
-            getMeta().java_lang_Class_classData.setObject(mirror(), info.classData);
+            getMeta().java_lang_Class_classData.setObject(initializeEspressoClass(), info.classData);
         }
         if (!info.addedToRegistry()) {
             initSelfReferenceInPool();
@@ -217,6 +224,9 @@ public final class ObjectKlass extends Klass {
         this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         this.initState = LOADED;
+        if (getMeta().java_lang_Class != null) {
+            initializeEspressoClass();
+        }
         assert verifyTables();
     }
 
@@ -297,17 +307,21 @@ public final class ObjectKlass extends Klass {
     }
 
     StaticObject getStaticsImpl() {
-        if (statics == null) {
-            obtainStatics();
+        StaticObject result = this.statics;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            result = createStatics();
         }
-        return statics;
+        return result;
     }
 
-    private synchronized void obtainStatics() {
-        if (statics == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            statics = getAllocator().createStatics(this);
+    private synchronized StaticObject createStatics() {
+        CompilerAsserts.neverPartOfCompilation();
+        StaticObject result = this.statics;
+        if (result == null) {
+            this.statics = result = getAllocator().createStatics(this);
         }
+        return result;
     }
 
     // region InitStatus
@@ -592,14 +606,19 @@ public final class ObjectKlass extends Klass {
     void initializeImpl() {
         if (!isInitializedImpl()) { // Skip synchronization and locks if already init.
             // Allow folding the exception path if erroneous
-            checkErroneousVerification();
-            checkErroneousInitialization();
-            if (CompilerDirectives.isCompilationConstant(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            ensureLinked();
-            actualInit();
+            doInitialize();
         }
+    }
+
+    @HostCompilerDirectives.InliningCutoff
+    private void doInitialize() {
+        checkErroneousVerification();
+        checkErroneousInitialization();
+        if (CompilerDirectives.isCompilationConstant(this)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        ensureLinked();
+        actualInit();
     }
 
     private void recursiveInitialize() {
@@ -1261,17 +1280,6 @@ public final class ObjectKlass extends Klass {
     @Override
     public int getClassModifiers() {
         return getKlassVersion().getClassModifiers();
-    }
-
-    @Override
-    public int getModifiers() {
-        // getKlassVersion().getModifiers() introduces a ~10%
-        // perf hit on some benchmarks, so put behind a check
-        if (getContext().advancedRedefinitionEnabled()) {
-            return getKlassVersion().getModifiers();
-        } else {
-            return super.getModifiers();
-        }
     }
 
     @Override

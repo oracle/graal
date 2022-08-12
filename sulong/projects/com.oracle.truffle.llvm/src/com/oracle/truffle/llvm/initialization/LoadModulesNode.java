@@ -141,7 +141,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.hasInitialised = false;
         this.initContext = null;
         DataSectionFactory dataSectionFactory = new DataSectionFactory(parserResult);
-        this.initSymbols = new InitializeSymbolsNode(parserResult, lazyParsing, isInternalSulongLibrary, libraryName, dataSectionFactory);
+        this.initSymbols = new InitializeSymbolsNode(parserResult, lazyParsing, isInternalSulongLibrary, libraryName, dataSectionFactory, language);
         this.initExternals = new InitializeExternalNode(parserResult);
         this.initGlobals = new InitializeGlobalNode(parserResult, libraryName, dataSectionFactory);
         this.initOverwrite = new InitializeOverwriteNode(parserResult);

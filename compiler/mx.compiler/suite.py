@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.0.1",
+  "mxversion" : "6.3.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -1766,6 +1766,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.libgraal",
+        "org.graalvm.nativebridge",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
         "org.graalvm.util",
@@ -1789,6 +1790,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.libgraal",
         "org.graalvm.libgraal.jni",
+        "org.graalvm.nativebridge",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],

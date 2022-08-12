@@ -66,12 +66,6 @@ local jdks = common_json.jdks;
     deploy:: self.mx_cmd_base + ['maven-deploy', '--only', self.native_distributions, '--tags=default', '--all-suites', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'],
   },
 
-  vm_unittest:: {
-    environment+: {
-      MX_TEST_RESULT_TAGS: 'vm',
-    },
-  },
-
   notify_releaser_build: vm_common.common_vm_linux + graal_common.linux_amd64 + {
     name: 'daily-vm-notify-releaser-build-linux-amd64',
     packages+: {
@@ -120,14 +114,14 @@ local jdks = common_json.jdks;
   },
 
   local builds = [
-    self.vm_java_11 + vm_common.gate_vm_linux_amd64 + self.vm_unittest + {
+    self.vm_java_11 + vm_common.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     },
-    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows + self.vm_unittest + {
+    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],

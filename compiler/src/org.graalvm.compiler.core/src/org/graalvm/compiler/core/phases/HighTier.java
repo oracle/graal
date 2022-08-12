@@ -69,7 +69,7 @@ public class HighTier extends BaseTier<HighTierContext> {
     }
 
     public HighTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
 
         if (NodeCounterPhase.Options.NodeCounters.getValue(options)) {

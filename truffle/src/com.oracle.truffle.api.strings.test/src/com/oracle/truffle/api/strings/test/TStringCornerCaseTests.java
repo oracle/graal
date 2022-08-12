@@ -43,6 +43,8 @@ package com.oracle.truffle.api.strings.test;
 
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
+import java.nio.charset.StandardCharsets;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -66,9 +68,46 @@ public class TStringCornerCaseTests extends TStringTestBase {
     }
 
     @Test
+    public void testForceEncodingStringCompaction2() {
+        TruffleString a = TruffleString.fromCodePointUncached('\'', TruffleString.Encoding.US_ASCII);
+        Assert.assertEquals('\'', a.forceEncodingUncached(TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_16).codePointAtByteIndexUncached(0, TruffleString.Encoding.UTF_16));
+    }
+
+    @Test
+    public void testForceEncoding3() {
+        TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", 9, 9, TruffleString.Encoding.UTF_16, false);
+        Assert.assertEquals(18, a.forceEncodingUncached(TruffleString.Encoding.UTF_16, TruffleString.Encoding.BYTES).byteLength(TruffleString.Encoding.BYTES));
+    }
+
+    @Test
     public void testConcatMutable() {
         TruffleString a = TruffleString.Encoding.UTF_8.getEmpty();
         MutableTruffleString b = MutableTruffleString.fromByteArrayUncached(new byte[0], 0, 0, TruffleString.Encoding.BYTES, false);
         Assert.assertTrue(a.concatUncached(b, TruffleString.Encoding.UTF_8, true).isEmpty());
+    }
+
+    @Test
+    public void testConcatMutable2() {
+        TruffleString a = TruffleString.fromJavaStringUncached("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", TruffleString.Encoding.BYTES);
+        MutableTruffleString b = MutableTruffleString.fromByteArrayUncached("abc".getBytes(StandardCharsets.UTF_8), 0, "abc".length(), TruffleString.Encoding.UTF_8, false);
+        Assert.assertEquals(43, a.concatUncached(b, TruffleString.Encoding.BYTES, true).byteLength(TruffleString.Encoding.BYTES));
+    }
+
+    @Test
+    public void testSubstring() {
+        TruffleString a = TruffleString.fromByteArrayUncached(byteArray(0xE0, 0xA0, 0xA1), TruffleString.Encoding.EUC_JP);
+        Assert.assertEquals(1, a.substringUncached(2, 1, TruffleString.Encoding.EUC_JP, true).byteLength(TruffleString.Encoding.EUC_JP));
+    }
+
+    @Test
+    public void testFromCodepoint() {
+        TruffleString a = TruffleString.fromCodePointUncached((int) 0x81308130L, TruffleString.Encoding.GB18030, false);
+        Assert.assertEquals(1, a.codePointLengthUncached(TruffleString.Encoding.GB18030));
+    }
+
+    @Test
+    public void testNegativeCodepoint() {
+        TruffleString a = TruffleString.fromByteArrayUncached(byteArray(0x8e, 0xa2, 0xa1, 0xa1), TruffleString.Encoding.EUC_TW);
+        Assert.assertEquals(0x8ea2a1a1, a.codePointAtByteIndexUncached(0, TruffleString.Encoding.EUC_TW, TruffleString.ErrorHandling.RETURN_NEGATIVE));
     }
 }

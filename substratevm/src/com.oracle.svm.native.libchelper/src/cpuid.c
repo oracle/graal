@@ -623,6 +623,8 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
   features->fDMB_ATOMICS = 0;
+  features->fPACA = 0;
+  features->fSVEBITPERM = 0;
 }
 
 /*
@@ -674,8 +676,14 @@ void determineCPUFeatures(CPUFeatures* features) {
 #ifndef HWCAP_SVE
 #define HWCAP_SVE           (1L << 22)
 #endif
+#ifndef HWCAP_PACA
+#define HWCAP_PACA          (1L << 30)
+#endif
 #ifndef HWCAP2_SVE2
 #define HWCAP2_SVE2         (1L << 1)
+#endif
+#ifndef HWCAP2_SVEBITPERM
+#define HWCAP2_SVEBITPERM   (1L << 4)
 #endif
 
 #define CPU_ARM 'A'
@@ -706,6 +714,8 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
   features->fDMB_ATOMICS = 0;
+  features->fPACA = !!(auxv & HWCAP_PACA);
+  features->fSVEBITPERM = !!(auxv2 & HWCAP2_SVEBITPERM);
 
   //checking for features signaled in another way
 

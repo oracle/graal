@@ -383,7 +383,7 @@ public class SubstrateJVM {
         ExecutionSampleEvent.setSamplingInterval(millis);
     }
 
-    /** See {@link JVM#setSampleThreads}. */
+    /** See {@code JVM#setSampleThreads}. */
     public void setSampleThreads(boolean sampleThreads) {
         setEnabled(JfrEvent.ExecutionSample.getId(), sampleThreads);
         setEnabled(JfrEvent.NativeMethodSample.getId(), sampleThreads);

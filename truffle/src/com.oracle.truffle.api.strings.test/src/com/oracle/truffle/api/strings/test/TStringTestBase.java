@@ -642,7 +642,7 @@ public class TStringTestBase {
 
     protected static void assertBytesEqual(AbstractTruffleString a, TruffleString.Encoding encoding, byte[] array, int fromIndex, int length) {
         byte[] cmp = new byte[length];
-        a.copyToByteArrayNodeUncached(0, cmp, 0, length, encoding);
+        a.copyToByteArrayUncached(0, cmp, 0, length, encoding);
         if (array.length == length) {
             Assert.assertArrayEquals(array, cmp);
         } else {
@@ -702,6 +702,18 @@ public class TStringTestBase {
         return ret;
     }
 
+    protected static ArrayList<Object[]> withErrorHandling(Iterable<Object[]> nodes) {
+        ArrayList<Object[]> ret = new ArrayList<>();
+        for (Object[] n : nodes) {
+            for (TruffleString.ErrorHandling eh : TruffleString.ErrorHandling.values()) {
+                Object[] params = Arrays.copyOf(n, n.length + 1);
+                params[n.length] = eh;
+                ret.add(params);
+            }
+        }
+        return ret;
+    }
+
     protected static boolean isValidCodePoint(int codepoint, TruffleString.Encoding encoding) {
         if (codepoint < 0) {
             return false;
@@ -716,5 +728,13 @@ public class TStringTestBase {
             return codepoint <= 0xff;
         }
         return Encodings.isValidCodePoint(codepoint, Encodings.getJCoding(encoding));
+    }
+
+    public static void checkCodepoint(boolean isValid, TruffleString.Encoding encoding, int[] codepoints, int i, int result, TruffleString.ErrorHandling errorHandling) {
+        if (errorHandling == TruffleString.ErrorHandling.RETURN_NEGATIVE && (codepoints.length == 1 && !isValid || !isValidCodePoint(codepoints[i], encoding))) {
+            Assert.assertTrue(result < 0);
+        } else {
+            Assert.assertEquals(codepoints[i], result);
+        }
     }
 }

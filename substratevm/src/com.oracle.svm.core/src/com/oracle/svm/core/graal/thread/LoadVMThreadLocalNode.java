@@ -34,12 +34,12 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.JavaOrderedReadNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.memory.FloatableThreadLocalAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -52,7 +52,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable, SingleMemoryKill, MemoryAccess, FloatableThreadLocalAccess {
+public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable, SingleMemoryKill, OrderedMemoryAccess, MemoryAccess, FloatableThreadLocalAccess {
     public static final NodeClass<LoadVMThreadLocalNode> TYPE = NodeClass.create(LoadVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;
@@ -60,13 +60,9 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
     @Input protected ValueNode holder;
     private final MemoryOrderMode memoryOrder;
 
-    public LoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType) {
-        this(TYPE, metaAccess, threadLocalInfo, holder, barrierType, MemoryOrderMode.PLAIN);
-    }
-
-    protected LoadVMThreadLocalNode(NodeClass<? extends LoadVMThreadLocalNode> c, MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType,
+    public LoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType,
                     MemoryOrderMode memoryOrder) {
-        super(c, threadLocalInfo.isObject ? StampFactory.object(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(threadLocalInfo.valueClass)))
+        super(TYPE, threadLocalInfo.isObject ? StampFactory.object(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(threadLocalInfo.valueClass)))
                         : StampFactory.forKind(threadLocalInfo.storageKind));
         this.threadLocalInfo = threadLocalInfo;
         this.barrierType = barrierType;
@@ -75,16 +71,26 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
     }
 
     @Override
+    public LocationIdentity getLocationIdentity() {
+        return threadLocalInfo.locationIdentity;
+    }
+
+    @Override
     public LocationIdentity getKilledLocationIdentity() {
-        if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
+        if (ordersMemoryAccesses()) {
             return LocationIdentity.any();
         }
         return MemoryKill.NO_LOCATION;
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
-        return threadLocalInfo.locationIdentity;
+    public boolean canFloat() {
+        return !ordersMemoryAccesses() && threadLocalInfo.allowFloatingReads;
+    }
+
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return memoryOrder;
     }
 
     @Override
@@ -94,26 +100,16 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
         ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
         AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
 
-        JavaReadNode read;
-        if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
-            read = graph().add(new JavaOrderedReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, memoryOrder, true));
-        } else {
-            read = graph().add(new JavaReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true));
-            if (threadLocalInfo.allowFloatingReads) {
-                /*
-                 * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise
-                 * they will be conservatively be forced at a fixed location.
-                 */
-                read.setGuard(read.graph().start());
-            }
+        JavaReadNode read = graph().add(new JavaReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, memoryOrder, true));
+        if (canFloat()) {
+            /*
+             * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they
+             * will be conservatively be forced at a fixed location.
+             */
+            read.setGuard(read.graph().start());
         }
 
         graph().replaceFixedWithFixed(this, read);
         tool.getLowerer().lower(read, tool);
-    }
-
-    @Override
-    public boolean canFloat() {
-        return !MemoryOrderMode.ordersMemoryAccesses(memoryOrder) && threadLocalInfo.allowFloatingReads;
     }
 }

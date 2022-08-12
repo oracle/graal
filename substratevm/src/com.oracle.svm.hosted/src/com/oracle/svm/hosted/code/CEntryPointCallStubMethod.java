@@ -31,6 +31,7 @@ import java.util.Iterator;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeadEndNode;
@@ -80,6 +81,7 @@ import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -207,6 +209,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             System.arraycopy(args, 0, invokeArgs, 1, args.length);
         }
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(universeTargetMethod, invokeKind, kit.getFrameState(), invokeBci, invokeArgs);
+        patchNodeSourcePosition(invoke);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
         generateExceptionHandler(method, providers, purpose, kit, exception, invoke.getStackKind());
@@ -220,6 +223,13 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         ValueNode returnValue = adaptReturnValue(method, providers, purpose, kit, value);
         generateEpilogue(providers, kit);
         kit.createReturn(returnValue, returnValue.getStackKind());
+    }
+
+    private static void patchNodeSourcePosition(InvokeWithExceptionNode invoke) {
+        NodeSourcePosition position = invoke.getNodeSourcePosition();
+        if (position != null && position.getBCI() == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            invoke.setNodeSourcePosition(new NodeSourcePosition(position.getCaller(), position.getMethod(), invoke.bci()));
+        }
     }
 
     private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {

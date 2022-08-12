@@ -28,7 +28,9 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
@@ -68,6 +70,19 @@ public class WinBase {
         public HMODULE read();
 
         public void write(HMODULE value);
+    }
+
+    /**
+     * Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1,
+     * 1601 (UTC).
+     */
+    @CStruct
+    public interface FILETIME extends PointerBase {
+        @CField
+        int dwLowDateTime();
+
+        @CField
+        int dwHighDateTime();
     }
 
     /**

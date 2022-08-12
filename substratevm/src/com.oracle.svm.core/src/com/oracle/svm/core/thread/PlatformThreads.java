@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -187,6 +188,34 @@ public abstract class PlatformThreads {
                 Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
                 if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
                     return Heap.getHeap().getThreadAllocatedMemory(isolateThread);
+                }
+                isolateThread = VMThreads.nextThread(isolateThread);
+            }
+            return -1;
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+    public static long getThreadCpuTime(long javaThreadId, boolean includeSystemTime) {
+        if (!ImageSingletons.contains(ThreadCpuTimeSupport.class)) {
+            return -1;
+        }
+        // Accessing the value for the current thread is fast.
+        Thread curThread = PlatformThreads.currentThread.get();
+        if (curThread != null && JavaThreads.getThreadId(curThread) == javaThreadId) {
+            return ThreadCpuTimeSupport.getInstance().getCurrentThreadCpuTime(includeSystemTime);
+        }
+
+        // If the value of another thread is accessed, then we need to do a slow lookup.
+        VMThreads.lockThreadMutexInNativeCode();
+        try {
+            IsolateThread isolateThread = VMThreads.firstThread();
+            while (isolateThread.isNonNull()) {
+                Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
+                if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
+                    return ThreadCpuTimeSupport.getInstance().getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
                 }
                 isolateThread = VMThreads.nextThread(isolateThread);
             }
@@ -696,6 +725,10 @@ public abstract class PlatformThreads {
 
         singleton().unattachedStartedThreads.decrementAndGet();
         singleton().beforeThreadRun(thread);
+
+        if (ImageSingletons.contains(ProfilingSampler.class)) {
+            ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
+        }
 
         try {
             if (VMThreads.isTearingDown()) {

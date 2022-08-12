@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.util.List;
+
 public interface RuntimeSerializationSupport {
 
     void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz);
@@ -51,4 +53,7 @@ public interface RuntimeSerializationSupport {
     void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName);
 
     void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName);
+
+    void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces);
+
 }

@@ -56,26 +56,6 @@ final class Encodings {
 
     @CompilationFinal(dimensions = 1) private static final int[] UTF_8_MIN_CODEPOINT = {0, 0, 0x80, 0x800, 0x10000};
 
-    static int getAscii() {
-        return TruffleString.Encoding.US_ASCII.id;
-    }
-
-    static int getLatin1() {
-        return TruffleString.Encoding.ISO_8859_1.id;
-    }
-
-    static int getUTF8() {
-        return TruffleString.Encoding.UTF_8.id;
-    }
-
-    static int getUTF16() {
-        return TruffleString.Encoding.UTF_16.id;
-    }
-
-    static int getUTF32() {
-        return TruffleString.Encoding.UTF_32.id;
-    }
-
     static boolean isUTF16Surrogate(int c) {
         return (c >> 11) == 0x1b;
     }
@@ -229,26 +209,26 @@ final class Encodings {
         switch (nBytes) {
             case 4:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                    return invalidCodepointReturnValue(errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
             case 3:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                    return invalidCodepointReturnValue(errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
             case 2:
                 if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
-                    return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                    return invalidCodepointReturnValue(errorHandling);
                 }
                 codepoint = codepoint << 6 | (readS0(a, arrayA, j) & 0x3f);
                 break;
             default:
-                return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+                return invalidCodepointReturnValue(errorHandling);
         }
         // Checkstyle: resume
         if (utf8IsInvalidCodePoint(codepoint, nBytes)) {
-            return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
+            return invalidCodepointReturnValue(errorHandling);
         }
         return codepoint;
     }
@@ -327,6 +307,10 @@ final class Encodings {
 
     static boolean utf8IsInvalidCodePoint(int codepoint, int nBytes) {
         return isUTF16Surrogate(codepoint) || codepoint < UTF_8_MIN_CODEPOINT[nBytes] || codepoint > 0x10ffff;
+    }
+
+    static int invalidCodepointReturnValue(ErrorHandling errorHandling) {
+        return invalidCodepointReturnValue(invalidCodepoint(), errorHandling);
     }
 
     static int invalidCodepointReturnValue(int bestEffortValue, ErrorHandling errorHandling) {

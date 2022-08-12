@@ -67,6 +67,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -113,8 +114,8 @@ public final class LLVMContext {
     // The list contains all the symbols declared from the same symbol defined.
     private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
-    protected final EconomicMap<Integer, LLVMPointer> globalsNonPointerStore = EconomicMap.create();
-    protected final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
+    protected final EconomicMap<Integer, Pair<LLVMPointer, Long>> globalsBlockStore = EconomicMap.create();
+    protected final EconomicMap<Integer, Pair<LLVMPointer, Long>> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
     public final Object atomicInstructionsLock = new Object();
 
@@ -184,6 +185,7 @@ public final class LLVMContext {
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
+    protected boolean finalized;
     private State contextState;
     private final LLVMLanguage language;
 
@@ -209,6 +211,7 @@ public final class LLVMContext {
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
+        this.finalized = false;
         // this.destructorFunctions = new ArrayList<>();
         this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
@@ -434,6 +437,10 @@ public final class LLVMContext {
         return threadingStack != null;
     }
 
+    public boolean isFinalized() {
+        return finalized;
+    }
+
     public Toolchain getToolchain() {
         return toolchain;
     }
@@ -575,6 +582,12 @@ public final class LLVMContext {
     void finalizeContext() {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
+
+        // Ensure that thread destructors are run before global memory blocks
+        // have been deallocated by cleanUpNoGuestCode. Otherwise disposeThread
+        // will be called after finalizeContext when it is too late. [GR-39952]
+        language.disposeThread(this, Thread.currentThread());
+
         TruffleSafepoint sp = TruffleSafepoint.getCurrent();
         boolean prev = sp.setAllowActions(false);
         try {
@@ -582,6 +595,8 @@ public final class LLVMContext {
         } finally {
             sp.setAllowActions(prev);
         }
+
+        finalized = true;
     }
 
     void dispose() {
@@ -602,11 +617,11 @@ public final class LLVMContext {
         }
     }
 
-    public Object getFreeReadOnlyGlobalsBlockFunction() {
+    public Object getFreeGlobalsBlockFunction() {
         if (freeGlobalsBlockFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
+            freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER, UINT64):VOID");
         }
         return freeGlobalsBlockFunction;
     }
@@ -615,7 +630,7 @@ public final class LLVMContext {
         if (protectGlobalsBlockFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
-            protectGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER):VOID");
+            protectGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER, UINT64):VOID");
         }
         return protectGlobalsBlockFunction;
     }
@@ -1117,25 +1132,37 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void registerReadOnlyGlobals(int id, LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
+    public void registerGlobals(int id, LLVMPointer base, long size, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
             language.initFreeGlobalBlocks(nodeFactory);
-            globalsReadOnlyStore.put(id, nonPointerStore);
+            globalsBlockStore.put(id, Pair.create(base, size));
         }
     }
 
     @TruffleBoundary
-    public LLVMPointer getReadOnlyGlobals(BitcodeID bitcodeID) {
+    public void registerReadOnlyGlobals(int id, LLVMPointer base, long size, NodeFactory nodeFactory) {
+        synchronized (globalsStoreLock) {
+            language.initFreeGlobalBlocks(nodeFactory);
+            globalsReadOnlyStore.put(id, Pair.create(base, size));
+        }
+    }
+
+    @TruffleBoundary
+    public Pair<LLVMPointer, Long> getGlobals(BitcodeID bitcodeID) {
+        synchronized (globalsStoreLock) {
+            return globalsBlockStore.get(bitcodeID.getId());
+        }
+    }
+
+    public LLVMPointer getGlobalsBase(BitcodeID bitcodeID) {
+        Pair<LLVMPointer, Long> pair = getGlobals(bitcodeID);
+        return pair == null ? null : pair.getLeft();
+    }
+
+    @TruffleBoundary
+    public Pair<LLVMPointer, Long> getReadOnlyGlobals(BitcodeID bitcodeID) {
         synchronized (globalsStoreLock) {
             return globalsReadOnlyStore.get(bitcodeID.getId());
-        }
-    }
-
-    @TruffleBoundary
-    public void registerGlobals(int id, LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
-        synchronized (globalsStoreLock) {
-            language.initFreeGlobalBlocks(nodeFactory);
-            globalsNonPointerStore.put(id, nonPointerStore);
         }
     }
 

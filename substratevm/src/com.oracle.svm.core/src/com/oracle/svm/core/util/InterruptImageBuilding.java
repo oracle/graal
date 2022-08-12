@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.core.util;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import java.util.Optional;
 
 /**
  * Used to report valid interruption of compilation.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class InterruptImageBuilding extends RuntimeException {
     static final long serialVersionUID = 754312906378380L;
     private final boolean hasMessage;
