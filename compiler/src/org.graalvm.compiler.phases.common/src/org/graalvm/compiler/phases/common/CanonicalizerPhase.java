@@ -326,11 +326,12 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             return false;
         }
         COUNTER_PROCESSED_NODES.increment(tool.debug);
+        StructuredGraph graph = (StructuredGraph) node.graph();
         if (GraphUtil.tryKillUnused(node)) {
+            graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "UnusedNodeRemoval", node);
             return true;
         }
         NodeClass<?> nodeClass = node.getNodeClass();
-        StructuredGraph graph = (StructuredGraph) node.graph();
         if (tryCanonicalize(node, nodeClass, tool)) {
             return true;
         }
@@ -342,7 +343,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(NodeView.DEFAULT), constant, tool.context.getMetaAccess(), graph);
                 valueNode.replaceAtUsages(stampConstant, InputType.Value);
                 GraphUtil.tryKillUnused(valueNode);
-                graph.getOptimizationLog().report(CanonicalizerPhase.class, "ConstantStampReplacement", valueNode);
+                graph.getOptimizationLog().report(getClass(), "ConstantStampReplacement", valueNode);
                 return true;
             } else if (improvedStamp) {
                 // the improved stamp may enable additional canonicalization
@@ -404,14 +405,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 if (performReplacement(node, canonical, tool)) {
                     Node finalCanonical = canonical;
                     StructuredGraph graph = (StructuredGraph) node.graph();
-                    graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CanonicalReplacement", node)
-                                    .setLazyProperty("replacedNodeClass", nodeClass::shortName).setLazyProperty(
-                                    "canonicalNodeClass", () -> {
-                                        if (finalCanonical == null) {
-                                            return null;
-                                        }
-                                        return finalCanonical.getNodeClass().shortName();
-                                    });
+                    graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shortName)
+                                    .withLazyProperty("canonicalNodeClass", () -> (finalCanonical == null) ? null : finalCanonical.getNodeClass().shortName())
+                                    .report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "CanonicalReplacement", node);
                     return true;
                 }
             }
@@ -425,7 +421,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     customSimplification.simplify(node, tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                         StructuredGraph graph = (StructuredGraph) node.graph();
-                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CfgSimplificationCustom", node);
+                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "CfgSimplificationCustom", node);
                         return true;
                     }
                 }
@@ -437,7 +433,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     ((Simplifiable) node).simplify(tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                         StructuredGraph graph = (StructuredGraph) node.graph();
-                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CfgSimplification", node);
+                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "CfgSimplification", node);
                         return true;
                     }
                 }

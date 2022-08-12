@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.test;
 
-import static org.graalvm.compiler.nodes.OptimizationLogImpl.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
-
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -67,7 +65,8 @@ public class OptimizationLogTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
-            graph.getOptimizationLog().report(getClass(), "StartNodeReported", graph.start()).setProperty("foo", 42).setLazyProperty("bar", barPropertySupplier);
+            graph.getOptimizationLog().withProperty("foo", 42).withLazyProperty("bar", barPropertySupplier)
+                            .report(getClass(), "StartNodeReported", graph.start());
             new ReportAddNodePhase().apply(graph, context);
             new ReportReturnNodePhase().apply(graph, context);
         }
@@ -117,30 +116,27 @@ public class OptimizationLogTest extends GraalCompilerTest {
         Assert.assertEquals(3, reportNodePhaseScope.getChildren().count());
 
         OptimizationLogImpl.OptimizationEntryImpl startNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportNodePhaseScope.getChildren().get(0);
-        EconomicMap<String, Object> expectedProperties = EconomicMap.create();
-        expectedProperties.put("optimizationName", "ReportNode");
-        expectedProperties.put("eventName", "StartNodeReported");
-        expectedProperties.put("foo", 42);
-        expectedProperties.put("bar", 43);
-        Assert.assertEquals(expectedProperties.toString(), startNodeLog.getMap().toString());
+        Assert.assertEquals("ReportNode", startNodeLog.getOptimizationName());
+        Assert.assertEquals("StartNodeReported", startNodeLog.getEventName());
+        Assert.assertEquals(EconomicMap.of("foo", 42, "bar", 43).toString(), startNodeLog.getProperties().toString());
 
         OptimizationLogImpl.OptimizationPhaseScope reportAddNodePhase = (OptimizationLogImpl.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(1);
         Assert.assertEquals(new ClassTypeSequence(ReportAddNodePhase.class).toString(), reportAddNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportAddNodePhase.getChildren().count());
         OptimizationLogImpl.OptimizationEntryImpl addNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportAddNodePhase.getChildren().get(0);
-        Assert.assertEquals("AddNodeReported", addNodeLog.getMap().get(EVENT_NAME_PROPERTY));
+        Assert.assertEquals("AddNodeReported", addNodeLog.getEventName());
 
         OptimizationLogImpl.OptimizationPhaseScope reportReturnNodePhase = (OptimizationLogImpl.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(2);
         Assert.assertEquals(new ClassTypeSequence(ReportReturnNodePhase.class).toString(), reportReturnNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportReturnNodePhase.getChildren().count());
         OptimizationLogImpl.OptimizationEntryImpl returnNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportReturnNodePhase.getChildren().get(0);
-        Assert.assertEquals("ReturnNodeReported", returnNodeLog.getMap().get(EVENT_NAME_PROPERTY));
+        Assert.assertEquals("ReturnNodeReported", returnNodeLog.getEventName());
     }
 
     /**
      * Tests that there is no reporting going on when the optimization log is disabled. In
      * particular, the optimization tree shall not be built and
-     * {@link org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntry#setLazyProperty(String, Supplier)
+     * {@link org.graalvm.compiler.nodes.OptimizationLog.OptimizationEntry#withLazyProperty(String, Supplier)
      * lazy properties} shall not be consumed.
      */
     @Test

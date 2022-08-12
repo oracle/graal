@@ -16,12 +16,12 @@ bci). However, in the presence of inlining, we need to collect the bci of each m
 
 The `report` method handles the following use cases:
 
-| Concern                              | Option                    | Output                                                                           |
-|--------------------------------------|---------------------------|----------------------------------------------------------------------------------|
-| `log` using a `DebugContext`         | `-Dgraal.Log`             | log the message `Performed {optimizationName} {eventName} at bci {bci}`          |
-| `dump` using a `DebugContext`        | `-Dgraal.Dump`            | dump the graph with the caption `After {optimizationName} {eventName}`           |
-| `CounterKey` increment               | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                           |
-| structured optimization logging      | `-Dgraal.OptimizationLog` | tree of optimizations dumped to the standard output, a JSON file or an IGV graph |
+| Concern                         | Option                    | Output                                                                       |
+|---------------------------------|---------------------------|------------------------------------------------------------------------------|
+| `log` using a `DebugContext`    | `-Dgraal.Log`             | log `Performed {optimizationName} {eventName} at bci {bci} {properties}`     |
+| `dump` using a `DebugContext`   | `-Dgraal.Dump`            | dump with caption `{optimizationName} {eventName} for node {nodeName}`       |
+| `CounterKey` increment          | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                       |
+| structured optimization logging | `-Dgraal.OptimizationLog` | optimization tree dumped to the standard output, a JSON file or an IGV graph |
 
 The method logs and dumps at `DETAILED_LEVEL` by default. There is a variant of the method which allows the log level to
 be specified as the first argument.
@@ -30,20 +30,19 @@ It suffices to insert a line like the one below (from `DeadCodeEliminationPhase`
 The `report` method creates an *optimization entry*.
 
 ```java
-graph.getOptimizationLog().report(DeadCodeEliminationPhase.class,"NodeRemoved",node);
+graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved", node);
 ```
 
-It is recommended to enable the structured optimization jointly with node source position
-tracking (`-Dgraal.TrackNodeSourcePosition`) so that the bytecode position of nodes can be logged. Otherwise, a warning
-is emitted.
+It is recommended to enable the structured optimization jointly with node source position tracking
+(`-Dgraal.TrackNodeSourcePosition`) so that the bytecode position of nodes can be logged. Otherwise, a warning is
+emitted.
 
 The value of the option `-Dgraal.OptimizationLog` specifies where the structured optimization log is printed.
 The accepted values are:
 
 - `Directory` - print the structured optimization log to JSON files (`<compile-id>.json`) in a directory. The directory
-  is specified by the option `-Dgraal.OptimizationLogPath`. If `OptimizationLogPath` is not set,
-  the target directory is `DumpPath/optimization_log` (specified by `-Dgraal.DumpPath`). Directories are created if they
-  do not exist.
+  is specified by the option `-Dgraal.OptimizationLogPath`. If `OptimizationLogPath` is not set, the target directory is
+  `DumpPath/optimization_log` (specified by `-Dgraal.DumpPath`). Directories are created if they do not exist.
 - `Stdout` - print the structured optimization log to the standard output.
 - `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
 
@@ -51,34 +50,27 @@ It is possible to specify multiple comma-separated values (e.g., `-Dgraal.Optimi
 
 ## Properties
 
-It is possible to provide additional key/value properties that are logged to the structured **optimization log only**.
-Consider the example from `LoopTransformations#peel`.
+It is possible to provide additional key/value properties that are logged to the structured optimization log and in the
+regular log. Consider the example from `LoopTransformations#peel`.
 
 ```java
 loop.loopBegin().graph().getOptimizationLog()
-                .report(LoopTransformations.class, "LoopPeeling", loop.loopBegin())
-                .setProperty("peelings", loop.loopBegin().peelings());
+        .withProperty("peelings", loop.loopBegin().peelings())
+        .report(LoopTransformations.class, "LoopPeeling", loop.loopBegin());
 ```
 
-The `report` method returns an optimization entry that can be used to extend the optimization entry with any `String`
--convertible object identified by a `String` key. The property keys should be in `camelCase`. If the optimization
-log (`-Dgraal.OptimizationLog`) is disabled, the method is a nop.
+The `withProperty` and `withLazyProperty` methods return an optimization entry that holds the provided named properties.
+The returned optimization entry can be further extended with more properties,  and its `report` method should be called
+afterwards. The value of the property can be any `String`-convertible object. Property keys should be in `camelCase`.
 
-If the computation of the value is costly, use the `setLazyProperty` method, which accepts a `Supplier<Object>` instead
-of a direct value.
+If the computation of the value is costly, use the `withLazyProperty` method, which accepts a `Supplier<Object>`
+instead. If logging is enabled, the supplier is evaluated immediately. Otherwise, it is never evaluated.
 
 ```java
-graph.getOptimizationLog().report(CanonicalizerPhase.class, "CanonicalReplacement", node)
-                                    .setLazyProperty("replacedNodeClass", nodeClass::shortName)
-                                    .setLazyProperty("canonicalNodeClass", () -> {
-                                        if (finalCanonical == null) {
-                                            return null;
-                                        }
-                                        return finalCanonical.getNodeClass().shortName();
-                                    });
+graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shortName)
+        .withLazyProperty("canonicalNodeClass", () -> (finalCanonical == null) ? null : finalCanonical.getNodeClass().shortName())
+        .report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CanonicalReplacement", node);
 ```
-
-If `-Dgraal.OptimizationLog` is enabled, the supplier is never evaluated. Otherwise, it is evaluated immediately.
 
 ## Optimization tree
 

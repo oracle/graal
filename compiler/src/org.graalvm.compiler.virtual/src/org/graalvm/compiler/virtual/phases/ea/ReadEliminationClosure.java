@@ -203,7 +203,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         }
         if (deleted) {
             effects.addLog(cfg.graph.getOptimizationLog(),
-                            optimizationLog -> optimizationLog.report(getClass(), "ReadElimination", node).setProperty("deletedNodeClass", node.getNodeClass().shortName()));
+                            optimizationLog -> optimizationLog.withProperty("deletedNodeClass", node.getNodeClass().shortName()).report(getClass(), "ReadElimination", node));
         }
         return deleted;
     }

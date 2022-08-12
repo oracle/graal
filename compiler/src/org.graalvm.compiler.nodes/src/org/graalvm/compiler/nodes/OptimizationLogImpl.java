@@ -178,21 +178,35 @@ public class OptimizationLogImpl implements OptimizationLog {
         public static final String POSITION_PROPERTY = "position";
 
         /**
-         * A map representation of this optimization entry, mapped by property name.
+         * A map of additional named properties or {@code null} if no properties were set.
          */
-        private final EconomicMap<String, Object> map;
+        private EconomicMap<String, Object> properties = null;
 
         /**
          * A position of a significant node related to this optimization.
          */
-        private final NodeSourcePosition position;
+        private NodeSourcePosition position;
 
-        protected OptimizationEntryImpl(String optimizationName, String eventName, NodeSourcePosition position) {
+        /**
+         * The associated optimization log, which is extended with this node when it is
+         * {@link #report reported}.
+         */
+        private final OptimizationLogImpl optimizationLog;
+
+        /**
+         * The name of this optimization. Corresponds to the name of the compiler phase or another
+         * class which performed this optimization.
+         */
+        private String optimizationName;
+
+        /**
+         * The name of the event that occurred, which describes this optimization entry.
+         */
+        private String event;
+
+        protected OptimizationEntryImpl(OptimizationLogImpl optimizationLog) {
             super(TYPE);
-            this.position = position;
-            map = EconomicMap.create();
-            map.put(OPTIMIZATION_NAME_PROPERTY, optimizationName);
-            map.put(EVENT_NAME_PROPERTY, eventName);
+            this.optimizationLog = optimizationLog;
         }
 
         /**
@@ -221,54 +235,108 @@ public class OptimizationLogImpl implements OptimizationLog {
             return map;
         }
 
+        private static String createOptimizationName(Class<?> optimizationClass) {
+            String className = optimizationClass.getSimpleName();
+            String phaseSuffix = "Phase";
+            if (className.endsWith(phaseSuffix)) {
+                return className.substring(0, className.length() - phaseSuffix.length());
+            }
+            return className;
+        }
+
         @Override
         public EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-            if (!map.containsKey(POSITION_PROPERTY)) {
-                map.put(POSITION_PROPERTY, createPositionProperty(methodNameFormatter, position));
+            EconomicMap<String, Object> jsonMap = EconomicMap.create();
+            jsonMap.put(OPTIMIZATION_NAME_PROPERTY, optimizationName);
+            jsonMap.put(EVENT_NAME_PROPERTY, event);
+            jsonMap.put(POSITION_PROPERTY, createPositionProperty(methodNameFormatter, position));
+            if (properties != null) {
+                jsonMap.putAll(properties);
             }
-            return map;
+            return jsonMap;
         }
 
         @Override
-        public <V> OptimizationEntry setLazyProperty(String key, Supplier<V> valueSupplier) {
-            map.put(key, valueSupplier.get());
+        public <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier) {
+            if (properties == null) {
+                properties = EconomicMap.create(1);
+            }
+            properties.put(key, valueSupplier.get());
             return this;
         }
 
         @Override
-        public OptimizationEntry setProperty(String key, Object value) {
-            map.put(key, value);
+        public OptimizationEntry withProperty(String key, Object value) {
+            if (properties == null) {
+                properties = EconomicMap.create(1);
+            }
+            properties.put(key, value);
             return this;
+        }
+
+        @Override
+        public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
+            assert logLevel > 0;
+            event = eventName;
+            optimizationName = createOptimizationName(optimizationClass);
+            position = node.getNodeSourcePosition();
+            DebugContext debug = optimizationLog.graph.getDebug();
+            if (debug.isCountEnabled()) {
+                DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
+            }
+            if (debug.isLogEnabled(logLevel)) {
+                StringBuilder msg = new StringBuilder("Performed ").append(optimizationName).append(' ').append(eventName);
+                if (position != null) {
+                    msg.append(" at bci ").append(position.getBCI());
+                }
+                if (properties != null) {
+                    msg.append(' ').append(JSONFormatter.formatJSON(properties));
+                }
+                debug.log(logLevel, msg.toString());
+            }
+            if (debug.isDumpEnabled(logLevel)) {
+                debug.dump(logLevel, optimizationLog.graph, "%s %s for %s", optimizationName, eventName, node);
+            }
+            if (optimizationLog.optimizationLogEnabled) {
+                optimizationLog.currentPhase.addChild(this);
+            }
         }
 
         /**
          * Gets the map representation of this optimization entry.
-         *
-         * @return the map representation of this optimization entry
          */
-        public EconomicMap<String, Object> getMap() {
-            return map;
+        public EconomicMap<String, Object> getProperties() {
+            return properties;
+        }
+
+        /**
+         * Gets the name of this optimization. Corresponds to the name of the compiler phase or
+         * another class which performed this optimization.
+         *
+         * @return the name of this optimization.
+         */
+        public String getOptimizationName() {
+            return optimizationName;
+        }
+
+        /**
+         * Gets the name of the event that occurred, which describes this optimization entry.
+         *
+         * @return the name of the event that occurred
+         */
+        public String getEventName() {
+            return event;
         }
     }
 
     public static final class PartialEscapeLogImpl implements OptimizationLog.PartialEscapeLog {
         private final EconomicMap<VirtualObjectNode, Integer> virtualNodes = EconomicMap.create(Equivalence.IDENTITY);
 
-        /**
-         * Notifies the log that an allocation was virtualized.
-         *
-         * @param virtualObjectNode the virtualized node
-         */
         @Override
         public void allocationRemoved(VirtualObjectNode virtualObjectNode) {
             virtualNodes.put(virtualObjectNode, 0);
         }
 
-        /**
-         * Notifies the log that an object was materialized.
-         *
-         * @param virtualObjectNode the object that was materialized
-         */
         @Override
         public void objectMaterialized(VirtualObjectNode virtualObjectNode) {
             Integer count = virtualNodes.get(virtualObjectNode);
@@ -369,6 +437,21 @@ public class OptimizationLogImpl implements OptimizationLog {
         return optimizationLogEnabled;
     }
 
+    @Override
+    public <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier) {
+        return new OptimizationEntryImpl(this).withLazyProperty(key, valueSupplier);
+    }
+
+    @Override
+    public OptimizationEntry withProperty(String key, Object value) {
+        return new OptimizationEntryImpl(this).withProperty(key, value);
+    }
+
+    @Override
+    public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
+        new OptimizationEntryImpl(this).report(logLevel, optimizationClass, eventName, node);
+    }
+
     /**
      * Notifies the log that an optimization phase is entered.
      *
@@ -390,45 +473,6 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     @Override
-    public OptimizationEntry report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-        assert logLevel > 0;
-        DebugContext debug = graph.getDebug();
-        boolean isCountEnabled = debug.isCountEnabled();
-        boolean isLogEnabled = debug.isLogEnabled(logLevel) && debug.isLogEnabledForMethod();
-        boolean isDumpEnabled = debug.isDumpEnabled(logLevel) && debug.isDumpEnabledForMethod();
-
-        String optimizationName = getOptimizationName(optimizationClass);
-        if (isCountEnabled) {
-            DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
-        }
-        if (isLogEnabled) {
-            if (node.getNodeSourcePosition() == null) {
-                debug.log(logLevel, "Performed %s %s", optimizationName, eventName);
-            } else {
-                debug.log(logLevel, "Performed %s %s at bci %d", optimizationName, eventName, node.getNodeSourcePosition().getBCI());
-            }
-        }
-        if (isDumpEnabled) {
-            debug.dump(logLevel, graph, "After %s %s", optimizationName, eventName);
-        }
-        if (optimizationLogEnabled) {
-            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, node.getNodeSourcePosition());
-            currentPhase.addChild(optimizationEntry);
-            return optimizationEntry;
-        }
-        return OPTIMIZATION_ENTRY_DUMMY;
-    }
-
-    private static String getOptimizationName(Class<?> optimizationClass) {
-        String className = optimizationClass.getSimpleName();
-        String phaseSuffix = "Phase";
-        if (className.endsWith(phaseSuffix)) {
-            return className.substring(0, className.length() - phaseSuffix.length());
-        }
-        return className;
-    }
-
-    @Override
     public DebugCloseable enterPartialEscapeAnalysis() {
         assert partialEscapeLog == null;
         if (!optimizationLogEnabled) {
@@ -439,7 +483,7 @@ public class OptimizationLogImpl implements OptimizationLog {
             assert partialEscapeLog != null;
             MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.virtualNodes.getEntries();
             while (cursor.advance()) {
-                report(PartialEscapeLog.class, "AllocationVirtualization", cursor.getKey()).setProperty("materializations", cursor.getValue());
+                withProperty("materializations", cursor.getValue()).report(PartialEscapeLog.class, "AllocationVirtualization", cursor.getKey());
             }
             partialEscapeLog = null;
         };

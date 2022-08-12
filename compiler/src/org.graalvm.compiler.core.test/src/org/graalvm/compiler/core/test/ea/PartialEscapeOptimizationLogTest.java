@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.test.ea;
 
-import static org.graalvm.compiler.nodes.OptimizationLogImpl.OptimizationEntryImpl.EVENT_NAME_PROPERTY;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.test.TypeSystemTest;
@@ -130,9 +128,9 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
             int actualAllocationsRemoved = 0;
             int actualMaterializations = 0;
             for (OptimizationLogImpl.OptimizationEntryImpl entry : graph.getOptimizationLog().getOptimizationTree().getNodes().filter(OptimizationLogImpl.OptimizationEntryImpl.class)) {
-                if (entry.getMap().get(EVENT_NAME_PROPERTY).equals("AllocationVirtualization")) {
+                if (entry.getEventName().equals("AllocationVirtualization")) {
                     actualAllocationsRemoved += 1;
-                    actualMaterializations += (Integer) entry.getMap().get("materializations");
+                    actualMaterializations += (Integer) entry.getProperties().get("materializations");
                 }
             }
             Assert.assertEquals("unexpected number of removed allocations", allocationsRemoved, actualAllocationsRemoved);

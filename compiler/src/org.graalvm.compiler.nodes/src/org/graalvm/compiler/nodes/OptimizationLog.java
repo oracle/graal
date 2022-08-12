@@ -74,32 +74,62 @@ public interface OptimizationLog extends CompilationListener {
     }
 
     /**
-     * Describes the kind and location of one performed optimization in an optimization log.
+     * Describes a performed optimization. Allows to incrementally add properties and then report
+     * the performed optimization.
      */
     interface OptimizationEntry {
         /**
-         * Sets an additional property of the performed optimization provided by a supplier to be
-         * used in the optimization log. The supplier is evaluated only if it is needed, i.e., only
-         * if the optimization log is enabled. If the evaluation of the property is trivial, use
-         * {@link #setProperty(String, Object)} instead.
+         * Adds a property of the performed optimization to this entry. If the evaluation of the
+         * property should be avoided when logging is disabled use
+         * {@link #withLazyProperty(String, Supplier)} instead.
+         *
+         * @param key the name of the property
+         * @param value the value of the property
+         * @return this
+         */
+        OptimizationEntry withProperty(String key, Object value);
+
+        /**
+         * Adds a supplier-provided property of the performed optimization to this entry. The
+         * supplier is evaluated only if logging is enabled. If the evaluation of the property is
+         * trivial, use {@link #withProperty(String, Object)} instead.
          *
          * @param key the name of the property
          * @param valueSupplier the supplier of the value
          * @param <V> the value type of the property
          * @return this
          */
-        <V> OptimizationEntry setLazyProperty(String key, Supplier<V> valueSupplier);
+        <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier);
 
         /**
-         * Sets an additional property of the performed optimization to be used in the optimization
-         * log. If the evaluation of the property should be avoided in case the optimization log is
-         * disabled, use {@link #setLazyProperty(String, Supplier)} instead.
+         * Increments a {@link org.graalvm.compiler.debug.CounterKey counter},
+         * {@link DebugContext#log(String) logs} at {@link DebugContext#DETAILED_LEVEL},
+         * {@link DebugContext#dump(int, Object, String) dumps} at
+         * {@link DebugContext#DETAILED_LEVEL} and appends to the optimization log if each
+         * respective feature is enabled. This method is equivalent to
+         * {@link #report(int, Class, String, Node)} at {@link DebugContext#DETAILED_LEVEL}.
          *
-         * @param key the name of the property
-         * @param value the value of the property
-         * @return this
+         * @param optimizationClass the class that performed the optimization
+         * @param eventName the name of the event that occurred
+         * @param node the node that is most relevant to the reported optimization
          */
-        OptimizationEntry setProperty(String key, Object value);
+        default void report(Class<?> optimizationClass, String eventName, Node node) {
+            report(DebugContext.DETAILED_LEVEL, optimizationClass, eventName, node);
+        }
+
+        /**
+         * Increments a {@link org.graalvm.compiler.debug.CounterKey counter},
+         * {@link DebugContext#log(String) logs} at the specified level,
+         * {@link DebugContext#dump(int, Object, String) dumps} at the specified level and appends
+         * to the optimization log if each respective feature is enabled.
+         *
+         * @param logLevel the log level to use for logging and dumping (e.g.
+         *            {@link DebugContext#DETAILED_LEVEL})
+         * @param optimizationClass the class that performed the optimization
+         * @param eventName the name of the event that occurred
+         * @param node the node that is most relevant to the reported optimization
+         */
+        void report(int logLevel, Class<?> optimizationClass, String eventName, Node node);
     }
 
     /**
@@ -109,16 +139,27 @@ public interface OptimizationLog extends CompilationListener {
      */
     final class OptimizationEntryDummy implements OptimizationEntry {
         private OptimizationEntryDummy() {
+
         }
 
         @Override
-        public <V> OptimizationEntry setLazyProperty(String key, Supplier<V> valueSupplier) {
+        public <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier) {
             return this;
         }
 
         @Override
-        public OptimizationEntry setProperty(String key, Object value) {
+        public OptimizationEntry withProperty(String key, Object value) {
             return this;
+        }
+
+        @Override
+        public void report(Class<?> optimizationClass, String eventName, Node node) {
+
+        }
+
+        @Override
+        public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
+
         }
     }
 
@@ -153,7 +194,7 @@ public interface OptimizationLog extends CompilationListener {
 
     /**
      * A dummy implementation of the optimization log that does nothing. Used in case when
-     * {@link #isAnyLoggingEnabled(OptionValues) no logging is enabled} to decrease runtime
+     * {@link #isAnyLoggingEnabled(DebugContext) no logging is enabled} to decrease runtime
      * overhead.
      */
     final class OptimizationLogDummy implements OptimizationLog {
@@ -181,14 +222,22 @@ public interface OptimizationLog extends CompilationListener {
             return false;
         }
 
+        @Override
+        public <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier) {
+            return OPTIMIZATION_ENTRY_DUMMY;
+        }
+
+        @Override
+        public OptimizationEntry withProperty(String key, Object value) {
+            return OPTIMIZATION_ENTRY_DUMMY;
+        }
+
         /**
          * Performs no reporting, because all logging is disabled.
-         *
-         * @return a dummy optimization entry that ignores its set properties
          */
         @Override
-        public OptimizationEntry report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-            return OPTIMIZATION_ENTRY_DUMMY;
+        public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
+
         }
 
         /**
@@ -263,21 +312,20 @@ public interface OptimizationLog extends CompilationListener {
 
     /**
      * Returns {@code true} iff at least one logging feature unified by the optimization log is
-     * enabled.
+     * enabled for this method.
      *
-     * @param optionValues the option values that are tested
+     * @param debugContext the debug context that is tested
      * @return {@code true} iff any logging is enabled
      */
-    static boolean isAnyLoggingEnabled(OptionValues optionValues) {
-        return DebugOptions.Count.getValue(optionValues) != null ||
-                        DebugOptions.Log.getValue(optionValues) != null ||
-                        DebugOptions.Dump.getValue(optionValues) != null ||
-                        isOptimizationLogEnabled(optionValues);
+    static boolean isAnyLoggingEnabled(DebugContext debugContext) {
+        return debugContext.isLogEnabledForMethod() || debugContext.isDumpEnabledForMethod() ||
+                        DebugOptions.Count.getValue(debugContext.getOptions()) != null ||
+                        isOptimizationLogEnabled(debugContext.getOptions());
     }
 
     /**
      * Returns an instance of the optimization for a given graph. The instance is
-     * {@link OptimizationLogDummy a dummy} if no logging feature is enabled to minimalize runtime
+     * {@link OptimizationLogDummy a dummy} if no logging feature is enabled to minimize runtime
      * overhead. Otherwise, an instance of the optimization log is created and it is bound with the
      * given graph.
      *
@@ -286,43 +334,74 @@ public interface OptimizationLog extends CompilationListener {
      * @return an instance of the optimization log
      */
     static OptimizationLog getInstance(StructuredGraph graph) {
-        if (isAnyLoggingEnabled(graph.getDebug().getOptions())) {
+        if (isAnyLoggingEnabled(graph.getDebug())) {
             return new OptimizationLogImpl(graph);
         }
         return OPTIMIZATION_LOG_DUMMY;
     }
 
     /**
+     * Builds an {@link OptimizationEntry} with an additional property of the performed
+     * optimization. If the evaluation of the property should be avoided when logging is disabled,
+     * use {@link #withLazyProperty(String, Supplier)} instead.
+     *
+     * @param key the name of the property
+     * @param value the value of the property
+     * @return the created optimization entry with the property
+     */
+    OptimizationEntry withProperty(String key, Object value);
+
+    /**
+     * Builds an {@link OptimizationEntry} with an additional property of the performed optimization
+     * provided by a supplier. The supplier is evaluated only if logging is enabled. If the
+     * evaluation of the property is trivial, use {@link #withProperty(String, Object)} instead.
+     *
+     * @param key the name of the property
+     * @param valueSupplier the supplier of the value
+     * @param <V> the value type of the property
+     * @return the created optimization entry with the property
+     */
+    <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier);
+
+    /**
      * Increments a {@link org.graalvm.compiler.debug.CounterKey counter},
      * {@link DebugContext#log(String) logs} at {@link DebugContext#DETAILED_LEVEL},
      * {@link DebugContext#dump(int, Object, String) dumps} at {@link DebugContext#DETAILED_LEVEL}
-     * and appends to the optimization log if each respective feature is enabled. This method is
-     * equivalent to {@link #report(int, Class, String, Node)} at
+     * and adds a node to the optimization tree if each respective feature is enabled. This method
+     * is equivalent to {@link #report(int, Class, String, Node)} at
      * {@link DebugContext#DETAILED_LEVEL}.
+     *
+     * If you want to associate a named property with the performed optimization, start by calling
+     * {@link #withProperty(String, Object)} or {@link #withLazyProperty(String, Supplier)} and then
+     * {{@link OptimizationEntry#report report} the returned {@link OptimizationEntry optimization
+     * entry}.
      *
      * @param optimizationClass the class that performed the optimization
      * @param eventName the name of the event that occurred
-     * @param node the most relevant node
-     * @return an optimization entry in the optimization log that can take more properties
+     * @param node the node that is most relevant to the reported optimization
      */
-    default OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node) {
-        return report(DebugContext.DETAILED_LEVEL, optimizationClass, eventName, node);
+    default void report(Class<?> optimizationClass, String eventName, Node node) {
+        report(DebugContext.DETAILED_LEVEL, optimizationClass, eventName, node);
     }
 
     /**
      * Increments a {@link org.graalvm.compiler.debug.CounterKey counter},
      * {@link DebugContext#log(String) logs} at the specified level,
-     * {@link DebugContext#dump(int, Object, String) dumps} at the specified level and appends to
-     * the optimization log if each respective feature is enabled.
+     * {@link DebugContext#dump(int, Object, String) dumps} at the specified level and adds a node
+     * to the optimization tree if each respective feature is enabled.
+     *
+     * If you want to associate a named property with the performed optimization, start by calling
+     * {@link #withProperty(String, Object)} or {@link #withLazyProperty(String, Supplier)} and then
+     * {@link OptimizationEntry#report report} the returned {@link OptimizationEntry optimization
+     * entry}.
      *
      * @param logLevel the log level to use for logging and dumping (e.g.
      *            {@link DebugContext#DETAILED_LEVEL})
      * @param optimizationClass the class that performed the optimization
      * @param eventName the name of the event that occurred
-     * @param node the most relevant node
-     * @return an optimization entry in the optimization log that can take more properties
+     * @param node the node that is most relevant to the reported optimization
      */
-    OptimizationEntry report(int logLevel, Class<?> optimizationClass, String eventName, Node node);
+    void report(int logLevel, Class<?> optimizationClass, String eventName, Node node);
 
     /**
      * Gets the log that keeps track of virtualized allocations during partial escape analysis. Must
