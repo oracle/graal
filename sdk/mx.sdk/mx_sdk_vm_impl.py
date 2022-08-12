@@ -2833,8 +2833,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_distribution: (mx.Distribution) -> None
     """
     with_debuginfo = []
-    register_distribution(get_final_graalvm_distribution())
-    with_debuginfo.append(get_final_graalvm_distribution())
+    _final_graalvm_distribution = get_final_graalvm_distribution()
+    register_distribution(_final_graalvm_distribution)
+    with_debuginfo.append(_final_graalvm_distribution)
 
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)
@@ -2901,7 +2902,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 if mx.get_opts().verbose:
                     mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
             else:
-                standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), get_final_graalvm_distribution())
+                standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution)
                 register_distribution(standalone)
                 with_debuginfo.append(standalone)
 
@@ -2920,8 +2921,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         if _src_jdk.javaCompliance >= '9':
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=sorted(get_final_graalvm_distribution().jimage_jars),
-                jimage_ignore_jars=sorted(get_final_graalvm_distribution().jimage_ignore_jars),
+                jimage_jars=sorted(_final_graalvm_distribution.jimage_jars),
+                jimage_ignore_jars=sorted(_final_graalvm_distribution.jimage_ignore_jars),
                 workingSets=None,
             ))
 
