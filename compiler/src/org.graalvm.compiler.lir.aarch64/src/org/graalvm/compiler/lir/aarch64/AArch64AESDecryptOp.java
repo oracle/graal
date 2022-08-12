@@ -95,7 +95,6 @@ public final class AArch64AESDecryptOp extends AArch64LIRInstruction {
         try (ScratchRegister sr = masm.getScratchRegister()) {
             Register keylen = sr.getRegister();
             masm.ldr(32, keylen, AArch64Address.createImmediateAddress(32, IMMEDIATE_SIGNED_UNSCALED, key, lengthOffset));
-
             aesecb_decrypt(masm, from, to, key, keylen);
         }
     }
@@ -180,6 +179,6 @@ public final class AArch64AESDecryptOp extends AArch64LIRInstruction {
         masm.fstr(128, v0, AArch64Address.createBaseRegisterOnlyAddress(128, to));
 
         // Preserve the address of the start of the key
-        masm.sub(32, key, key, keylen, AArch64Assembler.ShiftType.LSL, CodeUtil.log2(JavaKind.Int.getByteCount()));
+        masm.sub(64, key, key, keylen, AArch64Assembler.ShiftType.LSL, CodeUtil.log2(JavaKind.Int.getByteCount()));
     }
 }

@@ -26,36 +26,59 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
+import static jdk.vm.ci.aarch64.AArch64.v17;
+import static jdk.vm.ci.aarch64.AArch64.v18;
+import static jdk.vm.ci.aarch64.AArch64.v19;
 import static jdk.vm.ci.aarch64.AArch64.v2;
+import static jdk.vm.ci.aarch64.AArch64.v20;
+import static jdk.vm.ci.aarch64.AArch64.v21;
+import static jdk.vm.ci.aarch64.AArch64.v22;
+import static jdk.vm.ci.aarch64.AArch64.v23;
+import static jdk.vm.ci.aarch64.AArch64.v24;
+import static jdk.vm.ci.aarch64.AArch64.v25;
+import static jdk.vm.ci.aarch64.AArch64.v26;
+import static jdk.vm.ci.aarch64.AArch64.v27;
+import static jdk.vm.ci.aarch64.AArch64.v28;
+import static jdk.vm.ci.aarch64.AArch64.v29;
 import static jdk.vm.ci.aarch64.AArch64.v3;
+import static jdk.vm.ci.aarch64.AArch64.v30;
+import static jdk.vm.ci.aarch64.AArch64.v31;
 import static jdk.vm.ci.aarch64.AArch64.v4;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 2552,
-          lineEnd   = 2651,
-          commit    = "a97715755d01b88ad9e4cf32f10ca5a3f2fda898",
-          sha1      = "5e37db3de1d808cb99b9008f448cd669096c5965")
+          lineStart = 2562,
+          lineEnd   = 2592,
+          commit    = "61e072d11c8e0cb5879bb733ed1fdd2144326bfd",
+          sha1      = "350e5592f4df298c7ee648581bb1e8342edf9a05")
+@StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp",
+          lineStart = 112,
+          lineEnd   = 283,
+          commit    = "61e072d11c8e0cb5879bb733ed1fdd2144326bfd",
+          sha1      = "bb8410fff34e13647ce0411bc64de8fd279cfbff")
 // @formatter:on
 public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
@@ -65,17 +88,15 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
     @Alive({REG}) private Value fromValue;
     @Alive({REG}) private Value toValue;
-    @Use({REG}) private Value originalKeyValue;
+    @Alive({REG}) private Value keyValue;
 
-    @Temp({REG}) private Value keyValue;
     @Temp({REG}) private Value[] temps;
 
-    public AArch64AESEncryptOp(LIRGeneratorTool tool, Value fromValue, Value toValue, Value originalKeyValue, int lengthOffset) {
+    public AArch64AESEncryptOp(Value fromValue, Value toValue, Value keyValue, int lengthOffset) {
         super(TYPE);
         this.fromValue = fromValue;
         this.toValue = toValue;
-        this.originalKeyValue = originalKeyValue;
-        this.keyValue = tool.newVariable(originalKeyValue.getValueKind());
+        this.keyValue = keyValue;
         this.lengthOffset = lengthOffset;
         this.temps = new Value[]{v0.asValue(), v1.asValue(), v2.asValue(), v3.asValue(), v4.asValue()};
     }
@@ -86,90 +107,258 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
         Register from = asRegister(fromValue); // source array address
         Register to = asRegister(toValue);     // destination array address
-        Register originalKey = asRegister(originalKeyValue);
         Register key = asRegister(keyValue);   // key array address
-
-        if (!originalKey.equals(key)) {
-            masm.mov(originalKeyValue.getPlatformKind().getSizeInBytes() * Byte.SIZE, key, originalKey);
-        }
 
         try (ScratchRegister sr = masm.getScratchRegister()) {
             Register keylen = sr.getRegister();
             masm.ldr(32, keylen, AArch64Address.createImmediateAddress(32, IMMEDIATE_SIGNED_UNSCALED, key, lengthOffset));
-            masm.fldr(128, AArch64.v0, AArch64Address.createBaseRegisterOnlyAddress(128, from));
 
-            AArch64Address ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
-            masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, AArch64.v1, AArch64.v2, AArch64.v3, AArch64.v4, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v3, v3);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v4, v4);
-            masm.neon.aese(v0, v1);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v2);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v3);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v4);
-            masm.neon.aesmc(v0, v0);
-
-            ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
-            masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, v3, v4, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v3, v3);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v4, v4);
-            masm.neon.aese(v0, v1);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v2);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v3);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v4);
-            masm.neon.aesmc(v0, v0);
-
-            ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
-            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
-
-            masm.compare(32, keylen, 44);
-            masm.branchConditionally(ConditionFlag.EQ, labelDoLast);
-
-            masm.neon.aese(v0, v1);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v2);
-            masm.neon.aesmc(v0, v0);
-
-            ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
-            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
-
-            masm.compare(32, keylen, 52);
-            masm.branchConditionally(ConditionFlag.EQ, labelDoLast);
-
-            masm.neon.aese(v0, v1);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v2);
-            masm.neon.aesmc(v0, v0);
-
-            ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
-            masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v1, v2, ld1Addr);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v2, v2);
-
-            masm.bind(labelDoLast);
-
-            masm.neon.aese(v0, v1);
-            masm.neon.aesmc(v0, v0);
-            masm.neon.aese(v0, v2);
-
-            masm.fldr(128, v1, AArch64Address.createBaseRegisterOnlyAddress(128, key));
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v1, v1);
-            masm.neon.eorVVV(ASIMDSize.FullReg, v0, v0, v1);
-
-            masm.fstr(128, v0, AArch64Address.createBaseRegisterOnlyAddress(128, to));
+            aesencLoadkeys(masm, key, keylen);
+            // Uses expanded key in v17..v31
+            // Returns encrypted values in inputs.
+            // If to != noreg, store value at to; likewise from
+            // Preserves key, keylen
+            // Increments from, to
+            // Input data in v0, v1, ...
+            // unrolls controls the number of times to unroll the generated function
+            new AESKernelGenerator(masm, 1, from, to, keylen, 0, 17).unroll();
         }
     }
+
+    private static void aesencLoadkeys(AArch64MacroAssembler masm, Register key, Register keylen) {
+        Label loadkeys44 = new Label();
+        Label loadkeys52 = new Label();
+
+        masm.compare(32, keylen, 52);
+        masm.branchConditionally(ConditionFlag.LO, loadkeys44);
+        masm.branchConditionally(ConditionFlag.EQ, loadkeys52);
+
+        AArch64Address ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
+        masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v17, v18, ld1Addr);
+        masm.rev(32, v17, v17);
+        masm.rev(32, v18, v18);
+
+        masm.bind(loadkeys52);
+        ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
+        masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v19, v20, ld1Addr);
+        masm.rev(32, v19, v19);
+        masm.rev(32, v20, v20);
+
+        masm.bind(loadkeys44);
+        ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
+        masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v21, v22, v23, v24, ld1Addr);
+        masm.rev(32, v21, v21);
+        masm.rev(32, v22, v22);
+        masm.rev(32, v23, v23);
+        masm.rev(32, v24, v24);
+
+        ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
+        masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v25, v26, v27, v28, ld1Addr);
+        masm.rev(32, v25, v25);
+        masm.rev(32, v26, v26);
+        masm.rev(32, v27, v27);
+        masm.rev(32, v28, v28);
+
+        ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_3R, ASIMDSize.FullReg, ElementSize.Byte, key, 48);
+        masm.neon.ld1MultipleVVV(ASIMDSize.FullReg, ElementSize.Byte, v29, v30, v31, ld1Addr);
+        masm.rev(32, v29, v29);
+        masm.rev(32, v30, v30);
+        masm.rev(32, v31, v31);
+
+        // Preserve the address of the start of the key
+        masm.sub(64, key, key, keylen, AArch64Assembler.ShiftType.LSL, CodeUtil.log2(JavaKind.Int.getByteCount()));
+    }
+
+    /**
+     * The abstract base class of an unrolled function generator. Subclasses override
+     * {@link #generate(int)}, {@link #length()}, and {@link #next()} to generate unrolled and
+     * interleaved functions.
+     */
+    public static abstract class KernelGenerator {
+        protected final int unrolls;
+
+        public KernelGenerator(int unrolls) {
+            this.unrolls = unrolls;
+        }
+
+        public abstract void generate(int index);
+
+        public abstract int length();
+
+        public abstract KernelGenerator next();
+
+        public void unroll() {
+            KernelGenerator[] generators = new KernelGenerator[unrolls];
+            generators[0] = this;
+            for (int i = 1; i < unrolls; i++) {
+                generators[i] = generators[i - 1].next();
+            }
+
+            for (int j = 0; j < length(); j++) {
+                for (int i = 0; i < unrolls; i++) {
+                    generators[i].generate(j);
+                }
+            }
+        }
+    }
+
+    /** An unrolled and interleaved generator for AES encryption. */
+    public static class AESKernelGenerator extends KernelGenerator {
+
+        private final AArch64MacroAssembler masm;
+        private final Register from;
+        private final Register to;
+        private final Register keylen;
+        private final int data;
+        private final int subkeys;
+        private final boolean once;
+
+        private final Label rounds44;
+        private final Label rounds52;
+
+        public AESKernelGenerator(AArch64MacroAssembler masm,
+                        int unrolls,
+                        Register from,
+                        Register to,
+                        Register keylen,
+                        int data,
+                        int subkeys,
+                        boolean once) {
+            super(unrolls);
+            this.masm = masm;
+            this.from = from;
+            this.to = to;
+            this.keylen = keylen;
+            this.data = data;
+            this.subkeys = subkeys;
+            this.once = once;
+            this.rounds44 = new Label();
+            this.rounds52 = new Label();
+        }
+
+        public AESKernelGenerator(AArch64MacroAssembler masm,
+                        int unrolls,
+                        Register from,
+                        Register to,
+                        Register keylen,
+                        int data,
+                        int subkeys) {
+            this(masm,
+                            unrolls,
+                            from,
+                            to,
+                            keylen,
+                            data,
+                            subkeys,
+                            true);
+        }
+
+        private static Register getSimdRegister(int index) {
+            return AArch64.simdRegisters.get(index);
+        }
+
+        private void aesRound(int input, int subkey) {
+            masm.neon.aese(getSimdRegister(input), getSimdRegister(subkey));
+            masm.neon.aesmc(getSimdRegister(input), getSimdRegister(input));
+        }
+
+        @Override
+        public void generate(int index) {
+            switch (index) {
+                case 0:
+                    if (!from.equals(Register.None)) {
+                        // get 16 bytes of input
+                        masm.fldr(128, getSimdRegister(data), AArch64Address.createBaseRegisterOnlyAddress(128, from));
+                    }
+                    break;
+                case 1:
+                    if (once) {
+                        masm.compare(32, keylen, 52);
+                        masm.branchConditionally(ConditionFlag.LO, rounds44);
+                        masm.branchConditionally(ConditionFlag.EQ, rounds52);
+                    }
+                    break;
+                case 2:
+                    aesRound(data, subkeys + 0);
+                    break;
+                case 3:
+                    aesRound(data, subkeys + 1);
+                    break;
+                case 4:
+                    if (once) {
+                        masm.bind(rounds52);
+                    }
+                    break;
+                case 5:
+                    aesRound(data, subkeys + 2);
+                    break;
+                case 6:
+                    aesRound(data, subkeys + 3);
+                    break;
+                case 7:
+                    if (once) {
+                        masm.bind(rounds44);
+                    }
+                    break;
+                case 8:
+                    aesRound(data, subkeys + 4);
+                    break;
+                case 9:
+                    aesRound(data, subkeys + 5);
+                    break;
+                case 10:
+                    aesRound(data, subkeys + 6);
+                    break;
+                case 11:
+                    aesRound(data, subkeys + 7);
+                    break;
+                case 12:
+                    aesRound(data, subkeys + 8);
+                    break;
+                case 13:
+                    aesRound(data, subkeys + 9);
+                    break;
+                case 14:
+                    aesRound(data, subkeys + 10);
+                    break;
+                case 15:
+                    aesRound(data, subkeys + 11);
+                    break;
+                case 16:
+                    aesRound(data, subkeys + 12);
+                    break;
+                case 17:
+                    masm.neon.aese(getSimdRegister(data), getSimdRegister(subkeys + 13));
+                    break;
+                case 18:
+                    masm.neon.eorVVV(ASIMDSize.FullReg, getSimdRegister(data), getSimdRegister(data), getSimdRegister(subkeys + 14));
+                    break;
+                case 19:
+                    if (!to.equals(Register.None)) {
+                        masm.fstr(128, getSimdRegister(data), AArch64Address.createBaseRegisterOnlyAddress(128, to));
+                    }
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public KernelGenerator next() {
+            return new AESKernelGenerator(masm,
+                            unrolls,
+                            from,
+                            to,
+                            keylen,
+                            data + 1,
+                            subkeys,
+                            false);
+        }
+
+        @Override
+        public int length() {
+            return 20;
+        }
+    };
+
 }
