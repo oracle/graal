@@ -846,8 +846,6 @@ public abstract class GraalCompilerTest extends GraalTest {
 //            for (Node n : methodGraph.getNodes()) {
 //                System.out.println("  node: " + n);
 //            }
-            // 在这里获取 GraalCompilerTest 的 class loader，也就是 GraalCompilerTest 所在的 module 的 class loader，和 GraalInterpreterTest 的 class loader 一样，
-            // 在这里创建 Lookup。然后 GraalInterpter 会用它们构造一个 JVMContext 对象，在创建 InterpterValueMutableObject 时会传给它
             GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext(), getClass().getClassLoader(), MethodHandles.lookup());
             Result interpreterResult = null;
             try {
