@@ -1811,9 +1811,9 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Creates a new thread designed to process language internal tasks in the background. The
-         * created thread must never enter the language context, if it does an
-         * {@link IllegalStateException} is thrown. Creating or terminating a system thread does not
-         * notify {@link TruffleLanguage#initializeThread(Object, Thread) languages} or instruments'
+         * created thread cannot enter the context, if it tries an {@link IllegalStateException} is
+         * thrown. Creating or terminating a system thread does not notify
+         * {@link TruffleLanguage#initializeThread(Object, Thread) languages} or instruments'
          * thread-listeners. Creating a system thread does not cause a transition to multi-threaded
          * access. The caller must be entered in a context to create a system thread, if not an
          * {@link IllegalStateException} is thrown.
@@ -4064,7 +4064,7 @@ class TruffleLanguageSnippets {
         protected void initializeContext(Context context) throws Exception {
             // Create and start a Thread for the asynchronous internal task.
             // Remember the Thread to stop and join it in the disposeContext.
-            Thread t = context.env.createThread(() -> {
+            Thread t = context.env.createSystemThread(() -> {
                 // asynchronous task
             });
             context.systemThreads.add(t);
@@ -4075,12 +4075,15 @@ class TruffleLanguageSnippets {
         protected void disposeContext(Context context) {
             // Stop and join all system threads.
             boolean interrupted = false;
-            for (Thread threadToJoin : context.startedThreads) {
-                try {
-                    threadToJoin.interrupt();
-                    threadToJoin.join();
-                } catch (InterruptedException ie) {
-                    interrupted = true;
+            for (Thread threadToJoin : context.systemThreads) {
+                boolean terminated = false;
+                while (!terminated) {
+                    try {
+                        threadToJoin.join();
+                        terminated = true;
+                    } catch (InterruptedException ie) {
+                        interrupted = true;
+                    }
                 }
             }
             if (interrupted) {

@@ -81,7 +81,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -124,6 +123,8 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotThread.ThreadSpawnRootNode;
+import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
+import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 
 final class EngineAccessor extends Accessor {
 
@@ -1736,93 +1737,6 @@ final class EngineAccessor extends Accessor {
                 throw new IllegalStateException("Not entered in an Env's context.");
             }
             return new LanguageSystemThread(languageContext, runnable, threadGroup);
-        }
-    }
-
-    abstract static class SystemThread extends Thread {
-
-        private final PolyglotImpl polyglot;
-
-        SystemThread(Runnable runnable, ThreadGroup threadGroup, PolyglotImpl polyglot) {
-            super(threadGroup, runnable);
-            this.polyglot = polyglot;
-        }
-
-        abstract void beforeExecute();
-
-        abstract void afterExecute();
-
-        @Override
-        @SuppressWarnings("try")
-        public final void run() {
-            AbstractPolyglotImpl rootPolyglot = polyglot.getRootImpl();
-            try (ThreadScope threadScope = rootPolyglot.createThreadScope()) {
-                beforeExecute();
-                try {
-                    super.run();
-                } finally {
-                    afterExecute();
-                }
-            }
-        }
-    }
-
-    static final class InstrumentSystemThread extends SystemThread {
-        final String instrumentId;
-        private final PolyglotEngineImpl engine;
-
-        InstrumentSystemThread(PolyglotInstrument polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
-            super(runnable, threadGroup, polyglotInstrument.engine.impl);
-            this.instrumentId = polyglotInstrument.getId();
-            this.engine = polyglotInstrument.engine;
-            checkClosed();
-        }
-
-        @Override
-        void beforeExecute() {
-            engine.addSystemThread(this);
-            checkClosed();
-        }
-
-        @Override
-        void afterExecute() {
-            engine.removeSystemThread(this);
-        }
-
-        private void checkClosed() {
-            if (engine.closed) {
-                throw new IllegalStateException(String.format("Engine is already closed. Cannot start a new system thread for instrument %s.", instrumentId));
-            }
-        }
-    }
-
-    static final class LanguageSystemThread extends SystemThread {
-
-        final String languageId;
-        private final PolyglotContextImpl polyglotContext;
-
-        LanguageSystemThread(PolyglotLanguageContext polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
-            super(runnable, threadGroup, polyglotLanguageContext.context.engine.impl);
-            this.languageId = polyglotLanguageContext.language.getId();
-            this.polyglotContext = polyglotLanguageContext.context;
-            checkClosed();
-        }
-
-        @Override
-        void beforeExecute() {
-            polyglotContext.addSystemThread(this);
-            checkClosed();
-        }
-
-        @Override
-        void afterExecute() {
-            polyglotContext.removeSystemThread(this);
-        }
-
-        private void checkClosed() {
-            if (polyglotContext.state.isClosed()) {
-                throw new IllegalStateException(String.format("Context is already closed. Cannot start a new system thread for language %s.", languageId));
-            }
         }
     }
 

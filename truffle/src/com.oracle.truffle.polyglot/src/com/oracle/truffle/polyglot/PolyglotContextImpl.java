@@ -110,8 +110,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.EngineAccessor.LanguageSystemThread;
-import com.oracle.truffle.polyglot.EngineAccessor.SystemThread;
+import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
@@ -794,7 +793,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         try {
             Thread current = Thread.currentThread();
             if (current instanceof SystemThread) {
-                throw new IllegalStateException("Context cannot be entered on system threads.");
+                throw PolyglotEngineException.illegalState("Context cannot be entered on system threads.");
             }
             boolean needsInitialization = false;
             synchronized (this) {

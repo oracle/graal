@@ -124,7 +124,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.EngineAccessor.InstrumentSystemThread;
+import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;

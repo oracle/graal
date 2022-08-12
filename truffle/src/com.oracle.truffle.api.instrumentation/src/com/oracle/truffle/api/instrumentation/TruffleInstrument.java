@@ -1183,9 +1183,9 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Creates a new thread designed to process instrument tasks in the background. The thread
-         * must never enter the language context, if it does an {@link IllegalStateException} is
-         * thrown. Creating or terminating a system thread does not notify languages or
+         * Creates a new thread designed to process instrument tasks in the background. The created
+         * thread cannot enter the context, if it tries an {@link IllegalStateException} is thrown.
+         * Creating or terminating a system thread does not notify languages or
          * {@link ThreadsListener}s. Creating a system thread does not cause a transition to
          * multi-threaded access.
          * <p>
@@ -1335,10 +1335,10 @@ class TruffleInstrumentSnippets {
     // BEGIN: TruffleInstrumentSnippets.SystemThreadInstrument
     class SystemThreadInstrument extends TruffleInstrument {
 
-        private final Set<Thread> startedThreads;
+        private final Set<Thread> systemThreads;
 
         SystemThreadInstrument() {
-            startedThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
+            systemThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
         }
 
         @Override
@@ -1349,7 +1349,7 @@ class TruffleInstrumentSnippets {
             Thread t = env.createSystemThread(() -> {
                 // asynchronous task
             });
-            startedThreads.add(t);
+            systemThreads.add(t);
             t.start();
         }
 
@@ -1357,12 +1357,15 @@ class TruffleInstrumentSnippets {
         protected void onDispose(Env env) {
             // Stop and join all system threads.
             boolean interrupted = false;
-            for (Thread threadToJoin : startedThreads) {
-                try {
-                    threadToJoin.interrupt();
-                    threadToJoin.join();
-                } catch (InterruptedException ie) {
-                    interrupted = true;
+            for (Thread threadToJoin : systemThreads) {
+                boolean terminated = false;
+                while (!terminated) {
+                    try {
+                        threadToJoin.join();
+                        terminated = true;
+                    } catch (InterruptedException ie) {
+                        interrupted = true;
+                    }
                 }
             }
             if (interrupted) {
