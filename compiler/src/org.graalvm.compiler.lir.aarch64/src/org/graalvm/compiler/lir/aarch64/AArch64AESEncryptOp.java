@@ -135,35 +135,35 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
         AArch64Address ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
         masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v17, v18, ld1Addr);
-        masm.rev(32, v17, v17);
-        masm.rev(32, v18, v18);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v17, v17);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v18, v18);
 
         masm.bind(loadkeys52);
         ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, key, 32);
         masm.neon.ld1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, v19, v20, ld1Addr);
-        masm.rev(32, v19, v19);
-        masm.rev(32, v20, v20);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v19, v19);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v20, v20);
 
         masm.bind(loadkeys44);
         ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
         masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v21, v22, v23, v24, ld1Addr);
-        masm.rev(32, v21, v21);
-        masm.rev(32, v22, v22);
-        masm.rev(32, v23, v23);
-        masm.rev(32, v24, v24);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v21, v21);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v22, v22);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v23, v23);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v24, v24);
 
         ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, key, 64);
         masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v25, v26, v27, v28, ld1Addr);
-        masm.rev(32, v25, v25);
-        masm.rev(32, v26, v26);
-        masm.rev(32, v27, v27);
-        masm.rev(32, v28, v28);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v25, v25);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v26, v26);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v27, v27);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v28, v28);
 
         ld1Addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_3R, ASIMDSize.FullReg, ElementSize.Byte, key, 48);
         masm.neon.ld1MultipleVVV(ASIMDSize.FullReg, ElementSize.Byte, v29, v30, v31, ld1Addr);
-        masm.rev(32, v29, v29);
-        masm.rev(32, v30, v30);
-        masm.rev(32, v31, v31);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v29, v29);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v30, v30);
+        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v31, v31);
 
         // Preserve the address of the start of the key
         masm.sub(64, key, key, keylen, AArch64Assembler.ShiftType.LSL, CodeUtil.log2(JavaKind.Int.getByteCount()));
