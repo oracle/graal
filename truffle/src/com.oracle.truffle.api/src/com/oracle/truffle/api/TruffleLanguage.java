@@ -41,6 +41,7 @@
 package com.oracle.truffle.api;
 
 import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -64,8 +65,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -1791,6 +1794,56 @@ public abstract class TruffleLanguage<C> {
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context, ThreadGroup group, long stackSize) {
             try {
                 return LanguageAccessor.engineAccess().createThread(polyglotLanguageContext, runnable, context != null ? context.polyglotContext : null, group, stackSize);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Creates a new thread designed to process language internal tasks in the background. See
+         * {@link #createSystemThread(Runnable, ThreadGroup)} for a detailed description of the
+         * parameters.
+         *
+         * @see #createSystemThread(Runnable, ThreadGroup)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable) {
+            return createSystemThread(runnable, null);
+        }
+
+        /**
+         * Creates a new thread designed to process language internal tasks in the background. The
+         * created thread cannot enter the context, if it tries an {@link IllegalStateException} is
+         * thrown. Creating or terminating a system thread does not notify
+         * {@link TruffleLanguage#initializeThread(Object, Thread) languages} or instruments'
+         * thread-listeners. Creating a system thread does not cause a transition to multi-threaded
+         * access. The caller must be entered in a context to create a system thread, if not an
+         * {@link IllegalStateException} is thrown.
+         * <p>
+         * It is recommended to set an
+         * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
+         * uncaught exception handler} for the created thread. For example the thread can throw an
+         * uncaught exception if the context is closed before the thread is started.
+         * <p>
+         * The language that created and started the thread is responsible to stop and join it
+         * during the {@link TruffleLanguage#disposeContext(Object)} disposeContext}, otherwise an
+         * {@link IllegalStateException} is thrown. It's not safe to use the
+         * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
+         * Thread termination as the system thread may be cancelled before executing the executor
+         * worker.<br/>
+         * A typical implementation looks like: {@link TruffleLanguageSnippets.SystemThreadLanguage}
+         *
+         * @param runnable the runnable to run on this thread.
+         * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
+         * @throws IllegalStateException if the context is already closed.
+         * @see #createSystemThread(Runnable)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable, ThreadGroup threadGroup) {
+            try {
+                return LanguageAccessor.engineAccess().createLanguageSystemThread(polyglotLanguageContext, runnable, threadGroup);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -3802,7 +3855,6 @@ class TruffleLanguageSnippets {
 
         final Assumption singleThreaded = Truffle.getRuntime().createAssumption();
         final List<Thread> startedThreads = new ArrayList<>();
-
     }
 
     // @formatter:off
@@ -4000,5 +4052,70 @@ class TruffleLanguageSnippets {
     }
     // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
 
+    abstract static
+    // BEGIN: TruffleLanguageSnippets.SystemThreadLanguage
+    class SystemThreadLanguage extends
+            TruffleLanguage<SystemThreadLanguage.Context> {
 
+        static class Context {
+            private final BlockingQueue<Runnable> tasks;
+            private final Env env;
+            private volatile Thread systemThread;
+            private volatile boolean cancelled;
+
+            Context(Env env) {
+                this.tasks = new LinkedBlockingQueue<>();
+                this.env = env;
+            }
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        @Override
+        protected void initializeContext(Context context) {
+            // Create and start a Thread for the asynchronous internal task.
+            // Remember the Thread to stop and join it in the disposeContext.
+            context.systemThread = context.env.createSystemThread(() -> {
+                while (!context.cancelled) {
+                    try {
+                        Runnable task = context.tasks.
+                                poll(Integer.MAX_VALUE, SECONDS);
+                        if (task != null) {
+                            task.run();
+                        }
+                    } catch (InterruptedException ie) {
+                        // pass to cancelled check
+                    }
+                }
+            });
+            context.systemThread.start();
+        }
+
+        @Override
+        protected void disposeContext(Context context) {
+            // Stop and join system thread.
+            context.cancelled = true;
+            Thread threadToJoin = context.systemThread;
+            if (threadToJoin != null) {
+                threadToJoin.interrupt();
+                boolean interrupted = false;
+                boolean terminated = false;
+                while (!terminated) {
+                    try {
+                        threadToJoin.join();
+                        terminated = true;
+                    } catch (InterruptedException ie) {
+                        interrupted = true;
+                    }
+                }
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+    // END: TruffleLanguageSnippets.SystemThreadLanguage
 }

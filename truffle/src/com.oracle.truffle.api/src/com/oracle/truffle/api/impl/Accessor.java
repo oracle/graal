@@ -718,6 +718,10 @@ public abstract class Accessor {
         public abstract Context getPolyglotContextAPI(Object polyglotContextImpl);
 
         public abstract EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull);
+
+        public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
+
+        public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
     }
 
     public abstract static class LanguageSupport extends Support {

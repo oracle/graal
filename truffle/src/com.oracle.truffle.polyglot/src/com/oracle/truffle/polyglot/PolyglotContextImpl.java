@@ -57,6 +57,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -109,6 +110,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
@@ -479,6 +481,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     final Node uncachedLocation;
 
+    private final Set<LanguageSystemThread> activeSystemThreads = Collections.newSetFromMap(new HashMap<>());
+
     /* Constructor for testing. */
     @SuppressWarnings("unused")
     private PolyglotContextImpl() {
@@ -788,6 +792,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         Object[] prev = null;
         try {
             Thread current = Thread.currentThread();
+            if (current instanceof SystemThread) {
+                throw PolyglotEngineException.illegalState("Context cannot be entered on system threads.");
+            }
             boolean needsInitialization = false;
             synchronized (this) {
                 PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
@@ -1617,6 +1624,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         finishCleanup();
         checkSubProcessFinished();
+        checkSystemThreadsFinished();
         if (parent == null) {
             engine.polyglotHostService.notifyContextClosed(this, force, invalidResourceLimit, invalidMessage);
         }
@@ -2757,13 +2765,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         boolean cancelInSeparateThread = false;
         synchronized (this) {
             PolyglotThreadInfo info = getCurrentThreadInfo();
-            if (info.isPolyglotThread(this) || (!singleThreaded && isActive(Thread.currentThread())) || closingThread == Thread.currentThread()) {
+            Thread currentThread = Thread.currentThread();
+            if (info.isPolyglotThread(this) || (!singleThreaded && isActive(currentThread)) || closingThread == currentThread || currentThread instanceof SystemThread) {
                 /*
-                 * Polyglot thread must not cancel a context, because cancel waits for polyglot
-                 * threads to complete. Also, it is not allowed to cancel in a thread where a
-                 * multi-threaded context is entered. This would lead to deadlock if more than one
-                 * thread tried to do that as cancel waits for the context not to be entered in all
-                 * other threads.
+                 * Polyglot thread or system thread must not cancel a context, because cancel waits
+                 * for polyglot threads and system threads to complete. Also, it is not allowed to
+                 * cancel in a thread where a multi-threaded context is entered. This would lead to
+                 * deadlock if more than one thread tried to do that as cancel waits for the context
+                 * not to be entered in all other threads.
                  */
                 cancelInSeparateThread = true;
             }
@@ -2851,15 +2860,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         assert !this.disposing;
         this.disposing = true;
         List<PolyglotLanguageContext> disposedContexts = new ArrayList<>(contexts.length);
+        for (int i = contexts.length - 1; i >= 0; i--) {
+            PolyglotLanguageContext context = contexts[i];
+            boolean disposed = context.dispose();
+            if (disposed) {
+                disposedContexts.add(context);
+            }
+        }
         Closeable[] toClose;
         synchronized (this) {
-            for (int i = contexts.length - 1; i >= 0; i--) {
-                PolyglotLanguageContext context = contexts[i];
-                boolean disposed = context.dispose();
-                if (disposed) {
-                    disposedContexts.add(context);
-                }
-            }
             toClose = closeables == null ? null : closeables.toArray(new Closeable[0]);
         }
         if (toClose != null) {
@@ -3230,13 +3239,20 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    synchronized void checkSubProcessFinished() {
+    private synchronized void checkSubProcessFinished() {
         ProcessHandlers.ProcessDecorator[] processes = subProcesses.toArray(new ProcessHandlers.ProcessDecorator[subProcesses.size()]);
         for (ProcessHandlers.ProcessDecorator process : processes) {
             if (process.isAlive()) {
-                throw PolyglotEngineException.illegalState(String.format("The context has an alive sub-process %s created by %s.",
+                throw new IllegalStateException(String.format("The context has an alive sub-process %s created by %s.",
                                 process.getCommand(), process.getOwner().language.getId()));
             }
+        }
+    }
+
+    private synchronized void checkSystemThreadsFinished() {
+        if (!activeSystemThreads.isEmpty()) {
+            LanguageSystemThread thread = activeSystemThreads.iterator().next();
+            throw new IllegalStateException(String.format("The context has an alive system thread %s created by language %s.", thread.getName(), thread.languageId));
         }
     }
 
@@ -3519,5 +3535,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (onClosedRunnable != null) {
             onClosedRunnable.run();
         }
+    }
+
+    synchronized void addSystemThread(LanguageSystemThread thread) {
+        if (!state.isClosed()) {
+            activeSystemThreads.add(thread);
+        }
+    }
+
+    synchronized void removeSystemThread(LanguageSystemThread thread) {
+        activeSystemThreads.remove(thread);
     }
 }
