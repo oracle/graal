@@ -150,6 +150,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> VerifyPhases = new OptionKey<>(false);
 
+    @Option(help = "Verifies that the phase plan respects the phase ordering constraints.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> VerifyPhasePlan = new OptionKey<>(false);
+
     // Debug settings:
     @Option(help = "Start tracing compiled GC barriers after N garbage collections (disabled if N <= 0).", type = OptionType.Debug)
     public static final OptionKey<Integer> GCDebugStartCycle = new OptionKey<>(-1);

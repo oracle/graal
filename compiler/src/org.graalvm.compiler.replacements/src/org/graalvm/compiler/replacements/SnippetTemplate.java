@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,6 +95,8 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -114,8 +116,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -1011,7 +1011,7 @@ public class SnippetTemplate {
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
-        snippetCopy.setGuardsStage(snippetGraph.getGuardsStage());
+        snippetCopy.getGraphState().setGuardsStage(snippetGraph.getGuardsStage());
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
@@ -1194,14 +1194,14 @@ public class SnippetTemplate {
                 // (3)
                 assert !guardsStage.allowsFloatingGuards() : guardsStage;
                 // only create memory map nodes if we need the memory graph
-                new FloatingReadPhase(true, true, canonicalizer).apply(snippetCopy, providers);
+                new FloatingReadPhase(true, canonicalizer).apply(snippetCopy, providers);
                 new GuardLoweringPhase().apply(snippetCopy, providers);
                 new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
                     new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
-                    snippetCopy.setGuardsStage(GuardsStage.AFTER_FSA);
-                    snippetCopy.disableFrameStateVerification();
+                    snippetCopy.getGraphState().setAfterFSA();
+                    snippetCopy.getGraphState().forceDisableFrameStateVerification();
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }
@@ -2550,7 +2550,7 @@ public class SnippetTemplate {
              * replacee's graph itself is a substitution.
              */
             StructuredGraph graph = replacee.graph();
-            boolean condition = graph.isStateAfterClearedForTesting() || graph.isSubstitution();
+            boolean condition = graph.getGraphState().isFrameStateVerificationDisabled() || graph.isSubstitution();
             GraalError.guarantee(condition, "No state available to transfer");
             return;
         }

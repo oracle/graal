@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.common;
+package org.graalvm.compiler.phases;
 
 import java.util.Optional;
 
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
 
 /**
- * Modifies the stamp of all object {@linkplain ParameterNode parameters} in a graph to denote they
- * are non-null. This can be used for graphs where the caller null checks all arguments.
+ * Base class to hold a place in a {@link PhaseSuite}. This phase should then be replaced before the
+ * execution of the phase suite by an instance of the given {@linkplain #getPhaseClass() phase
+ * class}.
  */
-public class NonNullParametersPhase extends Phase {
+public class PlaceholderPhase<C> extends BasePhase<C> {
+    private final Class<? extends BasePhase<? super C>> phaseClass;
 
-    @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return ALWAYS_APPLICABLE;
+    public PlaceholderPhase(Class<? extends BasePhase<? super C>> phaseClass) {
+        this.phaseClass = phaseClass;
+    }
+
+    /**
+     * @return the class of the phase that should replace this placeholder.
+     */
+    public Class<? extends BasePhase<? super C>> getPhaseClass() {
+        return phaseClass;
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        Stamp nonNull = StampFactory.objectNonNull();
-        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            if (param.stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
-                ObjectStamp paramStamp = (ObjectStamp) param.stamp(NodeView.DEFAULT);
-                param.setStamp(paramStamp.join(nonNull));
-            }
-        }
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return Optional.of(new NotApplicable("This is a " + this.getName() + " for " + phaseClass));
+    }
+
+    @Override
+    public void run(StructuredGraph graph, C context) {
+        throw GraalError.shouldNotReachHere(this.getName() + " for " + phaseClass + " should have been replaced in the phase plan before execution.");
     }
 }

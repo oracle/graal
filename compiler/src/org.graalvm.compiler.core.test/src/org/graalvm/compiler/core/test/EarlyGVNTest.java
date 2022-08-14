@@ -96,10 +96,10 @@ public class EarlyGVNTest extends GraalCompilerTest {
 
     private void checkHighTierGraph(String snippet, NodeCount... counts) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
+        Suites suites = super.createSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
         PhaseSuite<HighTierContext> ht = suites.getHighTier().copy();
         ListIterator<BasePhase<? super HighTierContext>> position = ht.findPhase(LoopFullUnrollPhase.class);
-        position.add(new BasePhase<HighTierContext>() {
+        position.add(new TestBasePhase<HighTierContext>() {
 
             @Override
             protected void run(@SuppressWarnings("hiding") StructuredGraph graph, HighTierContext context) {

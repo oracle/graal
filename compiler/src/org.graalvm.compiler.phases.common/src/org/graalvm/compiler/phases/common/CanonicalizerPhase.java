@@ -30,12 +30,12 @@ import static org.graalvm.compiler.phases.common.CanonicalizerPhase.Canonicalize
 
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -52,10 +52,11 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -197,8 +198,24 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public boolean mustApply(GraphState graphState) {
+        return graphState.requiresFutureStage(StageFlag.CANONICALIZATION) || super.mustApply(graphState);
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.mustRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState);
+    }
+
+    @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         processWorkSet(graph, new Tool(graph, context, graph.createIterativeNodeWorkList(true, MAX_ITERATION_PER_NODE)));
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.removeRequirementToStage(StageFlag.CANONICALIZATION);
     }
 
     /**
@@ -259,10 +276,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     @SuppressWarnings("try")
     protected int processWorkSet(StructuredGraph graph, Tool tool) {
-        if (!tool.finalCanonicalization() && graph.isAfterStage(StageFlag.FINAL_CANONICALIZATION)) {
-            GraalError.shouldNotReachHere("cannot run further canonicalizations after the final canonicalization");
-        }
-
         int sum = 0;
         NodeEventListener listener = new NodeEventListener() {
 
@@ -303,9 +316,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 ++sum;
             }
         }
-        if (tool.finalCanonicalization()) {
-            graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
-        }
+
         return sum;
     }
 

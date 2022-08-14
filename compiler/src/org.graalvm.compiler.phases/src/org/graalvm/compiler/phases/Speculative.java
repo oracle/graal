@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.common;
-
-import java.util.Optional;
+package org.graalvm.compiler.phases;
 
 import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
 
-/*
- * Phase that disables counted loop detection for loops that have deopted in previous compiled versions
- * because they failed the deopt guard.
+import jdk.vm.ci.meta.SpeculationLog;
+
+/**
+ * Interface for phases that performs speculation using a {@link SpeculationLog} to.
  */
-public class DisableOverflownCountedLoopsPhase extends Phase {
+public interface Speculative {
 
-    @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return ALWAYS_APPLICABLE;
+    static boolean hasSpeculationLog(GraphState graphState) {
+        return graphState.getSpeculationLog() != null;
     }
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
-            if (lb.countedLoopDisabled()) {
-                continue;
-            }
-            lb.checkDisableCountedBySpeculation(lb.stateAfter().bci, graph);
-        }
-    }
 }

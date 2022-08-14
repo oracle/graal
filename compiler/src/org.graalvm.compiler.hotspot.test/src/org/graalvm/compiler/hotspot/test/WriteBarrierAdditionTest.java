@@ -37,6 +37,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.test.TestPhase;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
@@ -53,7 +54,6 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -364,10 +364,9 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Override
     protected Suites createSuites(OptionValues opts) {
-        Suites ret = getBackend().getSuites().getDefaultSuites(opts).copy();
+        Suites ret = super.createSuites(opts);
         ListIterator<BasePhase<? super MidTierContext>> iter = ret.getMidTier().findPhase(WriteBarrierAdditionPhase.class, true);
-        iter.add(new Phase() {
-
+        iter.add(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 verifyBarriers(graph);

@@ -25,7 +25,10 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.EnumSet;
+import java.util.Optional;
 
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
@@ -65,5 +68,18 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
 
     public static FinalCanonicalizerPhase createFromCanonicalizer(CanonicalizerPhase canonicalizer) {
         return new FinalCanonicalizerPhase(canonicalizer.customSimplification, canonicalizer.features);
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.mustRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,10 +27,10 @@
 package org.graalvm.compiler.nodes.test;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.TestPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,7 +41,7 @@ public class IfNodeCanonicalizationTest2 extends GraalCompilerTest {
     @Override
     protected Suites createSuites(OptionValues opts) {
         Suites suites = super.createSuites(opts);
-        suites.getLowTier().appendPhase(new Phase() {
+        suites.getLowTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 structuredGraph = graph;

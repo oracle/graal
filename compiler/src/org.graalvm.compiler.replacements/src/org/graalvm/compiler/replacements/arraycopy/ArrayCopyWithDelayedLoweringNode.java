@@ -28,7 +28,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.loop.LoopExpandableNode;
@@ -56,11 +56,11 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode i
     public static final NodeClass<ArrayCopyWithDelayedLoweringNode> TYPE = NodeClass.create(ArrayCopyWithDelayedLoweringNode.class);
 
     private final ArrayCopySnippets.WorkSnippetID snippet;
-    private final StructuredGraph.GuardsStage delayUntil;
+    private final GraphState.GuardsStage delayUntil;
     private final boolean canThrow;
 
     public ArrayCopyWithDelayedLoweringNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ArrayCopySnippets.WorkSnippetID snippet,
-                    StructuredGraph.GuardsStage delayUntil, JavaKind elementKind, boolean canThrow) {
+                    GraphState.GuardsStage delayUntil, JavaKind elementKind, boolean canThrow) {
         super(TYPE, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
         assert StampTool.isPointerNonNull(src) && StampTool.isPointerNonNull(dest) : "must have been null checked";
         this.snippet = snippet;
@@ -69,18 +69,18 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode i
     }
 
     public static void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter ArrayCopySnippets.WorkSnippetID snippet,
-                    @ConstantNodeParameter StructuredGraph.GuardsStage delayUntil, @ConstantNodeParameter JavaKind elementKind) {
+                    @ConstantNodeParameter GraphState.GuardsStage delayUntil, @ConstantNodeParameter JavaKind elementKind) {
         arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, snippet, delayUntil, elementKind, true);
     }
 
     public static void arraycopyNonThrowing(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter ArrayCopySnippets.WorkSnippetID snippet,
-                    @ConstantNodeParameter StructuredGraph.GuardsStage delayUntil, @ConstantNodeParameter JavaKind elementKind) {
+                    @ConstantNodeParameter GraphState.GuardsStage delayUntil, @ConstantNodeParameter JavaKind elementKind) {
         arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, snippet, delayUntil, elementKind, false);
     }
 
     @NodeIntrinsic
     private static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter ArrayCopySnippets.WorkSnippetID snippet,
-                    @ConstantNodeParameter StructuredGraph.GuardsStage delayUntil, @ConstantNodeParameter JavaKind elementKind, @ConstantNodeParameter boolean canThrow);
+                    @ConstantNodeParameter GraphState.GuardsStage delayUntil, @ConstantNodeParameter JavaKind elementKind, @ConstantNodeParameter boolean canThrow);
 
     public ArrayCopySnippets.WorkSnippetID getSnippet() {
         return snippet;

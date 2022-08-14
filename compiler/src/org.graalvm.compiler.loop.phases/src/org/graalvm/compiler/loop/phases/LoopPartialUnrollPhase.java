@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,13 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
@@ -96,6 +100,14 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                 }
             }
         }
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.mustRunAfter(this, StageFlag.FSA, graphState),
+                        NotApplicable.mustRunAfter(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
     }
 
     @Override

@@ -47,11 +47,11 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     private void checkHighTierGraph(String snippet, int fixedDivsBeforeLowering, int floatingDivsBeforeLowering, int fixedDivAfterLowering, int floatingDivAfterLowering) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false));
+        Suites suites = super.createSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false));
         PhaseSuite<HighTierContext> ht = suites.getHighTier().copy();
         ListIterator<BasePhase<? super HighTierContext>> position = ht.findPhase(LoweringPhase.class);
         position.previous();
-        position.add(new BasePhase<HighTierContext>() {
+        position.add(new TestBasePhase<HighTierContext>() {
 
             @Override
             protected void run(@SuppressWarnings("hiding") StructuredGraph graph, HighTierContext context) {
@@ -74,7 +74,7 @@ public class FloatingDivTest extends GraalCompilerTest {
             return;
         }
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false));
+        Suites suites = super.createSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false));
 
         suites.getHighTier().apply(graph, getDefaultHighTierContext());
         suites.getMidTier().apply(graph, getDefaultMidTierContext());

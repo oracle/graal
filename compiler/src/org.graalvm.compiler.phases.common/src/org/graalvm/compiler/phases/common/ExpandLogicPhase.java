@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
@@ -34,13 +36,14 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbstractNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -51,6 +54,13 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
 
     public ExpandLogicPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.EXPAND_LOGIC, graphState));
     }
 
     @Override
@@ -66,7 +76,12 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
                 processNormalizeCompareNode(logic);
             }
         }
-        graph.setAfterStage(StageFlag.EXPAND_LOGIC);
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.EXPAND_LOGIC);
     }
 
     private static void processNormalizeCompareNode(AbstractNormalizeCompareNode normalize) {

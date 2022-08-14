@@ -204,7 +204,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                                    entryBCI(entryBCI).
                                    speculationLog(speculationLog).
                                    profileProvider(profileProvider).
-                                   compilationId(compilationId).build();
+                                   compilationId(compilationId).
+                                   build();
         // @formatter:on
     }
 
@@ -254,7 +255,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     protected Suites getSuites(HotSpotProviders providers, OptionValues options) {
-        return providers.getSuites().getDefaultSuites(options);
+        return providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch);
     }
 
     protected LIRSuites getLIRSuites(HotSpotProviders providers, OptionValues options) {

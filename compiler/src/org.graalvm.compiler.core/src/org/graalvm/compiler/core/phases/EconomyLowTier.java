@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.phases;
 
+import org.graalvm.compiler.phases.PlaceholderPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
@@ -36,6 +38,12 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(new LowTierLoweringPhase(canonicalizer));
         appendPhase(new ExpandLogicPhase(canonicalizer));
+        /*
+         * This placeholder should be replaced by an instance of {@link AddressLoweringPhase}
+         * specific to the target architecture for this compilation. This should be done by the
+         * backend or the target specific suites provider.
+         */
+        appendPhase(new PlaceholderPhase<LowTierContext>(AddressLoweringPhase.class));
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
     }
 }
