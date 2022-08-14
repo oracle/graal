@@ -164,9 +164,9 @@ suite = {
             "sha1" : "5026b67af00cc876db1ed194b91d7cc2ba06710d",
             "urls" : ["{urlbase}/intel/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
           },
-          # GR-34811
           "aarch64" : {
-            "optional" : True,
+            "sha1" : "23ac713e1e93bb18199cff777b5d99dc3c91061f",
+            "urls" : ["{urlbase}/hsdis-aarch64-darwin-073b5f6f10a4c8530417f165d03c19093a2c0680.tar.gz"],
           }
         },
         "windows" : {
@@ -2210,8 +2210,9 @@ suite = {
             },
           },
           "aarch64" : {
-            # GR-34811
-            "optional" : True,
+            "layout" : {
+              "<libsuffix:hsdis-aarch64>" : "file:<path:HSDIS>/*",
+            },
           },
         },
       },
