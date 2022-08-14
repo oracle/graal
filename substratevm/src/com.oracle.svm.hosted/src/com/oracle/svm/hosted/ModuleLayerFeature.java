@@ -94,17 +94,11 @@ import com.oracle.svm.util.ReflectionUtil;
  */
 @AutomaticallyRegisteredFeature
 public final class ModuleLayerFeature implements InternalFeature {
-    private Constructor<ModuleLayer> moduleLayerConstructor;
-    private Field moduleLayerNameToModuleField;
-    private Field moduleLayerParentsField;
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
-        moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
-        moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
-        moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
         moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
         Set<String> baseModules = ModuleLayer.boot().modules()
                         .stream()
@@ -195,7 +189,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
         Configuration cf = synthesizeRuntimeBootLayerConfiguration(beforeFinder, afterFinder, reachableModules);
         try {
-            ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
+            ModuleLayer runtimeBootLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(cf);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer);
             for (Module syntheticModule : syntheticModules) {
                 Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule.getName(), syntheticModule.getDescriptor());
@@ -316,8 +310,8 @@ public final class ModuleLayerFeature implements InternalFeature {
 
     private void patchRuntimeBootLayer(ModuleLayer runtimeBootLayer, Map<String, Module> nameToModule) {
         try {
-            moduleLayerNameToModuleField.set(runtimeBootLayer, nameToModule);
-            moduleLayerParentsField.set(runtimeBootLayer, List.of(ModuleLayer.empty()));
+            moduleLayerFeatureUtils.patchModuleLayerNameToModuleField(runtimeBootLayer, nameToModule);
+            moduleLayerFeatureUtils.patchModuleLayerParentsField(runtimeBootLayer, List.of(ModuleLayer.empty()));
             for (Module m : runtimeBootLayer.modules()) {
                 Optional<Module> hostedModule = ModuleLayer.boot().findModule(m.getName());
                 if (hostedModule.isPresent() && hostedModule.get().getClassLoader() == null) {
@@ -371,6 +365,9 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Field moduleOpenPackagesField;
         private final Field moduleExportedPackagesField;
         private final Method moduleFindModuleMethod;
+        private final Constructor<ModuleLayer> moduleLayerConstructor;
+        private final Field moduleLayerNameToModuleField;
+        private final Field moduleLayerParentsField;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
             nameToModuleLookup = new HashMap<>();
@@ -409,8 +406,12 @@ public final class ModuleLayerFeature implements InternalFeature {
 
                 moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
                 moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
+
+                moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
+                moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
+                moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
-                throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module class.", ex);
+                throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module/ModuleLayer class.", ex);
             }
         }
 
@@ -659,6 +660,18 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         void patchModuleLoaderField(Module module, ClassLoader loader) throws IllegalAccessException {
             moduleLoaderField.set(module, loader);
+        }
+
+        ModuleLayer createNewModuleLayerInstance(Configuration cf) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+            return moduleLayerConstructor.newInstance(cf, List.of(), null);
+        }
+
+        void patchModuleLayerNameToModuleField(ModuleLayer moduleLayer, Map<String, Module> nameToModule) throws IllegalAccessException {
+            moduleLayerNameToModuleField.set(moduleLayer, nameToModule);
+        }
+
+        void patchModuleLayerParentsField(ModuleLayer moduleLayer, List<ModuleLayer> parents) throws IllegalAccessException {
+            moduleLayerParentsField.set(moduleLayer, parents);
         }
     }
 }
