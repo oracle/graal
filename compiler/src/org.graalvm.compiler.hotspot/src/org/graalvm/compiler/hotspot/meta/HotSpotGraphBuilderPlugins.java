@@ -655,7 +655,6 @@ public class HotSpotGraphBuilderPlugins {
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode len, ValueNode out, ValueNode outOffset) {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ResolvedJavaType klass = targetMethod.getDeclaringClass();
                 ValueNode nonNullReceiver = receiver.get();
 
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);

@@ -2083,7 +2083,6 @@ public class StandardGraphBuilderPlugins {
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode out, ValueNode outOffset) {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ResolvedJavaType klass = targetMethod.getDeclaringClass();
                 ValueNode nonNullReceiver = receiver.get();
                 ValueNode nonNullIn = b.nullCheckedValue(in);
                 ValueNode nonNullOut = b.nullCheckedValue(out);

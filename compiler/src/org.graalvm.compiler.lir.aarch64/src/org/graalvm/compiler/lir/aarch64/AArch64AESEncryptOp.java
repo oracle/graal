@@ -101,8 +101,6 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        Label labelDoLast = new Label();
-
         Register from = asRegister(fromValue); // source array address
         Register to = asRegister(toValue);     // destination array address
         Register key = asRegister(keyValue);   // key array address
@@ -357,6 +355,5 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
         public int length() {
             return 20;
         }
-    };
-
+    }
 }

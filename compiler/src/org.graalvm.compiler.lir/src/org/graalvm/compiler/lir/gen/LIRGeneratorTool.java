@@ -316,6 +316,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
+    @SuppressWarnings("unused")
     default void emitAESEncrypt(Value from, Value to, Value key) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
