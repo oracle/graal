@@ -30,7 +30,6 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -43,23 +42,18 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class PropagateHotnessToLexicalSingleCallerTest extends TestWithPolyglotOptions {
+public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchronousCompiling {
 
-    public static final int COMPILATION_THRESHOLD = 100;
-
-    @Before
-    public void before() {
-        setupContext(Context.newBuilder().//
-                        option("engine.PropagateLoopCountsToLexicalSingleCaller", Boolean.TRUE.toString()).//
-                        option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
-                        option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
-                        option("engine.FirstTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD / 10)).//
-                        option("engine.LastTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)));
+    @Override
+    protected Context.Builder newContextBuilder() {
+        Context.Builder builder = super.newContextBuilder();
+        builder.option("engine.PropagateLoopCountsToLexicalSingleCaller", Boolean.TRUE.toString());
+        return builder;
     }
 
     static class SimpleLoopNode extends Node implements RepeatingNode {
         private int loopCount = 0;
-        static final int LOOP_LIMIT = 99;
+        static final int LOOP_LIMIT = 100;
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
@@ -190,7 +184,7 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithPolyglotO
     }
 
     private static void compile(RootCallTarget callTarget) {
-        for (int i = 0; i < COMPILATION_THRESHOLD; i++) {
+        for (int i = 0; i < LAST_TIER_THRESHOLD; i++) {
             callTarget.call();
         }
     }
