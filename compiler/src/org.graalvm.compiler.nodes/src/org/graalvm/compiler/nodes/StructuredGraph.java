@@ -989,9 +989,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void reduceDegenerateLoopBegin(LoopBeginNode begin) {
+        reduceDegenerateLoopBegin(begin, false);
+    }
+
+    public void reduceDegenerateLoopBegin(LoopBeginNode begin, boolean forKillCFG) {
         assert begin.loopEnds().isEmpty() : "Loop begin still has backedges";
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
-            reduceTrivialMerge(begin);
+            reduceTrivialMerge(begin, forKillCFG);
         } else { // convert to merge
             AbstractMergeNode merge = this.add(new MergeNode());
             for (EndNode end : begin.forwardEnds()) {
@@ -1001,8 +1005,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
-    @SuppressWarnings("static-method")
     public void reduceTrivialMerge(AbstractMergeNode merge) {
+        reduceTrivialMerge(merge, false);
+    }
+
+    @SuppressWarnings("static-method")
+    public void reduceTrivialMerge(AbstractMergeNode merge, boolean forKillCFG) {
         assert merge.forwardEndCount() == 1;
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
         for (PhiNode phi : merge.phis().snapshot()) {
@@ -1019,7 +1027,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
         // remove loop exits
         if (merge instanceof LoopBeginNode) {
-            ((LoopBeginNode) merge).removeExits();
+            ((LoopBeginNode) merge).removeExits(forKillCFG);
         }
         AbstractEndNode singleEnd = merge.forwardEndAt(0);
         FixedNode sux = merge.next();

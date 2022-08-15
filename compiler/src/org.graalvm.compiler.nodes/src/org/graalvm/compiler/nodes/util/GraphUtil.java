@@ -219,9 +219,9 @@ public class GraphUtil {
                             loopExit.replaceFirstInput(loopBegin, null);
                         }
                     }
-                    merge.graph().reduceDegenerateLoopBegin(loopBegin);
+                    merge.graph().reduceDegenerateLoopBegin(loopBegin, true);
                 } else {
-                    merge.graph().reduceTrivialMerge(merge);
+                    merge.graph().reduceTrivialMerge(merge, true);
                 }
             } else {
                 assert merge.phiPredecessorCount() > 1 : merge;
