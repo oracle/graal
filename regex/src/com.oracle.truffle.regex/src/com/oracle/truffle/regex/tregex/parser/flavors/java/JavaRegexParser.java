@@ -171,7 +171,7 @@ public final class JavaRegexParser implements RegexParser {
                     astBuilder.nextSequence();
                     break;
                 case inlineFlag:
-                    openInlineFlag = ((Token.InlineFlagToken) token).isAdd();
+                    openInlineFlag = ((Token.InlineFlagToken) token).isOpen();
                     if (!openInlineFlag)
                         astBuilder.pushGroup();
                     lexer.pushFlagsStack(new JavaFlags(((Token.InlineFlagToken) token).getFlags()));
