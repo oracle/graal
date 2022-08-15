@@ -374,21 +374,21 @@ public class Token implements JsonConvertible {
 
         private final boolean remove;
         private final String flags;
-        private final boolean add;
+        private final boolean open;
 
-        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags, boolean add) {
+        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags, boolean open) {
             super(kind);
             this.remove = remove;
             this.flags = flags;
-            this.add = add;
+            this.open = open;
         }
 
         public boolean isRemove() {
             return remove;
         }
 
-        public boolean isAdd() {
-            return add;
+        public boolean isOpen() {
+            return open;
         }
 
         public String getFlags() {

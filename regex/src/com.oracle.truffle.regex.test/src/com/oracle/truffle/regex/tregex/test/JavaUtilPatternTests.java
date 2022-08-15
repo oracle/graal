@@ -106,7 +106,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     }
 
     @Test
-    public void nestedCC() {    // TODO: nested classes do not work yet
+    public void nestedCC() {
         test("[ab[cd]ef]", 0, "a");
         test("[ab[cd]ef]", 0, "b");
         test("[ab[cd]ef]", 0, "c");
@@ -234,10 +234,11 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{2,}+a", 0, "aa");
     }
 
-    @Test // TODO how to do them efficiently?
-    public void unicodeTests() {
-
-    }
+//    @Test
+//    public void unicodeTests() {
+//        test("\\x{A9}", 0, "©a d");
+//        test("\\u00A9", 0, "©a d");
+//    }
 
     @Test
     public void capturingGroup() {
@@ -295,6 +296,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("(?dm)^.", 0, "a\rb\nc");
     }
 
+    @Test
     public void modeModifierFail() {
         test("te(?i)st", 0, "TEst");
         test("te(?i)st", 0, "TEST");
