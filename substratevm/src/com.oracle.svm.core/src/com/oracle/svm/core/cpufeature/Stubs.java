@@ -37,8 +37,11 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 
@@ -48,35 +51,53 @@ import jdk.vm.ci.code.Architecture;
 
 public final class Stubs {
 
-    public static final EnumSet<AMD64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AMD64 = EnumSet.of(
-                    SSE3,
-                    SSSE3,
-                    SSE4_1,
-                    SSE4_2,
-                    POPCNT,
-                    AVX,
-                    AVX2);
-    public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(SSSE3, AVX, AES);
+    @Platforms(Platform.AMD64.class)
+    public static class AMD64Features {
+        public static final EnumSet<AMD64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AMD64 = EnumSet.of(
+                        SSE3,
+                        SSSE3,
+                        SSE4_1,
+                        SSE4_2,
+                        POPCNT,
+                        AVX,
+                        AVX2);
+        public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(SSSE3, AVX, AES);
 
-    public static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
-    public static final EnumSet<AArch64.CPUFeature> AES_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.ASIMD, AArch64.CPUFeature.AES);
-
-    @Fold
-    public static EnumSet<?> getRuntimeCheckedCPUFeatures(Class<?> klass) {
-        Architecture arch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-        if (arch instanceof AMD64) {
+        public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
             if (AESNode.class.equals(klass)) {
                 return AES_CPU_FEATURES_AMD64;
             }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
         }
-        if (arch instanceof AArch64) {
+    }
+
+    @Platforms(Platform.AARCH64.class)
+    public static class AArch64Features {
+        public static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
+        public static final EnumSet<AArch64.CPUFeature> AES_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.ASIMD, AArch64.CPUFeature.AES);
+
+        public static EnumSet<AArch64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
             if (AESNode.class.equals(klass)) {
                 return AES_CPU_FEATURES_AARCH64;
             }
             return EMPTY_CPU_FEATURES_AARCH64;
         }
+    }
+
+    public static EnumSet<?> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
+        Architecture arch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
+        if (arch instanceof AMD64) {
+            return AMD64Features.getRequiredCPUFeatures(klass);
+        }
+        if (arch instanceof AArch64) {
+            return AArch64Features.getRequiredCPUFeatures(klass);
+        }
         throw GraalError.shouldNotReachHere();
+    }
+
+    @Fold
+    public static EnumSet<?> getRuntimeCheckedCPUFeatures(Class<? extends ValueNode> klass) {
+        return getRequiredCPUFeatures(klass);
     }
 
     public static final String RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX = "RTC";

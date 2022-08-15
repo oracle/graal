@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.stubs;
 
-import static com.oracle.svm.core.cpufeature.Stubs.AES_CPU_FEATURES_AMD64;
-import static com.oracle.svm.core.cpufeature.Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64;
+import static com.oracle.svm.core.cpufeature.Stubs.AMD64Features.AES_CPU_FEATURES_AMD64;
+import static com.oracle.svm.core.cpufeature.Stubs.AMD64Features.RUNTIME_CHECKED_CPU_FEATURES_AMD64;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 
 import java.util.EnumSet;

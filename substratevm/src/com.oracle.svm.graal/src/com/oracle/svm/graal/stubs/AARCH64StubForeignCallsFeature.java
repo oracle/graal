@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.stubs;
 
-import static com.oracle.svm.core.cpufeature.Stubs.AES_CPU_FEATURES_AARCH64;
-import static com.oracle.svm.core.cpufeature.Stubs.EMPTY_CPU_FEATURES_AARCH64;
+import static com.oracle.svm.core.cpufeature.Stubs.AArch64Features.AES_CPU_FEATURES_AARCH64;
+import static com.oracle.svm.core.cpufeature.Stubs.AArch64Features.EMPTY_CPU_FEATURES_AARCH64;
 
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;

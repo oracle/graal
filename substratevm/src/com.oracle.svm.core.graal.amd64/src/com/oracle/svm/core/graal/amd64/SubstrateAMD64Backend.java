@@ -1011,7 +1011,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return null;
             }
             // Assume the SVM ForeignCallSignature are identical to the Graal ones.
-            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target(), Stubs.getRuntimeCheckedCPUFeatures(valueNode.getClass())));
+            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target(), Stubs.getRequiredCPUFeatures(valueNode.getClass())));
         }
 
     }
