@@ -85,11 +85,6 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         this.nullableAfter = nullableAfter;
     }
 
-    /**
-     * Don't return the new block here, since that will not include instrumentation wrappers.
-     */
-    public abstract void initialize();
-
     public abstract LLVMStatementNode[] getStatements();
 
     @Override
@@ -137,11 +132,6 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
             this.successorExecutionCount = termInstruction.getSuccessorCount() > 1 ? new long[termInstruction.getSuccessorCount()] : null;
             this.statements = statements;
             this.termInstruction = termInstruction;
-        }
-
-        @Override
-        public void initialize() {
-            // this block is already initialized
         }
 
         @Override
