@@ -660,12 +660,12 @@ public class HotSpotGraphBuilderPlugins {
         }
 
         private static ResolvedJavaType aesCryptType(ResolvedJavaType context) {
-            return getType(context, "com.sun.crypto.provider.AESCrypt");
+            return getType(context, "Lcom/sun/crypto/provider/AESCrypt;");
         }
 
         // Read FeedbackCipher.embeddedCipher from receiver.
         public static ValueNode readEmbeddedCipher(GraphBuilderContext b, InvocationPluginHelper helper, ResolvedJavaType context, ValueNode receiver) {
-            ResolvedJavaField embeddedCipherField = helper.getField(getType(context, "com.sun.crypto.provider.FeedbackCipher"), "embeddedCipher");
+            ResolvedJavaField embeddedCipherField = helper.getField(getType(context, "Lcom/sun/crypto/provider/FeedbackCipher;"), "embeddedCipher");
             ValueNode embeddedCipher = b.nullCheckedValue(helper.loadField(receiver, embeddedCipherField));
             LogicNode typeCheck = InstanceOfNode.create(TypeReference.create(b.getAssumptions(), aesCryptType(context)), embeddedCipher);
             helper.doFallbackIfNot(typeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
