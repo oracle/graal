@@ -30,7 +30,9 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.GenerateStub;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -42,7 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Encrypt or decrypt operation using the AES cipher. See {@code com.sun.crypto.provider.AESCrypt}.
  */
-@NodeInfo
+@NodeInfo(cycles = NodeCycles.CYCLES_64, size = NodeSize.SIZE_64)
 public class AESNode extends IntrinsicMemoryAccessNode {
 
     public enum CryptMode {
