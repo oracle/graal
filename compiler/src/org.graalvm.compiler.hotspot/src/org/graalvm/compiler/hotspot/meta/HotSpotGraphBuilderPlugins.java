@@ -38,6 +38,8 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_EN
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.CipherBlockChainingCryptPlugin.readAESCryptKArrayStart;
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.CipherBlockChainingCryptPlugin.readEmbeddedCipher;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 
@@ -58,6 +60,7 @@ import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
@@ -117,6 +120,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -137,6 +141,7 @@ import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPluginBase;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
@@ -156,6 +161,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -631,8 +637,8 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
 
-                ValueNode embeddedCipher = readEmbeddedCipher(b, helper, nonNullReceiver);
-                ValueNode kAddr = readAESCryptKArrayStart(b, helper, embeddedCipher);
+                ValueNode embeddedCipher = readEmbeddedCipher(b, helper, klass, nonNullReceiver);
+                ValueNode kAddr = readAESCryptKArrayStart(b, helper, klass, embeddedCipher);
 
                 // Read CipherBlockChaining.r
                 ValueNode rAddr = readFieldArrayStart(b, helper, klass, "r", nonNullReceiver, JavaKind.Byte);
@@ -642,6 +648,33 @@ public class HotSpotGraphBuilderPlugins {
                 helper.emitFinalReturn(JavaKind.Int, call);
             }
             return true;
+        }
+
+        private static ResolvedJavaType getType(ResolvedJavaType context, String typeName) {
+            try {
+                UnresolvedJavaType unresolved = UnresolvedJavaType.create(typeName);
+                return unresolved.resolve(context);
+            } catch (LinkageError e) {
+                throw new GraalError(e);
+            }
+        }
+
+        private static ResolvedJavaType aesCryptType(ResolvedJavaType context) {
+            return getType(context, "com.sun.crypto.provider.AESCrypt");
+        }
+
+        // Read FeedbackCipher.embeddedCipher from receiver.
+        public static ValueNode readEmbeddedCipher(GraphBuilderContext b, InvocationPluginHelper helper, ResolvedJavaType context, ValueNode receiver) {
+            ResolvedJavaField embeddedCipherField = helper.getField(getType(context, "com.sun.crypto.provider.FeedbackCipher"), "embeddedCipher");
+            ValueNode embeddedCipher = b.nullCheckedValue(helper.loadField(receiver, embeddedCipherField));
+            LogicNode typeCheck = InstanceOfNode.create(TypeReference.create(b.getAssumptions(), aesCryptType(context)), embeddedCipher);
+            helper.doFallbackIfNot(typeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+            return embeddedCipher;
+        }
+
+        // Read AESCrypt.K from receiver.
+        public static ValueNode readAESCryptKArrayStart(GraphBuilderContext b, InvocationPluginHelper helper, ResolvedJavaType context, ValueNode receiver) {
+            return readFieldArrayStart(b, helper, aesCryptType(context), "K", receiver, JavaKind.Int);
         }
     }
 
@@ -655,13 +688,14 @@ public class HotSpotGraphBuilderPlugins {
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode len, ValueNode out, ValueNode outOffset) {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ResolvedJavaType klass = targetMethod.getDeclaringClass();
                 ValueNode nonNullReceiver = receiver.get();
 
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
 
-                ValueNode embeddedCipher = readEmbeddedCipher(b, helper, nonNullReceiver);
-                ValueNode kAddr = readAESCryptKArrayStart(b, helper, embeddedCipher);
+                ValueNode embeddedCipher = readEmbeddedCipher(b, helper, klass, nonNullReceiver);
+                ValueNode kAddr = readAESCryptKArrayStart(b, helper, klass, embeddedCipher);
 
                 ForeignCallNode call = b.add(new ForeignCallNode(mode.isEncrypt() ? ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT : ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT,
                                 inAddr, outAddr, kAddr, len));
@@ -686,8 +720,8 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
 
-                ValueNode embeddedCipher = readEmbeddedCipher(b, helper, nonNullReceiver);
-                ValueNode kAddr = readAESCryptKArrayStart(b, helper, embeddedCipher);
+                ValueNode embeddedCipher = readEmbeddedCipher(b, helper, klass, nonNullReceiver);
+                ValueNode kAddr = readAESCryptKArrayStart(b, helper, klass, embeddedCipher);
 
                 // Read CounterModeCrypt.counter
                 ValueNode counterAddr = readFieldArrayStart(b, helper, klass, "counter", nonNullReceiver, JavaKind.Byte);
@@ -1044,7 +1078,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
-        r.register(new StandardGraphBuilderPlugins.ReachabilityFencePlugin() {
+        r.register(new ReachabilityFencePlugin() {
             @Override
             protected boolean useExplicitReachabilityFence(GraphBuilderContext b) {
                 return Options.ForceExplicitReachabilityFence.getValue(b.getOptions());

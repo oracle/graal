@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.replacements;
 
-
-import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
-import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
-
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
@@ -37,6 +33,8 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.PLAIN;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -192,7 +190,6 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -2030,12 +2027,6 @@ public class StandardGraphBuilderPlugins {
 
     public abstract static class AESCryptPluginBase extends InvocationPlugin {
 
-        /**
-         * The AES block size is a constant 128 bits as defined by the
-         * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf">standard<a/>.
-         */
-        public static final int AES_BLOCK_SIZE_IN_BYTES = 16;
-
         protected final CryptMode mode;
 
         public AESCryptPluginBase(CryptMode mode, String name, Type... argumentTypes) {
@@ -2043,37 +2034,19 @@ public class StandardGraphBuilderPlugins {
             this.mode = mode;
         }
 
-        private static ResolvedJavaType getType(MetaAccessProvider metaAccess, String typeName) {
-            Class<?> klass = InvocationPlugins.resolveClass(typeName, false);
-            return metaAccess.lookupJavaType(klass);
-        }
-
-        private static ResolvedJavaType aesCryptType(MetaAccessProvider metaAccess) {
-            return getType(metaAccess, "com.sun.crypto.provider.AESCrypt");
-        }
-
-        // Read FeedbackCipher.embeddedCipher from receiver.
-        public ValueNode readEmbeddedCipher(GraphBuilderContext b, InvocationPluginHelper helper, ValueNode receiver) {
-            ResolvedJavaField embeddedCipherField = helper.getField(getType(b.getMetaAccess(), "com.sun.crypto.provider.FeedbackCipher"), "embeddedCipher");
-            ValueNode embeddedCipher = b.nullCheckedValue(helper.loadField(receiver, embeddedCipherField));
-            LogicNode typeCheck = InstanceOfNode.create(TypeReference.create(b.getAssumptions(), aesCryptType(b.getMetaAccess())), embeddedCipher);
-            helper.doFallbackIfNot(typeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
-            return embeddedCipher;
-        }
-
-        public ValueNode readFieldArrayStart(GraphBuilderContext b, InvocationPluginHelper helper, ResolvedJavaType klass, String filed, ValueNode receiver, JavaKind arrayKind) {
+        public static ValueNode readFieldArrayStart(GraphBuilderContext b, InvocationPluginHelper helper, ResolvedJavaType klass, String filed, ValueNode receiver, JavaKind arrayKind) {
             ResolvedJavaField field = helper.getField(klass, filed);
             ValueNode array = b.nullCheckedValue(helper.loadField(receiver, field));
             return helper.arrayStart(array, arrayKind);
         }
-
-        // Read AESCrypt.K from receiver.
-        public ValueNode readAESCryptKArrayStart(GraphBuilderContext b, InvocationPluginHelper helper, ValueNode receiver) {
-            return readFieldArrayStart(b, helper, aesCryptType(b.getMetaAccess()), "K", receiver, JavaKind.Int);
-        }
     }
 
     public static class AESCryptPlugin extends AESCryptPluginBase {
+        /**
+         * The AES block size is a constant 128 bits as defined by the
+         * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf">standard<a/>.
+         */
+        public static final int AES_BLOCK_SIZE_IN_BYTES = 16;
 
         public AESCryptPlugin(CryptMode mode) {
             super(mode, mode.isEncrypt() ? "implEncryptBlock" : "implDecryptBlock",
@@ -2102,7 +2075,7 @@ public class StandardGraphBuilderPlugins {
                 // Compute pointers to the array bodies
                 ValueNode inAddr = helper.arrayElementPointer(nonNullIn, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(nonNullOut, JavaKind.Byte, outOffset);
-                ValueNode kAddr = readAESCryptKArrayStart(b, helper, nonNullReceiver);
+                ValueNode kAddr = readFieldArrayStart(b, helper, targetMethod.getDeclaringClass(), "K", nonNullReceiver, JavaKind.Int);
 
                 if (mode.isEncrypt()) {
                     b.add(new AESNode(inAddr, outAddr, kAddr, ENCRYPT));
