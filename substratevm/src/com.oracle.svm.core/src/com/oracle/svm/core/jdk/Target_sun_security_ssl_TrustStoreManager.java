@@ -53,7 +53,7 @@ import sun.security.ssl.SSLLogger;
  * Users are also allowed to override the embedded root certificate at run time by setting the
  * `javax.net.ssl.trustStore*` system properties. For more details about both buildtime and runtime
  * certificate management, please refer to <a href=
- * "https://www.graalvm.org/22.2/reference-manual/native-image/dynamic-features/CertificateManagement/">CertificateManagement.md</a>.
+ * "https://www.graalvm.org/dev/reference-manual/native-image/dynamic-features/CertificateManagement/">CertificateManagement.md</a>.
  *
  * <p>
  * For embedding the build time root certificates, the implementation "freezes" the return values of
