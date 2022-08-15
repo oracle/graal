@@ -39,6 +39,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
@@ -47,6 +48,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * A Space is a collection of HeapChunks.
@@ -166,7 +168,7 @@ public final class Space {
      * Allocate memory from an AlignedHeapChunk in this Space.
      */
     @AlwaysInline("GC performance")
-    Pointer allocateMemory(UnsignedWord objectSize) {
+    private Pointer allocateMemory(UnsignedWord objectSize) {
         Pointer result = WordFactory.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.TLAB.get();
@@ -187,10 +189,10 @@ public final class Space {
     }
 
     /**
-     * Retract last allocation made. Used by parallel collector.
+     * Retract the latest allocation. Used by parallel collector.
      */
     @AlwaysInline("GC performance")
-    Pointer freeMemory(UnsignedWord objectSize) {
+    private Pointer freeMemory(UnsignedWord objectSize) {
         AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.TLAB.get();
         assert oldChunk.isNonNull();
         return AlignedHeapChunk.freeMemory(oldChunk, objectSize);
@@ -222,11 +224,9 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        ///assert owns mutex || pargc thread ?
-        ///use thread mutex to protect appendNewChunk
-//        if (SubstrateOptions.MultiThreaded.getValue()) {
-//            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
-//        }
+        if (SubstrateOptions.MultiThreaded.getValue() && !SubstrateOptions.UseParallelGC.getValue()) {
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
+        }
         appendAlignedHeapChunkUninterruptibly(aChunk);
         accounting.noteAlignedHeapChunk();
     }
@@ -277,10 +277,9 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        ///assert owns mutex || pargc thread ?
-//        if (SubstrateOptions.MultiThreaded.getValue()) {
-//            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
-//        }
+        if (SubstrateOptions.MultiThreaded.getValue() && !SubstrateOptions.UseParallelGC.getValue()) {
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
+        }
         appendUnalignedHeapChunkUninterruptibly(uChunk);
         accounting.noteUnalignedHeapChunk(uChunk);
     }
@@ -409,7 +408,7 @@ public final class Space {
         }
 
         // Install forwarding pointer into the original header
-        assert ObjectHeaderImpl.getHubOffset() == 0; ///PGC prerequisite
+        assert ObjectHeaderImpl.getHubOffset() == 0;
         Object forward = ObjectHeaderImpl.installForwardingPointerParallel(original, originalHeader, copy);
 
         if (forward == copy) {
@@ -477,14 +476,12 @@ public final class Space {
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        originalSpace.mutex.lock();
         mutex.lock();
         try {
             originalSpace.extractAlignedHeapChunk(chunk);
             appendAlignedHeapChunk(chunk);
         } finally {
             mutex.unlock();
-            originalSpace.mutex.unlock();
         }
 
         if (ParallelGCImpl.isEnabled()) {
@@ -507,14 +504,12 @@ public final class Space {
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        originalSpace.mutex.lock();
         mutex.lock();
         try {
             originalSpace.extractUnalignedHeapChunk(chunk);
             appendUnalignedHeapChunk(chunk);
         } finally {
             mutex.unlock();
-            originalSpace.mutex.unlock();
         }
 
         if (ParallelGCImpl.isEnabled()) {

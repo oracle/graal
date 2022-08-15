@@ -282,8 +282,7 @@ public final class HeapChunk {
     @AlwaysInline("GC performance")
     public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
         Pointer offset = startOffset;
-        Pointer top = getTopPointer(that);
-        while (offset.belowThan(top)) {
+        while (offset.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
             Object obj = offset.toObject();
             if (!visitor.visitObjectInline(obj)) {
                 return false;

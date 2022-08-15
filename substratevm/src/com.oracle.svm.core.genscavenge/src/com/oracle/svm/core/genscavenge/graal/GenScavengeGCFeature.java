@@ -63,7 +63,7 @@ import com.oracle.svm.core.jdk.management.ManagementSupport;
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
+        return SubstrateOptions.useGraalCeGC();
     }
 
     @Override

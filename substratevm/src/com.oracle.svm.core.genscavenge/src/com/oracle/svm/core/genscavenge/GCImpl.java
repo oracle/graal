@@ -30,6 +30,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -1045,17 +1046,17 @@ public final class GCImpl implements GC {
 
     /// queue objects as they are copied?
     private void scanGreyObjects(boolean isIncremental) {
-        HeapImpl heap = HeapImpl.getHeapImpl();
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
-        if (isIncremental) {
-            heap.getYoungGeneration().scanGreyObjects();
+        try {
+            if (isIncremental) {
+                scanGreyObjectsLoop();
+            } else {
+                HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
+                ParallelGCImpl.waitForIdle();
+            }
+        } finally {
+            scanGreyObjectsTimer.close();
         }
-        heap.getOldGeneration().scanGreyObjects();
-
-        ParallelGCImpl.setEnabled(true);
-        ParallelGCImpl.waitForIdle();
-        ParallelGCImpl.setEnabled(false);
-        scanGreyObjectsTimer.close();
     }
 
     private static void scanGreyObjectsLoop() {

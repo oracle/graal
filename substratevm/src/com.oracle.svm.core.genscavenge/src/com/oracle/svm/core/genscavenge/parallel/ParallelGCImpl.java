@@ -1,6 +1,8 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
@@ -11,6 +13,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -42,6 +45,10 @@ public class ParallelGCImpl extends ParallelGC {
 
     @Override
     public void startWorkerThreads() {
+        /// determine worker count
+        int hubOffset = ConfigurationValues.getObjectLayout().getHubOffset();
+        VMError.guarantee(hubOffset == 0, "hub offset must be 0");
+
         IntStream.range(0, WORKERS_COUNT).forEach(this::startWorkerThread);
     }
 
@@ -54,7 +61,7 @@ public class ParallelGCImpl extends ParallelGC {
                 localStack.set(STACKS[n]);
                 getStats().install();
                 try {
-                    while (!stopped) {
+                    while (true) {
                         mutex.lock();
                         while (busy.get() < WORKERS_COUNT) {
                             log().string("WW block ").unsigned(n).newline();
@@ -103,23 +110,29 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public static void waitForIdle() {
-        log().string("PP start workers\n");
-        busy.set(WORKERS_COUNT);
-        cond.broadcast();     // let worker threads run
+        if (isSupported()) {
+            setEnabled(true);
 
-        mutex.lock();
-        while (busy.get() > 0) {
-            log().string("PP wait busy=").unsigned(busy.get()).newline();
-            cond.block();     // wait for them to become idle
+            log().string("PP start workers\n");
+            busy.set(WORKERS_COUNT);
+            cond.broadcast();     // let worker threads run
+
+            mutex.lock();
+            while (busy.get() > 0) {
+                log().string("PP wait busy=").unsigned(busy.get()).newline();
+                cond.block();     // wait for them to become idle
+            }
+            mutex.unlock();
+
+            setEnabled(false);
         }
-        mutex.unlock();
     }
 
     public static boolean isEnabled() {
         return enabled;
     }
 
-    public static void setEnabled(boolean enabled) {
+    private static void setEnabled(boolean enabled) {
         ParallelGCImpl.enabled = enabled;
     }
 
@@ -143,11 +156,11 @@ public class ParallelGCImpl extends ParallelGC {
 
 @AutomaticFeature
 class ParallelGCFeature implements Feature {
-///
-//    @Override
-//    public boolean isInConfiguration(IsInConfigurationAccess access) {
-//        return SubstrateOptions.UseSerialGC.getValue();
-//    }
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.UseParallelGC.getValue();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

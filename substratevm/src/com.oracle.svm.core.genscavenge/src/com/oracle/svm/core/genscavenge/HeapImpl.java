@@ -887,7 +887,7 @@ public final class HeapImpl extends Heap {
     }
 }
 
-@TargetClass(value = java.lang.Runtime.class, onlyWith = UseSerialOrEpsilonGC.class)
+@TargetClass(value = java.lang.Runtime.class, onlyWith = UseGraalCeGC.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_Runtime {
     @Substitute
