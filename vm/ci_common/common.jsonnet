@@ -236,7 +236,7 @@ local devkits = common_json.devkits;
     targets+: ['gate'],
   },
 
-  gate_vm_windows: self.vm_windows + {
+  gate_vm_windows_amd64: self.vm_windows + {
     targets+: ['gate'],
   },
 
@@ -401,8 +401,7 @@ local devkits = common_json.devkits;
   svm_common_linux_aarch64:      { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.linux_aarch64,
   svm_common_darwin_amd64:       { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.darwin_amd64,
   svm_common_darwin_aarch64:     { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.darwin_aarch64,
-  svm_common_windows_jdk11:      { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.windows       + common_json.devkits['windows-jdk11'],
-  svm_common_windows_jdk17:      { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.windows       + common_json.devkits['windows-jdk17'],
+  svm_common_windows_amd64(jdk): { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.windows       + common_json.devkits["windows-jdk" + jdk],
 
   maven_deploy_sdk: ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
   maven_deploy_sdk_base:               self.maven_deploy_sdk + ['--tags', 'graalvm',                             vm.binaries_repository],
@@ -626,10 +625,10 @@ local devkits = common_json.devkits;
   deploy_vm_installable_java17_darwin_aarch64: vm.vm_java_17 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64 + {name: 'daily-deploy-vm-installable-java17-darwin-aarch64', diskspace_required: "31GB"},
 
   # Windows/AMD64
-  deploy_vm_base_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_jdk11 + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_base_windows_amd64("java11") + {name: 'daily-deploy-vm-base-java11-windows-amd64'},
-  deploy_vm_installable_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_jdk11 + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_installables_windows_amd64 + {name: 'daily-deploy-vm-installable-java11-windows-amd64', diskspace_required: "31GB"},
-  deploy_vm_base_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_jdk17 + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_base_windows_amd64("java17") + {name: 'daily-deploy-vm-base-java17-windows-amd64'},
-  deploy_vm_installable_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_jdk17 + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_installables_windows_amd64 + {name: 'daily-deploy-vm-installable-java17-windows-amd64', diskspace_required: "31GB"},
+  deploy_vm_base_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_amd64("11") + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_base_windows_amd64("java11") + {name: 'daily-deploy-vm-base-java11-windows-amd64'},
+  deploy_vm_installable_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_amd64("11") + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_installables_windows_amd64 + {name: 'daily-deploy-vm-installable-java11-windows-amd64', diskspace_required: "31GB"},
+  deploy_vm_base_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_base_windows_amd64("java17") + {name: 'daily-deploy-vm-base-java17-windows-amd64'},
+  deploy_vm_installable_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_installables_windows_amd64 + {name: 'daily-deploy-vm-installable-java17-windows-amd64', diskspace_required: "31GB"},
 
   #
   # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)

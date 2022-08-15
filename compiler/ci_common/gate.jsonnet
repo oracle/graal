@@ -207,8 +207,12 @@
   # gates_manifest: specification of weekly builds (e.g. see `weeklies` local variable)
   # gates_manifest: specification of monthly builds (e.g. see `monthlies` local variable)
   # returns: an object with a single "build" field
-  make_build(jdk, os_arch, task, extra_tasks={}, gates_manifest=gates, weeklies_manifest=weeklies, monthlies_manifest=monthlies):: {
-    local base_name = "compiler-%s-labsjdk-%s-%s" % [task, jdk, os_arch],
+  make_build(jdk, os_arch, task, suite="compiler", extra_tasks={},
+             include_common_os_arch=true,
+             gates_manifest=gates,
+             weeklies_manifest=weeklies,
+             monthlies_manifest=monthlies):: {
+    local base_name = "%s-%s-labsjdk-%s-%s" % [suite, task, jdk, os_arch],
     local gate_name = "gate-" + base_name,
     local weekly_name = "weekly-" + base_name,
     local monthly_name = "monthly-" + base_name,
@@ -228,7 +232,7 @@
     } +
       (s + extra_tasks)[task] +
       c["labsjdk%s" % jdk] +
-      c[std.strReplace(os_arch, "-", "_")] +
+      (if include_common_os_arch then c[std.strReplace(os_arch, "-", "_")] else {}) +
       (if is_weekly then s.weekly else {}) +
       (if is_monthly then s.monthly else {}) +
       (if is_windows then c.devkits["windows-jdk%s" % jdk] else {}) +
