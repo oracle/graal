@@ -162,7 +162,6 @@ class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueC
             return ThreadStatus.NEW;
         }
     }
-
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -174,7 +173,7 @@ class ThreadHolderRecomputation implements RecomputeFieldValue.CustomFieldValueT
 
     @Override
     public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
-        assert JavaVersionUtil.JAVA_SPEC >= 19 : "ThreadHolder only exist on JDK 19+";
+        assert JavaVersionUtil.JAVA_SPEC >= 19 : "ThreadHolder only exists on JDK 19+";
         int threadStatus = ReflectionUtil.readField(ReflectionUtil.lookupClass(false, "java.lang.Thread$FieldHolder"), "threadStatus", receiver);
         if (threadStatus == ThreadStatus.TERMINATED) {
             return ThreadStatus.TERMINATED;

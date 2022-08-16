@@ -56,7 +56,7 @@ public final class ReflectionUtil {
 
     public static Class<?> lookupClass(boolean optional, String className) {
         try {
-            return Class.forName(className);
+            return Class.forName(className, false, ReflectionUtil.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             if (optional) {
                 return null;
