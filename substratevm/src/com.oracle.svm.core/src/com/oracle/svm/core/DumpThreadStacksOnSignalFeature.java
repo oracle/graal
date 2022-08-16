@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,13 @@
  */
 package com.oracle.svm.core;
 
-import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
-import java.util.function.BooleanSupplier;
-
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
-import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -56,44 +45,24 @@ import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 @AutomaticFeature
-public class VMInspection implements Feature {
+public class DumpThreadStacksOnSignalFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return isEnabled() || VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
+        return VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new VMInspectionStartupHook());
-    }
-
-    @Fold
-    public static boolean isEnabled() {
-        return VMInspectionOptions.AllowVMInspection.getValue();
-    }
-
-    public static final class IsEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return VMInspection.isEnabled();
-        }
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpThreadStacksOnSignalStartupHook());
     }
 }
 
-final class VMInspectionStartupHook implements RuntimeSupport.Hook {
+final class DumpThreadStacksOnSignalStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (!isFirstIsolate) {
-            return;
-        }
-        DumpAllStacks.install();
-        if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
-            /* We have enough signals to enable the rest. */
-            DumpHeapReport.install();
-            if (DeoptimizationSupport.enabled()) {
-                DumpRuntimeCompilation.install();
-            }
+        if (isFirstIsolate) {
+            DumpAllStacks.install();
         }
     }
 }
@@ -154,51 +123,6 @@ class DumpAllStacks implements SignalHandler {
             StackFramePrintVisitor visitor = new StackFramePrintVisitor();
             JavaStackWalker.walkThread(vmThread, visitor, log);
             log.indent(false);
-        }
-    }
-}
-
-class DumpHeapReport implements SignalHandler {
-    private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
-
-    static void install() {
-        Signal.handle(new Signal("USR1"), new DumpHeapReport());
-    }
-
-    @Override
-    public void handle(Signal arg0) {
-        DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
-        dateFormat.setTimeZone(UTC_TIMEZONE);
-        String heapDumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + "-" + dateFormat.format(new Date()) + ".hprof";
-        try {
-            VMRuntime.dumpHeap(heapDumpFileName, true);
-        } catch (IOException e) {
-            Log.log().string("IOException during dumpHeap: ").string(e.getMessage()).newline();
-        }
-    }
-}
-
-class DumpRuntimeCompilation implements SignalHandler {
-    static void install() {
-        Signal.handle(new Signal("USR2"), new DumpRuntimeCompilation());
-    }
-
-    @Override
-    public void handle(Signal arg0) {
-        DumpRuntimeCompiledMethodsOperation vmOp = new DumpRuntimeCompiledMethodsOperation();
-        vmOp.enqueue();
-    }
-
-    private static class DumpRuntimeCompiledMethodsOperation extends JavaVMOperation {
-        DumpRuntimeCompiledMethodsOperation() {
-            super(VMOperationInfos.get(DumpRuntimeCompiledMethodsOperation.class, "Dump runtime compiled methods", SystemEffect.SAFEPOINT));
-        }
-
-        @Override
-        protected void operate() {
-            Log log = Log.log();
-            SubstrateDiagnostics.dumpRuntimeCompilation(log);
-            log.flush();
         }
     }
 }

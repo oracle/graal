@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.VMInspection;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -43,7 +43,7 @@ import com.oracle.svm.core.thread.VMOperationListenerSupport;
 /**
  * The performance data feature (hsperfdata) provides monitoring data that can be access by external
  * tools such as VisualVM and jstat. As it adds a small overhead and starts an extra thread, it is
- * only enabled if {@code -H:+AllowVMInspection} is specified at image build time.
+ * only enabled if {@code --enable-monitoring=jvmstat} is specified at image build time.
  * <p>
  * Various parts of the application (GC, threading, ...) can create {@link PerfDataEntry performance
  * data entries}. At the moment, all native-image performance data entries live in the image heap.
@@ -82,7 +82,7 @@ import com.oracle.svm.core.thread.VMOperationListenerSupport;
 public class PerfDataFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspection.isEnabled();
+        return VMInspectionOptions.hasJvmstatSupport();
     }
 
     @Override
