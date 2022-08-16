@@ -231,8 +231,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             } catch (Throwable ex) {
                 throw debug.handle(ex);
             }
+            persistentGraphCache.put(method, result);
         }
-        persistentGraphCache.put(method, result);
         return result;
     }
 
@@ -268,7 +268,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
         // Cached graph from previous compilation may not have source positions, re-parse and store
         // in compilation-local cache.
-        if (graph.trackNodeSourcePosition() && !result.trackNodeSourcePosition()) {
+        if (result != null && !result.trackNodeSourcePosition() && graph.trackNodeSourcePosition()) {
+            assert method.hasBytecodes();
             result = createGraph(method, intrinsicBytecodeProvider);
             assert result.trackNodeSourcePosition();
             localGraphCache.put(method, result);
