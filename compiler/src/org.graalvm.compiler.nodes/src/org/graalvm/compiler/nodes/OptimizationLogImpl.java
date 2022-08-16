@@ -167,7 +167,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      * Represents one performed optimization stored in the optimization log. Additional properties
      * are stored and immediately evaluated. This is a leaf node in the optimization tree.
      */
-    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#eventName}")
+    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#event}")
     public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
         public static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
 
