@@ -28,23 +28,32 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
-import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Experiment;
+import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
 import org.graalvm.profdiff.parser.experiment.ExperimentParserTypeError;
-import org.graalvm.collections.EconomicMap;
 import org.junit.Test;
 
 public class ExperimentParserTest {
-    private static class ExperimentFilesMock implements ExperimentFiles {
+    private static class ExperimentResources implements ExperimentFiles {
+        private static final String RESOURCE_DIR = "org/graalvm/profdiff/test/resources/";
+
+        private Reader getReaderForResource(String name) {
+            InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream(name);
+            assert resourceAsStream != null;
+            return new InputStreamReader(resourceAsStream);
+        }
+
         @Override
         public ExperimentId getExperimentId() {
             return ExperimentId.ONE;
@@ -52,86 +61,19 @@ public class ExperimentParserTest {
 
         @Override
         public Reader getProftoolOutput() {
-            return new StringReader("{\n" +
-                            "    \"executionId\": \"16102\",\n" +
-                            "    \"totalPeriod\": 263869257616,\n" +
-                            "    \"code\": [\n" +
-                            "        {\n" +
-                            "            \"compileId\": null,\n" +
-                            "            \"name\": \"stub\",\n" +
-                            "            \"level\": null,\n" +
-                            "            \"period\": 155671948\n" +
-                            "        },\n" +
-                            "        {\n" +
-                            "            \"compileId\": \"2390\",\n" +
-                            "            \"name\": \"2390: foo.bar.Foo$Bar.methodName()\",\n" +
-                            "            \"level\": 4,\n" +
-                            "            \"period\": 264224374\n" +
-                            "        },\n" +
-                            "        {\n" +
-                            "            \"compileId\": \"3677%\",\n" +
-                            "            \"name\": \"3677: org.example.myMethod(org.example.Foo, org.example.Class$Context)\"\n," +
-                            "            \"level\": 4,\n" +
-                            "            \"period\": 158328120602\n" +
-                            "        }\n" +
-                            "    ]\n" +
-                            "}");
+            return getReaderForResource(RESOURCE_DIR + "profile.json");
         }
 
         @Override
         public List<Reader> getOptimizationLogs() {
-            return List.of(
-                            new StringReader("{\n" +
-                                            "    \"compilationId\": \"2390\",\n" +
-                                            "    \"compilationMethodName\": \"foo.bar.Foo$Bar.methodName()\",\n" +
-                                            "    \"rootPhase\": {\n" +
-                                            "        \"phaseName\": \"RootPhase\",\n" +
-                                            "        \"optimizations\": [\n" +
-                                            "           {\n" +
-                                            "               \"phaseName\": \"SomeTier\",\n" +
-                                            "               \"optimizations\": [\n" +
-                                            "                   {\n" +
-                                            "                       \"optimizationName\": \"LoopTransformation\",\n" +
-                                            "                       \"eventName\": \"PartialUnroll\",\n" +
-                                            "                       \"position\": {\"foo.bar.Foo$Bar.innerMethod()\": 30, \"foo.bar.Foo$Bar.methodName()\": 68},\n" +
-                                            "                       \"unrollFactor\": 1\n" +
-                                            "                   },\n" +
-                                            "                   {\n" +
-                                            "                       \"phaseName\": \"EmptyPhase\",\n" +
-                                            "                       \"optimizations\": null\n" +
-                                            "                   }\n" +
-                                            "               ]\n" +
-                                            "           }\n" +
-                                            "       ]\n" +
-                                            "   }\n" +
-                                            "}"),
-                            new StringReader("{\n" +
-                                            "    \"compilationId\": \"3677\",\n" +
-                                            "    \"compilationMethodName\": \"org.example.myMethod(org.example.Foo, org.example.Class$Context)\",\n" +
-                                            "    \"rootPhase\": {\n" +
-                                            "        \"phaseName\": \"RootPhase\",\n" +
-                                            "        \"optimizations\": [\n" +
-                                            "            {\n" +
-                                            "                \"optimizationName\": \"LoopTransformation\",\n" +
-                                            "                \"eventName\": \"PartialUnroll\",\n" +
-                                            "                \"position\": {\"org.example.myMethod(org.example.Foo, org.example.Class$Context)\": 2},\n" +
-                                            "                \"unrollFactor\": 1\n" +
-                                            "            },\n" +
-                                            "            {\n" +
-                                            "                \"optimizationName\": \"LoopTransformation\",\n" +
-                                            "                \"eventName\": \"PartialUnroll\",\n" +
-                                            "                \"position\": null,\n" +
-                                            "                \"unrollFactor\": 2\n" +
-                                            "            }\n" +
-                                            "        ]\n" +
-                                            "    }\n" +
-                                            "}"));
+            return List.of(getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-1.json"),
+                            getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-2.json"));
         }
     }
 
     @Test
     public void testExperimentParser() throws ExperimentParserTypeError, IOException {
-        ExperimentFiles experimentFiles = new ExperimentFilesMock();
+        ExperimentFiles experimentFiles = new ExperimentResources();
         ExperimentParser experimentParser = new ExperimentParser(experimentFiles);
         Experiment experiment = experimentParser.parse();
         assertEquals("16102", experiment.getExecutionId());
@@ -141,7 +83,7 @@ public class ExperimentParserTest {
 
         for (CompilationUnit compilationUnit : experiment.getCompilationUnits()) {
             switch (compilationUnit.getCompilationId()) {
-                case "2390": {
+                case "1": {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
                                     compilationUnit.getCompilationMethodName());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
@@ -155,7 +97,7 @@ public class ExperimentParserTest {
                     assertEquals(rootPhase, compilationUnit.getRootPhase());
                     break;
                 }
-                case "3677": {
+                case "2": {
                     assertEquals("org.example.myMethod(org.example.Foo, org.example.Class$Context)",
                                     compilationUnit.getCompilationMethodName());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
