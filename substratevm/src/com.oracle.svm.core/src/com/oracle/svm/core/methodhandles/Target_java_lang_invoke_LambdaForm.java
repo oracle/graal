@@ -24,17 +24,26 @@
  */
 package com.oracle.svm.core.methodhandles;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.util.ReflectionUtil;
 
 @TargetClass(className = "java.lang.invoke.LambdaForm")
 public final class Target_java_lang_invoke_LambdaForm {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Target_java_lang_invoke_MemberName vmentry;
+
+    @TargetElement(onlyWith = JDK19OrLater.class)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = LambdaFormCacheTransformer.class)//
+    volatile Object transformCache;
 
     @Alias
     native String lambdaName();
@@ -62,6 +71,19 @@ public final class Target_java_lang_invoke_LambdaForm {
 
     @Alias
     native Object interpretWithArguments(Object... argumentValues) throws Throwable;
+}
+
+final class LambdaFormCacheTransformer implements FieldValueTransformer {
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        Class<?> lambdaFormClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm");
+        if (lambdaFormClass.isInstance(originalValue)) {
+            // Stores the original LambdaForm for a customized one.
+            return originalValue;
+        }
+        return null;
+    }
 }
 
 @TargetClass(className = "java.lang.invoke.LambdaForm", innerClass = "NamedFunction")
