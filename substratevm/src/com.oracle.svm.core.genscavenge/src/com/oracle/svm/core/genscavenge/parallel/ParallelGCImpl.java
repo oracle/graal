@@ -1,6 +1,5 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
@@ -14,6 +13,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -25,23 +25,22 @@ import java.util.stream.IntStream;
 public class ParallelGCImpl extends ParallelGC {
 
     /// static -> ImageSingletons
-    public static final int WORKERS_COUNT = 4;
+    private static final int WORKERS_COUNT = 4;
 
     /// tlab of the current to-space
-    public static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> TLAB =
-            FastThreadLocalFactory.createWord("ParallelGCImpl.TLAB");
+    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> chunkTL =
+            FastThreadLocalFactory.createWord("ParallelGCImpl.chunkTL");
 
     private static final VMMutex mutex = new VMMutex("pargc");
     private static final VMCondition cond = new VMCondition(mutex);
-    private static AtomicInteger busy = new AtomicInteger(0);
+    private final AtomicInteger busy = new AtomicInteger(0);
 
     private static final ThreadLocalTaskStack[] STACKS =
             IntStream.range(0, WORKERS_COUNT).mapToObj(i -> new ThreadLocalTaskStack()).toArray(ThreadLocalTaskStack[]::new);
     private static final ThreadLocal<ThreadLocalTaskStack> localStack = new ThreadLocal<>();
-    private static int currentStack;
+    private int currentStack;
 
-    private static volatile boolean enabled;
-    private static volatile Throwable throwable;
+    private volatile boolean inParallelPhase;
 
     @Override
     public void startWorkerThreads() {
@@ -52,36 +51,32 @@ public class ParallelGCImpl extends ParallelGC {
         IntStream.range(0, WORKERS_COUNT).forEach(this::startWorkerThread);
     }
 
-    public void startWorkerThread(int n) {
+    private void startWorkerThread(int n) {
         Thread t = new Thread(() -> {
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
                 log().string("WW start ").unsigned(n).newline();
 
                 final ThreadLocalTaskStack stack = STACKS[n];
-                localStack.set(STACKS[n]);
+                localStack.set(stack);
                 getStats().install();
-                try {
-                    while (true) {
-                        mutex.lock();
-                        while (busy.get() < WORKERS_COUNT) {
-                            log().string("WW block ").unsigned(n).newline();
-                            cond.block();
-                        }
-                        mutex.unlock();
-
-                        log().string("WW run ").unsigned(n).string(", count=").unsigned(stack.size()).newline();
-                        Object obj;
-                        while ((obj = stack.pop()) != null) {
-                            getVisitor().doVisitObject(obj);
-                        }
-                        TLAB.set(WordFactory.nullPointer());
-                        if (busy.decrementAndGet() <= 0) {
-                            cond.broadcast();
-                        }
-                        log().string("WW idle ").unsigned(n).newline();
+                while (true) {
+                    mutex.lock();
+                    while (busy.get() < WORKERS_COUNT) {
+                        log().string("WW block ").unsigned(n).newline();
+                        cond.block();
                     }
-                } catch (Throwable e) {
-                    throwable = e;
+                    mutex.unlock();
+
+                    log().string("WW run ").unsigned(n).string(", count=").unsigned(stack.size()).newline();
+                    Object obj;
+                    while ((obj = stack.pop()) != null) {
+                        getVisitor().doVisitObject(obj);
+                    }
+                    killThreadLocalChunk();
+                    if (busy.decrementAndGet() <= 0) {
+                        cond.broadcast();
+                    }
+                    log().string("WW idle ").unsigned(n).newline();
                 }
         });
         t.setName("ParallelGCWorker-" + n);
@@ -89,60 +84,75 @@ public class ParallelGCImpl extends ParallelGC {
         t.start();
     }
 
-    public static GreyToBlackObjectVisitor getVisitor() {
+    private GreyToBlackObjectVisitor getVisitor() {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
     /// name, explain
-    public static void push(Pointer ptr) {
+    public void push(Pointer ptr) {
+        assert !isInParallelPhase();
         push(ptr, STACKS[currentStack]);
         currentStack = (currentStack + 1) % WORKERS_COUNT;
     }
 
-    public static void localPush(Pointer ptr) {
+    public void pushLocally(Pointer ptr) {
+        assert isInParallelPhase();
         push(ptr, localStack.get());
     }
 
-    private static void push(Pointer ptr, ThreadLocalTaskStack stack) {
+    private void push(Pointer ptr, ThreadLocalTaskStack stack) {
         if (!stack.push(ptr)) {
             getVisitor().doVisitObject(ptr.toObject());
         }
     }
 
+    @Fold
+    public static ParallelGCImpl singleton() {
+        return (ParallelGCImpl) ImageSingletons.lookup(ParallelGC.class);
+    }
+
+    public static boolean isInParallelPhase() {
+        return isSupported() && singleton().inParallelPhase;
+    }
+
     public static void waitForIdle() {
         if (isSupported()) {
-            setEnabled(true);
-
-            log().string("PP start workers\n");
-            busy.set(WORKERS_COUNT);
-            cond.broadcast();     // let worker threads run
-
-            mutex.lock();
-            while (busy.get() > 0) {
-                log().string("PP wait busy=").unsigned(busy.get()).newline();
-                cond.block();     // wait for them to become idle
-            }
-            mutex.unlock();
-
-            setEnabled(false);
+            singleton().waitForIdleImpl();
         }
     }
 
-    public static boolean isEnabled() {
-        return enabled;
+    public static AlignedHeapChunk.AlignedHeader getThreadLocalChunk() {
+        return chunkTL.get();
     }
 
-    private static void setEnabled(boolean enabled) {
-        ParallelGCImpl.enabled = enabled;
+    public static void setThreadLocalChunk(AlignedHeapChunk.AlignedHeader chunk) {
+        chunkTL.set(chunk);
     }
 
-    public static void checkThrowable() {
-        if (throwable != null) {
-            Log.log().string("PGC error : ").string(throwable.getClass().getName())
-                    .string(" : ").string(throwable.getMessage()).newline();
-            throwable.printStackTrace();
-            throw new Error(throwable);
+    public static void killThreadLocalChunk() {
+        chunkTL.set(WordFactory.nullPointer());
+    }
+
+    private void waitForIdleImpl() {
+        setInParallelPhase(true);
+
+        log().string("PP start workers\n");
+        busy.set(WORKERS_COUNT);
+        cond.broadcast();     // let worker threads run
+
+        mutex.lock();
+        while (busy.get() > 0) {
+            log().string("PP wait busy=").unsigned(busy.get()).newline();
+            cond.block();     // wait for them to become idle
         }
+        mutex.unlock();
+
+        setInParallelPhase(false);
+    }
+
+    private void setInParallelPhase(boolean inParallelPhase) {
+        assert isSupported();
+        singleton().inParallelPhase = inParallelPhase;
     }
 
     public static Stats getStats() {
@@ -150,7 +160,7 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     static Log log() {
-        return Log.noopLog();
+        return Log.log();///
     }
 }
 
@@ -159,7 +169,7 @@ class ParallelGCFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseParallelGC.getValue();
+        return ParallelGC.isSupported();
     }
 
     @Override

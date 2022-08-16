@@ -165,7 +165,6 @@ public final class GCImpl implements GC {
             if (outOfMemory) {
                 throw OutOfMemoryUtil.heapSizeExceeded();
             }
-            ParallelGCImpl.checkThrowable();
         }
     }
 
@@ -1148,7 +1147,6 @@ public final class GCImpl implements GC {
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces(chunkReleaser);
         }
-        ParallelGCImpl.TLAB.set(WordFactory.nullPointer()); ///rm?
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

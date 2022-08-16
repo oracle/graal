@@ -8,12 +8,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 public abstract class ParallelGC {
 
     @Fold
-    public static ParallelGC singleton() {
-        return ImageSingletons.lookup(ParallelGC.class);
-    }
-
-    @Fold
-    protected static boolean isSupported() {
+    public static boolean isSupported() {
         return SubstrateOptions.UseParallelGC.getValue();
     }
 
@@ -21,7 +16,7 @@ public abstract class ParallelGC {
         Log log = Log.log().string("ParGC ");///
         if (isSupported()) {
             log.string("supported").newline();
-            singleton().startWorkerThreads();
+            ImageSingletons.lookup(ParallelGC.class).startWorkerThreads();
         } else {
             log.string("missing").newline();
         }

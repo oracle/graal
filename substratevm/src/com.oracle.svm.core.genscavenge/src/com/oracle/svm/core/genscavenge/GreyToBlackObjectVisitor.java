@@ -25,6 +25,8 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.heap.ParallelGC;
+import com.oracle.svm.core.log.Log;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -58,8 +60,8 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectInline(Object o) {
-        if (!ParallelGCImpl.isEnabled()) {
-            ParallelGCImpl.push(Word.objectToUntrackedPointer(o));
+        if (ParallelGC.isSupported() && !ParallelGCImpl.isInParallelPhase()) {
+            ParallelGCImpl.singleton().push(Word.objectToUntrackedPointer(o));
             return true;
         } else {
             return doVisitObject(o);
