@@ -99,7 +99,7 @@ public class InteriorObjRefWalker {
     @AlwaysInline("Performance critical version")
     private static boolean walkPod(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         if (!Pod.RuntimeSupport.isPresent()) {
-            throw VMError.shouldNotReachHere("POD objects cannot be in the heap if the POD support is disabled.");
+            throw VMError.shouldNotReachHere("Pod objects cannot be in the heap if the pod support is disabled.");
         }
         return PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, objHub.getLayoutEncoding(), visitor, obj);
     }
@@ -114,7 +114,7 @@ public class InteriorObjRefWalker {
 
     @AlwaysInline("Performance critical version")
     private static boolean walkOther() {
-        throw VMError.shouldNotReachHere("Unexpected object in the heap.");
+        throw VMError.shouldNotReachHere("Unexpected object with hub type 'other' in the heap.");
     }
 
     @AlwaysInline("Performance critical version")

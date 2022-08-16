@@ -96,7 +96,7 @@ public final class StoredContinuationAccess {
     }
 
     @Uninterruptible(reason = "Prevent GC during accesses via object address.", callerMustBe = true)
-    private static Pointer arrayAddress(StoredContinuation s) {
+    public static Pointer getFramesStart(StoredContinuation s) {
         int layout = KnownIntrinsics.readHub(s).getLayoutEncoding();
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(layout);
         return Word.objectToUntrackedPointer(s).add(baseOffset);
@@ -105,11 +105,6 @@ public final class StoredContinuationAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getIP(StoredContinuation s) {
         return s.ip;
-    }
-
-    @Uninterruptible(reason = "Prevent GC during accesses via object address.", callerMustBe = true)
-    public static Pointer getFramesStart(StoredContinuation s) {
-        return arrayAddress(s);
     }
 
     public static int allocateToYield(Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
@@ -150,7 +145,7 @@ public final class StoredContinuationAccess {
     @Uninterruptible(reason = "Prevent modifications to the stack while initializing instance and copying frames.")
     private static void fillUninterruptibly(StoredContinuation stored, CodePointer ip, Pointer sp, int size) {
         UnmanagedMemoryUtil.copy(sp, getFramesStart(stored), WordFactory.unsigned(size));
-        setIp(stored, ip);
+        setIP(stored, ip);
         afterFill(stored);
     }
 
@@ -175,13 +170,13 @@ public final class StoredContinuationAccess {
     private static StoredContinuation fillCloneUninterruptibly(StoredContinuation cont, StoredContinuation clone) {
         // copyFrames() may do something interruptible before uninterruptibly copying frames.
         CodePointer ip = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(cont, clone);
-        setIp(clone, ip);
+        setIP(clone, ip);
         afterFill(clone);
         return clone;
     }
 
     @Uninterruptible(reason = "Prevent that the GC sees a partially initialized StoredContinuation.", callerMustBe = true)
-    private static void setIp(StoredContinuation cont, CodePointer ip) {
+    private static void setIP(StoredContinuation cont, CodePointer ip) {
         /*
          * Once the ip is initialized, the GC may visit the object at any time (i.e., even while we
          * are still executing uninterruptible code). Therefore, we must ensure that the store to
@@ -204,7 +199,7 @@ public final class StoredContinuationAccess {
         }
 
         Pointer startSp = getFramesStart(s);
-        Pointer endSp = arrayAddress(s).add(getSizeInBytes(s));
+        Pointer endSp = getFramesStart(s).add(getSizeInBytes(s));
 
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         JavaStackWalker.initWalkStoredContinuation(walk, startSp, endSp, startIp);
@@ -250,7 +245,7 @@ public final class StoredContinuationAccess {
         }
 
         Pointer startSp = getFramesStart(s);
-        Pointer endSp = arrayAddress(s).add(getSizeInBytes(s));
+        Pointer endSp = getFramesStart(s).add(getSizeInBytes(s));
 
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         JavaStackWalker.initWalkStoredContinuation(walk, startSp, endSp, startIp);

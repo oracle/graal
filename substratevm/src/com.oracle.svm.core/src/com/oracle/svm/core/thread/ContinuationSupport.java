@@ -43,7 +43,7 @@ public class ContinuationSupport {
     private long ipOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ContinuationSupport() {
+    protected ContinuationSupport() {
     }
 
     @Fold
@@ -52,12 +52,12 @@ public class ContinuationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setIpOffset(long value) {
+    public void setIPOffset(long value) {
         assert ipOffset == 0;
         ipOffset = value;
     }
 
-    public long getIpOffset() {
+    public long getIPOffset() {
         assert ipOffset != 0;
         return ipOffset;
     }

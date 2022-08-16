@@ -93,7 +93,7 @@ public class ContinuationsFeature implements Feature {
         if (Continuation.isSupported()) {
             Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
             long offset = access.objectFieldOffset(ipField);
-            ContinuationSupport.singleton().setIpOffset(offset);
+            ContinuationSupport.singleton().setIPOffset(offset);
         }
     }
 

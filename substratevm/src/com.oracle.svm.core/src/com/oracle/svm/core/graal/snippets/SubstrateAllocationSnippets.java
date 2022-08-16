@@ -706,7 +706,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("ipOffset", ContinuationSupport.singleton().getIpOffset());
+                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("profilingData", getProfilingData(node, instanceClass));
 

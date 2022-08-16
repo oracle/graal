@@ -239,20 +239,20 @@ public final class ThreadLocalAllocation {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewArray(Word objectHeader, int length) {
-        return slowPathArrayLikeObject(objectHeader, length, null);
+        return slowPathNewArrayLikeObject(objectHeader, length, null);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewStoredContinuation(Word objectHeader, int length) {
-        return slowPathArrayLikeObject(objectHeader, length, null);
+        return slowPathNewArrayLikeObject(objectHeader, length, null);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewPodInstance(Word objectHeader, int arrayLength, byte[] referenceMap) {
-        return slowPathArrayLikeObject(objectHeader, arrayLength, referenceMap);
+        return slowPathNewArrayLikeObject(objectHeader, arrayLength, referenceMap);
     }
 
-    private static Object slowPathArrayLikeObject(Word objectHeader, int length, byte[] podReferenceMap) {
+    private static Object slowPathNewArrayLikeObject(Word objectHeader, int length, byte[] podReferenceMap) {
         /*
          * Avoid stack overflow errors while producing memory chunks, because that could leave the
          * heap in an inconsistent state.
@@ -276,7 +276,7 @@ public final class ThreadLocalAllocation {
                 throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
             }
 
-            Object result = slowPathArrayLikeObject0(hub, length, size, podReferenceMap);
+            Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
             runSlowPathHooks();
             return result;
         } finally {
@@ -285,7 +285,7 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathArrayLikeObject0(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
+    private static Object slowPathNewArrayLikeObject0(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
         DeoptTester.disableDeoptTesting();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());

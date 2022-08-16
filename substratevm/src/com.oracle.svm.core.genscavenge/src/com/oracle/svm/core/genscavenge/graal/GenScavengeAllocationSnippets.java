@@ -196,7 +196,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("length", node.getLength());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
-                args.addConst("ipOffset", ContinuationSupport.singleton().getIpOffset());
+                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
                 args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
