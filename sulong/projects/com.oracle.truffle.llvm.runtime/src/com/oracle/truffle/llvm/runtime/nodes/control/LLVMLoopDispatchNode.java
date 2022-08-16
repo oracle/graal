@@ -92,9 +92,6 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
             CompilerAsserts.partialEvaluationConstant(basicBlockIndex);
             LLVMBasicBlockNode bb = bodyNodes[indexMapping[basicBlockIndex]];
 
-            // the newly inserted block may have been instrumented
-            bb = bodyNodes[indexMapping[basicBlockIndex]];
-
             // execute all statements
             bb.execute(frame);
             // execute control flow node, write phis, null stack frame slots, and dispatch to

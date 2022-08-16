@@ -118,9 +118,6 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
             }
             LLVMBasicBlockNode bb = bodyNodes[basicBlockIndex];
 
-            // the newly inserted block may have been instrumented
-            bb = bodyNodes[basicBlockIndex];
-
             // execute all statements
             bb.execute(frame);
 
