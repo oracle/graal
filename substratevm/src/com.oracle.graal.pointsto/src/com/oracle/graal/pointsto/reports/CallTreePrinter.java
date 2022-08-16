@@ -461,7 +461,7 @@ public final class CallTreePrinter {
     }
 
     private static void printVirtualNodes(Map<List<String>, Integer> virtualNodes, PrintWriter writer) {
-        writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display"));
+        writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display", "Flags"));
         virtualNodes.entrySet().stream()
                         .map(CallTreePrinter::virtualMethodAndIdInfo)
                         .map(CallTreePrinter::convertToCSV)
