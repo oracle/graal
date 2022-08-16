@@ -542,8 +542,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
 
-    @Option(help = "Propagate call and loop count (hotness proxy) up a single caller chain to lexical scope parent. Allows certain lambda callers to get compiled sooner.", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> PropagateLoopCountsToLexicalSingleCaller = new OptionKey<>(true);
+    @Option(help = "How high to propagate call and loop count (hotness proxy) up a single caller chain to lexical scope parent. Allows certain lambda callers to get compiled sooner.", usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> PropagateLoopCountsToLexicalSingleCaller = new OptionKey<>(10);
 
     @Option(help = "The minimal scale the compilation thresholds can be reduced to (default: 0.1).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Double> DynamicCompilationThresholdsMinScale = new OptionKey<>(0.1);

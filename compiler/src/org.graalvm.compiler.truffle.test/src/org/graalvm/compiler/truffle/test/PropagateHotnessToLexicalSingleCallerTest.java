@@ -47,7 +47,7 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
     @Override
     protected Context.Builder newContextBuilder() {
         Context.Builder builder = super.newContextBuilder();
-        builder.option("engine.PropagateLoopCountsToLexicalSingleCaller", Boolean.TRUE.toString());
+        builder.option("engine.PropagateLoopCountsToLexicalSingleCaller", Integer.toString(10));
         return builder;
     }
 

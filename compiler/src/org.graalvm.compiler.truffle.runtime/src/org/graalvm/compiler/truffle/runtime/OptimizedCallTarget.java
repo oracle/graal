@@ -648,13 +648,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor());
+        propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor(), 0);
         return compile(true);
     }
 
-    private static boolean propagateCallAndLoopCount(OptimizedCallTarget original, OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor) {
+    private static boolean propagateCallAndLoopCount(OptimizedCallTarget original, OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor, int depth) {
         WeakReference<OptimizedDirectCallNode> singleCallNode = current.singleCallNode;
-        if (!original.engine.propagateCallAndLoopCount || parentFrameDescriptor == null || singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
+        if (original.engine.propagateCallAndLoopCount <= depth || parentFrameDescriptor == null || singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
             return false;
         }
         OptimizedDirectCallNode callerCallNode = singleCallNode.get();
@@ -668,7 +668,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (original.equals(callerCallTarget)) {
             return false;
         }
-        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || propagateCallAndLoopCount(original, callerCallTarget, parentFrameDescriptor)) {
+        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || propagateCallAndLoopCount(original, callerCallTarget, parentFrameDescriptor, depth + 1)) {
             callerCallNode.forceInlining();
             callerCallTarget.callAndLoopCount += original.callAndLoopCount;
             return true;

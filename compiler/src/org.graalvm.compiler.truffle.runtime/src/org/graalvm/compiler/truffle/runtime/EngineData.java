@@ -141,13 +141,13 @@ public final class EngineData {
     @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
     @CompilationFinal public boolean firstTierOnly;
-    @CompilationFinal public boolean propagateCallAndLoopCount;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
     @CompilationFinal public boolean weightingBothTiers;
     @CompilationFinal public boolean traversingFirstTierPriority;
     @CompilationFinal public double traversingFirstTierBonus;
+    @CompilationFinal public int propagateCallAndLoopCount;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
