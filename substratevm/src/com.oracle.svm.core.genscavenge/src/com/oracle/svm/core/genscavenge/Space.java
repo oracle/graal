@@ -62,7 +62,6 @@ public final class Space {
     private final boolean isFromSpace;
     private final int age;
     private final ChunksAccounting accounting;
-    private final VMMutex mutex;
 
     /* Heads and tails of the HeapChunk lists. */
     private AlignedHeapChunk.AlignedHeader firstAlignedHeapChunk;
@@ -87,7 +86,6 @@ public final class Space {
         this.isFromSpace = isFromSpace;
         this.age = age;
         this.accounting = new ChunksAccounting(accounting);
-        this.mutex = new VMMutex(name + "-mutex");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -200,17 +198,13 @@ public final class Space {
     }
 
     private Pointer allocateInNewChunk(UnsignedWord objectSize) {
-        AlignedHeapChunk.AlignedHeader newChunk;
         if (ParallelGC.isSupported()) {
-            mutex.lock();
-            try {
-                newChunk = requestAlignedHeapChunk();
-            } finally {
-                mutex.unlock();
-            }
+            ParallelGCImpl.mutex.lock();
+        }
+        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
+        if (ParallelGC.isSupported()) {
+            ParallelGCImpl.mutex.unlock();
             ParallelGCImpl.setThreadLocalChunk(newChunk);
-        } else {
-            newChunk = requestAlignedHeapChunk();
         }
         if (newChunk.isNonNull()) {
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
@@ -491,15 +485,14 @@ public final class Space {
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        mutex.lock();
-        try {
-            originalSpace.extractAlignedHeapChunk(chunk);
-            appendAlignedHeapChunk(chunk);
-        } finally {
-            mutex.unlock();
+        boolean parallel = ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase();
+        if (parallel) {
+            ParallelGCImpl.mutex.lock();
         }
-
-        if (ParallelGCImpl.isInParallelPhase()) {
+        originalSpace.extractAlignedHeapChunk(chunk);
+        appendAlignedHeapChunk(chunk);
+        if (parallel) {
+            ParallelGCImpl.mutex.unlock();
             if (!AlignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
                 throw VMError.shouldNotReachHere();
             }
@@ -519,15 +512,14 @@ public final class Space {
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        mutex.lock();
-        try {
-            originalSpace.extractUnalignedHeapChunk(chunk);
-            appendUnalignedHeapChunk(chunk);
-        } finally {
-            mutex.unlock();
+        boolean parallel = ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase();
+        if (parallel) {
+            ParallelGCImpl.mutex.lock();
         }
-
-        if (ParallelGCImpl.isInParallelPhase()) {
+        originalSpace.extractUnalignedHeapChunk(chunk);
+        appendUnalignedHeapChunk(chunk);
+        if (parallel) {
+            ParallelGCImpl.mutex.unlock();
             if (!UnalignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
                 throw VMError.shouldNotReachHere();
             }

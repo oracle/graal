@@ -31,8 +31,8 @@ public class ParallelGCImpl extends ParallelGC {
     private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> chunkTL =
             FastThreadLocalFactory.createWord("ParallelGCImpl.chunkTL");
 
-    private static final VMMutex mutex = new VMMutex("pargc");
-    private static final VMCondition cond = new VMCondition(mutex);
+    public static final VMMutex mutex = new VMMutex("ParallelGCImpl");
+    private final VMCondition cond = new VMCondition(mutex);
     private final AtomicInteger busy = new AtomicInteger(0);
 
     private static final ThreadLocalTaskStack[] STACKS =
