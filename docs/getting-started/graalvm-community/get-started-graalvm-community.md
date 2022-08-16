@@ -23,8 +23,8 @@ If you have GraalVM already installed and have experience using it, you can skip
 
 Getting GraalVM installed and ready-to-go should take a few minutes.
 Choose the operating system and proceed to the installation steps:
+
 * [Linux](linux.md)
-* [Linux AArch64](linux-aarch64.md)
 * [macOS](macos.md)
 * [Windows](windows.md)
 * [Docker Container](container-images/graalvm-ce-container-images.md)
