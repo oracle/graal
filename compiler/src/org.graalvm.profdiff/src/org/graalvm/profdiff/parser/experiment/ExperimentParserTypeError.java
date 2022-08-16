@@ -32,6 +32,7 @@ import org.graalvm.profdiff.core.ExperimentId;
 @SuppressWarnings("serial")
 public class ExperimentParserTypeError extends Exception {
     ExperimentParserTypeError(String objectName, Class<?> expectedType, Object actualObject, ExperimentId experimentId) {
-        super("Failed to parse experiment " + experimentId + ": " + " expected " + objectName + " to be a " + expectedType.getSimpleName() + " but got " + actualObject.toString());
+        super("Failed to parse the experiment " + experimentId + ": expected " + objectName + " to be an instance of " +
+                        expectedType.getSimpleName() + " but got \"" + actualObject.toString() + "\"");
     }
 }

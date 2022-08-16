@@ -93,7 +93,7 @@ public class Profdiff {
         }
 
         if (hotMinArgument.getValue() < 0 || hotMinArgument.getValue() > hotMaxArgument.getValue()) {
-            System.err.println("The condition 0 <= hotMinLimit <= hotMaxLimit must be satisfied.");
+            System.err.printf("The condition 0 <= %s <= %s must be satisfied.", hotMinArgument.getName(), hotMaxArgument.getName());
             System.exit(1);
         }
 
@@ -154,8 +154,7 @@ public class Profdiff {
         try {
             return parser.parse();
         } catch (IOException e) {
-            e.printStackTrace();
-            System.err.println("Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId());
+            System.err.println("Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId() + ": " + e.getMessage());
             System.exit(1);
         } catch (ExperimentParserTypeError e) {
             System.err.println(e.getMessage());
