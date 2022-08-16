@@ -143,6 +143,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
      * @param method a lambda method to be formatted
      * @return a stable method name
      */
+    @SuppressWarnings("try")
     private String findStableLambdaMethodName(ResolvedJavaMethod method) {
         ResolvedJavaType type = method.getDeclaringClass();
         StructuredGraph methodGraph = new StructuredGraph.Builder(graph.getOptions(), graph.getDebug()).method(method).build();
