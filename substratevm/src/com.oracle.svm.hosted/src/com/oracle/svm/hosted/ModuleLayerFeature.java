@@ -104,7 +104,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .stream()
                         .map(Module::getName)
                         .collect(Collectors.toSet());
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules, Set.of());
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(Configuration.empty()), accessImpl.imageClassLoader, baseModules, Set.of());
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
         access.registerObjectReplacer(this::replaceHostedModules);
     }
@@ -165,7 +165,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
 
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules, analysisReachableSyntheticModules);
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(Configuration.empty()), accessImpl.imageClassLoader, allReachableModules, analysisReachableSyntheticModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
@@ -179,7 +179,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         return Stream.concat(Stream.of(m.getName()), requiredModules);
     }
 
-    private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
+    private ModuleLayer synthesizeRuntimeModuleLayer(List<Configuration> parentConfigs, ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
          * {@link NativeImageClassLoaderSupport}.
@@ -187,19 +187,20 @@ public final class ModuleLayerFeature implements InternalFeature {
         NativeImageClassLoaderSupport classLoaderSupport = cl.classLoaderSupport;
         ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
         ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
-        Configuration cf = synthesizeRuntimeBootLayerConfiguration(beforeFinder, afterFinder, reachableModules);
+        Configuration cf = synthesizeRuntimeModuleLayerConfiguration(beforeFinder, parentConfigs, afterFinder, reachableModules);
+        ModuleLayer runtimeModuleLayer = null;
         try {
-            ModuleLayer runtimeBootLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(cf);
-            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer);
+            runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(cf);
+            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeModuleLayer);
             for (Module syntheticModule : syntheticModules) {
                 Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule.getName(), syntheticModule.getDescriptor());
                 nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
-                moduleLayerFeatureUtils.patchModuleLayerField(runtimeSyntheticModule, runtimeBootLayer);
+                moduleLayerFeatureUtils.patchModuleLayerField(runtimeSyntheticModule, runtimeModuleLayer);
             }
-            patchRuntimeBootLayer(runtimeBootLayer, nameToModule);
-            return runtimeBootLayer;
+            patchRuntimeBootLayer(runtimeModuleLayer, nameToModule);
+            return runtimeModuleLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
-            throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer.", ex);
+            throw VMError.shouldNotReachHere("Failed to synthesize the runtime module layer: " + runtimeModuleLayer, ex);
         }
     }
 
@@ -286,7 +287,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         return applicationModules;
     }
 
-    private static Configuration synthesizeRuntimeBootLayerConfiguration(ModuleFinder beforeFinder, ModuleFinder afterFinder, Set<String> reachableModules) {
+    private static Configuration synthesizeRuntimeModuleLayerConfiguration(ModuleFinder beforeFinder, List<Configuration> parentConfigs, ModuleFinder afterFinder, Set<String> reachableModules) {
         try {
             ModuleFinder composed = ModuleFinder.compose(beforeFinder, afterFinder);
             List<String> missingModules = new ArrayList<>();
@@ -298,7 +299,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
             reachableModules.removeAll(missingModules);
 
-            return Configuration.empty().resolve(beforeFinder, afterFinder, reachableModules);
+            return Configuration.resolve(beforeFinder, parentConfigs, afterFinder, reachableModules);
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer configuration.", ex);
         }
