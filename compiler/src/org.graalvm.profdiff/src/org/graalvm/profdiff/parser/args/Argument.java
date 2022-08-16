@@ -36,6 +36,12 @@ public abstract class Argument {
     public static final String OPTION_PREFIX = "--";
 
     /**
+     * The value of a valued option argument may be specified as the successive program argument
+     * (e.g. --arg value) or with an equal sign (e.g. --arg=value).
+     */
+    public static final char EQUAL_SIGN = '=';
+
+    /**
      * The name of this argument.
      */
     private final String name;

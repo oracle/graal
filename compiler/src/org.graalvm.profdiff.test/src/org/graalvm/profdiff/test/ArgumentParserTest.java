@@ -77,7 +77,7 @@ public class ArgumentParserTest {
     }
 
     @Test
-    public void testDefaultValues() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+    public void parsesDefaultValues() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArguments programArguments = new ProgramArguments();
         String[] args = new String[]{"foo"};
         programArguments.argumentParser.parse(args);
@@ -89,11 +89,23 @@ public class ArgumentParserTest {
     }
 
     @Test
-    public void testProvidedValues() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+    public void parsesProvidedValues() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArguments programArguments = new ProgramArguments();
         String[] args = new String[]{"--int", "123", "foo", "--double", "1.23", "--flag", "--enum", TestEnum.BAR.toString()};
         programArguments.argumentParser.parse(args);
         assertEquals(args[2], programArguments.stringArgument.getValue());
+        assertEquals(1.23, programArguments.doubleArgument.getValue(), DELTA);
+        assertEquals(123, programArguments.integerArgument.getValue().intValue());
+        assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
+        assertTrue(programArguments.flagArgument.getValue());
+    }
+
+    @Test
+    public void equalSignNotation() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArguments programArguments = new ProgramArguments();
+        String[] args = new String[]{"--int=123", "foo", "--double=1.23", "--flag", "--enum=" + TestEnum.BAR};
+        programArguments.argumentParser.parse(args);
+        assertEquals(args[1], programArguments.stringArgument.getValue());
         assertEquals(1.23, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(123, programArguments.integerArgument.getValue().intValue());
         assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());

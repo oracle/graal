@@ -104,7 +104,9 @@ public class ArgumentParser {
             String arg = args[index];
             Argument argument;
             if (arg.startsWith(Argument.OPTION_PREFIX)) {
-                argument = optionArguments.get(arg);
+                int equalSignIndex = arg.indexOf(Argument.EQUAL_SIGN);
+                String optionArgumentName = equalSignIndex == -1 ? arg : arg.substring(0, equalSignIndex);
+                argument = optionArguments.get(optionArgumentName);
                 if (argument == null) {
                     throw new UnknownArgumentException(arg);
                 }

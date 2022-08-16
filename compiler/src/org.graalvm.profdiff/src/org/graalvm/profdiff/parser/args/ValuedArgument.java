@@ -72,12 +72,18 @@ abstract class ValuedArgument<T> extends Argument {
     public int parse(String[] args, int offsetBase) throws InvalidArgumentException {
         int offset = offsetBase;
         if (isOptionArgument()) {
-            assert args[offset].equals(getName());
-            ++offset;
-            if (offset >= args.length) {
-                throw new InvalidArgumentException(getName(), "No value was provided.");
+            if (args[offset].equals(getName())) {
+                ++offset;
+                if (offset >= args.length) {
+                    throw new InvalidArgumentException(getName(), "No value was provided.");
+                }
+                value = parseValue(args[offset]);
+            } else {
+                assert args[offset].startsWith(getName() + Argument.EQUAL_SIGN);
+                int equalSignIndex = args[offset].indexOf(Argument.EQUAL_SIGN);
+                assert equalSignIndex != -1;
+                value = parseValue(args[offset].substring(equalSignIndex + 1));
             }
-            value = parseValue(args[offset]);
         } else {
             value = parseValue(args[offset]);
         }
