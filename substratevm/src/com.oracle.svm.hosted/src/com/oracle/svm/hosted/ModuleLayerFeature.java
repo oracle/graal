@@ -207,28 +207,28 @@ public final class ModuleLayerFeature implements InternalFeature {
     private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
 
-        Map<String, HostedRuntimeModulePair> moduleLookupMap = analysisReachableNamedModules
+        Map<Module, Module> modulePairs = analysisReachableNamedModules
                         .stream()
-                        .collect(Collectors.toMap(Module::getName, m -> new HostedRuntimeModulePair(m, runtimeBootLayer)));
-        moduleLookupMap.putIfAbsent("ALL-UNNAMED", HostedRuntimeModulePair.withReplicatedHostedModule(moduleLayerFeatureUtils.allUnnamedModule));
-        moduleLookupMap.putIfAbsent("EVERYONE", HostedRuntimeModulePair.withReplicatedHostedModule(moduleLayerFeatureUtils.everyoneModule));
+                        .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.nameToModuleLookup.get(m.getName())));
+        modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
+        modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.everyoneModule);
 
         Module builderModule = ModuleLayerFeature.class.getModule();
         assert builderModule != null;
 
         try {
-            for (Map.Entry<String, HostedRuntimeModulePair> e1 : moduleLookupMap.entrySet()) {
-                Module hostedFrom = e1.getValue().hostedModule;
+            for (Map.Entry<Module, Module> e1 : modulePairs.entrySet()) {
+                Module hostedFrom = e1.getKey();
                 if (!hostedFrom.isNamed()) {
                     continue;
                 }
-                Module runtimeFrom = e1.getValue().runtimeModule;
-                for (Map.Entry<String, HostedRuntimeModulePair> e2 : moduleLookupMap.entrySet()) {
-                    Module hostedTo = e2.getValue().hostedModule;
+                Module runtimeFrom = e1.getValue();
+                for (Map.Entry<Module, Module> e2 : modulePairs.entrySet()) {
+                    Module hostedTo = e2.getKey();
                     if (hostedTo == hostedFrom) {
                         continue;
                     }
-                    Module runtimeTo = e2.getValue().runtimeModule;
+                    Module runtimeTo = e2.getValue();
                     if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
                         moduleLayerFeatureUtils.addReads(runtimeFrom, runtimeTo);
                         if (hostedFrom == builderModule) {
@@ -321,29 +321,6 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         // Ensure that the lazy modules field gets set
         runtimeBootLayer.modules();
-    }
-
-    private static final class HostedRuntimeModulePair {
-        static HostedRuntimeModulePair withReplicatedHostedModule(Module module) {
-            return new HostedRuntimeModulePair(module, module);
-        }
-
-        final Module hostedModule;
-        final Module runtimeModule;
-
-        HostedRuntimeModulePair(Module hostedModule, ModuleLayer runtimeBootLayer) {
-            this.hostedModule = hostedModule;
-            this.runtimeModule = runtimeBootLayer.findModule(hostedModule.getName()).orElseThrow(() -> errorSupplier(hostedModule));
-        }
-
-        private HostedRuntimeModulePair(Module hosted, Module runtime) {
-            hostedModule = hosted;
-            runtimeModule = runtime;
-        }
-
-        static RuntimeException errorSupplier(Module m) {
-            return VMError.shouldNotReachHere("Failed to find module " + m.getName() + " in the runtime boot module layer");
-        }
     }
 
     private static final class ModuleLayerFeatureUtils {
