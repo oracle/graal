@@ -561,7 +561,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, AArch64 arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.registerConditional(supports(arch, CPUFeature.ASIMD, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
-        r.registerConditional(supports(arch, CPUFeature.ASIMD, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
+        r.registerConditional(supports(arch, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
+        r.registerConditional(supports(arch, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
     }
 }

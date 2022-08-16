@@ -78,7 +78,8 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
             boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures);
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled();
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled() &&
+                            ImageSingletons.lookup(SubstrateTargetDescription.class).arch instanceof AMD64;
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {

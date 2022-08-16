@@ -44,16 +44,16 @@ import org.graalvm.word.LocationIdentity;
  * foreign call.
  */
 @NodeInfo
-public abstract class IntrinsicMemoryAccessNode extends AbstractMemoryCheckpoint implements MemoryAccess, MultiMemoryKill, IntrinsicMethodNodeInterface {
+public abstract class MemoryKillStubIntrinsicNode extends AbstractMemoryCheckpoint implements MemoryAccess, MultiMemoryKill, IntrinsicMethodNodeInterface {
 
-    public static final NodeClass<IntrinsicMemoryAccessNode> TYPE = NodeClass.create(IntrinsicMemoryAccessNode.class);
+    public static final NodeClass<MemoryKillStubIntrinsicNode> TYPE = NodeClass.create(MemoryKillStubIntrinsicNode.class);
 
     protected final EnumSet<?> runtimeCheckedCPUFeatures;
     protected final LocationIdentity locationIdentity;
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
-    protected IntrinsicMemoryAccessNode(NodeClass<? extends AbstractMemoryCheckpoint> c,
+    protected MemoryKillStubIntrinsicNode(NodeClass<? extends AbstractMemoryCheckpoint> c,
                     Stamp stamp,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity) {

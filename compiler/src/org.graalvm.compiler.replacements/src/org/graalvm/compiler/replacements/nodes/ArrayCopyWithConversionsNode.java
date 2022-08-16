@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.JavaKind;
  * compression and inflation depending on {@code strideSrc} and {@code strideDst}.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public class ArrayCopyWithConversionsNode extends IntrinsicMemoryAccessNode {
+public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode {
 
     public static final NodeClass<ArrayCopyWithConversionsNode> TYPE = NodeClass.create(ArrayCopyWithConversionsNode.class);
 

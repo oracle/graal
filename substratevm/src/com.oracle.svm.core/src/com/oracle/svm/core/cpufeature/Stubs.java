@@ -74,7 +74,7 @@ public final class Stubs {
     @Platforms(Platform.AARCH64.class)
     public static class AArch64Features {
         public static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
-        public static final EnumSet<AArch64.CPUFeature> AES_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.ASIMD, AArch64.CPUFeature.AES);
+        public static final EnumSet<AArch64.CPUFeature> AES_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.AES);
 
         public static EnumSet<AArch64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
             if (AESNode.class.equals(klass)) {
