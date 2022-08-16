@@ -5765,10 +5765,13 @@ public final class TruffleString extends AbstractTruffleString {
             int length = a.length();
             int stride = a.stride();
             int byteSize = length << stride;
-            Object buffer = allocator.allocate(byteSize);
+            Object buffer = allocator.allocate(byteSize + 4);
             NativePointer nativePointer = NativePointer.create(this, buffer, interopLibrary);
             byte[] arrayA = (byte[]) toIndexableNode.execute(a, a.data());
             TStringUnsafe.copyToNative(arrayA, a.offset(), nativePointer.pointer, 0, byteSize);
+            // zero-terminate the string with four zero bytes, to make absolutely sure any
+            // native code expecting zero-terminated strings can deal with the buffer
+            TStringUnsafe.putIntNative(nativePointer.pointer, byteSize, 0);
             TruffleString nativeString = TruffleString.createFromArray(nativePointer, 0, length, stride, encoding, a.codePointLength(), a.codeRange(), false);
             a.cacheInsert(nativeString);
             return nativeString;
