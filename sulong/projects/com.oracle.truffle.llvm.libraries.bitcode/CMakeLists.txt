@@ -30,23 +30,27 @@
 cmake_minimum_required(VERSION 3.10)
 project(com.oracle.truffle.llvm.libraries.bitcode)
 
-set(GRAALVM_LLVM_INCLUDE_DIR)
+function(require_var var)
+  if (NOT ${var})
+    message(FATAL_ERROR "${var} needs to be set")
+  endif()
+endfunction()
 
-if(NOT GRAALVM_LLVM_INCLUDE_DIR)
-   message(FATAL_ERROR "GRAALVM_LLVM_INCLUDE_DIR needs to be set")
-endif()
+function(check_var var)
+  set(${var} PARENT_SCOPE)
+  require_var(${var})
+endfunction()
 
-set(GRAALVM_LLVM_LIBS_INCLUDE_DIR)
+# set variable from environement variable if the latter exists
+function(setFromEnv varname envname)
+  if(DEFINED ENV{${envname}})
+    set(${varname} $ENV{${envname}} PARENT_SCOPE)
+  endif()
+endfunction()
 
-if(NOT GRAALVM_LLVM_LIBS_INCLUDE_DIR)
-  message(FATAL_ERROR "GRAALVM_LLVM_LIBS_INCLUDE_DIR needs to be set")
-endif()
-
-set(LIBCXX_SRC)
-
-if(NOT LIBCXX_SRC)
-   message(FATAL_ERROR "LIBCXX_SRC needs to be set")
-endif()
+check_var(GRAALVM_LLVM_INCLUDE_DIR)
+check_var(GRAALVM_LLVM_LIBS_INCLUDE_DIR)
+check_var(LIBCXX_SRC)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
 add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
@@ -59,35 +63,27 @@ else()
     set(CMAKE_INSTALL_RPATH "\$ORIGIN")
 endif()
 
-if(NOT MX_OS)
-   message(FATAL_ERROR "MX_OS needs to be set")
-endif()
-
-if(NOT MX_ARCH)
-   message(FATAL_ERROR "MX_ARCH needs to be set")
-endif()
+require_var(MX_OS)
+require_var(MX_ARCH)
 
 add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 
 # using glob patterns is not recommended: https://cmake.org/cmake/help/latest/command/file.html#glob
 add_library(sulong SHARED)
 
-if(WIN32)
-    set(GRAALVM_LLVM_LIB_DIR)
+target_sources(sulong PRIVATE
+  src/crt0.c
+  src/exit.c
+  src/sulong_dispose_context.c
+)
 
-    if(NOT GRAALVM_LLVM_LIB_DIR)
-      message(FATAL_ERROR "GRAALVM_LLVM_LIB_DIR needs to be set")
-    endif()
+if(WIN32)
+    check_var(LIBCXX_ISYSTEM)
+    check_var(GRAALVM_LLVM_LIB_DIR)
 
     target_link_directories(sulong PRIVATE ${GRAALVM_LLVM_LIB_DIR})
     target_link_libraries(sulong graalvm-llvm)
-
-    target_sources(sulong PRIVATE
-      src/crt0.c
-      src/exit.c
-      src/sulong_dispose_context.c
-      sulong.def
-      )
+    target_sources(sulong PRIVATE sulong.def)
 else()
     target_sources(sulong PRIVATE
       src/abort.c
@@ -95,9 +91,7 @@ else()
       src/builtin.c
       src/clone.c
       src/complex.c
-      src/crt0.c
       src/exec.c
-      src/exit.c
       src/fork.c
       src/memcpy.c
       src/pthreads.c
@@ -106,7 +100,6 @@ else()
       src/signals.c
       src/stat.c
       src/string.c
-      src/sulong_dispose_context.c
     )
 endif()
 
@@ -124,11 +117,29 @@ if(NOT MX_OS STREQUAL "darwin")
 endif()
 install(TARGETS sulong DESTINATION bin)
 
+
+# sulong++ library
+
+add_library(sulong++ SHARED)
+target_include_directories(sulong++ PRIVATE ${LIBCXX_SRC}/libcxx/src ${LIBCXX_SRC}/libcxxabi/src ${LIBCXX_SRC}/libcxxabi/include)
+target_compile_definitions(sulong++ PRIVATE LIBCXXABI_SILENT_TERMINATE)
+target_compile_options(sulong++ PRIVATE -std=c++14 -stdlib=libc++ -Wno-undefined-internal)
+target_link_options(sulong++ PRIVATE -stdlib=libc++ -Wno-undefined-internal)
+install(TARGETS sulong++ DESTINATION bin)
+
 if(NOT WIN32)
-    add_library(sulong++ SHARED libsulongxx/exception_support.cpp)
-    target_include_directories(sulong++ PRIVATE ${LIBCXX_SRC}/libcxx/src ${LIBCXX_SRC}/libcxxabi/src)
-    target_compile_definitions(sulong++ PRIVATE LIBCXXABI_SILENT_TERMINATE)
-    target_compile_options(sulong++ PRIVATE -std=c++11 -stdlib=libc++ -Wno-undefined-internal)
-    target_link_options(sulong++ PRIVATE -stdlib=libc++ -Wno-undefined-internal)
-    install(TARGETS sulong++ DESTINATION bin)
+  target_sources(sulong++ PRIVATE libsulongxx/exception_support.cpp)
+else()
+  setFromEnv(VCTOOLS_INSTALL_DIR VCToolsInstallDir)
+  set(VCRUNTIME_SRC ${VCTOOLS_INSTALL_DIR}/crt/src/vcruntime)
+
+  target_include_directories(sulong++ PRIVATE ${VCRUNTIME_SRC})
+  target_link_directories(sulong++ PRIVATE ${GRAALVM_LLVM_LIB_DIR})
+  target_compile_options(sulong++ PRIVATE -stdlib++-isystem ${LIBCXX_ISYSTEM})
+  target_link_options(sulong++ PRIVATE -nostdlib)
+
+  target_sources(sulong++ PRIVATE libsulongxx/windows/sulong++.def)
+  target_sources(sulong++ PRIVATE libsulongxx/windows/type_info.cpp)
+
+  set_source_files_properties(libsulongxx/windows/type_info.cpp PROPERTIES COMPILE_FLAGS -fno-rtti)
 endif()
