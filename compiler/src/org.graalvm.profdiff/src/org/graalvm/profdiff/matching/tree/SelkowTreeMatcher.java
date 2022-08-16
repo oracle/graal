@@ -26,6 +26,8 @@ package org.graalvm.profdiff.matching.tree;
 
 import org.graalvm.profdiff.core.TreeNode;
 
+import java.lang.reflect.Array;
+
 /**
  * Creates a matching by computing an optimal edit script between two trees using
  * <a href="https://doi.org/10.1016/0020-0190(77)90064-3">Selkow's tree edit distance</a>. The
@@ -70,7 +72,7 @@ public class SelkowTreeMatcher<T extends TreeNode<T>> implements TreeMatcher<T> 
         long[][] delta = new long[m + 1][n + 1];
         delta[0][0] = rootsEqual ? 0 : editPolicy.relabelCost(node1, node2);
         // scripts[i][j] is the edit script between the (i - 1)-th and (j - 1)-th child's subtree
-        EditScript<T>[][] scripts = new EditScript[m + 1][n + 1];
+        EditScript<T>[][] scripts = (EditScript<T>[][]) Array.newInstance(EditScript.class, m + 1, n + 1);
         for (int k = 1; k <= n; ++k) {
             delta[0][k] = delta[0][k - 1] + editPolicy.insertCost(node2.getChildren().get(k - 1));
         }
