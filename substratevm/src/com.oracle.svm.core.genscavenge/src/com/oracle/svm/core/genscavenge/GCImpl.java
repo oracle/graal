@@ -129,6 +129,8 @@ public final class GCImpl implements GC {
     public String getName() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
             return "Epsilon GC";
+        } else if (ParallelGC.isSupported()) {
+            return "Parallel GC";
         } else {
             return "Serial GC";
         }
@@ -206,7 +208,6 @@ public final class GCImpl implements GC {
 
         GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause.getName());
-        ParallelGCImpl.getStats().reset();
         boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
         printGCAfter(cause.getName());
 
@@ -434,7 +435,6 @@ public final class GCImpl implements GC {
                 } else {
                     timers.logAfterCollection(verboseGCLog);
                 }
-                ParallelGCImpl.getStats().print(Log.log());
                 verboseGCLog.string("]");
                 verboseGCLog.string("]").newline();
             }
@@ -1051,7 +1051,9 @@ public final class GCImpl implements GC {
                 scanGreyObjectsLoop();
             } else {
                 HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
-                ParallelGCImpl.waitForIdle();
+                if (ParallelGC.isSupported()) {
+                    ParallelGCImpl.waitForIdle();
+                }
             }
         } finally {
             scanGreyObjectsTimer.close();

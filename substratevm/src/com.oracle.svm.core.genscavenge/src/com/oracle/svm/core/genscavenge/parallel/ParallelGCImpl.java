@@ -24,10 +24,12 @@ import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
 
-    /// static -> ImageSingletons
+    /// determine at runtime?
     private static final int WORKERS_COUNT = 4;
 
-    /// tlab of the current to-space
+    /**
+     * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
+     */
     private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> chunkTL =
             FastThreadLocalFactory.createWord("ParallelGCImpl.chunkTL");
 
@@ -44,7 +46,6 @@ public class ParallelGCImpl extends ParallelGC {
 
     @Override
     public void startWorkerThreads() {
-        /// determine worker count
         int hubOffset = ConfigurationValues.getObjectLayout().getHubOffset();
         VMError.guarantee(hubOffset == 0, "hub offset must be 0");
 
@@ -112,13 +113,12 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public static boolean isInParallelPhase() {
-        return isSupported() && singleton().inParallelPhase;
+        assert isSupported();
+        return singleton().inParallelPhase;
     }
 
     public static void waitForIdle() {
-        if (isSupported()) {
-            singleton().waitForIdleImpl();
-        }
+        singleton().waitForIdleImpl();
     }
 
     public static AlignedHeapChunk.AlignedHeader getThreadLocalChunk() {

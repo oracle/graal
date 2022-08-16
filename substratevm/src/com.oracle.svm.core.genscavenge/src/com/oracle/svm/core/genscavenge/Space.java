@@ -380,7 +380,7 @@ public final class Space {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (ParallelGCImpl.isInParallelPhase()) {
+        if (ParallelGC.isSupported() && ParallelGCImpl.isInParallelPhase()) {
             return promoteAlignedObjectParallel(original, originalSpace);
         }
 
