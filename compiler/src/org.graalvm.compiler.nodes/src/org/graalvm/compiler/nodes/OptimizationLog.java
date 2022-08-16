@@ -320,6 +320,7 @@ public interface OptimizationLog extends CompilationListener {
     static boolean isAnyLoggingEnabled(DebugContext debugContext) {
         return debugContext.isLogEnabledForMethod() || debugContext.isDumpEnabledForMethod() ||
                         DebugOptions.Count.getValue(debugContext.getOptions()) != null ||
+                        debugContext.hasUnscopedCounters() ||
                         isOptimizationLogEnabled(debugContext.getOptions());
     }
 

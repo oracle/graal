@@ -281,7 +281,7 @@ public class OptimizationLogImpl implements OptimizationLog {
             optimizationName = createOptimizationName(optimizationClass);
             position = node.getNodeSourcePosition();
             DebugContext debug = optimizationLog.graph.getDebug();
-            if (debug.isCountEnabled()) {
+            if (debug.isCountEnabled() || debug.hasUnscopedCounters()) {
                 DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {

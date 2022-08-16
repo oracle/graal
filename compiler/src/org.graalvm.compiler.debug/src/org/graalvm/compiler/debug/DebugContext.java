@@ -2231,6 +2231,13 @@ public final class DebugContext implements AutoCloseable {
         return metricsEnabled;
     }
 
+    /**
+     * Returns {@code true} if any unscoped counters are enabled.
+     */
+    public boolean hasUnscopedCounters() {
+        return immutable.unscopedCounters != null && !immutable.unscopedCounters.isEmpty();
+    }
+
     @Override
     public void close() {
         closeDumpHandlers(false);
