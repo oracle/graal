@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.test;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -32,6 +33,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -64,6 +66,11 @@ public class OptimizationLogTest extends GraalCompilerTest {
         }
 
         @Override
+        public Optional<NotApplicable> canApply(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
+
+        @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
             graph.getOptimizationLog().withProperty("foo", 42).withLazyProperty("bar", barPropertySupplier)
                             .report(getClass(), "StartNodeReported", graph.start());
@@ -74,6 +81,11 @@ public class OptimizationLogTest extends GraalCompilerTest {
 
     private static final class ReportAddNodePhase extends BasePhase<CoreProviders> {
         @Override
+        public Optional<NotApplicable> canApply(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
+
+        @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
             for (AddNode addNode : graph.getNodes().filter(AddNode.class)) {
                 graph.getOptimizationLog().report(getClass(), "AddNodeReported", addNode);
@@ -82,6 +94,11 @@ public class OptimizationLogTest extends GraalCompilerTest {
     }
 
     private static final class ReportReturnNodePhase extends BasePhase<CoreProviders> {
+        @Override
+        public Optional<NotApplicable> canApply(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
+
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
             for (ReturnNode returnNode : graph.getNodes().filter(ReturnNode.class)) {
