@@ -481,10 +481,13 @@ public class FeatureImpl {
 
         @Override
         public void requireAnalysisIteration() {
-            String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
-                            "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
-                            " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
-            throw VMError.shouldNotReachHere(msg);
+            if (bb.executorIsStarted()) {
+                String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
+                                "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
+                                " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
+                throw VMError.shouldNotReachHere(msg);
+            }
+            super.requireAnalysisIteration();
         }
 
     }
