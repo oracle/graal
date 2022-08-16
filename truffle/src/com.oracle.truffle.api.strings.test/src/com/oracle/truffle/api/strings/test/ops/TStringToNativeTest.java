@@ -57,21 +57,21 @@ import com.oracle.truffle.api.strings.test.TStringTestBase;
 @RunWith(Parameterized.class)
 public class TStringToNativeTest extends TStringTestBase {
 
-    @Parameter public TruffleString.ToNativeNode node;
+    @Parameter public TruffleString.AsNativeNode node;
 
     @Parameters(name = "{0}, {1}")
     public static Iterable<Object> data() {
-        return Arrays.asList(TruffleString.ToNativeNode.create(), TruffleString.ToNativeNode.getUncached());
+        return Arrays.asList(TruffleString.AsNativeNode.create(), TruffleString.AsNativeNode.getUncached());
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             if (a.isImmutable()) {
-                TruffleString tString = (TruffleString) a;
-                node.execute(tString, PointerObject::create, encoding);
-                assertBytesEqual(tString, encoding, array);
-                Assert.assertTrue(tString.isNative());
+                TruffleString nativeString = node.execute((TruffleString) a, PointerObject::create, encoding);
+                assertBytesEqual(nativeString, encoding, array);
+                Assert.assertTrue(nativeString.isNative());
+                Assert.assertSame(nativeString, node.execute((TruffleString) a, PointerObject::create, encoding));
             }
         });
     }

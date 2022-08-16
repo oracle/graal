@@ -245,10 +245,6 @@ public abstract class AbstractTruffleString {
         this.data = array;
     }
 
-    final void setData(NativePointer array) {
-        this.data = array;
-    }
-
     /**
      * Get this string's base offset in bytes. This property is used to accommodate string views /
      * lazy strings, and also allow "storage agnostic" access to the string's content. All methods
@@ -1329,14 +1325,10 @@ public abstract class AbstractTruffleString {
         }
 
         static NativePointer create(Node nodeThis, Object pointerObject, Node interopLibrary) {
-            return create(nodeThis, pointerObject, interopLibrary, 0);
-        }
-
-        static NativePointer create(Node nodeThis, Object pointerObject, Node interopLibrary, int offset) {
             if (!TStringAccessor.isNativeAccessAllowed(nodeThis)) {
                 throw InternalErrors.nativeAccessRequired();
             }
-            return new NativePointer(pointerObject, TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject) - offset);
+            return new NativePointer(pointerObject, TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject));
         }
 
         NativePointer copy() {

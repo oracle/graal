@@ -69,19 +69,19 @@ public class TStringGetStringCompactionLevelTest extends TStringTestBase {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             int stride = node.execute(a, encoding);
             if (encoding == TruffleString.Encoding.UTF_32) {
-                Assert.assertTrue(stride <= 2);
-                if (stride == 0) {
+                Assert.assertTrue(stride == 1 || stride == 2 || stride == 4);
+                if (stride == 1) {
                     Assert.assertTrue(a.getCodeRangeUncached(encoding).isSubsetOf(TruffleString.CodeRange.LATIN_1));
-                } else if (stride == 1) {
+                } else if (stride == 2) {
                     Assert.assertEquals(TruffleString.CodeRange.BMP, a.getCodeRangeUncached(encoding));
                 }
             } else if (encoding == TruffleString.Encoding.UTF_16) {
-                Assert.assertTrue(stride <= 1);
-                if (stride == 0) {
+                Assert.assertTrue(stride == 1 || stride == 2);
+                if (stride == 1) {
                     Assert.assertTrue(a.getCodeRangeUncached(encoding).isSubsetOf(TruffleString.CodeRange.LATIN_1));
                 }
             } else {
-                Assert.assertEquals(0, stride);
+                Assert.assertEquals(1, stride);
             }
         });
     }

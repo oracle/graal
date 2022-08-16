@@ -329,7 +329,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     private static boolean cacheEntryEquals(TruffleString a, TruffleString b) {
-        return b.encoding() == a.encoding() && (!isUTF16(a.encoding()) || b.isJavaString() == a.isJavaString());
+        return b.encoding() == a.encoding() && a.isNative() == b.isNative() && (!isUTF16(a.encoding()) || b.isJavaString() == a.isJavaString());
     }
 
     @TruffleBoundary
@@ -2762,14 +2762,9 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Get the string's compaction level as an integer representing the number of bytes per
-         * array element. Possible values are:
-         * <ul>
-         * <li>{@code 0}: one byte per array element.</li>
-         * <li>{@code 1}: two bytes per array element.</li>
-         * <li>{@code 2}: four bytes per array element.</li>
-         * </ul>
-         * Since string compaction is only supported on {@link Encoding#UTF_16} and
-         * {@link Encoding#UTF_32}, this node will return {@code 0} on all other encodings.
+         * array element. Possible values are 1, 2 and 4. Since string compaction is only supported
+         * on {@link Encoding#UTF_16} and {@link Encoding#UTF_32}, this node will return {@code 1}
+         * on all other encodings.
          *
          * @since 22.3
          */
@@ -2780,12 +2775,12 @@ public final class TruffleString extends AbstractTruffleString {
             a.checkEncoding(expectedEncoding);
             if (CompilerDirectives.isPartialEvaluationConstant(expectedEncoding)) {
                 if (isUTF16Or32(expectedEncoding)) {
-                    return a.stride();
+                    return 1 << a.stride();
                 } else {
-                    return 0;
+                    return 1;
                 }
             }
-            return a.stride();
+            return 1 << a.stride();
         }
 
         /**
@@ -5699,68 +5694,112 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Node to convert a potentially {@link #isManaged() managed} {@link TruffleString} to a
-     * {@link #isNative() native} string in-place.
+     * {@link #isNative() native} string.
      *
      * @since 22.3
      */
     @ImportStatic(TStringAccessor.class)
     @GeneratePackagePrivate
     @GenerateUncached
-    public abstract static class ToNativeNode extends Node {
+    public abstract static class AsNativeNode extends Node {
 
+        /**
+         * An allocation function for native buffers.
+         *
+         * @since 22.3
+         */
         @FunctionalInterface
         public interface NativeAllocator {
+
+            /**
+             * Allocates a new native buffer of {@code byteSize} bytes. The return value must be a
+             * Truffle object as expected by {@link FromNativePointerNode}.
+             *
+             * @since 22.3
+             */
             Object allocate(int byteSize);
         }
 
-        ToNativeNode() {
+        AsNativeNode() {
         }
 
         /**
          * Convert a potentially {@link #isManaged() managed} {@link TruffleString} to a
-         * {@link #isNative() native} string in-place.
+         * {@link #isNative() native} string. If the given string is {@link #isNative() native}
+         * native already, it is returned. Otherwise, a new string with a backing native buffer
+         * allocated via {@code allocator} is created and stored in the given managed string's
+         * internal transcoding cache, such that subsequent calls on the same string will return the
+         * same native string. This operation requires native access permissions
+         * ({@code TruffleLanguage.Env#isNativeAccessAllowed()}).
+         * 
+         * @param allocator a function implementing {@link NativeAllocator}. This parameter is
+         *            expected to be {@link CompilerDirectives#isPartialEvaluationConstant(Object)
+         *            partial evaluation constant}.
          *
          * @since 22.3
          */
-        public abstract void execute(TruffleString a, NativeAllocator allocator, Encoding expectedEncoding);
+        public abstract TruffleString execute(TruffleString a, NativeAllocator allocator, Encoding expectedEncoding);
 
         @Specialization
-        void toNative(TruffleString a, NativeAllocator allocator, Encoding expectedEncoding,
+        TruffleString asNative(TruffleString a, NativeAllocator allocator, Encoding encoding,
                         @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
                         @Cached ConditionProfile isNativeProfile,
+                        @Cached ConditionProfile cacheHit,
                         @Cached ToIndexableNode toIndexableNode) {
-            a.checkEncoding(expectedEncoding);
+            a.checkEncoding(encoding);
+            CompilerAsserts.partialEvaluationConstant(allocator);
             if (isNativeProfile.profile(a.isNative())) {
-                return;
+                return a;
             }
-            Object buffer = allocator.allocate(a.length() << a.stride());
-            NativePointer nativePointer = NativePointer.create(this, buffer, interopLibrary, a.offset());
+            TruffleString cur = a.next;
+            assert !a.isJavaString();
+            if (cur != null) {
+                while (cur != a && (!cur.isNative() || !cur.isCompatibleTo(encoding))) {
+                    cur = cur.next;
+                }
+                if (cacheHit.profile(cur.isNative())) {
+                    assert cur.isCompatibleTo(encoding);
+                    return cur;
+                }
+            }
+            int length = a.length();
+            int stride = a.stride();
+            int byteSize = length << stride;
+            Object buffer = allocator.allocate(byteSize);
+            NativePointer nativePointer = NativePointer.create(this, buffer, interopLibrary);
             byte[] arrayA = (byte[]) toIndexableNode.execute(a, a.data());
-            TStringUnsafe.copyToNative(arrayA, a.offset(), nativePointer.pointer, a.offset(), a.length() << a.stride());
-            a.setData(nativePointer);
+            TStringUnsafe.copyToNative(arrayA, a.offset(), nativePointer.pointer, 0, byteSize);
+            TruffleString nativeString = TruffleString.createFromArray(nativePointer, 0, length, stride, encoding, a.codePointLength(), a.codeRange(), false);
+            a.cacheInsert(nativeString);
+            return nativeString;
         }
 
         /**
-         * Create a new {@link ToNativeNode}.
+         * Create a new {@link AsNativeNode}.
          *
-         * @since 22.1
+         * @since 22.3
          */
-        public static ToNativeNode create() {
-            return TruffleStringFactory.ToNativeNodeGen.create();
+        public static AsNativeNode create() {
+            return TruffleStringFactory.AsNativeNodeGen.create();
         }
 
         /**
-         * Get the uncached version of {@link ToNativeNode}.
+         * Get the uncached version of {@link AsNativeNode}.
          *
-         * @since 22.1
+         * @since 22.3
          */
-        public static ToNativeNode getUncached() {
-            return TruffleStringFactory.ToNativeNodeGen.getUncached();
+        public static AsNativeNode getUncached() {
+            return TruffleStringFactory.AsNativeNodeGen.getUncached();
         }
     }
 
-    public void toNativeUncached(ToNativeNode.NativeAllocator allocator, Encoding expectedEncoding) {
-        ToNativeNode.getUncached().execute(this, allocator, expectedEncoding);
+    /**
+     * Shorthand for calling the uncached version of {@link AsNativeNode}.
+     *
+     * @since 22.3
+     */
+    public TruffleString asNativeUncached(AsNativeNode.NativeAllocator allocator, Encoding expectedEncoding) {
+        return AsNativeNode.getUncached().execute(this, allocator, expectedEncoding);
     }
 
     /**
