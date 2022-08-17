@@ -648,9 +648,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        if (engine.propagateCallAndLoopCount) {
-            propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor(), 0);
-        }
         return compile(true);
     }
 
@@ -660,7 +657,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return false;
         }
         OptimizedDirectCallNode callerCallNode = singleCallNode.get();
-        assert callerCallNode != null;
+        if (callerCallNode == null) {
+            return false;
+        }
         RootNode callerRootNode = callerCallNode.getRootNode();
         if (callerRootNode == null) {
             return false;
@@ -787,6 +786,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
+                    if (engine.propagateCallAndLoopCount) {
+                        propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor(), 0);
+                    }
                     if (!wasExecuted() && !engine.backgroundCompilation) {
                         prepareForAOTImpl();
                     }
