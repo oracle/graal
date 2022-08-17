@@ -33,7 +33,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
-import com.oracle.svm.core.heap.ParallelGC;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -87,6 +86,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
@@ -292,7 +292,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             ReferenceHandlerThread.start();
         }
 
-        ParallelGC.start();
+        ParallelGC.startWorkerThreads();
 
         /*
          * After starting all the necessary threads, we can finally execute complex JDK code or code

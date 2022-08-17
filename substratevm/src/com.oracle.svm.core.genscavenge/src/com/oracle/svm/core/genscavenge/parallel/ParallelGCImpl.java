@@ -45,7 +45,7 @@ public class ParallelGCImpl extends ParallelGC {
     private volatile boolean inParallelPhase;
 
     @Override
-    public void startWorkerThreads() {
+    public void startWorkerThreadsImpl() {
         int hubOffset = ConfigurationValues.getObjectLayout().getHubOffset();
         VMError.guarantee(hubOffset == 0, "hub offset must be 0");
 
@@ -89,14 +89,20 @@ public class ParallelGCImpl extends ParallelGC {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
-    /// name, explain
+    /**
+     * To be invoked in sequential GC phase. Pushes object pointer to one of the workers' stacks
+     * in round-robin fashion, attempting to balance load between workers.
+     */
     public void push(Pointer ptr) {
         assert !isInParallelPhase();
         push(ptr, STACKS[currentStack]);
         currentStack = (currentStack + 1) % WORKERS_COUNT;
     }
 
-    public void pushLocally(Pointer ptr) {
+    /**
+     * To be invoked in parallel GC phase. Pushes object pointer to current worker's thread local stack.
+     */
+    public void pushToLocalStack(Pointer ptr) {
         assert isInParallelPhase();
         push(ptr, localStack.get());
     }
@@ -113,8 +119,7 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public static boolean isInParallelPhase() {
-        assert isSupported();
-        return singleton().inParallelPhase;
+        return isSupported() && singleton().inParallelPhase;
     }
 
     public static void waitForIdle() {

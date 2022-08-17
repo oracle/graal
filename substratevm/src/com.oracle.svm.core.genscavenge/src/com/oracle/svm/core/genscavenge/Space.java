@@ -28,10 +28,6 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLO
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
-import com.oracle.svm.core.heap.ParallelGC;
-import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -44,12 +40,15 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * A Space is a collection of HeapChunks.
@@ -380,7 +379,7 @@ public final class Space {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (ParallelGC.isSupported() && ParallelGCImpl.isInParallelPhase()) {
+        if (ParallelGCImpl.isInParallelPhase()) {
             return promoteAlignedObjectParallel(original, originalSpace);
         }
 
@@ -440,7 +439,7 @@ public final class Space {
                 AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
                 RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
             }
-            ParallelGCImpl.singleton().pushLocally(copyMemory);
+            ParallelGCImpl.singleton().pushToLocalStack(copyMemory);
             return copy;
         } else {
             // Retract speculatively allocated memory
@@ -488,13 +487,12 @@ public final class Space {
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        boolean parallel = ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase();
-        if (parallel) {
+        if (ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.lock();
         }
         originalSpace.extractAlignedHeapChunk(chunk);
         appendAlignedHeapChunk(chunk);
-        if (parallel) {
+        if (ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.unlock();
             if (!AlignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
                 throw VMError.shouldNotReachHere();
@@ -515,13 +513,12 @@ public final class Space {
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        boolean parallel = ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase();
-        if (parallel) {
+        if (ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.lock();
         }
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
-        if (parallel) {
+        if (ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.unlock();
             if (!UnalignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
                 throw VMError.shouldNotReachHere();

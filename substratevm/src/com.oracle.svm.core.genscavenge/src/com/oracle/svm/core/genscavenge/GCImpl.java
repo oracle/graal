@@ -29,9 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
-import com.oracle.svm.core.heap.ParallelGC;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -69,12 +66,15 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.BasicCollectionPolicies.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
+import com.oracle.svm.core.heap.ParallelGC;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
@@ -129,7 +129,7 @@ public final class GCImpl implements GC {
     public String getName() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
             return "Epsilon GC";
-        } else if (ParallelGC.isSupported()) {
+        } else if (SubstrateOptions.UseParallelGC.getValue()) {
             return "Parallel GC";
         } else {
             return "Serial GC";

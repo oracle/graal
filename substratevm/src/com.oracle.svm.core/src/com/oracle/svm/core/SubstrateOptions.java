@@ -39,8 +39,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -338,9 +336,6 @@ public class SubstrateOptions {
     public static boolean useGraalCeGC() {
         return UseSerialGC.getValue() || UseParallelGC.getValue() || UseEpsilonGC.getValue();
     }
-
-    @Option(help = "Number of parallel GC worker threads.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> ParallelGCWorkers = new RuntimeOptionKey<>(0L);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);

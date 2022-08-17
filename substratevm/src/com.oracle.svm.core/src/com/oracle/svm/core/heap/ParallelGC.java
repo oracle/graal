@@ -1,7 +1,6 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.log.Log;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -12,15 +11,11 @@ public abstract class ParallelGC {
         return SubstrateOptions.UseParallelGC.getValue();
     }
 
-    public static void start() {
-        Log log = Log.log().string("ParGC ");///
+    public static void startWorkerThreads() {
         if (isSupported()) {
-            log.string("supported").newline();
-            ImageSingletons.lookup(ParallelGC.class).startWorkerThreads();
-        } else {
-            log.string("missing").newline();
+            ImageSingletons.lookup(ParallelGC.class).startWorkerThreadsImpl();
         }
     }
 
-    public abstract void startWorkerThreads();
+    public abstract void startWorkerThreadsImpl();
 }
