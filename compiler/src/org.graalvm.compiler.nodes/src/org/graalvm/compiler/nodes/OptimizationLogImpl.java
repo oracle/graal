@@ -276,7 +276,7 @@ public class OptimizationLogImpl implements OptimizationLog {
 
         @Override
         public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-            assert logLevel > 0;
+            assert logLevel >= OptimizationLog.MINIMUM_LOG_LEVEL;
             event = eventName;
             optimizationName = createOptimizationName(optimizationClass);
             position = node.getNodeSourcePosition();
@@ -285,15 +285,9 @@ public class OptimizationLogImpl implements OptimizationLog {
                 DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {
-                StringBuilder msg = new StringBuilder("Performed ").append(optimizationName).append(' ').append(eventName)
-                                .append(" for node ").append(node);
-                if (position != null) {
-                    msg.append(" at bci ").append(position.getBCI());
-                }
-                if (properties != null) {
-                    msg.append(' ').append(JSONFormatter.formatJSON(properties));
-                }
-                debug.log(logLevel, msg.toString());
+                debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName,
+                                position == null ? "unknown" : position.getBCI(),
+                                properties == null ? "" : JSONFormatter.formatJSON(properties));
             }
             if (debug.isDumpEnabled(logLevel)) {
                 debug.dump(logLevel, optimizationLog.graph, "%s %s for %s", optimizationName, eventName, node);

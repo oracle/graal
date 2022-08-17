@@ -159,7 +159,7 @@ public interface OptimizationLog extends CompilationListener {
 
         @Override
         public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-
+            assert logLevel >= MINIMUM_LOG_LEVEL;
         }
     }
 
@@ -237,7 +237,7 @@ public interface OptimizationLog extends CompilationListener {
          */
         @Override
         public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-
+            assert logLevel >= MINIMUM_LOG_LEVEL;
         }
 
         /**
@@ -281,6 +281,11 @@ public interface OptimizationLog extends CompilationListener {
             return DebugCloseable.VOID_CLOSEABLE;
         }
     }
+
+    /**
+     * The minimum log level to report optimizations at.
+     */
+    int MINIMUM_LOG_LEVEL = DebugContext.DETAILED_LEVEL;
 
     OptimizationEntryDummy OPTIMIZATION_ENTRY_DUMMY = new OptimizationEntryDummy();
 

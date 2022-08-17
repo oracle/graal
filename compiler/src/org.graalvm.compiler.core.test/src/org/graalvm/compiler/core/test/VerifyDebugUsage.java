@@ -37,6 +37,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -146,8 +147,16 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
 
         ResolvedJavaMethod verifiedCallee = debugCallTarget.targetMethod();
         if (verifiedCallee.getName().equals("dump")) {
-            int dumpLevel = verifyDumpLevelParameter(callerGraph, debugCallTarget, verifiedCallee, args.get(1));
-            verifyDumpObjectParameter(callerGraph, debugCallTarget, args.get(2), verifiedCallee, dumpLevel);
+            /*
+             * The optimization log dumps at a parametrized level, but it must be at least
+             * OptimizationLog.MINIMUM_LOG_LEVEL.
+             */
+            String optimizationEntryClassName = OptimizationLogImpl.OptimizationEntryImpl.class.getName();
+            String callerClassName = callerGraph.method().asStackTraceElement(debugCallTarget.invoke().bci()).getClassName();
+            if (!optimizationEntryClassName.equals(callerClassName)) {
+                int dumpLevel = verifyDumpLevelParameter(callerGraph, debugCallTarget, verifiedCallee, args.get(1));
+                verifyDumpObjectParameter(callerGraph, debugCallTarget, args.get(2), verifiedCallee, dumpLevel);
+            }
         }
     }
 
