@@ -651,30 +651,30 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return compile(true);
     }
 
-    private static boolean propagateCallAndLoopCount(OptimizedCallTarget original, OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor, int depth) {
+    private static void propagateCallAndLoopCount(OptimizedCallTarget original, OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor, int depth) {
         WeakReference<OptimizedDirectCallNode> singleCallNode = current.singleCallNode;
         if (original.engine.propagateCallAndLoopCountMaxDepth <= depth || parentFrameDescriptor == null || singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
-            return false;
+            return;
         }
         OptimizedDirectCallNode callerCallNode = singleCallNode.get();
         if (callerCallNode == null) {
-            return false;
+            return;
         }
         RootNode callerRootNode = callerCallNode.getRootNode();
         if (callerRootNode == null) {
-            return false;
+            return;
         }
         OptimizedCallTarget callerCallTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
         // Recursive
         if (original.equals(callerCallTarget)) {
-            return false;
+            return;
         }
-        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor) || propagateCallAndLoopCount(original, callerCallTarget, parentFrameDescriptor, depth + 1)) {
+        if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor)) {
             callerCallNode.forceInlining();
             callerCallTarget.callAndLoopCount += original.callAndLoopCount;
-            return true;
+        } else {
+            propagateCallAndLoopCount(original, callerCallTarget, parentFrameDescriptor, depth + 1);
         }
-        return false;
     }
 
     private Object executeRootNode(VirtualFrame frame, CompilationState tier) {

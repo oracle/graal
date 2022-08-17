@@ -159,10 +159,10 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
         OptimizedCallTarget caller = (OptimizedCallTarget) callerRootNode.getCallTarget();
         compile(caller);
         OptimizedCallTarget intermediate = callerRootNode.target;
-        Assert.assertEquals(caller.getCallAndLoopCount(), intermediate.getCallAndLoopCount());
+        Assert.assertTrue(caller.getCallAndLoopCount() > intermediate.getCallAndLoopCount());
         OptimizedCallTarget callee = ((CallerRootNode) intermediate.getRootNode()).target;
         Assert.assertTrue(caller.getCallAndLoopCount() > callee.getCallAndLoopCount());
-        Assert.assertTrue(intermediate.getCallAndLoopCount() > callee.getCallAndLoopCount());
+        Assert.assertTrue(intermediate.getCallAndLoopCount() < callee.getCallAndLoopCount());
     }
 
     @Test
