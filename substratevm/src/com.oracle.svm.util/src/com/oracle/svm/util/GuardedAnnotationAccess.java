@@ -26,6 +26,7 @@ package com.oracle.svm.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -102,6 +103,15 @@ public final class GuardedAnnotationAccess {
              * user code or if the user code references types missing from the classpath.
              */
             return new Annotation[0];
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            return ImageSingletons.lookup(AnnotationExtracter.class).getAnnotationTypes(element);
+        } else {
+            return Arrays.stream(DirectAnnotationAccess.getAnnotations(element)).map(Annotation::annotationType).toArray(Class[]::new);
         }
     }
 

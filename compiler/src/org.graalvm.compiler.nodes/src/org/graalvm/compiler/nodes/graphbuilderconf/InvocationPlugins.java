@@ -86,6 +86,8 @@ public class InvocationPlugins {
                 "You can append ':verbose' at the end of the filter value to print out disabled " +
                 "intrinsics as they are encountered during compilation (e.g., 'String.equals:verbose').", type = OptionType.Debug)
         public static final OptionKey<String> DisableIntrinsics = new OptionKey<>(null);
+        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
         // @formatter:on
     }
 
