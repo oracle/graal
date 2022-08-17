@@ -54,8 +54,9 @@ import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 public final class RuntimeProxyCreation {
 
     /**
-     * Register dynamic proxy class that should be available to get created at run time. The proxy
-     * class is fully specified by the interfaces it implements.
+     * Enables registering specifications of {@link java.lang.reflect.Proxy} classes during the
+     * image build so that matching proxy objects can be created at runtime. The proxy class is
+     * fully specified by the interfaces it implements.
      *
      * @since 22.3
      */

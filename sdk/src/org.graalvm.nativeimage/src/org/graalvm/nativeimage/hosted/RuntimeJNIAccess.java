@@ -59,9 +59,10 @@ import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 public final class RuntimeJNIAccess {
 
     /**
-     * Makes the provided classes available for JNI access at run time. Needed when C/C++ code looks
-     * up Java classes via JNINativeInterface.FindClass, GetObjectClass or DefineClass.
-     * 
+     * Makes the provided classes available for JNI access at run time. Needed when native code
+     * looks up Java classes via <a href=
+     * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#findclass">FindClass</a>.
+     *
      * @since 22.3
      */
     public static void register(Class<?>... classes) {
@@ -69,8 +70,11 @@ public final class RuntimeJNIAccess {
     }
 
     /**
-     * Makes the provided methods available for JNI access at run time. Needed when C/C++ code looks
-     * up Java methods via JNINativeInterface.GetMethodID or GetStaticMethodID.
+     * Makes the provided methods available for JNI access at run time. Needed when native code
+     * looks up Java methods via <a href=
+     * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getmethodid">GetMethodID</a>
+     * or <a href=
+     * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticmethodid">GetStaticMethodID</a>.
      *
      * @since 22.3
      */
@@ -79,8 +83,11 @@ public final class RuntimeJNIAccess {
     }
 
     /**
-     * Makes the provided fields available for JNI access at run time. Needed when C/C++ code looks
-     * up Java fields via JNINativeInterface.GetFieldID or GetStaticFieldID.
+     * Makes the provided fields available for JNI access at run time. Needed when native code looks
+     * up Java fields via <a href=
+     * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getfieldid">GetFieldID</a>
+     * or <a href=
+     * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticfieldid">GetStaticFieldID</a>.
      *
      * @since 22.3
      */

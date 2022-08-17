@@ -148,7 +148,7 @@ public class JNIAccessFeature implements Feature {
         }
     }
 
-    private JNIRuntimeAccessibilitySupportImpl runtimeAccessibilitySupport;
+    private JNIRuntimeAccessibilitySupportImpl runtimeSupport;
 
     private boolean sealed = false;
     private final Map<String, JNICallTrampolineMethod> trampolineMethods = new ConcurrentHashMap<>();
@@ -187,10 +187,10 @@ public class JNIAccessFeature implements Feature {
 
         JNIReflectionDictionary.create();
 
-        runtimeAccessibilitySupport = new JNIRuntimeAccessibilitySupportImpl();
-        ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeAccessibilitySupport);
+        runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
+        ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeSupport);
 
-        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(runtimeAccessibilitySupport, access.getImageClassLoader());
+        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(runtimeSupport, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
@@ -247,7 +247,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static ConditionalConfigurationRegistry getConditionalConfigurationRegistry() {
-        return singleton().runtimeAccessibilitySupport;
+        return singleton().runtimeSupport;
     }
 
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {

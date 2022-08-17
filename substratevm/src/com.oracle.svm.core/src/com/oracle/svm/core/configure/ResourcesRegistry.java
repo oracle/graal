@@ -61,7 +61,8 @@ public interface ResourcesRegistry extends RuntimeResourceSupport {
 
     /**
      * Although the interface-methods below are already defined in the super-interface
-     * {@link RuntimeResourceSupport} they are also needed here for backwards compatibility.
+     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
+     * reflectively.
      */
     @Override
     void addResources(ConfigurationCondition condition, String pattern);

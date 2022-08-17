@@ -60,8 +60,8 @@ public final class RuntimeResourceAccess {
 
     /**
      * Make Java resources that are matched by a {@code pattern} available at run time. If the given
-     * {@code pattern} starts with {@code <module-name>:} then pattern that follows will only match
-     * resources coming from Java module named {@code <module-name>}.
+     * {@code pattern} starts with {@code <module-name>:} then the pattern that follows will only
+     * match resources from Java module named {@code <module-name>}.
      *
      * @since 22.3
      */
@@ -71,8 +71,8 @@ public final class RuntimeResourceAccess {
 
     /**
      * Ensure Java resources that are matched by a {@code pattern} will never be available at run
-     * time. If the given {@code pattern} starts with {@code <module-name>:} then pattern that
-     * follows will only match resources coming from Java module named {@code <module-name>}.
+     * time. If the given {@code pattern} starts with {@code <module-name>:} then the pattern that
+     * follows will only match resources from Java module named {@code <module-name>}.
      *
      * @since 22.3
      */

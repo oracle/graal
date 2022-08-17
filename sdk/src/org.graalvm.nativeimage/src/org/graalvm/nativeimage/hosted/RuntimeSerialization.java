@@ -101,8 +101,9 @@ public final class RuntimeSerialization {
     }
 
     /**
-     * Makes class available for serialization at runtime that is created for the lambda expressions
-     * (a class that has a $deserializeLambda$ method) specified by the lambdaCapturingClassName.
+     * Makes a class available for serialization at runtime that is created for the lambda
+     * expressions (a class that has a $deserializeLambda$ method) specified by the
+     * lambdaCapturingClass.
      *
      * @since 22.3
      */
