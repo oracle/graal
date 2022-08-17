@@ -220,6 +220,7 @@ public class SeqLockPrefixTree {
             return null;
         }
 
+        @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "in synchronized method")
         private synchronized Node tryAddChild(long key) {
             // Child addition must start by re-checking if the key is present,
             // to avoid a race condition.
@@ -256,6 +257,7 @@ public class SeqLockPrefixTree {
             }
         }
 
+        @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "called from synchronized tryAddChild")
         private void addChildToLinearNode(long key, Node child) {
             if (arity == keys.length) {
                 if (arity == MAX_LINEAR_NODE_SIZE) {
@@ -297,6 +299,7 @@ public class SeqLockPrefixTree {
             addChildToNonFullHashNode(key, child);
         }
 
+        @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "called indirectly from synchronized tryAddChild")
         private void addChildToNonFullHashNode(long key, Node child) {
             int index = hash(key) % keys.length;
             while (keys[index] != EMPTY_KEY) {

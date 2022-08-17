@@ -452,6 +452,7 @@ public class InvocationPlugins {
         private final String className;
         private final LateClassPlugins next;
 
+        @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "identity comparison against sentinel string value")
         LateClassPlugins(LateClassPlugins next, String className) {
             assert next == null || next.className != CLOSED_LATE_CLASS_PLUGIN : "Late registration of invocation plugins is closed";
             this.next = next;

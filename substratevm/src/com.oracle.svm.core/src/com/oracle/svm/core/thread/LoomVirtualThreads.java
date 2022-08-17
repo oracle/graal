@@ -29,6 +29,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
@@ -201,8 +202,9 @@ final class LoomVirtualThreads implements VirtualThreads {
         return stackTrace;
     }
 
+    @SuppressFBWarnings(value = "BC_IMPOSSIBLE_CAST", justification = "substitution hides acual type")
     private static StackTraceElement[] asyncMountedGetStackTrace(Target_java_lang_VirtualThread thread) {
-        return StackTraceUtils.asyncGetStackTrace(Thread.class.cast(thread));
+        return StackTraceUtils.asyncGetStackTrace(SubstrateUtil.cast(thread, Thread.class));
     }
 
     private static StackTraceElement[] getPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {

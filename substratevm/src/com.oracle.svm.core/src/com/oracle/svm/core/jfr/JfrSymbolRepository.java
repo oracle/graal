@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.nio.charset.StandardCharsets;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,8 +40,8 @@ import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.jdk.UninterruptibleEntry;
-import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.locks.VMMutex;
 
 /**
  * In Native Image, we use {@link java.lang.String} objects that live in the image heap as symbols.
@@ -197,6 +198,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
             return (JfrSymbol) super.getOrPut(valueOnStack);
         }
 
+        @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "image heap pointer comparison")
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {

@@ -115,14 +115,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         ResolvedJavaType factoryType = method.getDeclaringClass();
         PodFactory annotation = factoryType.getAnnotation(PodFactory.class);
         ResolvedJavaType podConcreteType = kit.getMetaAccess().lookupJavaType(annotation.podClass());
-        ResolvedJavaMethod targetCtor = null;
-        for (ResolvedJavaMethod ctor : podConcreteType.getSuperclass().getDeclaredConstructors()) {
-            if (parameterTypesMatch(method, ctor)) {
-                targetCtor = ctor;
-                break;
-            }
-        }
-        GraalError.guarantee(targetCtor != null, "Matching constructor not found: %s", getSignature());
+        ResolvedJavaMethod targetCtor = findMatchingConstructor(method, podConcreteType.getSuperclass());
 
         /*
          * The graph must be safe for runtime compilation and so for compilation as a deoptimization
@@ -139,6 +132,21 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
         kit.createReturn(kit.loadLocal(instanceLocal, JavaKind.Object), JavaKind.Object);
         return kit.finalizeGraph();
+    }
+
+    /**
+     * Gets the constructor in {@code typeToSearch} whose parameter types (excluding receiver) match
+     * {@code method}.
+     *
+     * @throws GraalError if no matching constructor found
+     */
+    private ResolvedJavaMethod findMatchingConstructor(ResolvedJavaMethod method, ResolvedJavaType typeToSearch) {
+        for (ResolvedJavaMethod ctor : typeToSearch.getDeclaredConstructors()) {
+            if (parameterTypesMatch(method, ctor)) {
+                return ctor;
+            }
+        }
+        throw new GraalError("Matching constructor not found: %s", getSignature());
     }
 
     private static int startMethod(HostedGraphKit kit, boolean isDeoptTarget, int nextDeoptIndex) {

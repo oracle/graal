@@ -36,6 +36,8 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -107,6 +109,7 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     /**
      * Modified version of java.util.ServiceLoader.LazyClassPathLookupIterator#hasNextService.
      */
+    @SuppressFBWarnings(value = "BC_IMPOSSIBLE_CAST", justification = "substitution hides acual type")
     @Substitute
     private boolean hasNextService() {
         while (nextProvider == null && nextError == null) {

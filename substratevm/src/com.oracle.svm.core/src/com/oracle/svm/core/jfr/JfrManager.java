@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -323,6 +324,7 @@ public class JfrManager {
         }
     }
 
+    @SuppressFBWarnings(value = "NP_BOOLEAN_RETURN_NULL", justification = "null allowed as return value")
     private static Boolean parseBoolean(Map<JfrStartArgument, String> args, JfrStartArgument key) throws IllegalArgumentException {
         String value = args.get(key);
         if (value == null) {

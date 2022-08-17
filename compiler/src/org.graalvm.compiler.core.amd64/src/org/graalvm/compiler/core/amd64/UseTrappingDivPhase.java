@@ -181,6 +181,8 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
                 divRemFixed = graph.add(new SignedDivNode(dividend, divisor, null));
             } else if (divRem instanceof SignedRemNode) {
                 divRemFixed = graph.add(new SignedRemNode(dividend, divisor, null));
+            } else {
+                throw GraalError.shouldNotReachHere("divRem is null or has unexpected type: " + divRem);
             }
             divRemFixed.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
             GraalError.guarantee(divRemFixed.canDeoptimize(), "Fixed representation must deopt since we replaced a 0 check");
