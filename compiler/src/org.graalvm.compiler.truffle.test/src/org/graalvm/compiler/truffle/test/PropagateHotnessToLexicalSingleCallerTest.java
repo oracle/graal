@@ -48,7 +48,7 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
     protected Context.Builder newContextBuilder() {
         Context.Builder builder = super.newContextBuilder();
         builder.option("engine.PropagateLoopCountToLexicalSingleCaller", Boolean.TRUE.toString());
-        builder.option("engine.PropagateLoopCountToLexicalSingleCallerMaxDepth", Integer.toString(10));
+        builder.option("engine.PropagateLoopCountToLexicalSingleCallerMaxDepth", Integer.toString(3));
         return builder;
     }
 
@@ -182,6 +182,25 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
         OptimizedCallTarget callee = ((CallerRootNode) intermediate.getRootNode()).target;
         Assert.assertTrue(caller.getCallAndLoopCount() > callee.getCallAndLoopCount());
         Assert.assertTrue(intermediate.getCallAndLoopCount() > callee.getCallAndLoopCount());
+    }
+
+    @Test
+    public void testDepth() {
+        final String name = "Caller";
+        CallerRootNode callerRootNode = new CallerRootNode(name + "0", frameDescriptor0 -> {
+            return new CallerRootNode(name + "1", frameDescriptor1-> {
+                return new CallerRootNode(name + "2", frameDescriptor2-> {
+                    return new CallerRootNode(name + "3", frameDescriptor3-> {
+                        return new CallerRootNode(name + "4", frameDescriptor4-> {
+                            return new RootNodeWithLoop("loop", frameDescriptor0);
+                        }, null);
+                    }, null);
+                }, null);
+            }, null);
+        }, null);
+        OptimizedCallTarget callTarget = ((OptimizedCallTarget) callerRootNode.getCallTarget());
+        compile(callTarget);
+        Assert.assertEquals(callTarget.getCallAndLoopCount(), callerRootNode.target.getCallAndLoopCount());
     }
 
     private static void compile(RootCallTarget callTarget) {
