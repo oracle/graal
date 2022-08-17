@@ -56,6 +56,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -378,9 +379,10 @@ public class AnalysisUniverse implements Universe {
              * future, we want a better implementation of field value transformer that do not rely
              * on the substitution universe, then this code can be removed.
              */
-            if (declaringType.scheduledTypeReachableNotifications != null) {
-                for (var callback : declaringType.scheduledTypeReachableNotifications) {
-                    callback.ensureDone();
+            List<AnalysisFuture<Void>> notifications = declaringType.scheduledTypeReachableNotifications;
+            if (notifications != null) {
+                for (var notification : notifications) {
+                    notification.ensureDone();
                 }
                 /*
                  * Now we know all the handlers have been executed, so subsequent field lookups do
