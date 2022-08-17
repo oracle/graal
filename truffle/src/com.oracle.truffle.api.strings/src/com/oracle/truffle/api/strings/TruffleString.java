@@ -1500,7 +1500,7 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Error handling instructions for operations that return integer values, such as indices or
      * code points.
-     * 
+     *
      * @since 22.3
      */
     public enum ErrorHandling {
@@ -1743,7 +1743,7 @@ public final class TruffleString extends AbstractTruffleString {
          * Creates a 10's complement string from the given long value, using ASCII digits (0x30 -
          * 0x39). This operation does not support encodings that are incompatible with the ASCII
          * character set.
-         * 
+         *
          * @param lazy if true, the string representation of the number is computed lazily the first
          *            time it is needed. This parameter is expected to be
          *            {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation
@@ -3170,7 +3170,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Decode and return the codepoint at codepoint index {@code i}, with
          * {@link ErrorHandling#BEST_EFFORT best-effort} error handling.
-         * 
+         *
          * @since 22.1
          */
         public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
@@ -3179,7 +3179,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Decode and return the codepoint at codepoint index {@code i}.
-         * 
+         *
          * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, the return value on
          *            invalid codepoints depends on {@code expectedEncoding}:
          *            <ul>
@@ -3262,7 +3262,7 @@ public final class TruffleString extends AbstractTruffleString {
          * Decode and return the codepoint at byte index {@code i}.
          *
          * @param errorHandling analogous to {@link CodePointAtIndexNode}.
-         * 
+         *
          * @since 22.3
          */
         public abstract int execute(AbstractTruffleString a, int i, Encoding expectedEncoding, ErrorHandling errorHandling);
@@ -4456,7 +4456,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Create a new string by concatenating {@code a} and {@code b}.
-         * 
+         *
          * @param lazy if {@code true}, the creation of the new string's internal array may be
          *            delayed until it is required by another operation. This parameter is expected
          *            to be {@link CompilerAsserts#partialEvaluationConstant(boolean) partial
@@ -4761,7 +4761,11 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public abstract TruffleString execute(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy);
 
-        @Specialization(guards = "byteLength == 0")
+        static boolean isSame(int v0, int v1) {
+            return v0 == v1;
+        }
+
+        @Specialization(guards = "isSame(byteLength, 0)")
         static TruffleString substringEmpty(AbstractTruffleString a, int fromByteIndex, @SuppressWarnings("unused") int byteLength, Encoding expectedEncoding,
                         @SuppressWarnings("unused") boolean lazy) {
             a.checkEncoding(expectedEncoding);

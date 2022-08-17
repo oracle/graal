@@ -440,7 +440,11 @@ final class LibFFISignature {
         @ExportMessage
         static class AddArgument {
 
-            @Specialization(guards = {"builder.state == oldState", "promotedType.typeInfo == cachedTypeInfo"})
+            static boolean isSame(CachedTypeInfo v0, CachedTypeInfo v1) {
+                return v0 == v1;
+            }
+
+            @Specialization(guards = {"builder.state == oldState", "isSame(promotedType.typeInfo, cachedTypeInfo)"})
             static void doCached(SignatureBuilder builder, @SuppressWarnings("unused") LibFFIType argType,
                             @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
                             @Bind("builder.maybePromote(self, argType)") LibFFIType promotedType,
