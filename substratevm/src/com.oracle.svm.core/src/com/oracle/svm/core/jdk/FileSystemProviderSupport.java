@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -47,9 +48,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.option.HostedOptionKey;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class FileSystemProviderSupport {
 
@@ -226,7 +224,7 @@ final class Target_sun_nio_fs_UnixFileSystemProvider {
 final class Target_sun_nio_fs_UnixPath {
 }
 
-class NeedsReinitializationProvider implements RecomputeFieldValue.CustomFieldValueComputer {
+class NeedsReinitializationProvider implements FieldValueTransformer {
     static final int STATUS_NEEDS_REINITIALIZATION = 2;
     static final int STATUS_IN_REINITIALIZATION = 1;
     /*
@@ -236,12 +234,7 @@ class NeedsReinitializationProvider implements RecomputeFieldValue.CustomFieldVa
     static final int STATUS_REINITIALIZED = 0;
 
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         return STATUS_NEEDS_REINITIALIZATION;
     }
 }

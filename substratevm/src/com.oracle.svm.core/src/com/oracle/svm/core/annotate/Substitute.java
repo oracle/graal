@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.annotate;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * When used to annotate a method, it indicates that a method declaration is intended to be a
@@ -47,9 +47,9 @@ import java.lang.annotation.Target;
  * There must never be an explicit call to a non-static method annotated with {@link Substitute}
  * unless it is from another non-static method in the same class.
  * <p>
- * When used to annotate a class, it indicates that the class is intended to be a substitute for the
- * class specified via {@link TargetClass}. All methods in the target class that are not substituted
- * in the annotated class are implicitly treated as {@link Delete}d.
+ * When used to annotate a class, it indicates that the class is intended to be a full substitute
+ * for the class specified via {@link TargetClass}. All methods in the target class that are not
+ * substituted in the annotated class are implicitly treated as {@link Delete}d.
  * <p>
  * See {@link TargetClass} for an overview of the annotation system.
  */

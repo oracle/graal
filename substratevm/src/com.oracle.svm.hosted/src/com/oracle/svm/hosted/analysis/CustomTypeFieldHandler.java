@@ -66,10 +66,8 @@ public abstract class CustomTypeFieldHandler {
         assert field.isAccessed();
         if (field.wrapped instanceof ComputedValueField) {
             ComputedValueField computedField = ((ComputedValueField) field.wrapped);
-            Class<?>[] customTypes = computedField.getCustomTypes();
-            if (customTypes != null) {
-                injectFieldTypes(field, transformTypes(field, customTypes));
-                field.setCanBeNull(computedField.getComputedValueCanBeNull());
+            if (!computedField.isValueAvailableBeforeAnalysis()) {
+                injectFieldTypes(field, field.getType());
             }
         } else {
             UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);

@@ -46,7 +46,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
@@ -58,8 +58,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Graal uses unsafe memory accesses to access {@link Node}s and {@link LIRInstruction}s. The
@@ -70,24 +68,19 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 public class FieldsOffsetsFeature implements Feature {
 
-    abstract static class IterationMaskRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    abstract static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.AfterAnalysis;
         }
 
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             Edges edges = getEdges((NodeClass<?>) receiver);
             FieldsOffsetsReplacement replacement = FieldsOffsetsFeature.getReplacements().get(edges.getOffsets());
             assert replacement.fields == edges;
             assert replacement.newValuesAvailable : "Cannot access iteration mask before field offsets are assigned";
             return replacement.newIterationInitMask;
-        }
-
-        @Override
-        public Class<?>[] types() {
-            return new Class<?>[]{long.class};
         }
 
         protected abstract Edges getEdges(NodeClass<?> nodeClass);

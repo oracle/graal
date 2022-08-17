@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.util.VMError.guarantee;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -48,13 +46,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * This file contains most of the code necessary for supporting VarHandle in native images. The
@@ -209,24 +206,20 @@ class VarHandleInfo {
     }
 }
 
-class VarHandleFieldOffsetComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+class VarHandleFieldOffsetComputer implements FieldValueTransformerWithAvailability {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
     }
 
     @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object varHandle) {
-        Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(varHandle);
-        SharedField sField = (SharedField) metaAccess.lookupJavaField(field);
-
-        guarantee(sField.isAccessed() && sField.getLocation() > 0, "Field not marked as accessed");
-        return Long.valueOf(sField.getLocation());
-    }
-
-    @Override
-    public Class<?>[] types() {
-        return new Class<?>[]{long.class};
+    public Object transform(Object receiver, Object originalValue) {
+        Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
+        int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, true);
+        if (offset <= 0) {
+            throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + field);
+        }
+        return Long.valueOf(offset);
     }
 }
 

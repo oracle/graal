@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.annotate;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -35,13 +32,18 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 /**
  * A class annotated with this annotation denotes a class that modifies methods of fields of another
- * the class, called the "original" class. The original class is specified using the properties:
+ * class, called the "original" class. The original class is specified using annotation parameters:
  * {@link #value} or {@link #className} specify the original class either as a class literal or by
- * name. Optionally, inner classes can be specified using the {@link #innerClass} property.
+ * name, while {@link #classNameProvider} is the most flexible approach where the class name is
+ * computed by user code. Optionally, inner classes can be specified using the {@link #innerClass}
+ * property.
  *
- * Distinguished using additional annotations, the original class is modified in different ways:
+ * Based on additional annotations, the original class is modified in different ways:
  * <ul>
  * <li>None of {@link Delete} or {@link Substitute}: the annotated class is an alias for the
  * original class. This is the most frequently used case. All methods and fields of the annotated
@@ -78,31 +80,32 @@ import java.util.function.Predicate;
 public @interface TargetClass {
 
     /**
-     * Specifies the substitutee class.
+     * Specifies the substitutee class using a class literal.
      *
-     * If the default value is specified for this element, then a non-default value must be given
-     * for the {@link #className()} or {@link #classNameProvider()} element.
+     * Either {@link #value()}, {@link #className()} or {@link #classNameProvider()} element can be
+     * used to specify the substitutee class.
      */
     Class<?> value() default TargetClass.class;
 
     /**
-     * Specifies the substitutee class. This method is provided for cases where the substitutee
-     * class is not accessible (according to Java language access control rules).
+     * Specifies the substitutee class using a class-name string. This method is provided for cases
+     * where the substitutee class is not accessible (according to Java language access control
+     * rules).
      *
-     * If the default value is specified for this element, then a non-default value must be given
-     * for the {@link #value()} or {@link #classNameProvider()} element.
+     * Either {@link #value()}, {@link #className()} or {@link #classNameProvider()} element can be
+     * used to specify the substitutee class.
      */
     String className() default "";
 
     /**
-     * Specifies the substitutee class. This is the most flexible version to provide the class name.
-     * The {@link Function#apply} method of the provided class can compute the class name based on
-     * system properties (like the JDK version). This annotation is the argument of the function, so
-     * the function can, e.g., build a class name that incorporates the {@link #className()}
-     * property.
+     * Specifies the substitutee class. This is the most flexible version to provide the class name
+     * to specify which class should be substituted. The {@link Function#apply} method of the
+     * provided class can compute the class name based on system properties (like the JDK version).
+     * This annotation is the argument of the function, so the function can, e.g., build a class
+     * name that incorporates the {@link #className()} property.
      *
-     * If the default value is specified for this element, then a non-default value must be given
-     * for the {@link #value()} or {@link #className()} element.
+     * Either {@link #value()}, {@link #className()} or {@link #classNameProvider()} element can be
+     * used to specify the substitutee class.
      */
     Class<? extends Function<TargetClass, String>> classNameProvider() default NoClassNameProvider.class;
 

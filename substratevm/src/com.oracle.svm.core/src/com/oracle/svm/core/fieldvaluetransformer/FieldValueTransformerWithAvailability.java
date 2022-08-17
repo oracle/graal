@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,30 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr.logging;
+package com.oracle.svm.core.fieldvaluetransformer;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-
-@TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = HasJfrSupport.class)
-final class Target_jdk_jfr_internal_LogTag {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTagSetLevel.class) //
-    volatile int tagSetLevel;
-
-    @Alias int id;
-}
-
 @Platforms(Platform.HOSTED_ONLY.class)
-class ComputeTagSetLevel implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        // Reset the value as it gets set during the image build.
-        return JfrLogConfiguration.JfrLogLevel.OFF.level;
+public interface FieldValueTransformerWithAvailability extends FieldValueTransformer {
+
+    /**
+     * Controls when the transformed value is available at image build time.
+     */
+    enum ValueAvailability {
+        /**
+         * The value is available without time constraints, i.e., it is independent of static
+         * analysis or compilation.
+         */
+        BeforeAnalysis,
+
+        /**
+         * The value depends on data computed by the static analysis and is therefore not yet
+         * available to the static analysis. The value still might be constant folded during
+         * compilation.
+         */
+        AfterAnalysis,
+
+        /**
+         * Value depends on data computed during compilation and is therefore available only when
+         * writing out the image heap into the native image. Such a value is never available for
+         * constant folding.
+         */
+        AfterCompilation
     }
+
+    /**
+     * Returns information about when the value for this custom computation is available.
+     */
+    ValueAvailability valueAvailability();
 }
