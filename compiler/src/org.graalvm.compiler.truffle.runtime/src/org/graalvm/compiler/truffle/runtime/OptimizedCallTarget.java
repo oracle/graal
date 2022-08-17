@@ -648,13 +648,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor(), 0);
+        if (engine.propagateCallAndLoopCount) {
+            propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor(), 0);
+        }
         return compile(true);
     }
 
     private static boolean propagateCallAndLoopCount(OptimizedCallTarget original, OptimizedCallTarget current, FrameDescriptor parentFrameDescriptor, int depth) {
         WeakReference<OptimizedDirectCallNode> singleCallNode = current.singleCallNode;
-        if (original.engine.propagateCallAndLoopCount <= depth || parentFrameDescriptor == null || singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
+        if (original.engine.propagateCallAndLoopCountMaxDepth <= depth || parentFrameDescriptor == null || singleCallNode == NO_CALL || singleCallNode == MULTIPLE_CALLS) {
             return false;
         }
         OptimizedDirectCallNode callerCallNode = singleCallNode.get();
