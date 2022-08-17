@@ -1043,17 +1043,15 @@ public final class GCImpl implements GC {
         }
     }
 
-    /// queue objects as they are copied?
     private void scanGreyObjects(boolean isIncremental) {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
         try {
-            if (isIncremental) {
+            if (ParallelGC.isSupported()) {
+                ParallelGCImpl.waitForIdle();
+            } else if (isIncremental) {
                 scanGreyObjectsLoop();
             } else {
                 HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
-                if (ParallelGC.isSupported()) {
-                    ParallelGCImpl.waitForIdle();
-                }
             }
         } finally {
             scanGreyObjectsTimer.close();

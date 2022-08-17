@@ -387,6 +387,9 @@ public final class Space {
         Object copy = copyAlignedObject(original);
         if (copy != null) {
             ObjectHeaderImpl.installForwardingPointer(original, copy);
+            if (ParallelGC.isSupported()) {
+                ParallelGCImpl.singleton().push(Word.objectToUntrackedPointer(copy));
+            }
         }
         return copy;
     }
