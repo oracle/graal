@@ -91,6 +91,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoMethodWithBytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
@@ -795,7 +796,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Method forceSplit() {
         Method result = new Method(this, getCodeAttribute());
         BytecodeNode bytecodeNode = new BytecodeNode(result.getMethodVersion());
-        EspressoRootNode root = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), bytecodeNode);
+        EspressoRootNode root = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), new EspressoMethodWithBytecodeNode(bytecodeNode));
         result.getMethodVersion().callTarget = root.getCallTarget();
         return result;
     }
@@ -1276,7 +1277,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                     "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                 }
                 BytecodeNode bytecodeNode = new BytecodeNode(this);
-                EspressoRootNode rootNode = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), bytecodeNode);
+                EspressoRootNode rootNode = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), new EspressoMethodWithBytecodeNode(bytecodeNode));
                 target = rootNode.getCallTarget();
             }
             return target;

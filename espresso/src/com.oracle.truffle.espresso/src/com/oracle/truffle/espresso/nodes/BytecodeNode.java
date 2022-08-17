@@ -263,17 +263,6 @@ import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalInt;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalLong;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObject;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObjectOrReturnAddress;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.swapSingle;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.putLong;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.putObject;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.putReturnAddress;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.setBCI;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalDouble;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalFloat;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalInt;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalLong;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObject;
-import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObjectOrReturnAddress;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.startingStackOffset;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.swapSingle;
 
@@ -299,7 +288,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -547,7 +535,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     @Override
-    public void initializeFrame(VirtualFrame frame) {
+    void initializeFrame(VirtualFrame frame) {
         initArguments(frame);
         // initialize the bci slot
         setBCI(frame, 0);
@@ -655,12 +643,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR;
         boolean skipLivenessActions = false;
-
-        // pop frame cause initializeBody to be skipped on re-entry
-        // so force the initialization here
-        if (!frame.isInt(EspressoFrame.BCI_SLOT)) {
-            initializeFrame(frame);
-        }
 
         final Counter loopCount = new Counter();
 
@@ -2668,13 +2650,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     @Override
     public String toString() {
         return getRootNode().getName();
-    }
-
-    // internal
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.RootBodyTag.class || tag == StandardTags.RootTag.class;
     }
 
     public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
