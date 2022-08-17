@@ -383,6 +383,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return GraalRuntimeAccessor.NODES.isTrivial(rootNode);
     }
 
+    private FrameDescriptor getParentFrameDescriptor() {
+        return GraalRuntimeAccessor.NODES.getParentFrameDescriptor(rootNode);
+    }
+
     /**
      * We intentionally do not synchronize here since as it's not worth the sync costs.
      */
@@ -787,7 +791,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
                     if (engine.propagateCallAndLoopCount) {
-                        propagateCallAndLoopCount(this, this, rootNode.getParentFrameDescriptor(), 0);
+                        propagateCallAndLoopCount(this, this, getParentFrameDescriptor(), 0);
                     }
                     if (!wasExecuted() && !engine.backgroundCompilation) {
                         prepareForAOTImpl();

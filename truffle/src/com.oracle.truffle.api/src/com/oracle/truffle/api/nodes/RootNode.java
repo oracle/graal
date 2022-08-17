@@ -587,7 +587,7 @@ public abstract class RootNode extends ExecutableNode {
      *         otherwise.
      * @since 22.3.0
      */
-    public FrameDescriptor getParentFrameDescriptor() {
+    protected FrameDescriptor getParentFrameDescriptor() {
         return null;
     }
 
