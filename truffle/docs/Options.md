@@ -165,6 +165,7 @@ Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
     lowTier - After low tier phases were applied.
 - `--engine.NodeSourcePositions` : Enable node source positions in truffle partial evaluations.
 - `--engine.OSRCompilationThreshold=[1, inf)` : Number of loop iterations until on-stack-replacement compilation is triggered (default 100352).
+- `--engine.OSRMaxCompilationReAttempts=[0, inf)` : Number of compilation re-attempts before bailing out of OSR compilation for a given method (default 30). This number is an approximation of the acceptable number of deopts.
 - `--engine.PerformanceWarningsAreFatal=` : Treat performance warnings as fatal occurrences that will exit the applications
 - `--engine.PrintExpansionHistogram` : Prints a histogram of all expanded Java methods.
 - `--engine.PriorityQueue=true|false` : Use the priority of compilation jobs in the compilation queue (default: true).
@@ -176,6 +177,7 @@ Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
 - `--engine.SplittingMaxCalleeSize=[1, inf)` : Disable call target splitting if tree size exceeds this limit (default: 100)
 - `--engine.SplittingMaxPropagationDepth=[1, inf)` : Propagate info about a polymorphic specialize through maximum this many call targets (default: 5)
 - `--engine.SplittingTraceEvents` : Trace details of splitting events and decisions.
+- `--engine.ThrowOnMaxOSRCompilationReAttemptsReached=true|false` : Whether an AssertionError is thrown when the maximum number of OSR compilation attempts is reached for a given method (default 'false'). This should only be set to 'true' in testing environments.
 - `--engine.TraceAssumptions` : Print stack trace on assumption invalidation
 - `--engine.TraceCompilationAST` : Print the entire AST after each compilation
 - `--engine.TraceCompilationDetails` : Print information for compilation queuing.
