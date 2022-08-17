@@ -142,10 +142,9 @@ public class GraalCompiler {
         DebugContext debug = r.graph.getDebug();
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(r.graph.getOptions())) {
             assert !r.graph.isFrozen();
-            StableMethodNameFormatter methodNameFormatter = new StableMethodNameFormatter(r.graph, r.providers, r.graphBuilderSuite);
             try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache());
                             DebugCloseable a = CompilerTimer.start(debug);
-                            DebugCloseable l = r.graph.getOptimizationLog().listen(methodNameFormatter)) {
+                            DebugCloseable l = r.graph.getOptimizationLog().listen(new StableMethodNameFormatter(r.graph, r.providers))) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
                 r.backend.emitBackEnd(r.graph, null, r.installedCodeOwner, r.compilationResult, r.factory, null, r.lirSuites);
                 if (r.verifySourcePositions) {

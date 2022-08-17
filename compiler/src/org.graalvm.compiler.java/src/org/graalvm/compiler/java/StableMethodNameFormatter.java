@@ -41,7 +41,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -58,29 +57,36 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
      * A pattern that matches the unstable part of the name of a lambda method that is replaced.
      */
     private static final Pattern LAMBDA_METHOD_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+/0x[0-9a-f]+");
+
     /**
      * The part of a lambda method classname that is kept in the stable method name, so that it is
      * still clear that it is a lambda method.
      */
     private static final String LAMBDA_PREFIX = "$$Lambda$";
+
     /**
      * The format of the methods passed to {@link ResolvedJavaMethod#format(String)}.
      */
     private static final String METHOD_FORMAT = "%H.%n(%p)";
+
     /**
      * The format of the invoked methods passed to {@link ResolvedJavaMethod#format(String)}, which
      * is {@link LambdaUtils#digest hashed} later.
      */
     private static final String INVOKED_METHOD_FORMAT = "%H.%n(%P)%R";
+
     private final StructuredGraph graph;
+
     private final Providers providers;
+
     private GraphBuilderPhase graphBuilderPhase;
+
     /**
      * Cached stable method names.
      */
     private final EconomicMap<ResolvedJavaMethod, String> methodName = EconomicMap.create(Equivalence.IDENTITY);
 
-    public StableMethodNameFormatter(StructuredGraph graph, Providers providers, PhaseSuite<HighTierContext> graphBuilderSuite) {
+    public StableMethodNameFormatter(StructuredGraph graph, Providers providers) {
         this.graph = graph;
         this.providers = providers;
     }
