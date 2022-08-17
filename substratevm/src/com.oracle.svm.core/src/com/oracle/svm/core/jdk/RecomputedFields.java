@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -331,6 +332,19 @@ final class Target_java_util_concurrent_ForkJoinPool {
     @Delete //
     @TargetElement(onlyWith = JDK17OrEarlier.class)//
     static int COMMON_PARALLELISM;
+
+    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    private static Unsafe U;
+
+    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    private static long POOLIDS;
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    private static int getAndAddPoolIds(int x) {
+        // Original method wrongly uses ForkJoinPool.class instead of calling U.staticFieldBase()
+        return U.getAndAddInt(StaticFieldsSupport.getStaticPrimitiveFields(), POOLIDS, x);
+    }
 
     @Alias //
     Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {

@@ -443,7 +443,7 @@ public final class Safepoint {
         if (ActionOnExitSafepointSupport.isActionPending()) {
             // LLVM Backend do not support `FarReturnNode`,
             // we explicit specify Loom JDK here.
-            if (LoomSupport.isEnabled() && ActionOnExitSafepointSupport.getSwitchStack()) {
+            if (LoomSupport.isEnabled() && ActionOnExitSafepointSupport.isSwitchStackPending()) {
                 ActionOnExitSafepointSupport.clearActions();
                 KnownIntrinsics.farReturn(0, ActionOnExitSafepointSupport.getSwitchStackSP(), ActionOnExitSafepointSupport.getSwitchStackIP(), false);
             } else {

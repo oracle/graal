@@ -31,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -373,7 +374,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public void onReachable() {
-        notifyReachabilityCallbacks(declaringClass.getUniverse());
+        notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
         processMethodOverrides();
     }
 

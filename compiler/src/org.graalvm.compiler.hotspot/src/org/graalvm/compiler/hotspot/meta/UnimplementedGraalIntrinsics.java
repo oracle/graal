@@ -204,7 +204,9 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
         }
         if (config.base64DecodeBlock == 0L) {
-            add(ignore, "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I");
+            add(ignore,
+                            "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
+                            "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I");
         }
 
         if (!config.useAESCTRIntrinsics) {
@@ -347,7 +349,6 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/StrictMath.min(DD)D",
                             "java/lang/StrictMath.min(FF)F",
                             "java/lang/StrictMath.min(II)I",
-                            "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I",
                             "jdk/internal/misc/Unsafe.storeStoreFence()V",
                             "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorPayload;Ljdk/internal/vm/vector/VectorSupport$VectorPayload;" +
                                             "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$BinaryOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
@@ -385,8 +386,39 @@ public final class UnimplementedGraalIntrinsics {
 
         if (isJDK19OrHigher()) {
             add(toBeInvestigated,
+                            "java/lang/Double.isInfinite(D)Z",
+                            "java/lang/Float.isInfinite(F)Z",
+                            "java/lang/Integer.compress(II)I",
+                            "java/lang/Integer.expand(II)I",
+                            "java/lang/Long.compress(JJ)J",
+                            "java/lang/Long.expand(JJ)J",
+                            "java/lang/StringCoding.countPositives([BII)I",
+                            "java/lang/Thread.currentCarrierThread()Ljava/lang/Thread;",
+                            "java/lang/Thread.extentLocalCache()[Ljava/lang/Object;",
+                            "java/lang/Thread.setCurrentThread(Ljava/lang/Thread;)V",
+                            "java/lang/Thread.setExtentLocalCache([Ljava/lang/Object;)V",
+                            "jdk/internal/vm/Continuation.doYield()I",
+                            "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
+                            "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V",
+                            "jdk/internal/vm/vector/VectorSupport.compressExpandOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$CompressExpandOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
                             "jdk/internal/vm/vector/VectorSupport.fromBitsCoerced(Ljava/lang/Class;Ljava/lang/Class;IJILjdk/internal/vm/vector/VectorSupport$VectorSpecies;" +
-                                            "Ljdk/internal/vm/vector/VectorSupport$FromBitsCoercedOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;");
+                                            "Ljdk/internal/vm/vector/VectorSupport$FromBitsCoercedOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                            "jdk/internal/vm/vector/VectorSupport.load(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorSpecies;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$LoadOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                            "jdk/internal/vm/vector/VectorSupport.loadMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorMask;" +
+                                            "ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorMaskedOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.store(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorPayload;Ljava/lang/Object;" +
+                                            "JLjdk/internal/vm/vector/VectorSupport$StoreVectorOperation;)V",
+                            "jdk/internal/vm/vector/VectorSupport.storeMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$StoreVectorMaskedOperation;)V",
+                            "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
+
+            if (arch instanceof AArch64) {
+                add(toBeInvestigated,
+                                "java/lang/Math.round(D)J",
+                                "java/lang/Math.round(F)I");
+            }
         }
 
         if (arch instanceof AArch64) {

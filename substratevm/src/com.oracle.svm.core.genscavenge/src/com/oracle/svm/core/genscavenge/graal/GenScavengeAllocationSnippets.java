@@ -30,6 +30,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
@@ -147,7 +148,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatObjectNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
                     return;
                 }
                 Arguments args = new Arguments(formatObject, graph.getGuardsStage(), tool.getLoweringStage());
@@ -165,7 +166,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
                     return;
                 }
                 Arguments args = new Arguments(formatArray, graph.getGuardsStage(), tool.getLoweringStage());
@@ -187,7 +188,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatStoredContinuationNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
                     return;
                 }
                 Arguments args = new Arguments(formatStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
@@ -207,7 +208,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
             @Override
             public void lower(FormatPodNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
                     return;
                 }
                 Arguments args = new Arguments(formatPod, graph.getGuardsStage(), tool.getLoweringStage());

@@ -158,7 +158,7 @@ class NativeImageVM(GraalVm):
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
-            self.image_build_report_path = os.path.join(self.output_dir, self.executable_name + '-image-build-stats.json')
+            self.image_build_stats_file = bm_suite.image_build_stats_file(self, args)
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-g']
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
@@ -171,7 +171,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
             self.base_image_build_args += ['-H:+PrintCallEdges']
-            self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
+            self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_stats_file]
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
             if vm.use_string_inlining:
@@ -557,7 +557,7 @@ class NativeImageVM(GraalVm):
             metric_objects.append(obj + "_after_high_tier")
         rules = []
         for i in range(0, len(metric_objects)):
-            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
+            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
                 "benchmark": benchmark,
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
@@ -582,7 +582,7 @@ class NativeImageVM(GraalVm):
             phase = measured_phases[i]
             value_name = phase + "_time"
             rules.append(
-                mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
                     "benchmark": benchmark,
                     "metric.name": "compile-time",
                     "metric.type": "numeric",
@@ -595,7 +595,7 @@ class NativeImageVM(GraalVm):
                 }, [value_name]))
             value_name = phase + "_memory"
             rules.append(
-                mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
+                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
                     "benchmark": benchmark,
                     "metric.name": "analysis-stats",
                     "metric.type": "numeric",
@@ -1347,5 +1347,5 @@ def register_graalvm_vms():
             if libgraal_location is not None:
                 import mx_graal_benchmark
                 mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
-                                                           ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                           ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location), '-XX:JVMCIThreadsPerNativeLibraryRuntime=1'],
                                                            mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

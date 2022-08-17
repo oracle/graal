@@ -156,6 +156,11 @@ final class DebugConfigImpl implements DebugConfig {
     }
 
     @Override
+    public boolean methodFilterMatchesCurrentMethod(DebugContext.Scope scope) {
+        return checkMethodFilter(scope);
+    }
+
+    @Override
     public PrintStream output() {
         return output;
     }

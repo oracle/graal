@@ -78,7 +78,7 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -552,12 +552,12 @@ public final class HeapImpl extends Heap {
 
     private static boolean waitForPendingReferenceList(long initialOffers, long initialWakeUps) {
         Thread currentThread = Thread.currentThread();
-        int oldThreadStatus = JavaThreads.getThreadStatus(currentThread);
-        JavaThreads.setThreadStatus(currentThread, ThreadStatus.PARKED);
+        int oldThreadStatus = PlatformThreads.getThreadStatus(currentThread);
+        PlatformThreads.setThreadStatus(currentThread, ThreadStatus.PARKED);
         try {
             return transitionToNativeThenAwaitPendingRefs(initialOffers, initialWakeUps);
         } finally {
-            JavaThreads.setThreadStatus(currentThread, oldThreadStatus);
+            PlatformThreads.setThreadStatus(currentThread, oldThreadStatus);
         }
     }
 

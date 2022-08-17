@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.IfNode;
@@ -64,7 +65,6 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
@@ -207,8 +207,10 @@ public class LoopFragmentInside extends LoopFragment {
 
         CompareNode condition = placeNewSegmentAndCleanup(loop, new2OldPhis, originalPhi2Backedges);
 
-        // Remove any safepoints from the original copy leaving only the duplicated one
-        assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count();
+        // Remove any safepoints from the original copy leaving only the duplicated one, inverted
+        // ones have their safepoint between the limit check and the backedge that have been removed
+        // already.
+        assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count() || loop.counted.isInverted();
         for (SafepointNode safepoint : loop.whole().nodes().filter(SafepointNode.class)) {
             graph().removeFixed(safepoint);
         }
@@ -280,7 +282,8 @@ public class LoopFragmentInside extends LoopFragment {
                 usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
             }
 
-            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
+            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " +
+                            mainLoopBegin;
 
             mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
 

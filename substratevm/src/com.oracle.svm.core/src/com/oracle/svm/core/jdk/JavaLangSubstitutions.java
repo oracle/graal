@@ -69,8 +69,8 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -99,16 +99,21 @@ final class Target_java_lang_Object {
     }
 
     @Substitute
-    @TargetElement(name = "wait", onlyWith = JDK17OrEarlier.class)
+    @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
+        /*
+         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
+         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned.
+         * Also, we get interrupted on the virtual thread instead of the carrier thread, which
+         * clears the carrier thread's interrupt status too, so we don't have to intercept an
+         * InterruptedException from the carrier thread to clear the virtual thread interrupt.
+         */
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
-    @Substitute
-    @TargetElement(name = "wait0", onlyWith = JDK19OrLater.class)
-    private void waitSubstLoom(long timeoutMillis) throws InterruptedException {
-        MonitorSupport.singleton().wait(this, timeoutMillis);
-    }
+    @Delete
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private native void wait0(long timeoutMillis);
 
     @Substitute
     @TargetElement(name = "notify")
@@ -211,7 +216,7 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
+        stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
         return this;
     }
 

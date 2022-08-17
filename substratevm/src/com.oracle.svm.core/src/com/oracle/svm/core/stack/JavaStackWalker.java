@@ -260,19 +260,24 @@ public final class JavaStackWalker {
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    public static boolean walkCurrentThread(Pointer startSP, Pointer endSP, StackFrameVisitor visitor) {
+        return walkCurrentThread(startSP, endSP, FrameAccess.singleton().readReturnAddress(startSP), visitor, null);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static <T> boolean walkCurrentThread(Pointer startSP, ParameterizedStackFrameVisitor<T> visitor, T data) {
-        return walkCurrentThread(startSP, FrameAccess.singleton().readReturnAddress(startSP), visitor, data);
+        return walkCurrentThread(startSP, WordFactory.nullPointer(), FrameAccess.singleton().readReturnAddress(startSP), visitor, data);
     }
 
-    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> boolean walkCurrentThread(Pointer startSP, CodePointer startIP, ParameterizedStackFrameVisitor<T> visitor) {
-        return walkCurrentThread(startSP, startIP, visitor, null);
+        return walkCurrentThread(startSP, WordFactory.nullPointer(), startIP, visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    public static <T> boolean walkCurrentThread(Pointer startSP, CodePointer startIP, ParameterizedStackFrameVisitor<T> visitor, T data) {
+    public static <T> boolean walkCurrentThread(Pointer startSP, Pointer endSP, CodePointer startIP, ParameterizedStackFrameVisitor<T> visitor, T data) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        initWalk(walk, startSP, startIP);
+        initWalk(walk, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor());
         return doWalk(walk, visitor, data);
     }
 
@@ -283,12 +288,26 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static <T> boolean walkThread(IsolateThread thread, ParameterizedStackFrameVisitor<T> visitor, T data) {
+        return walkThread(thread, WordFactory.nullPointer(), visitor, data);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    public static <T> boolean walkThread(IsolateThread thread, Pointer endSP, ParameterizedStackFrameVisitor<T> visitor, T data) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         if (initWalk(walk, thread)) {
+            walk.setEndSP(endSP);
             return doWalk(walk, visitor, data);
         } else {
             return true;
         }
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    public static void walkThreadAtSafepoint(Pointer startSP, Pointer endSP, CodePointer startIP, StackFrameVisitor visitor) {
+        assert VMOperation.isInProgressAtSafepoint();
+        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+        initWalk(walk, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor());
+        doWalk(walk, visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)

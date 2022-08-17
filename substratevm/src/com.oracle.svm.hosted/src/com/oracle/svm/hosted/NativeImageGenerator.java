@@ -57,6 +57,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.reachability.DirectMethodProcessingHandler;
+import com.oracle.graal.reachability.MethodSummaryBasedHandler;
+import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
+import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -90,12 +94,11 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
-import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
-import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -885,7 +888,7 @@ public class NativeImageGenerator {
                 } else {
                     aScanningObserver = new ReachabilityObjectScanner(bb, aMetaAccess);
                 }
-                ImageHeapScanner heapScanner = new SVMImageHeapScanner(imageHeap, loader, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver);
+                ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver);
                 aUniverse.setHeapScanner(heapScanner);
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
                 aUniverse.setHeapVerifier(heapVerifier);
@@ -1091,10 +1094,16 @@ public class NativeImageGenerator {
                         aSnippetReflection, aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
-            MethodSummaryProvider methodSummaryProvider = HostedConfiguration.instance().createMethodSummaryProvider(aUniverse, aMetaAccess);
-            ImageSingletons.add(MethodSummaryProvider.class, methodSummaryProvider);
+            ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
+            if (PointstoOptions.UseReachabilityMethodSummaries.getValue(options)) {
+                MethodSummaryProvider methodSummaryProvider = new SimpleInMemoryMethodSummaryProvider();
+                ImageSingletons.add(MethodSummaryProvider.class, methodSummaryProvider);
+                reachabilityMethodProcessingHandler = new MethodSummaryBasedHandler(methodSummaryProvider, ImageSingletons.lookup(TimerCollection.class));
+            } else {
+                reachabilityMethodProcessingHandler = new DirectMethodProcessingHandler();
+            }
             return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
-                            methodSummaryProvider, ImageSingletons.lookup(TimerCollection.class));
+                            ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
                         ImageSingletons.lookup(TimerCollection.class));
@@ -1335,9 +1344,9 @@ public class NativeImageGenerator {
         SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
         Suites suites;
         if (hosted) {
-            suites = GraalConfiguration.hostedInstance().createSuites(HostedOptionValues.singleton(), hosted);
+            suites = GraalConfiguration.hostedInstance().createSuites(HostedOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
         } else {
-            suites = GraalConfiguration.runtimeInstance().createSuites(RuntimeOptionValues.singleton(), hosted);
+            suites = GraalConfiguration.runtimeInstance().createSuites(RuntimeOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
         }
         return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, false);
     }
@@ -1346,9 +1355,9 @@ public class NativeImageGenerator {
         SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
         Suites suites;
         if (hosted) {
-            suites = GraalConfiguration.hostedInstance().createFirstTierSuites(HostedOptionValues.singleton(), hosted);
+            suites = GraalConfiguration.hostedInstance().createFirstTierSuites(HostedOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
         } else {
-            suites = GraalConfiguration.runtimeInstance().createFirstTierSuites(RuntimeOptionValues.singleton(), hosted);
+            suites = GraalConfiguration.runtimeInstance().createFirstTierSuites(RuntimeOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
         }
         return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, true);
     }
@@ -1384,11 +1393,7 @@ public class NativeImageGenerator {
         lowTier.addBeforeLast(new OptimizeExceptionPathsPhase());
 
         BasePhase<CoreProviders> addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
-        if (economy) {
-            lowTier.findPhase(ExpandLogicPhase.class, true).add(addressLoweringPhase);
-        } else {
-            lowTier.findPhase(UseTrappingNullChecksPhase.class).add(addressLoweringPhase);
-        }
+        lowTier.replacePlaceholder(AddressLoweringPhase.class, addressLoweringPhase);
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             /*
@@ -1435,7 +1440,15 @@ public class NativeImageGenerator {
             highTier.findLastPhase().add(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_HIGH_TIER));
         }
 
+        removeSpeculativePhases(suites);
+
         return suites;
+    }
+
+    private static void removeSpeculativePhases(Suites suites) {
+        suites.getHighTier().removeSpeculativePhases();
+        suites.getMidTier().removeSpeculativePhases();
+        suites.getLowTier().removeSpeculativePhases();
     }
 
     @SuppressWarnings("unused")

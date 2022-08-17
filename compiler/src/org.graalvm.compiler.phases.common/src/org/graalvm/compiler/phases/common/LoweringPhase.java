@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -62,13 +63,14 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -212,16 +214,16 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     private final CanonicalizerPhase canonicalizer;
     private final LoweringTool.StandardLoweringStage loweringStage;
     private final boolean lowerOptimizableMacroNodes;
-    private final StructuredGraph.StageFlag postRunStage;
+    private final GraphState.StageFlag postRunStage;
 
-    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.StandardLoweringStage loweringStage, boolean lowerOptimizableMacroNodes, StructuredGraph.StageFlag postRunStage) {
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.StandardLoweringStage loweringStage, boolean lowerOptimizableMacroNodes, GraphState.StageFlag postRunStage) {
         this.canonicalizer = canonicalizer;
         this.loweringStage = loweringStage;
         this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
         this.postRunStage = postRunStage;
     }
 
-    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.StandardLoweringStage loweringStage, StructuredGraph.StageFlag postRunStage) {
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.StandardLoweringStage loweringStage, GraphState.StageFlag postRunStage) {
         this(canonicalizer, loweringStage, false, postRunStage);
     }
 
@@ -245,10 +247,20 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return this.canonicalizer.canApply(graphState);
+    }
+
+    @Override
     protected void run(final StructuredGraph graph, CoreProviders context) {
         lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
-        graph.setAfterStage(postRunStage);
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(postRunStage);
     }
 
     @SuppressWarnings("try")

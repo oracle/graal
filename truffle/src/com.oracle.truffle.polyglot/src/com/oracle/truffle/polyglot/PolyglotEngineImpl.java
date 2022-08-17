@@ -124,6 +124,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
@@ -156,6 +157,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static final LocalLocation[] EMPTY_LOCATIONS = new LocalLocation[0];
 
     final Object lock = new Object();
+
+    private Thread closingThread;
+
     final Object instrumentationHandler;
     final String[] permittedLanguages;
     final PolyglotImpl impl;
@@ -228,6 +232,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private boolean runtimeInitialized;
 
     final AbstractPolyglotHostService polyglotHostService;
+
+    private final Set<InstrumentSystemThread> activeSystemThreads = Collections.newSetFromMap(new HashMap<>());
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, String[] permittedLanguages,
@@ -1141,107 +1147,130 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void ensureClosed(boolean force, boolean inShutdownHook, boolean initiatedByContext) {
         synchronized (this.lock) {
-            if (!closed) {
-                workContextReferenceQueue();
-                List<PolyglotContextImpl> localContexts = collectAliveContexts();
-                /*
-                 * Check ahead of time for open contexts to fail early and avoid closing only some
-                 * contexts.
-                 */
-                if (!inShutdownHook) {
-                    if (!force) {
-                        for (PolyglotContextImpl context : localContexts) {
-                            assert !Thread.holdsLock(context);
-                            synchronized (context) {
-                                if (context.hasActiveOtherThread(false) && !context.state.isClosing()) {
-                                    throw PolyglotEngineException.illegalState(String.format("One of the context instances is currently executing. " +
-                                                    "Set cancelIfExecuting to true to stop the execution on this thread."));
-                                }
+            Thread currentThread = Thread.currentThread();
+            boolean interrupted = false;
+            while (closingThread != null && closingThread != currentThread) {
+                try {
+                    this.lock.wait();
+                } catch (InterruptedException ie) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                currentThread.interrupt();
+            }
+            if (closed) {
+                return;
+            }
+            workContextReferenceQueue();
+            List<PolyglotContextImpl> localContexts = collectAliveContexts();
+            /*
+             * Check ahead of time for open contexts to fail early and avoid closing only some
+             * contexts.
+             */
+            if (!inShutdownHook) {
+                if (!force) {
+                    for (PolyglotContextImpl context : localContexts) {
+                        assert !Thread.holdsLock(context);
+                        synchronized (context) {
+                            if (context.hasActiveOtherThread(false) && !context.state.isClosing()) {
+                                throw PolyglotEngineException.illegalState(String.format("One of the context instances is currently executing. " +
+                                                "Set cancelIfExecuting to true to stop the execution on this thread."));
                             }
                         }
                     }
-                    if (!initiatedByContext) {
-                        /*
-                         * context.cancel and context.closeAndMaybeWait close the engine if it is
-                         * bound to the context, so if we called these methods here, it might lead
-                         * to StackOverflowError.
-                         */
-                        for (PolyglotContextImpl context : localContexts) {
-                            assert !Thread.holdsLock(context);
-                            assert context.parent == null;
-                            if (force) {
-                                context.cancel(false, null);
-                            } else {
-                                context.closeAndMaybeWait(false, null);
-                            }
-                        }
-                    }
                 }
-
-                // don't commit changes to contexts if still running
-                if (!inShutdownHook) {
-                    contexts.clear();
-
-                    if (RUNTIME.onEngineClosing(this.runtimeData)) {
-                        return;
-                    }
-                }
-
-                // instruments should be shut-down even if they are currently still executed
-                // we want to see instrument output if the process is quit while executing.
-                for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
-                    try {
-                        instrumentImpl.notifyClosing();
-                    } catch (Throwable e) {
-                        if (!inShutdownHook) {
-                            throw e;
-                        }
-                    }
-                }
-                for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
-                    try {
-                        instrumentImpl.ensureClosed();
-                    } catch (Throwable e) {
-                        if (!inShutdownHook) {
-                            throw e;
-                        }
-                    }
-                }
-
-                if (specializationStatistics != null) {
-                    StringWriter logMessage = new StringWriter();
-                    try (PrintWriter writer = new PrintWriter(logMessage)) {
-                        if (!specializationStatistics.hasData()) {
-                            writer.printf("No specialization statistics data was collected. Either no node with @%s annotations was executed or " +
-                                            "the interpreter was not compiled with -J-Dtruffle.dsl.GenerateSpecializationStatistics=true e.g as parameter to the javac tool.",
-                                            Specialization.class.getSimpleName());
+                if (!initiatedByContext) {
+                    /*
+                     * context.cancel and context.closeAndMaybeWait close the engine if it is bound
+                     * to the context, so if we called these methods here, it might lead to
+                     * StackOverflowError.
+                     */
+                    for (PolyglotContextImpl context : localContexts) {
+                        assert !Thread.holdsLock(context);
+                        assert context.parent == null;
+                        if (force) {
+                            context.cancel(false, null);
                         } else {
-                            specializationStatistics.printHistogram(writer);
+                            context.closeAndMaybeWait(false, null);
                         }
                     }
-                    getEngineLogger().log(Level.INFO, String.format("Specialization histogram: %n%s", logMessage.toString()));
                 }
+            }
 
+            // don't commit changes to contexts if still running
+            if (!inShutdownHook) {
+                contexts.clear();
+
+                if (RUNTIME.onEngineClosing(this.runtimeData)) {
+                    return;
+                }
+            }
+            closingThread = currentThread;
+        }
+
+        // instruments should be shut-down even if they are currently still executed
+        // we want to see instrument output if the process is quit while executing.
+        for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
+            try {
+                instrumentImpl.notifyClosing();
+            } catch (Throwable e) {
                 if (!inShutdownHook) {
-                    RUNTIME.onEngineClosed(this.runtimeData);
-
-                    Object loggers = getEngineLoggers();
-                    if (loggers != null) {
-                        LANGUAGE.closeEngineLoggers(loggers);
-                    }
-                    if (logHandler != null) {
-                        logHandler.close();
-                    }
-                    closed = true;
-                    polyglotHostService.notifyEngineClosed(this, force);
-                    if (runtimeData != null) {
-                        EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
-                    }
-                    getAPIAccess().engineClosed(api);
-                } else if (logHandler != null) {
-                    // called from shutdown hook, at least flush the logging handler
-                    logHandler.flush();
+                    throw e;
                 }
+            }
+        }
+        for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
+            try {
+                instrumentImpl.ensureClosed();
+            } catch (Throwable e) {
+                if (!inShutdownHook) {
+                    throw e;
+                }
+            }
+        }
+
+        synchronized (this.lock) {
+            closed = true;
+            closingThread = null;
+            this.lock.notifyAll();
+            if (!activeSystemThreads.isEmpty()) {
+                InstrumentSystemThread thread = activeSystemThreads.iterator().next();
+                throw new IllegalStateException(String.format("The engine has an alive system thread %s created by instrument %s.", thread.getName(), thread.instrumentId));
+            }
+            if (specializationStatistics != null) {
+                StringWriter logMessage = new StringWriter();
+                try (PrintWriter writer = new PrintWriter(logMessage)) {
+                    if (!specializationStatistics.hasData()) {
+                        writer.printf("No specialization statistics data was collected. Either no node with @%s annotations was executed or " +
+                                        "the interpreter was not compiled with -J-Dtruffle.dsl.GenerateSpecializationStatistics=true e.g as parameter to the javac tool.",
+                                        Specialization.class.getSimpleName());
+                    } else {
+                        specializationStatistics.printHistogram(writer);
+                    }
+                }
+                getEngineLogger().log(Level.INFO, String.format("Specialization histogram: %n%s", logMessage.toString()));
+            }
+
+            if (!inShutdownHook) {
+                RUNTIME.onEngineClosed(this.runtimeData);
+
+                Object loggers = getEngineLoggers();
+                if (loggers != null) {
+                    LANGUAGE.closeEngineLoggers(loggers);
+                }
+                if (logHandler != null) {
+                    logHandler.close();
+                }
+
+                polyglotHostService.notifyEngineClosed(this, force);
+                if (runtimeData != null) {
+                    EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
+                }
+                getAPIAccess().engineClosed(api);
+            } else if (logHandler != null) {
+                // called from shutdown hook, at least flush the logging handler
+                logHandler.flush();
             }
         }
     }
@@ -1741,11 +1770,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 } catch (Throwable t) {
                     if (contextAddedToEngine) {
-                        synchronized (this.lock) {
-                            disposeContext(context);
-                            if (boundEngine) {
-                                ensureClosed(false, false, false);
-                            }
+                        disposeContext(context);
+                        if (boundEngine) {
+                            ensureClosed(false, false, false);
                         }
                     }
                     throw t;
@@ -2138,6 +2165,20 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         ensureClosed(false, true, false);
     }
 
+    void addSystemThread(InstrumentSystemThread thread) {
+        synchronized (lock) {
+            if (!closed) {
+                activeSystemThreads.add(thread);
+            }
+        }
+    }
+
+    void removeSystemThread(InstrumentSystemThread thread) {
+        synchronized (lock) {
+            activeSystemThreads.remove(thread);
+        }
+    }
+
     static final class StableLocalLocations {
 
         @CompilationFinal(dimensions = 1) final LocalLocation[] locations;
@@ -2167,11 +2208,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      * Invoked by TruffleBaseFeature to make sure the fallback engine is not contained in the image.
      */
     static void resetFallbackEngine() {
+        PolyglotEngineImpl engineToClose = null;
         synchronized (PolyglotImpl.class) {
             if (fallbackEngine != null) {
-                fallbackEngine.ensureClosed(false, false, false);
+                engineToClose = fallbackEngine;
                 fallbackEngine = null;
             }
+        }
+        if (engineToClose != null) {
+            engineToClose.ensureClosed(false, false, false);
         }
     }
 

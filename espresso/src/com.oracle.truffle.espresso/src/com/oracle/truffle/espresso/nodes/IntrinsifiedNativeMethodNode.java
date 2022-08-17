@@ -40,7 +40,7 @@ public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
     }
 
     @Override
-    Object executeBody(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         Method method = getMethod();
         if (method.isStatic()) {
@@ -51,11 +51,6 @@ public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
             args = newArgs;
         }
         return nativeMethod.invokeDirect(env, args);
-    }
-
-    @Override
-    void initializeBody(VirtualFrame frame) {
-        // nop
     }
 
     @Override

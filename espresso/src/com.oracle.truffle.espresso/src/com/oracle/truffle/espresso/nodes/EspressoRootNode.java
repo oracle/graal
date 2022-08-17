@@ -279,6 +279,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             enterSynchronized(frame, monitor);
             Object result;
             try {
+                methodNode.initializeFrame(frame);
                 result = methodNode.execute(frame);
             } finally {
                 InterpreterToVM.monitorExit(monitor, getMeta());
@@ -315,6 +316,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }
+            methodNode.initializeFrame(frame);
             return methodNode.execute(frame);
         }
     }

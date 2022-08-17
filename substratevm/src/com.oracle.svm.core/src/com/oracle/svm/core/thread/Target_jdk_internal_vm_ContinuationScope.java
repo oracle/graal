@@ -24,14 +24,9 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 
-@TargetClass(className = "java.lang.ContinuationScope", onlyWith = LoomJDK.class)
-public final class Target_java_lang_ContinuationScope {
-    @SuppressWarnings("unused")
-    @Alias
-    public Target_java_lang_ContinuationScope(String name) {
-    }
+@TargetClass(className = "ContinuationScope", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = JDK19OrLater.class)
+public final class Target_jdk_internal_vm_ContinuationScope {
 }

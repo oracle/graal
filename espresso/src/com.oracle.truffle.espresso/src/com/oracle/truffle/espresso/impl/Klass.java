@@ -82,6 +82,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -102,12 +103,16 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String SUPER = "super";
 
     @ExportMessage
-    boolean isMemberReadable(String member, @Shared("lookupField") @Cached LookupFieldNode lookupField) {
+    boolean isMemberReadable(String member,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod) {
         Field field = lookupField.execute(this, member, true);
         if (field != null) {
             return true;
         }
-
+        if (isMemberInvocable(member, lookupMethod)) {
+            return true;
+        }
         if (STATIC_TO_CLASS.equals(member)) {
             return true;
         }
@@ -130,6 +135,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     Object readMember(String member,
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException {
 
         Field field = lookupFieldNode.execute(this, member, true);
@@ -140,6 +146,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return ((StaticObject) result).rawForeignObject(language);
             }
             return result;
+        }
+        try {
+            Method.MethodVersion m = lookupMethod.execute(this, member, true, true, -1 /*- skip */);
+            if (m != null) {
+                return EspressoFunction.createStaticInvocable(m.getMethod());
+            }
+        } catch (ArityException e) {
+            /* ignore and continue */
         }
 
         // Klass<T>.class == Class<T>
@@ -194,14 +208,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     final boolean isMemberInvocable(String member,
-                    @Exclusive @Cached LookupDeclaredMethod lookupMethod) {
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod) {
         return lookupMethod.isInvocable(this, member, true);
     }
 
     @ExportMessage
     final Object invokeMember(String member,
                     Object[] arguments,
-                    @Exclusive @Cached LookupDeclaredMethod lookupMethod,
+                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method.MethodVersion methodVersion = lookupMethod.execute(this, member, true, true, arguments.length);
@@ -230,7 +244,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         members.add(CLASS_TO_STATIC);
         for (Method m : getDeclaredMethods()) {
             if (m.isStatic() && m.isPublic()) {
-                members.add(m.getName().toString());
+                members.add(m.getInteropString());
             }
         }
         if (getMeta()._void != this) {
@@ -367,7 +381,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
-                        @Exclusive @Cached LookupDeclaredMethod lookupMethod,
+                        @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
             Method.MethodVersion init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
@@ -432,7 +446,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // In unit tests, Truffle performs additional sanity checks, this assert causes stack
         // overflow.
         // assert InteropLibrary.getUncached().hasIdentity(this);
-        return VM.JVM_IHashCode(mirror());
+        return VM.JVM_IHashCode(mirror(), null /*- path where language is needed is never reached through here. */);
     }
 
     // endregion ### Identity/hashCode

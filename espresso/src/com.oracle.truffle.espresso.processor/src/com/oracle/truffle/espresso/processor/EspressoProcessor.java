@@ -255,7 +255,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String ESPRESSO_CONTEXT_VAR = "context";
     static final String ESPRESSO_CONTEXT_SETTER = String.format("%s %s = getContext();", ESPRESSO_CONTEX_SIMPLE_NAME, ESPRESSO_CONTEXT_VAR);
 
-    static final String ESPRESSO_LANGUAGE_FROM_ESPRESSO_CONTEXT = String.format("%s.getLanguage()", ESPRESSO_CONTEXT_VAR);
+    static final String GET_ESPRESSO_LANGUAGE = "getLanguage()";
     static final String META_FROM_ESPRESSO_CONTEXT = String.format("%s.getMeta()", ESPRESSO_CONTEXT_VAR);
 
     static final String PROFILE_CLASS = "SubstitutionProfiler";
@@ -502,7 +502,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     static void setEspressoContextVar(MethodBuilder methodBuilder, SubstitutionHelper helper) {
-        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
+        if (helper.needsContextInjection()) {
             methodBuilder.addBodyLine(EspressoProcessor.ESPRESSO_CONTEXT_SETTER);
         }
     }
@@ -672,7 +672,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static boolean injectLanguage(StringBuilder str, boolean first) {
         checkFirst(str, first);
-        str.append(ESPRESSO_LANGUAGE_FROM_ESPRESSO_CONTEXT);
+        str.append(GET_ESPRESSO_LANGUAGE);
         return false;
     }
 
@@ -711,7 +711,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
 
-        if (helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasContextInjection) {
+        if (helper.needsContextInjection()) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
         if (!helper.isNodeTarget()) {
