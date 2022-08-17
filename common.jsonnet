@@ -32,7 +32,7 @@ local add_jdk_version(name) =
   local version = find_first_integer(jdk.version);
   // santity check that the parsed version is also included in the name
   assert std.length(std.findSubstr(std.toString(version), name)) == 1 : "Cannot find version %d in name %s" % [version, name];
-  { jdk_version:: version}
+  { jdk_version: version}
 ;
 
 {
@@ -117,6 +117,7 @@ local add_jdk_version(name) =
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
   labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],
   labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
+  labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
 
 
   // Hardware definitions
