@@ -38,7 +38,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -75,7 +74,6 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
     private static final String INVOKED_METHOD_FORMAT = "%H.%n(%P)%R";
     private final StructuredGraph graph;
     private final Providers providers;
-    private final PhaseSuite<HighTierContext> graphBuilderSuite;
     private GraphBuilderPhase graphBuilderPhase;
     /**
      * Cached stable method names.
@@ -85,7 +83,6 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
     public StableMethodNameFormatter(StructuredGraph graph, Providers providers, PhaseSuite<HighTierContext> graphBuilderSuite) {
         this.graph = graph;
         this.providers = providers;
-        this.graphBuilderSuite = graphBuilderSuite;
     }
 
     /**
@@ -127,10 +124,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         if (graphBuilderPhase != null) {
             return graphBuilderPhase;
         }
-        GraphBuilderPhase originalBuilder = (GraphBuilderPhase) (graphBuilderSuite.findPhase(GraphBuilderPhase.class).previous());
-        ClassInitializationPlugin cip = originalBuilder.getGraphBuilderConfig().getPlugins().getClassInitializationPlugin();
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-        plugins.setClassInitializationPlugin(cip);
         GraphBuilderConfiguration builderConfiguration = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         graphBuilderPhase = new GraphBuilderPhase(builderConfiguration);
         return graphBuilderPhase;
