@@ -143,7 +143,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             clazz = getJdkProxyClass(classLoader, interfaces);
         } catch (Throwable e) {
             try {
-                clazz = getJdkProxyClass(getCommonClassLoader(interfaces), interfaces);
+                /* We do not have a specific loader in which we wish to load the class here */
+                clazz = getJdkProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
             } catch (Throwable e2) {
                 throw e;
             }
@@ -152,19 +153,17 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         return clazz;
     }
 
-    private static ClassLoader getCommonClassLoader(Class<?>... intfs) {
-        ClassLoader classLoader = null;
+    private static ClassLoader getCommonClassLoaderOrFail(ClassLoader loader, Class<?>... intfs) {
+        ClassLoader commonLoader = null;
         for (Class<?> intf : intfs) {
             ClassLoader intfLoader = intf.getClassLoader();
-            if (classLoader == null) {
-                classLoader = intfLoader;
-            } else {
-                if (intfLoader != classLoader) {
-                    return null;
-                }
+            if (ClassUtil.isSameOrParentLoader(commonLoader, intfLoader)) {
+                commonLoader = intfLoader;
+            } else if (!ClassUtil.isSameOrParentLoader(intfLoader, commonLoader)) {
+                throw incompatibleClassLoaders(loader, intfs);
             }
         }
-        return classLoader;
+        return commonLoader;
     }
 
     @Override
@@ -190,20 +189,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
              * common. This prevents that later we would be unable to return the proxy class if we
              * are passed a parent loader of the initially specified loader.
              */
-            ClassLoader commonLoader = null;
-            for (Class<?> intf : interfaces) {
-                ClassLoader intfLoader = intf.getClassLoader();
-                if (ClassUtil.isSameOrParentLoader(commonLoader, intfLoader)) {
-                    commonLoader = intfLoader;
-                } else if (!ClassUtil.isSameOrParentLoader(intfLoader, commonLoader)) {
-                    /*
-                     * This should be caught when the proxy class is generated during the image
-                     * build, but can occur with predefined classes which are "loaded" by different
-                     * class loaders at runtime.
-                     */
-                    throw incompatibleClassLoaders(loader, interfaces);
-                }
-            }
+            ClassLoader commonLoader = getCommonClassLoaderOrFail(loader, interfaces);
             if (!ClassUtil.isSameOrParentLoader(commonLoader, loader)) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
