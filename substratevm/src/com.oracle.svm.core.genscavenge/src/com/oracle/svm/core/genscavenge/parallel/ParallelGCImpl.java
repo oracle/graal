@@ -24,8 +24,10 @@ import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
 
-    /// determine at runtime?
+    /// determine at runtime, max 32 (from busyWorkers)
     private static final int WORKERS_COUNT = 4;
+    private static final int WORKERS_ALL   = 0b1111;
+    private static final int WORKERS_NONE  = 0;
 
     /**
      * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
@@ -34,8 +36,9 @@ public class ParallelGCImpl extends ParallelGC {
             FastThreadLocalFactory.createWord("ParallelGCImpl.chunkTL");
 
     public static final VMMutex mutex = new VMMutex("ParallelGCImpl");
-    private final VMCondition cond = new VMCondition(mutex);
-    private final AtomicInteger busy = new AtomicInteger(0);
+    private final VMCondition seqPhase = new VMCondition(mutex);
+    private final VMCondition parPhase = new VMCondition(mutex);
+    private final AtomicInteger busyWorkers = new AtomicInteger(0);
 
     private static final ThreadLocalTaskStack[] STACKS =
             IntStream.range(0, WORKERS_COUNT).mapToObj(i -> new ThreadLocalTaskStack()).toArray(ThreadLocalTaskStack[]::new);
@@ -61,12 +64,12 @@ public class ParallelGCImpl extends ParallelGC {
                 localStack.set(stack);
                 getStats().install();
                 while (true) {
-                    mutex.lock();
-                    while (busy.get() < WORKERS_COUNT) {
+                    do {
                         log().string("WW block ").unsigned(n).newline();
-                        cond.block();
-                    }
-                    mutex.unlock();
+                        mutex.lock();
+                        parPhase.block();
+                        mutex.unlock();
+                    } while ((busyWorkers.get() & (1 << n)) == 0);
 
                     log().string("WW run ").unsigned(n).string(", count=").unsigned(stack.size()).newline();
                     Object obj;
@@ -74,8 +77,15 @@ public class ParallelGCImpl extends ParallelGC {
                         getVisitor().doVisitObject(obj);
                     }
                     killThreadLocalChunk();
-                    if (busy.decrementAndGet() <= 0) {
-                        cond.broadcast();
+
+                    int witness = busyWorkers.get();
+                    int expected;
+                    do {
+                        expected = witness;
+                        witness = busyWorkers.compareAndExchange(expected, expected & ~(1 << n));
+                    } while (witness != expected);
+                    if (busyWorkers.get() == WORKERS_NONE) {
+                        seqPhase.signal();
                     }
                     log().string("WW idle ").unsigned(n).newline();
                 }
@@ -139,25 +149,20 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     private void waitForIdleImpl() {
-        setInParallelPhase(true);
+        inParallelPhase = true;
 
         log().string("PP start workers\n");
-        busy.set(WORKERS_COUNT);
-        cond.broadcast();     // let worker threads run
+        busyWorkers.set(WORKERS_ALL);
+        parPhase.broadcast();     // let worker threads run
 
-        mutex.lock();
-        while (busy.get() > 0) {
-            log().string("PP wait busy=").unsigned(busy.get()).newline();
-            cond.block();     // wait for them to become idle
+        while (busyWorkers.get() != WORKERS_NONE) {
+            mutex.lock();
+            log().string("PP wait busy=").unsigned(busyWorkers.get()).newline();
+            seqPhase.block();     // wait for them to become idle
+            mutex.unlock();
         }
-        mutex.unlock();
 
-        setInParallelPhase(false);
-    }
-
-    private void setInParallelPhase(boolean inParallelPhase) {
-        assert isSupported();
-        singleton().inParallelPhase = inParallelPhase;
+        inParallelPhase = false;
     }
 
     public static Stats getStats() {
@@ -165,7 +170,7 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     static Log log() {
-        return Log.log();///
+        return Log.noopLog();///
     }
 }
 
