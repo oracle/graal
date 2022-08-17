@@ -909,6 +909,10 @@ public abstract class NativeImage extends AbstractImage {
                  * 3. the linkage names given by @CEntryPoint
                  */
 
+                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                    /* add a dummy function symbol at the start of the code section */
+                    objectFile.createDefinedSymbol("__svm_code_section", textSection, 0, 0, true, true);
+                }
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
                 for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
