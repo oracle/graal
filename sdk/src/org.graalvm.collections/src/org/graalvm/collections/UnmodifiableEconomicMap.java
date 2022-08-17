@@ -115,6 +115,8 @@ public interface UnmodifiableEconomicMap<K, V> {
 
     /**
      * Returns the strategy used to compare keys.
+     *
+     * @since 22.3
      */
     default Equivalence getEquivalenceStrategy() {
         return Equivalence.DEFAULT;
