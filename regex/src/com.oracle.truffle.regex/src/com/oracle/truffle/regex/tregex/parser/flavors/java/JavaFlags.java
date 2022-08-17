@@ -60,8 +60,6 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     private final int value;
 
     private static final String FLAGS = "idmsuxU";
-    //    private static final String BIT_FLAGS = "mixy";
-//    private static final String COMPILE_TIME_FLAGS = "mix";
     private static final String TYPE_FLAGS = "duU";
 
     public JavaFlags(String source) {

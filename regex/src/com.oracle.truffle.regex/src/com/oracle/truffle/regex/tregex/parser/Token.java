@@ -87,11 +87,8 @@ public class Token implements JsonConvertible {
         return new Anchor(ancValue);
     }
 
-    public static Token addInlineFlag(Token.Kind kind, boolean remove, String flags, boolean open) {
-        return new InlineFlagToken(kind, remove, flags, open);
-    }
     public static Token addInlineFlag(boolean remove, String flags, boolean open) {
-        return addInlineFlag(Kind.inlineFlag, remove, flags, open);
+        return new InlineFlagToken(Kind.inlineFlag, remove, flags, open);
     }
 
     public static Token createCaret() {
@@ -158,9 +155,6 @@ public class Token implements JsonConvertible {
         return negated ? NEGATIVE_LOOK_BEHIND_ASSERTION_BEGIN : LOOK_BEHIND_ASSERTION_BEGIN;
     }
 
-    /**
-     * place holder for an empty token
-     */
     public static Token createComment() {
         return new Token(Kind.comment);
     }
