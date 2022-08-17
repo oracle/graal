@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.floating;
 
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -48,16 +50,24 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension.WellKnownNativeFunctionNode;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatNativeCallNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
+import com.oracle.truffle.nfi.api.SerializableLibrary;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
 @ValueType
-public final class LLVM80BitFloat implements LLVMArithmetic {
+@ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
+public final class LLVM80BitFloat extends LLVMInternalTruffleObject implements LLVMArithmetic {
 
     private static final int BIT_TO_HEX_FACTOR = 4;
     public static final int BIT_WIDTH = 80;
@@ -570,6 +580,25 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
     public static int compare(LLVM80BitFloat val1, LLVM80BitFloat val2) {
         return val1.compareOrdered(val2);
+    }
+
+    // serialization for NFI
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isSerializable() {
+        return true;
+    }
+
+    @ExportMessage(limit = "1")
+    void serialize(Object buffer,
+                    @CachedLibrary("buffer") InteropLibrary interop) {
+        try {
+            interop.writeBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 0, fraction);
+            interop.writeBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, 8, expSign);
+        } catch (UnsupportedMessageException | InvalidBufferOffsetException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
     }
 
     protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {
