@@ -30,9 +30,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.util.ReflectionUtil;
 
 @TargetClass(className = "java.lang.invoke.LambdaForm")
@@ -41,7 +39,6 @@ public final class Target_java_lang_invoke_LambdaForm {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Target_java_lang_invoke_MemberName vmentry;
 
-    @TargetElement(onlyWith = JDK19OrLater.class)//
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = LambdaFormCacheTransformer.class)//
     volatile Object transformCache;
 
