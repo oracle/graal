@@ -108,10 +108,10 @@ public final class JavaRegexParser implements RegexParser {
         while (lexer.hasNext()) {
             token = lexer.next();
             switch (token.kind) {
-                case caret: // java version of it
+                case caret:
                     caret();
                     break;
-                case dollar: // java version of it
+                case dollar:
                     dollar();
                     break;
                 case wordBoundary:
@@ -319,7 +319,6 @@ public final class JavaRegexParser implements RegexParser {
             addDollar();    // $
             nextSequence(); // |
             pushLookAheadAssertion(false);  // (?=
-            pushGroup();    // (?:
             addCharClass(CodePointSet.create('\r'));
             addCharClass(CodePointSet.create('\n'));
             nextSequence();
@@ -386,31 +385,5 @@ public final class JavaRegexParser implements RegexParser {
     private void addQuantifier(Token.Quantifier quantifier) {
         astBuilder.addQuantifier(quantifier);
     }
-
-    // not used ast-functions
-//    private void pushCaptureGroup() {
-//        astBuilder.pushCaptureGroup();
-//    }
-//
-//    private void addChar(int codepoint) {
-//        astBuilder.addCharClass(CodePointSet.create(codepoint), true);
-//    }
-//
-//    private void addBackReference(int groupNumber) {
-//        astBuilder.addBackReference(groupNumber);
-//    }
-//
-//    private void addSubexpressionCall(int groupNumber) {
-//        astBuilder.addSubexpressionCall(groupNumber);
-//    }
-//
-//
-//    private void addDeadNode() {
-//        astBuilder.addDeadNode();
-//    }
-//
-//    private void wrapCurTermInGroup() {
-//        astBuilder.wrapCurTermInGroup();
-//    }
 
 }

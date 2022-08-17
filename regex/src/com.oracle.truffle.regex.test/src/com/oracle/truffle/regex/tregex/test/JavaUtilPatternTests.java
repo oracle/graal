@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.test;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
@@ -198,10 +199,10 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test(".\\Z", 0, "abc\ndef");
     }
 
-//    @Test
-//    public void matchAnchor() { // not supported yet
-//        test("\\G\\w", 0, "abc def");
-//    }
+    @Test(expected = UnsupportedRegexException.class)
+    public void anchorBailout() {
+        test("\\G\\w", 0, "abc def");
+    }
 
     @Test
     public void wordBoundary() {
@@ -213,7 +214,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
     public void quantifiers() {
         test("abc?", 0, "ab");
         test("abc??", 0, "ab");
-//        test("abc?+c", 0, "abcc");  // not supported yet --> bailout (possive quantifiers)
         test("\".*\"", 0, "abc \"def\" \"ghi\" jkl");
         test("\".*?\"", 0, "abc \"def\" \"ghi\" jkl");
         test("\".+?\"", 0, "abc \"def\" \"ghi\" jkl");
@@ -222,7 +222,12 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{2,}", 0, "aaaaa");
         test("a{2,4}?", 0, "aa");
         test("a{2,}?", 0, "aaaaa");
-//        test("a{2,4}+a", 0, "aaaaa");
+    }
+
+    @Test(expected = UnsupportedRegexException.class)
+    public void quantifiersBailout() {
+        test("abc?+c", 0, "abcc");
+        test("a{2,4}+a", 0, "aaaaa");
     }
 
     @Test(expected = Exception.class)
@@ -234,11 +239,10 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{2,}+a", 0, "aa");
     }
 
-//    @Test
-//    public void unicodeTests() {
-//        test("\\x{A9}", 0, "©a d");
-//        test("\\u00A9", 0, "©a d");
-//    }
+    @Test(expected = UnsupportedRegexException.class)
+    public void atomicGroupBailout() {
+        test("a(?>bc|b)c", 0, "abcc");
+    }
 
     @Test
     public void capturingGroup() {
@@ -255,11 +259,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("(abc|def)=\\1", 0, "abc=def");
         test("(abc|def)=\\1", 0, "def=abc");
     }
-
-//    @Test   // atomic groups are not supported in TRegex
-//    public void atomicGroup() {       // no need to support that!
-//        test("a(?>bc|b)c", 0, "abcc");
-//    }
 
     @Test
     public void lookAhead() {

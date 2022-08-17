@@ -28,14 +28,5 @@ public class JavaTruffleRegex {
         tregexPattern = context.eval(TRegexTestDummyLanguage.ID, "Flavor=JavaUtilPattern" + '/' + regex + '/');
 
         return tregexPattern;
-
-//        StringBuilder combinedOptions = new StringBuilder("RegressionTestMode=true");
-//        if (!getEngineOptions().isEmpty()) {
-//            combinedOptions.append("," + getEngineOptions());
-//        }
-//        if (!options.isEmpty()) {
-//            combinedOptions.append("," + options);
-//        }
-//        return context.eval("regexDummyLang", combinedOptions.toString() + '/' + pattern + '/' + flags);
     }
 }
