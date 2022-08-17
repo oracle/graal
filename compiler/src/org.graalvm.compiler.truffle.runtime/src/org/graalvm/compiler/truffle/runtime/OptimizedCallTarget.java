@@ -680,7 +680,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (this.isSameOrSplit(callerCallTarget)) {
                 return;
             }
-            if (callerRootNode.getFrameDescriptor().equals(parentFrameDescriptor)) {
+            if (callerCallTarget.frameDescriptorEquals(parentFrameDescriptor)) {
                 callerCallNode.forceInlining();
                 callerCallTarget.callAndLoopCount += this.callAndLoopCount;
                 return;
@@ -689,6 +689,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } while (++depth < engine.propagateCallAndLoopCountMaxDepth &&
                         currentSingleCallNode != NO_CALL &&
                         currentSingleCallNode != MULTIPLE_CALLS);
+    }
+
+    private boolean frameDescriptorEquals(FrameDescriptor parentFrameDescriptor) {
+        assert parentFrameDescriptor != null;
+        if (parentFrameDescriptor.equals(rootNode.getFrameDescriptor())) {
+            return true;
+        }
+        if (isSplit()) {
+            RootNode sourceRootNode = sourceCallTarget.getRootNode();
+            return parentFrameDescriptor.equals(sourceRootNode.getFrameDescriptor());
+        }
+        return false;
     }
 
     private Object executeRootNode(VirtualFrame frame, CompilationState tier) {
