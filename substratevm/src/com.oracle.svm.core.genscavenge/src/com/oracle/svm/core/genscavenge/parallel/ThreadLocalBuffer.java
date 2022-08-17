@@ -3,8 +3,10 @@ package com.oracle.svm.core.genscavenge.parallel;
 import com.oracle.svm.core.log.Log;
 import org.graalvm.word.Pointer;
 
-/// thread local, non MT safe
-public class ThreadLocalTaskStack {
+/**
+ * Thread local (non MT safe) buffer where pointers to grey objects are stored.
+ */
+public class ThreadLocalBuffer {
     private static final int SIZE = 128 * 1024;
 
     private final Pointer[] data = new Pointer[SIZE];

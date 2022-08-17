@@ -219,10 +219,6 @@ public final class Space {
         lastAlignedHeapChunk = WordFactory.nullPointer();
         firstUnalignedHeapChunk = WordFactory.nullPointer();
         lastUnalignedHeapChunk = WordFactory.nullPointer();
-
-        if (ParallelGC.isSupported()) {
-            ParallelGCImpl.killThreadLocalChunk();
-        }
         accounting.reset();
     }
 
@@ -439,7 +435,7 @@ public final class Space {
                 AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
                 RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
             }
-            ParallelGCImpl.singleton().pushToLocalStack(copyMemory);
+            ParallelGCImpl.singleton().pushToLocalBuffer(copyMemory);
             return copy;
         } else {
             // Retract speculatively allocated memory
