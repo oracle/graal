@@ -92,13 +92,17 @@ final class PolyglotThread extends Thread {
     public void run() {
         // always call through a HostToGuestRootNode so that stack/frame
         // walking can determine in which context the frame was executed
-        callTarget.call(languageContext, this, new PolyglotThreadRunnable() {
-            @Override
-            @TruffleBoundary
-            public void execute() {
-                PolyglotThread.super.run();
-            }
-        });
+        try {
+            callTarget.call(languageContext, this, new PolyglotThreadRunnable() {
+                @Override
+                @TruffleBoundary
+                public void execute() {
+                    PolyglotThread.super.run();
+                }
+            });
+        } catch (Throwable t) {
+            throw PolyglotImpl.engineToLanguageException(t);
+        }
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
