@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /*
  All methods in this class that can be overridden in subclasses must be abstract.
@@ -38,8 +40,9 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
     public abstract Object execute(VirtualFrame frame);
 
     @SuppressWarnings("unused")
-    public void initializeFrame(VirtualFrame frame) {
-        // nop
+    void initializeFrame(VirtualFrame frame) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere();
     }
 
     public abstract Method.MethodVersion getMethodVersion();
