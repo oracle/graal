@@ -99,6 +99,7 @@ public enum Failure {
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
     FUNCTION_COUNT_LIMIT_EXCEEDED(Type.INVALID, "function count exceeds limit"),
+    TABLE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "table count exceeds limit"),
     IMPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "import count exceeds limit"),
     EXPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "export count exceeds limit"),
     GLOBAL_COUNT_LIMIT_EXCEEDED(Type.INVALID, "global count exceeds limit"),

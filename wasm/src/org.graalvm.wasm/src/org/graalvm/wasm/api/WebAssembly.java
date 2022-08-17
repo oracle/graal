@@ -340,10 +340,11 @@ public class WebAssembly extends Dictionary {
         for (final String name : module.exportedSymbols()) {
             final WasmFunction f = module.exportedFunctions().get(name);
             final Integer globalIndex = module.exportedGlobals().get(name);
+            final Integer tableIndex = module.exportedTables().get(name);
 
             if (module.exportedMemoryNames().contains(name)) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), null));
-            } else if (module.exportedTableNames().contains(name)) {
+            } else if (tableIndex != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), null));
             } else if (f != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
@@ -366,6 +367,7 @@ public class WebAssembly extends Dictionary {
     public static Sequence<ModuleImportDescriptor> moduleImports(WasmModule module) {
         CompilerAsserts.neverPartOfCompilation();
         final EconomicMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
+        final EconomicMap<ImportDescriptor, Integer> importedTableDescriptors = module.importedTableDescriptors();
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
         for (ImportDescriptor descriptor : module.importedSymbols()) {
             switch (descriptor.identifier) {
@@ -374,7 +376,8 @@ public class WebAssembly extends Dictionary {
                     list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
                     break;
                 case ImportIdentifier.TABLE:
-                    if (Objects.equals(module.importedTable(), descriptor)) {
+                    final Integer tableIndex = importedTableDescriptors.get(descriptor);
+                    if (tableIndex != null) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.table.name(), null));
                     } else {
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
@@ -422,19 +425,46 @@ public class WebAssembly extends Dictionary {
     }
 
     private static Object tableAlloc(Object[] args) {
-        final int[] limits = toSizeLimits(args);
-        return tableAlloc(limits[0], limits[1]);
+        if (args.length < 2) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element kind and initial argument is required");
+        }
+        final TableKind elemKind;
+        try {
+            elemKind = TableKind.valueOf(InteropLibrary.getUncached().asTruffleString(args[0]).toJavaStringUncached());
+        } catch (UnsupportedMessageException | IllegalArgumentException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element kind must be one of externref or anyfunc");
+        }
+        final int initialSize;
+        try {
+            initialSize = InteropLibrary.getUncached().asInt(args[1]);
+        } catch (UnsupportedMessageException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Initial size must be convertible to int");
+        }
+        final int maximumSize;
+        if (args.length == 2) {
+            maximumSize = -1;
+        } else {
+            try {
+                maximumSize = InteropLibrary.getUncached().asInt(args[2]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Maximum size must be convertible to int");
+            }
+        }
+        return tableAlloc(initialSize, maximumSize, elemKind);
     }
 
-    public static WasmTable tableAlloc(int initial, int maximum) {
+    public static WasmTable tableAlloc(int initial, int maximum, TableKind elemKind) {
         if (Integer.compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max memory size");
         }
         if (Integer.compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds implementation limit");
         }
+        if (elemKind != TableKind.externref && elemKind != TableKind.anyfunc) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be a reftype");
+        }
         final int maxAllowedSize = WasmMath.minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
-        return new WasmTable(initial, maximum, maxAllowedSize);
+        return new WasmTable(initial, maximum, maxAllowedSize, elemKind.byteValue());
     }
 
     private static Object tableGrow(Object[] args) {
@@ -770,6 +800,7 @@ public class WebAssembly extends Dictionary {
         CompilerAsserts.neverPartOfCompilation();
         WasmFunction function = instance.module().exportedFunctions().get(name);
         Integer globalIndex = instance.module().exportedGlobals().get(name);
+        Integer tableIndex = instance.module().exportedTables().get(name);
 
         if (function != null) {
             return instance.functionInstance(function);
@@ -785,8 +816,9 @@ public class WebAssembly extends Dictionary {
             }
         } else if (instance.module().exportedMemoryNames().contains(name)) {
             return instance.memory();
-        } else if (instance.module().exportedTableNames().contains(name)) {
-            return instance.table();
+        } else if (tableIndex != null) {
+            final int address = instance.tableAddress(tableIndex);
+            return instance.context().tables().table(address);
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, name + " is not a exported name of the given instance");
         }

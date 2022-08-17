@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
+import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
@@ -393,49 +394,54 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int declaredMinSize, int declaredMaxSize) {
+    void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, byte elemType) {
         final Runnable resolveAction = () -> {
             final WasmInstance importedInstance = context.moduleInstances().get(importDescriptor.moduleName);
             final String importedModuleName = importDescriptor.moduleName;
             if (importedInstance == null) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("Imported module '%s', referenced in module '%s', does not exist.", importedModuleName, instance.name()));
             } else {
+                final WasmModule importedModule = importedInstance.module();
                 final String importedTableName = importDescriptor.memberName;
-                final List<String> exportedTableNames = importedInstance.symbolTable().exportedTableNames();
-                if (exportedTableNames.size() == 0) {
+                if (importedModule.exportedTables().size() == 0) {
                     throw WasmException.create(Failure.UNKNOWN_IMPORT,
                                     String.format("The imported module '%s' does not export any tables, so cannot resolve table '%s' imported in module '%s'.",
                                                     importedModuleName, importedTableName, instance.name()));
                 }
-                if (!exportedTableNames.contains(importedTableName)) {
-                    throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",
-                                    importedModuleName, exportedTableNames, instance.name(), importedTableName));
+                final Integer exportedTableIndex = importedModule.exportedTables().get(importedTableName);
+                if (exportedTableIndex == null) {
+                    throw WasmException.create(Failure.UNKNOWN_IMPORT,
+                                    "Table '" + importedTableName + "', imported into module '" + instance.name() + "', was not exported in the module '" + importedModuleName + "'.");
                 }
-                final WasmTable table = importedInstance.table();
+                final int tableAddress = importedInstance.tableAddress(exportedTableIndex);
+                final int tableDeclaredMinSize = importedModule.tableInitialSize(exportedTableIndex);
+                final int tableDeclaredMaxSize = importedModule.tableMaximumSize(exportedTableIndex);
+                final byte tableElementType = importedModule.tableElementType(exportedTableIndex);
                 // Rules for limits matching:
                 // https://webassembly.github.io/spec/core/exec/modules.html#limits
                 // If no max size is declared, then declaredMaxSize value will be
                 // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
-                assertUnsignedIntLessOrEqual(declaredMinSize, table.declaredMinSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-                assertUnsignedIntGreaterOrEqual(declaredMaxSize, table.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-                instance.setTable(table);
+                assertUnsignedIntLessOrEqual(declaredMinSize, tableDeclaredMinSize, Failure.INCOMPATIBLE_IMPORT_TYPE);
+                assertUnsignedIntGreaterOrEqual(declaredMaxSize, tableDeclaredMaxSize, Failure.INCOMPATIBLE_IMPORT_TYPE);
+                assertByteEqual(elemType, tableElementType, Failure.INCOMPATIBLE_IMPORT_TYPE);
+                instance.setTableAddress(tableIndex, tableAddress);
             }
         };
         Sym[] dependencies = new Sym[]{new ExportTableSym(importDescriptor.moduleName, importDescriptor.memberName)};
         resolutionDag.resolveLater(new ImportTableSym(instance.name(), importDescriptor), dependencies, resolveAction);
     }
 
-    void resolveTableExport(WasmModule module, String exportedTableName) {
-        final ImportDescriptor importDescriptor = module.symbolTable().importedTable();
+    void resolveTableExport(WasmModule module, int tableIndex, String exportedTableName) {
+        final ImportDescriptor importDescriptor = module.symbolTable().importedTable(tableIndex);
         final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportTableSym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, long[] elements) {
-        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, elemSegmentId, offsetAddress, offsetGlobalIndex, elements);
+    void resolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, long[] elements) {
+        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, tableIndex, elemSegmentId, offsetAddress, offsetGlobalIndex, elements);
         final ArrayList<Sym> dependencies = new ArrayList<>();
-        if (instance.symbolTable().importedTable() != null) {
-            dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable()));
+        if (instance.symbolTable().importedTable(tableIndex) != null) {
+            dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable(tableIndex)));
         }
         if (elemSegmentId > 0) {
             dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
@@ -456,9 +462,10 @@ public class Linker {
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, long[] elements) {
-        assertTrue(instance.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
-        final WasmTable table = instance.table();
+    void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, long[] elements) {
+        assertTrue(instance.symbolTable().checkTableIndex(tableIndex), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
+        final int tableAddress = instance.tableAddress(tableIndex);
+        final WasmTable table = context.tables().table(tableAddress);
         Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
         final int baseAddress;
         if (offsetGlobalIndex != -1) {

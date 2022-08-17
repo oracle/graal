@@ -51,6 +51,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 @SuppressWarnings("static-method")
 public class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
+    private static final int INITIAL_TABLES_SIZE = 1;
 
     private final WasmContext context;
     private final WasmModule module;
@@ -78,7 +79,7 @@ public class RuntimeState {
      * In the current WebAssembly specification, a module can use at most one table. The value
      * {@code null} denotes that this module uses no table.
      */
-    @CompilationFinal private WasmTable table;
+    @CompilationFinal(dimensions = 1) private int[] tableAddresses;
 
     /**
      * Memory that this module is using.
@@ -102,10 +103,19 @@ public class RuntimeState {
         }
     }
 
+    private void ensureTablesCapacity(int index) {
+        if (index >= tableAddresses.length) {
+            final int[] nTableAddresses = new int[Math.max(Integer.highestOneBit(index) << 1, 2 * tableAddresses.length)];
+            System.arraycopy(tableAddresses, 0, nTableAddresses, 0, tableAddresses.length);
+            tableAddresses = nTableAddresses;
+        }
+    }
+
     public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions) {
         this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
+        this.tableAddresses = new int[INITIAL_TABLES_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
@@ -187,7 +197,7 @@ public class RuntimeState {
 
     public int globalAddress(int index) {
         final int result = globalAddresses[index];
-        assert result != SymbolTable.UNINITIALIZED_GLOBAL_ADDRESS : "Uninitialized global at index: " + index;
+        assert result != SymbolTable.UNINITIALIZED_ADDRESS : "Uninitialized global at index: " + index;
         return result;
     }
 
@@ -197,13 +207,16 @@ public class RuntimeState {
         globalAddresses[globalIndex] = address;
     }
 
-    public WasmTable table() {
-        return table;
+    public int tableAddress(int index) {
+        final int result = tableAddresses[index];
+        assert result != SymbolTable.UNINITIALIZED_ADDRESS : "Uninitialized table at index: " + index;
+        return result;
     }
 
-    void setTable(WasmTable table) {
+    void setTableAddress(int tableIndex, int address) {
+        ensureTablesCapacity(tableIndex);
         checkNotLinked();
-        this.table = table;
+        tableAddresses[tableIndex] = address;
     }
 
     public WasmMemory memory() {

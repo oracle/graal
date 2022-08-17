@@ -59,6 +59,9 @@ public class WasmType implements TruffleObject {
     public static final byte VOID_TYPE = 0x40;
     @CompilationFinal(dimensions = 1) public static final byte[] VOID_TYPE_ARRAY = {};
 
+    /**
+     * Number Types.
+     */
     public static final byte I32_TYPE = 0x7F;
     @CompilationFinal(dimensions = 1) public static final byte[] I32_TYPE_ARRAY = {I32_TYPE};
 
@@ -71,7 +74,11 @@ public class WasmType implements TruffleObject {
     public static final byte F64_TYPE = 0x7C;
     @CompilationFinal(dimensions = 1) public static final byte[] F64_TYPE_ARRAY = {F64_TYPE};
 
+    /**
+     * Reference Types.
+     */
     public static final byte FUNCREF_TYPE = 0x70;
+    public static final byte EXTERNREF_TYPE = 0x6F;
 
     public static final WasmType VOID = new WasmType("void");
 
@@ -90,6 +97,8 @@ public class WasmType implements TruffleObject {
                 return "void";
             case FUNCREF_TYPE:
                 return "funcref";
+            case EXTERNREF_TYPE:
+                return "externref";
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }

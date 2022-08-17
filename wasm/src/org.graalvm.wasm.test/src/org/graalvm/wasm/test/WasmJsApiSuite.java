@@ -68,6 +68,7 @@ import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.Sequence;
+import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
@@ -196,7 +197,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmTable table = WebAssembly.tableAlloc(4, 8);
+            final WasmTable table = WebAssembly.tableAlloc(4, 8, TableKind.anyfunc);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
@@ -588,11 +589,11 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
@@ -1072,7 +1073,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             try {
                 // Negative numbers represent unsigned values
-                WebAssembly.tableAlloc(-10, -8);
+                WebAssembly.tableAlloc(-10, -8, TableKind.anyfunc);
                 Assert.fail("Should have failed - initial table size exceeds implementation limit");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1084,7 +1085,7 @@ public class WasmJsApiSuite {
     public void testMinTableSizeExceedsMaxSize() throws IOException {
         runTest(context -> {
             try {
-                WebAssembly.tableAlloc(2, 1);
+                WebAssembly.tableAlloc(2, 1, TableKind.anyfunc);
                 Assert.fail("Should have failed - min table size bigger than max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1096,7 +1097,7 @@ public class WasmJsApiSuite {
     public void testTableGrowLimit() throws IOException {
         runTest(context -> {
             try {
-                WasmTable table = WebAssembly.tableAlloc(1, 1);
+                WasmTable table = WebAssembly.tableAlloc(1, 1, TableKind.anyfunc);
                 WebAssembly.tableGrow(table, 1);
                 Assert.fail("Should have failed - try to grow table beyond max size");
             } catch (WasmJsApiException e) {
@@ -1144,7 +1145,7 @@ public class WasmJsApiSuite {
     @Test
     public void testTableEmbedderData() throws IOException {
         runTest(context -> {
-            WasmTable table = WebAssembly.tableAlloc(1, 1);
+            WasmTable table = WebAssembly.tableAlloc(1, 1, TableKind.anyfunc);
             checkEmbedderData(table);
         });
     }

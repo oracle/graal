@@ -47,6 +47,7 @@ import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Assert.fail;
+import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
 import static org.graalvm.wasm.WasmType.F32_TYPE;
 import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
@@ -66,7 +67,6 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 import org.graalvm.wasm.collection.ByteArrayList;
-import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -77,13 +77,13 @@ import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.parser.ir.CallNode;
+import org.graalvm.wasm.parser.ir.CodeEntry;
+import org.graalvm.wasm.parser.validation.ParserState;
+import org.graalvm.wasm.parser.validation.ValidationErrors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ExceptionType;
-import org.graalvm.wasm.parser.ir.CallNode;
-import org.graalvm.wasm.parser.ir.CodeEntry;
-import org.graalvm.wasm.parser.validation.ValidationErrors;
-import org.graalvm.wasm.parser.validation.ParserState;
 
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.
@@ -99,6 +99,8 @@ public class BinaryParser extends BinaryStreamParser {
 
     private final boolean multiValue;
 
+    private final boolean referenceTypes;
+
     @CompilerDirectives.TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context) {
         super(module.data());
@@ -106,6 +108,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.wasmContext = context;
         this.multiResult = new int[2];
         this.multiValue = context.getContextOptions().isMultiValue();
+        this.referenceTypes = context.getContextOptions().isReferenceTypes();
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -312,10 +315,13 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.TABLE: {
-                    byte elemType = readElemType();
-                    assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table import", Failure.UNSPECIFIED_MALFORMED);
+                    final byte elemType = readRefType();
+                    if (!referenceTypes) {
+                        assertIntEqual(elemType, FUNCREF_TYPE, "Invalid element type for table import", Failure.UNSPECIFIED_MALFORMED);
+                    }
                     readTableLimits(multiResult);
-                    module.symbolTable().importTable(moduleName, memberName, multiResult[0], multiResult[1]);
+                    final int tableIndex = module.tableCount();
+                    module.symbolTable().importTable(moduleName, memberName, tableIndex, multiResult[0], multiResult[1], elemType, referenceTypes);
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
@@ -348,14 +354,15 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readTableSection() {
         final int numTables = readLength();
-        // Since in the current version of WebAssembly supports at most one table instance per
-        // module, this loop should be executed at most once. `SymbolTable#allocateTable` fails if
-        // it is not the case.
-        for (byte tableIndex = 0; tableIndex != numTables; ++tableIndex) {
-            final byte elemType = readElemType();
-            assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table", Failure.UNSPECIFIED_MALFORMED);
+        final int startingTableIndex = module.tableCount();
+        module.limits().checkTableCount(startingTableIndex + numTables);
+        for (int tableIndex = startingTableIndex; tableIndex != startingTableIndex + numTables; tableIndex++) {
+            final byte elemType = readRefType();
+            if (!referenceTypes) {
+                assertIntEqual(elemType, FUNCREF_TYPE, "Invalid element type for table", Failure.UNSPECIFIED_MALFORMED);
+            }
             readTableLimits(multiResult);
-            module.symbolTable().allocateTable(multiResult[0], multiResult[1]);
+            module.symbolTable().allocateTable(tableIndex, multiResult[0], multiResult[1], elemType, referenceTypes);
         }
     }
 
@@ -599,9 +606,6 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
-                    if (!module.tableExists()) {
-                        throw ValidationErrors.createMissingTable();
-                    }
 
                     int expectedFunctionTypeIndex = readUnsignedInt32();
 
@@ -626,7 +630,9 @@ public class BinaryParser extends BinaryStreamParser {
                     state.addIndirectCall(callNodes.size());
                     callNodes.add(new CallNode());
                     final int tableIndex = read1();
-                    assertIntEqual(tableIndex, CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.ZERO_FLAG_EXPECTED);
+                    if (!module.checkTableIndex(tableIndex)) {
+                        throw ValidationErrors.createMissingTable();
+                    }
                     break;
                 }
                 case Instructions.DROP:
@@ -1223,6 +1229,7 @@ public class BinaryParser extends BinaryStreamParser {
             final int currentOffsetAddress;
             final int currentOffsetGlobalIndex;
             final long[] elements;
+            final int tableIndex;
             if (wasmContext.getContextOptions().isBulkMemoryOps()) {
                 final int sectionType = readUnsignedInt32();
                 mode = sectionType & 0b001;
@@ -1230,7 +1237,9 @@ public class BinaryParser extends BinaryStreamParser {
                 final boolean useExpressions = (sectionType & 0b100) != 0;
                 final boolean useType = (sectionType & 0b011) != 0;
                 if (useTableIndex) {
-                    readTableIndex();
+                    tableIndex = readTableIndex();
+                } else {
+                    tableIndex = 0;
                 }
                 if (mode == SegmentMode.ACTIVE) {
                     readOffsetExpression(multiResult);
@@ -1242,7 +1251,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 if (useExpressions) {
                     if (useType) {
-                        readElemType();
+                        readRefType();
                     }
                     elements = readElemExpressions();
                 } else {
@@ -1253,7 +1262,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
             } else {
                 mode = SegmentMode.ACTIVE;
-                readTableIndex();
+                tableIndex = readTableIndex();
                 readOffsetExpression(multiResult);
                 currentOffsetAddress = multiResult[0];
                 currentOffsetGlobalIndex = multiResult[1];
@@ -1264,7 +1273,7 @@ public class BinaryParser extends BinaryStreamParser {
             // Copy the contents, or schedule a linker task for this.
             final int currentElemSegmentId = elemSegmentId;
             if (mode == SegmentMode.ACTIVE) {
-                assertTrue(module.tableExists(), Failure.UNKNOWN_TABLE);
+                assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
 
                 // We don't need to check the table type yet, since there is only funcref. This will
                 // change in a future update.
@@ -1273,13 +1282,14 @@ public class BinaryParser extends BinaryStreamParser {
                     // Reading of the elements segment occurs during parsing, so add a linker
                     // action.
                     module.addLinkAction(
-                                    (context, instance) -> context.linker().resolveElemSegment(context, instance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, elements));
+                                    (context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex,
+                                                    elements));
                 } else {
                     // Reading of the elements segment is called after linking (this happens when
                     // this method is called from #resetTableState()), so initialize the table
                     // directly.
                     final Linker linker = Objects.requireNonNull(linkedContext.linker());
-                    linker.immediatelyResolveElemSegment(linkedContext, linkedInstance, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, elements);
+                    linker.immediatelyResolveElemSegment(linkedContext, linkedInstance, tableIndex, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, elements);
                 }
             } else {
                 if (linkedContext == null || linkedInstance == null) {
@@ -1321,8 +1331,8 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ExportIdentifier.TABLE: {
-                    readTableIndex();
-                    module.symbolTable().exportTable(exportName);
+                    final int tableIndex = readTableIndex();
+                    module.symbolTable().exportTable(tableIndex, exportName);
                     break;
                 }
                 case ExportIdentifier.MEMORY: {
@@ -1554,7 +1564,7 @@ public class BinaryParser extends BinaryStreamParser {
         // At the moment, WebAssembly (1.0, MVP) only supports one table instance, thus the only
         // valid table index is 0.
         assertIntEqual(index, 0, Failure.UNKNOWN_TABLE);
-        assertTrue(module.symbolTable().tableExists(), Failure.UNKNOWN_TABLE);
+        assertTrue(module.symbolTable().checkTableIndex(index), Failure.UNKNOWN_TABLE);
         return index;
     }
 
@@ -1590,10 +1600,17 @@ public class BinaryParser extends BinaryStreamParser {
         return read1();
     }
 
-    private byte readElemType() {
-        final byte elemType = read1();
-        assertByteEqual(elemType, FUNCREF_TYPE, Failure.MALFORMED_REFERENCE_TYPE);
-        return elemType;
+    private byte readRefType() {
+        final byte refType = read1();
+        switch (refType) {
+            case FUNCREF_TYPE:
+            case EXTERNREF_TYPE:
+                break;
+            default:
+                fail(Failure.MALFORMED_REFERENCE_TYPE, "Unexpected reference type");
+                break;
+        }
+        return refType;
     }
 
     private void readTableLimits(int[] out) {
@@ -1715,7 +1732,7 @@ public class BinaryParser extends BinaryStreamParser {
                         break;
                     }
                     case ImportIdentifier.TABLE: {
-                        readElemType();
+                        readRefType();
                         readTableLimits(multiResult);
                         break;
                     }

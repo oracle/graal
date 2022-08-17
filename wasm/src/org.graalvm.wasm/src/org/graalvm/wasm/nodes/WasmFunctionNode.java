@@ -686,7 +686,26 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Extract the function object.
                     stackPointer--;
                     final SymbolTable symtab = instance.symbolTable();
-                    final WasmTable table = instance.table();
+
+                    // Extract the function type index.
+                    // region Load LEB128 Unsigned32 -> expectedFunctionTypeIndex
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int expectedFunctionTypeIndex = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+
+                    int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
+
+                    // Extract the table index.
+                    // region Load LEB128 Unsigned32 -> tableIndex
+                    valueLength = unsignedIntConstantAndLength(data, offset);
+                    int tableIndex = value(valueLength);
+                    offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endRegion
+
+                    final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
                     final Object[] elements = table.elements();
                     final int elementIndex = popInt(frame, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
@@ -717,20 +736,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         enterErrorBranch();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                     }
-
-                    // Extract the function type index.
-                    // region Load LEB128 Unsigned32 -> expectedFunctionTypeIndex
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int expectedFunctionTypeIndex = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
-
-                    int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
-
-                    // Consume the ZERO_TABLE constant at the end of the CALL_INDIRECT
-                    // instruction.
-                    offset += 1;
 
                     // Validate that the function type matches the expected type.
                     final boolean functionFromCurrentContext = functionInstanceContext == context;
@@ -1502,20 +1507,36 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int elementIndex = value(valueAndLength);
                             // endregion
 
-                            // Consume the ZERO_TABLE constant.
-                            offset += 1;
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int tableIndex = value(valueAndLength);
+                            // endregion
 
-                            table_init(instance, frame, stackPointer, elementIndex);
+                            table_init(context, instance, frame, stackPointer, tableIndex, elementIndex);
                             stackPointer -= 3;
                             break;
                         }
-                        case TABLE_COPY:
-                            // Consume the two ZERO_TABLE constants.
-                            offset += 2;
+                        case TABLE_COPY: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int sourceTableIndex = value(valueAndLength);
+                            // endregion
 
-                            table_copy(instance, frame, stackPointer);
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int destinationTableIndex = value(valueAndLength);
+                            // endregion
+
+                            table_copy(context, instance, frame, stackPointer, sourceTableIndex, destinationTableIndex);
                             stackPointer -= 3;
                             break;
+                        }
                         case ELEM_DROP: {
                             // region Load LEB128 Unsigned32 -> value
                             long valueAndLength = unsignedIntConstantAndLength(data, offset);
@@ -2832,8 +2853,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushLong(frame, stackPointer - 1, result);
     }
 
-    private void table_init(WasmInstance instance, VirtualFrame frame, int stackPointer, int elementIndex) {
-        final WasmTable table = instance.table();
+    private void table_init(WasmContext context, WasmInstance instance, VirtualFrame frame, int stackPointer, int tableIndex, int elementIndex) {
+        final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
         final Object[] elementInstance = instance.elementInstance(elementIndex);
         final int elementInstanceLength;
         if (elementInstance == null) {
@@ -2854,19 +2875,20 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         table.initialize(elementInstance, src, dst, n);
     }
 
-    private void table_copy(WasmInstance instance, VirtualFrame frame, int stackPointer) {
-        final WasmTable table = instance.table();
+    private void table_copy(WasmContext context, WasmInstance instance, VirtualFrame frame, int stackPointer, int sourceTableIndex, int destinationTableIndex) {
+        final WasmTable sourceTable = context.tables().table(instance.tableAddress(sourceTableIndex));
+        final WasmTable destinationTable = context.tables().table(instance.tableAddress(destinationTableIndex));
         final int n = popInt(frame, stackPointer - 1);
         final int src = popInt(frame, stackPointer - 2);
         final int dst = popInt(frame, stackPointer - 3);
-        if (checkOutOfBounds(src, n, table.size()) || checkOutOfBounds(dst, n, table.size())) {
+        if (checkOutOfBounds(src, n, sourceTable.size()) || checkOutOfBounds(dst, n, destinationTable.size())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         }
         if (n == 0) {
             return;
         }
-        table.copyFrom(table, src, dst, n);
+        destinationTable.copyFrom(sourceTable, src, dst, n);
     }
 
     private void memory_init(WasmInstance instance, VirtualFrame frame, int stackPointer, int dataIndex) {

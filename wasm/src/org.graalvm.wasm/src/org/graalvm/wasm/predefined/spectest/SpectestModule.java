@@ -41,11 +41,11 @@
 
 package org.graalvm.wasm.predefined.spectest;
 
-import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
@@ -71,7 +71,7 @@ public class SpectestModule extends BuiltinModule {
         defineGlobal(module, "global_i64", I64_TYPE, (byte) GlobalModifier.CONSTANT, 666L);
         defineGlobal(module, "global_f32", F32_TYPE, (byte) GlobalModifier.CONSTANT, Float.floatToRawIntBits(666.0f));
         defineGlobal(module, "global_f64", F64_TYPE, (byte) GlobalModifier.CONSTANT, Double.doubleToRawLongBits(666.0));
-        defineTable(module, "table", 10, 20, ReferenceTypes.FUNCREF);
+        defineTable(module, "table", 10, 20, WasmType.FUNCREF_TYPE);
         defineMemory(module, "memory", 1, 2);
         return module;
     }

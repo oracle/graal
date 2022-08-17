@@ -42,14 +42,13 @@ package org.graalvm.wasm.predefined;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
@@ -113,15 +112,29 @@ public abstract class BuiltinModule {
     }
 
     protected void defineExternalTable(WasmInstance instance, String tableName, WasmTable externalTable) {
-        instance.symbolTable().allocateExternalTable(externalTable);
-        instance.symbolTable().exportTable(tableName);
+        final boolean referenceTypes = instance.context().getContextOptions().isReferenceTypes();
+        int index = instance.symbolTable().tableCount();
+        instance.symbolTable().allocateExternalTable(index, externalTable, referenceTypes);
+        instance.symbolTable().exportTable(index, tableName);
     }
 
     protected int defineTable(WasmInstance instance, String tableName, int initSize, int maxSize, byte type) {
-        Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.", Failure.UNSPECIFIED_MALFORMED);
-        instance.symbolTable().allocateTable(initSize, maxSize);
-        instance.symbolTable().exportTable(tableName);
-        return 0;
+        final boolean referenceTypes = instance.context().getContextOptions().isReferenceTypes();
+        switch (type) {
+            case WasmType.FUNCREF_TYPE:
+                break;
+            case WasmType.EXTERNREF_TYPE:
+                if (!referenceTypes) {
+                    throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Only function types are currently supported in tables.");
+                }
+                break;
+            default:
+                throw WasmException.create(Failure.MALFORMED_REFERENCE_TYPE, "Only reference types supported in tables.");
+        }
+        int index = instance.symbolTable().tableCount();
+        instance.symbolTable().allocateTable(index, initSize, maxSize, type, referenceTypes);
+        instance.symbolTable().exportTable(index, tableName);
+        return index;
     }
 
     protected void defineExternalMemory(WasmInstance instance, String memoryName, WasmMemory externalMemory) {

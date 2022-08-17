@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.WasmType;
 
-import com.oracle.truffle.api.CompilerAsserts;
+public enum TableKind {
+    externref(WasmType.EXTERNREF_TYPE),
+    anyfunc(WasmType.FUNCREF_TYPE);
 
-public class ReferenceTypes {
-    public static final byte FUNCREF = 0x70;
+    private final byte byteValue;
 
-    public static String asString(int valueType) {
-        CompilerAsserts.neverPartOfCompilation();
-        switch (valueType) {
-            case FUNCREF:
-                return "funcref";
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown value type: 0x" + Integer.toHexString(valueType));
-        }
+    TableKind(byte byteValue) {
+        this.byteValue = byteValue;
+    }
+
+    public byte byteValue() {
+        return byteValue;
     }
 }

@@ -70,12 +70,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  */
 public abstract class SymbolTable {
     private static final int INITIAL_GLOBALS_SIZE = 64;
+    private static final int INITIAL_TABLE_SIZE = 1;
     private static final int INITIAL_DATA_SIZE = 512;
     private static final int INITIAL_TYPE_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int GLOBAL_MUTABLE_BIT = 0x0100;
     private static final int GLOBAL_EXPORT_BIT = 0x0200;
-    static final int UNINITIALIZED_GLOBAL_ADDRESS = Integer.MIN_VALUE;
+    static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
@@ -157,9 +158,15 @@ public abstract class SymbolTable {
          */
         public final int maximumSize;
 
-        public TableInfo(int initialSize, int maximumSize) {
+        /**
+         * The element type of the table.
+         */
+        public final byte elemType;
+
+        public TableInfo(int initialSize, int maximumSize, byte elemType) {
             this.initialSize = initialSize;
             this.maximumSize = maximumSize;
+            this.elemType = elemType;
         }
     }
 
@@ -296,17 +303,19 @@ public abstract class SymbolTable {
      * In the current WebAssembly specification, a module can use at most one table. The value
      * {@code null} denotes that this module uses no table.
      */
-    @CompilationFinal private TableInfo table;
+    @CompilationFinal(dimensions = 1) private TableInfo[] tables;
+
+    @CompilationFinal private int tableCount;
 
     /**
      * The table used in this module.
      */
-    @CompilationFinal private ImportDescriptor importedTableDescriptor;
+    @CompilationFinal private final EconomicMap<Integer, ImportDescriptor> importedTables;
 
     /**
      * The name(s) of the exported table of this module, if any.
      */
-    private final ArrayList<String> exportedTableNames;
+    @CompilationFinal private final EconomicMap<String, Integer> exportedTables;
 
     /**
      * The descriptor of the memory of this module.
@@ -354,9 +363,10 @@ public abstract class SymbolTable {
         this.importedGlobals = EconomicMap.create();
         this.exportedGlobals = EconomicMap.create();
         this.numGlobals = 0;
-        this.table = null;
-        this.importedTableDescriptor = null;
-        this.exportedTableNames = new ArrayList<>();
+        this.tables = new TableInfo[INITIAL_TABLE_SIZE];
+        this.tableCount = 0;
+        this.importedTables = EconomicMap.create();
+        this.exportedTables = EconomicMap.create();
         this.memory = null;
         this.importedMemoryDescriptor = null;
         this.exportedMemoryNames = new ArrayList<>();
@@ -376,7 +386,7 @@ public abstract class SymbolTable {
 
     private void checkUniqueExport(String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemoryNames.contains(name) || exportedTableNames.contains(name)) {
+        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemoryNames.contains(name) || exportedTables.containsKey(name)) {
             throw WasmException.create(Failure.DUPLICATE_EXPORT, "All export names must be different, but '" + name + "' is exported twice.");
         }
     }
@@ -714,7 +724,7 @@ public abstract class SymbolTable {
         importedGlobals.put(index, descriptor);
         importSymbol(descriptor);
         allocateGlobal(index, valueType, mutability);
-        module().addLinkAction((context, instance) -> instance.setGlobalAddress(index, UNINITIALIZED_GLOBAL_ADDRESS));
+        module().addLinkAction((context, instance) -> instance.setGlobalAddress(index, UNINITIALIZED_ADDRESS));
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, descriptor, index, valueType, mutability));
     }
 
@@ -797,67 +807,107 @@ public abstract class SymbolTable {
         });
     }
 
-    public void allocateTable(int declaredMinSize, int declaredMaxSize) {
+    private void ensureTableCapacity(int index) {
+        if (index >= tables.length) {
+            final TableInfo[] nTables = new TableInfo[Math.max(Integer.highestOneBit(index) << 1, 2 * tables.length)];
+            System.arraycopy(tables, 0, nTables, 0, tables.length);
+            tables = nTables;
+        }
+    }
+
+    public void allocateTable(int index, int declaredMinSize, int declaredMaxSize, byte elemType, boolean referenceTypes) {
         checkNotParsed();
-        validateSingleTable();
-        table = new TableInfo(declaredMinSize, declaredMaxSize);
+        addTable(index, declaredMinSize, declaredMaxSize, elemType, referenceTypes);
         module().addLinkAction((context, instance) -> {
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
             module().limits().checkTableInstanceSize(declaredMinSize);
-            final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize);
-            final int index = context.tables().register(wasmTable);
-            instance.setTable(context.tables().table(index));
+            final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType);
+            final int address = context.tables().register(wasmTable);
+            instance.setTableAddress(index, address);
         });
     }
 
-    public void allocateExternalTable(WasmTable externalTable) {
+    public void allocateExternalTable(int index, WasmTable externalTable, boolean referenceTypes) {
         checkNotParsed();
-        validateSingleTable();
-        table = new TableInfo(externalTable.declaredMinSize(), externalTable.declaredMaxSize());
+        addTable(index, externalTable.declaredMinSize(), externalTable.declaredMaxSize(), externalTable.elemType(), referenceTypes);
         module().addLinkAction((context, instance) -> {
-            final int index = context.tables().registerExternal(externalTable);
-            instance.setTable(context.tables().table(index));
+            final int address = context.tables().registerExternal(externalTable);
+            instance.setTableAddress(index, address);
         });
     }
 
-    void importTable(String moduleName, String tableName, int initSize, int maxSize) {
+    void importTable(String moduleName, String tableName, int index, int initSize, int maxSize, byte elemType, boolean referenceTypes) {
         checkNotParsed();
-        validateSingleTable();
-        importedTableDescriptor = new ImportDescriptor(moduleName, tableName, ImportIdentifier.TABLE);
-        importSymbol(importedTableDescriptor);
-        module().addLinkAction((context, instance) -> context.linker().resolveTableImport(context, instance, importedTableDescriptor, initSize, maxSize));
+        addTable(index, initSize, maxSize, elemType, referenceTypes);
+        final ImportDescriptor importedTable = new ImportDescriptor(moduleName, tableName, ImportIdentifier.TABLE);
+        importedTables.put(index, importedTable);
+        importSymbol(importedTable);
+        module().addLinkAction((context, instance) -> instance.setTableAddress(index, UNINITIALIZED_ADDRESS));
+        module().addLinkAction((context, instance) -> context.linker().resolveTableImport(context, instance, importedTable, index, initSize, maxSize, elemType));
     }
 
-    private void validateSingleTable() {
-        assertTrue(importedTableDescriptor == null, "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
-        assertTrue(table == null, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
+    void addTable(int index, int minSize, int maxSize, byte elemType, boolean referenceTypes) {
+        if (!referenceTypes) {
+            assertTrue(importedTables.size() == 0, "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
+            assertTrue(tableCount == 0, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
+        }
+        ensureTableCapacity(index);
+        final TableInfo table = new TableInfo(minSize, maxSize, elemType);
+        tables[index] = table;
+        tableCount++;
     }
 
-    boolean tableExists() {
-        return importedTableDescriptor != null || table != null;
+    boolean checkTableIndex(int tableIndex) {
+        return Integer.compareUnsigned(tableIndex, tableCount) < 0;
     }
 
-    public void exportTable(String name) {
+    public void exportTable(int tableIndex, String name) {
         checkNotParsed();
         exportSymbol(name);
-        if (!tableExists()) {
+        if (!checkTableIndex(tableIndex)) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No table has been declared or imported, so a table cannot be exported.");
         }
-        exportedTableNames.add(name);
-        module().addLinkAction((context, instance) -> context.linker().resolveTableExport(module(), name));
+        exportedTables.put(name, tableIndex);
+        module().addLinkAction((context, instance) -> context.linker().resolveTableExport(module(), tableIndex, name));
     }
 
-    int tableCount() {
-        return tableExists() ? 1 : 0;
+    public int tableCount() {
+        return tableCount;
     }
 
-    public ImportDescriptor importedTable() {
-        return importedTableDescriptor;
+    public ImportDescriptor importedTable(int index) {
+        return importedTables.get(index);
     }
 
-    public List<String> exportedTableNames() {
-        CompilerAsserts.neverPartOfCompilation();
-        return exportedTableNames;
+    public EconomicMap<ImportDescriptor, Integer> importedTableDescriptors() {
+        final EconomicMap<ImportDescriptor, Integer> reverseMap = EconomicMap.create();
+        MapCursor<Integer, ImportDescriptor> cursor = importedTables.getEntries();
+        while (cursor.advance()) {
+            reverseMap.put(cursor.getValue(), cursor.getKey());
+        }
+        return reverseMap;
+    }
+
+    public EconomicMap<String, Integer> exportedTables() {
+        return exportedTables;
+    }
+
+    public byte tableElementType(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.elemType;
+    }
+
+    public int tableInitialSize(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.initialSize;
+    }
+
+    public int tableMaximumSize(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.maximumSize;
     }
 
     public void allocateMemory(int declaredMinSize, int declaredMaxSize) {

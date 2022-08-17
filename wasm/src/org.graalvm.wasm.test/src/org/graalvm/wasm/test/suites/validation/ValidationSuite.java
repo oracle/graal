@@ -961,6 +961,7 @@ public class ValidationSuite extends WasmFileSuite {
 
     protected void addContextOptions(Context.Builder contextBuilder) {
         contextBuilder.option("wasm.MultiValue", "false");
+        contextBuilder.option("wasm.ReferenceTypes", "false");
     }
 
     @Override
@@ -968,9 +969,8 @@ public class ValidationSuite extends WasmFileSuite {
     public void test() throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         addContextOptions(contextBuilder);
-        final Context context = contextBuilder.build();
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
-        try {
+        try (final Context context = contextBuilder.build()) {
             context.eval(source).getMember("_main").execute();
         } catch (final PolyglotException e) {
             final Value actualFailureObject = e.getGuestObject();

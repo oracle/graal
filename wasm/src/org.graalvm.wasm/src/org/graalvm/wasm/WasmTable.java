@@ -62,6 +62,8 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      */
     private final int declaredMaxSize;
 
+    private final byte elemType;
+
     /**
      * The maximum practical size of this table instance.
      * <p>
@@ -75,21 +77,23 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
 
     private Object[] elements;
 
-    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, byte elemType) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
         assert compareUnsigned(maxAllowedSize, MAX_TABLE_INSTANCE_SIZE) <= 0;
         assert compareUnsigned(declaredMaxSize, MAX_TABLE_DECLARATION_SIZE) <= 0;
+        assert elemType == WasmType.FUNCREF_TYPE || elemType == WasmType.EXTERNREF_TYPE;
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
         this.maxAllowedSize = maxAllowedSize;
         this.elements = new Object[declaredMinSize];
+        this.elemType = elemType;
     }
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, byte elemType) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType);
     }
 
     public void ensureSizeAtLeast(int targetSize) {
@@ -137,6 +141,15 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      */
     public int declaredMaxSize() {
         return declaredMaxSize;
+    }
+
+    /**
+     * The type of the elements in the table.
+     * 
+     * @return Either {@link WasmType#FUNCREF_TYPE} or {@link WasmType#EXTERNREF_TYPE}.
+     */
+    public byte elemType() {
+        return elemType;
     }
 
     public Object[] elements() {
