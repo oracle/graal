@@ -73,7 +73,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     @Override
     public void onCompilationQueued(OptimizedCallTarget target, int tier) {
         if (target.engine.traceCompilationDetails) {
-            int callAndLoopThreshold = (!target.engine.multiTier || tier == 1) ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
+            int callAndLoopThreshold = (target.engine.multiTier && tier == 2) ? target.engine.callAndLoopThresholdInFirstTier : target.engine.callAndLoopThresholdInInterpreter;
             int scale = runtime.compilationThresholdScale();
             log(target, String.format(QUEUED_FORMAT,
                             target.id,
