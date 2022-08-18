@@ -43,7 +43,7 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
         Method reflectedMethod = Method.getHostReflectiveConstructorRoot(constructor, meta);
         StaticObject instance = klass.allocateInstance(meta.getContext());
         StaticObject parameterTypes = meta.java_lang_reflect_Constructor_parameterTypes.getObject(constructor);
-        Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(language, meta, instance, args0, reflectedMethod, klass, parameterTypes);
+        Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(language, meta, instance, args0, reflectedMethod, klass, parameterTypes, null);
         return instance;
     }
 
