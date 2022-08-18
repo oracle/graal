@@ -501,10 +501,11 @@ public final class VM extends NativeEnv {
          * (System.currentTimeMillis?).
          */
         if (object.isForeignObject()) {
-            InteropLibrary library = InteropLibrary.getUncached(object);
-            if (library.hasIdentity(object.rawForeignObject(object.getKlass().getLanguage()))) {
+            Object rawForeign = object.rawForeignObject(object.getKlass().getLanguage());
+            InteropLibrary library = InteropLibrary.getUncached(rawForeign);
+            if (library.hasIdentity(rawForeign)) {
                 try {
-                    return library.identityHashCode(object);
+                    return library.identityHashCode(rawForeign);
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
