@@ -38,7 +38,7 @@
   weekly:: {
     notify_groups: ["compiler_weekly"],
     targets: ["weekly"],
-    timelimit: "1:30:00",
+    timelimit: "2:00:00",
   },
 
   monthly:: {
@@ -136,61 +136,68 @@
       if obj == null then default else
       if std.objectHas(obj, name) then obj[name] else default,
 
+  # Returns true if `key` == `value` or key ends with "*" and
+  # is a prefix of `value` (without the trailing "*").
+  local key_matches_value(key, value) =
+    if std.endsWith(key, "*") then
+      local prefix = std.substr(key, 0, std.length(key) - 1);
+      std.startsWith(value, prefix)
+    else
+      key == value,
+
+  manifest_match(manifest, name):: [key for key in std.objectFields(manifest) if key_matches_value(key, name)] != [],
+
   # This map defines the builders that run as gates. Each key in this map
   # must correspond to the name of a build created by `make_build`.
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local gates = {
-    # Darwin AMD64
-    "gate-compiler-test-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
-
-    # Darwin AArch64
-    "gate-compiler-test-labsjdk-17-darwin-aarch64": t("1:00:00"),
-
-    # Windows AMD64
-    "gate-compiler-test-labsjdk-11-windows-amd64": t("55:00"),
-    "gate-compiler-test-labsjdk-17-windows-amd64": t("55:00") + c.mach5_target,
-
-    # Linux AMD64
-    "gate-compiler-style-labsjdk-17-linux-amd64": t("45:00"),
     "gate-compiler-test-labsjdk-11-linux-amd64": t("55:00"),
     "gate-compiler-test-labsjdk-17-linux-amd64": t("55:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-17-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-17-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-17-windows-amd64": t("55:00") + c.mach5_target,
+
+    "gate-compiler-style-labsjdk-17-linux-amd64": t("45:00"),
+
     "gate-compiler-ctw-labsjdk-11-linux-amd64": c.mach5_target,
     "gate-compiler-ctw-labsjdk-17-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw-labsjdk-17-linux-aarch64": t("1:50:00"),
+
     "gate-compiler-ctw_economy-labsjdk-11-linux-amd64": {},
     "gate-compiler-ctw_economy-labsjdk-17-linux-amd64": {},
+    "gate-compiler-ctw_economy-labsjdk-17-linux-aarch64": t("1:50:00"),
+
     "gate-compiler-benchmarktest-labsjdk-11-linux-amd64": {},
     "gate-compiler-benchmarktest-labsjdk-17-linux-amd64": {},
+
     "gate-compiler-truffle_xcomp-labsjdk-17-linux-amd64": t("1:30:00"),
 
-    # Linux AArch64
-    "gate-compiler-test-labsjdk-11-linux-aarch64": t("1:50:00"),
-    "gate-compiler-ctw-labsjdk-11-linux-aarch64": t("1:50:00"),
-    "gate-compiler-ctw_economy-labsjdk-11-linux-aarch64": t("1:50:00"),
-
-    # Bootstrap testing
     "gate-compiler-bootstrap_lite-labsjdk-11-darwin-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
+
     "gate-compiler-bootstrap_full-labsjdk-17-linux-amd64": s.many_cores + c.mach5_target
   },
 
   # This map defines the builders that run weekly. Each key in this map
-  # must correspond to the name of a build created by `make_build`.
+  # must be the name of a build created by `make_build` (or be the prefix
+  # of a build name if the key ends with "*").
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local weeklies = {
+    "weekly-compiler-test-labsjdk-11-windows-amd64": t("55:00"),
     "weekly-compiler-test-labsjdk-11-darwin-amd64": {},
     "weekly-compiler-test-labsjdk-11-darwin-aarch64": {},
+
     "weekly-compiler-test_vec16-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_avx0-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_avx1-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_javabase-labsjdk-17-linux-amd64": {},
     "weekly-compiler-benchmarktest-labsjdk-17Debug-linux-amd64": {},
-    "weekly-compiler-coverage_ctw-labsjdk-11-linux-amd64": t("2:00:00"),
-    "weekly-compiler-coverage-labsjdk-17-linux-amd64": t("1:50:00"),
-    "weekly-compiler-coverage-labsjdk-11-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-coverage_ctw-labsjdk-17-linux-amd64": {},
-    "weekly-compiler-coverage_ctw-labsjdk-11-linux-aarch64": {},
+
+    "weekly-compiler-coverage*": {},
+
     "weekly-compiler-test-labsjdk-17Debug-linux-amd64": {}
   },
 
@@ -216,8 +223,8 @@
     local gate_name = "gate-" + base_name,
     local weekly_name = "weekly-" + base_name,
     local monthly_name = "monthly-" + base_name,
-    local is_gate = std.objectHas(gates_manifest, gate_name),
-    local is_weekly = std.objectHas(weeklies_manifest, weekly_name),
+    local is_gate = $.manifest_match(gates_manifest, gate_name),
+    local is_weekly = $.manifest_match(weeklies_manifest, weekly_name),
     local is_monthly = !is_gate && !is_weekly,
     local is_windows = $.contains(os_arch, "windows"),
     local extra = if is_gate then
@@ -245,15 +252,24 @@
   # manifest_file: file in which the value of `manifest` originates
   # manifest_name: name of the field providing the value of `manifest`
   check_manifest(manifest, builds, manifest_file, manifest_name): {
-    local manifest_keys = std.set(std.objectFields(manifest)),
+    local manifest_keys = std.set([key for key in std.objectFields(manifest) if !std.endsWith(key, "*")]),
+    local manifest_prefixes = std.set([std.substr(key, 0, std.length(key) - 1) for key in std.objectFields(manifest) if std.endsWith(key, "*")]),
+    #    local manifest_keys = std.set(std.objectFields(manifest)),
     local build_names = std.set([b.name for b in builds]),
-    local unknown = std.setDiff(manifest_keys, build_names),
+    local unknown_keys = std.setDiff(manifest_keys, build_names),
+    local unknown_prefixes = [p for p in manifest_prefixes if [n for n in build_names if std.startsWith(n, p)] == []],
 
-    result: if unknown != [] then
+    result: if unknown_keys != [] then
         error "%s: name(s) in %s manifest that do not match a defined builder:\n  %s\nDefined builders:\n  %s" % [
           manifest_file,
           manifest_name,
-          std.join("\n  ", std.sort(unknown)),
+          std.join("\n  ", std.sort(unknown_keys)),
+          std.join("\n  ", std.sort(build_names))]
+      else if unknown_prefixes != [] then
+        error "%s: prefix(es) in %s manifest that do not match a defined builder:\n  %s\nDefined builders:\n  %s" % [
+          manifest_file,
+          manifest_name,
+          std.join("\n  ", std.sort(unknown_prefixes)),
           std.join("\n  ", std.sort(build_names))]
       else
         true
