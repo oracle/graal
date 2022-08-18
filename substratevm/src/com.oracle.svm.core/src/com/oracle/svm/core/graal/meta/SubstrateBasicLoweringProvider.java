@@ -244,7 +244,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public FieldLocationIdentity fieldLocationIdentity(ResolvedJavaField field) {
+    public FieldLocationIdentity overrideFieldLocationIdentity(FieldLocationIdentity field) {
         return new SubstrateFieldLocationIdentity(field);
     }
 
