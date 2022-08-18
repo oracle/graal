@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -131,29 +130,22 @@ public final class Continuation {
 
         assert sp.isNull() && ip.isNull() && baseSP.isNull();
         if (isContinue) {
-            assert stored != null;
-
-            int totalSize = StoredContinuationAccess.getFramesSizeInBytes(stored);
-            Pointer topSP = currentSP.subtract(totalSize);
-            if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
-                throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
-            }
-
-            // copyFrames() may do something interruptible before uninterruptibly copying frames.
-            // Code must not rely on remaining uninterruptible until after frames were copied.
-            CodePointer enterIP = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(stored, topSP);
-
-            /*
-             * NO CALLS BEYOND THIS POINT! They would overwrite the frames we just copied.
-             */
-
+            StoredContinuation cont = this.stored;
+            assert cont != null;
             this.ip = callerIP;
             this.sp = callerSP;
             this.baseSP = currentSP;
             this.stored = null;
-            KnownIntrinsics.farReturn(FREEZE_OK, topSP, enterIP, false);
-            throw VMError.shouldNotReachHere();
 
+            int framesSize = StoredContinuationAccess.getFramesSizeInBytes(cont);
+            Pointer topSP = currentSP.subtract(framesSize);
+            if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
+                throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
+            }
+
+            // enter() may do something interruptible.
+            ContinuationSupport.enter(cont, topSP);
+            throw VMError.shouldNotReachHere();
         } else {
             assert stored == null;
             this.ip = callerIP;

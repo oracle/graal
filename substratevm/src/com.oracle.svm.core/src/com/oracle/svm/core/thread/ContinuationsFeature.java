@@ -75,6 +75,9 @@ public class ContinuationsFeature implements Feature {
                 ImageSingletons.add(ContinuationSupport.class, new ContinuationSupport());
             }
 
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            access.registerAsAccessed(ipField);
+
             access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
         } else {

@@ -144,7 +144,7 @@ public final class StoredContinuationAccess {
 
     @Uninterruptible(reason = "Prevent modifications to the stack while initializing instance and copying frames.")
     private static void fillUninterruptibly(StoredContinuation stored, CodePointer ip, Pointer sp, int size) {
-        UnmanagedMemoryUtil.copy(sp, getFramesStart(stored), WordFactory.unsigned(size));
+        UnmanagedMemoryUtil.copyWordsForward(sp, getFramesStart(stored), WordFactory.unsigned(size));
         setIP(stored, ip);
         afterFill(stored);
     }

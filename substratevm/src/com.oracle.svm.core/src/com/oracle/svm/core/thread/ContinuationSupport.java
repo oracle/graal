@@ -24,20 +24,22 @@
  */
 package com.oracle.svm.core.thread;
 
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 public class ContinuationSupport {
     private long ipOffset;
@@ -62,47 +64,41 @@ public class ContinuationSupport {
         return ipOffset;
     }
 
-    @AlwaysInline("If not inlined, this method could overwrite its own frame.")
+    /**
+     * This method reserves the extra stack space for the continuation. Be careful when modifying
+     * the code or the arguments of this method because we need the guarantee the following
+     * invariants:
+     * <ul>
+     * <li>The method must not contain any stack accesses as they would be relative to the
+     * manipulated (and therefore incorrect) stack pointer.</li>
+     * <li>The method must never return because the stack pointer would be incorrect
+     * afterwards.</li>
+     * </ul>
+     */
+    @NeverInline("Modifies the stack pointer manually, which breaks stack accesses.")
+    @Uninterruptible(reason = "Manipulates the stack pointer.")
+    public static void enter(StoredContinuation storedCont, Pointer topSP) {
+        WriteStackPointerNode.write(topSP);
+        enter0(storedCont, topSP);
+    }
+
+    @NeverInline("The caller modified the stack pointer manually, so we need a new stack frame.")
     @Uninterruptible(reason = "Copies stack frames containing references.")
-    public CodePointer copyFrames(StoredContinuation storedCont, Pointer to) {
-        int wordSize = ConfigurationValues.getTarget().wordSize;
+    private static void enter0(StoredContinuation storedCont, Pointer topSP) {
+        // copyFrames() may do something interruptible before uninterruptibly copying frames.
+        // Code must not rely on remaining uninterruptible until after frames were copied.
+        CodePointer enterIP = singleton().copyFrames(storedCont, topSP);
+        KnownIntrinsics.farReturn(Continuation.FREEZE_OK, topSP, enterIP, false);
+    }
+
+    @Uninterruptible(reason = "Copies stack frames containing references.")
+    protected CodePointer copyFrames(StoredContinuation storedCont, Pointer topSP) {
         int totalSize = StoredContinuationAccess.getFramesSizeInBytes(storedCont);
-        assert totalSize % wordSize == 0;
+        assert totalSize % ConfigurationValues.getTarget().wordSize == 0;
 
-        CodePointer storedIP = StoredContinuationAccess.getIP(storedCont);
         Pointer frameData = StoredContinuationAccess.getFramesStart(storedCont);
-
-        /*
-         * NO CALLS BEYOND THIS POINT! They would overwrite the frames we are copying.
-         */
-
-        int stepSize = 4 * wordSize;
-        Pointer src = frameData;
-        Pointer srcEnd = frameData.add(totalSize);
-        Pointer dst = to;
-        while (src.add(stepSize).belowOrEqual(srcEnd)) {
-            WordBase w0 = src.readWord(0 * wordSize);
-            WordBase w8 = src.readWord(1 * wordSize);
-            WordBase w16 = src.readWord(2 * wordSize);
-            WordBase w24 = src.readWord(3 * wordSize);
-            dst.writeWord(0 * wordSize, w0);
-            dst.writeWord(1 * wordSize, w8);
-            dst.writeWord(2 * wordSize, w16);
-            dst.writeWord(3 * wordSize, w24);
-
-            src = src.add(stepSize);
-            dst = dst.add(stepSize);
-        }
-
-        while (src.belowThan(srcEnd)) {
-            dst.writeWord(WordFactory.zero(), src.readWord(WordFactory.zero()));
-            src = src.add(wordSize);
-            dst = dst.add(wordSize);
-        }
-
-        assert src.equal(srcEnd);
-        assert dst.equal(to.add(totalSize));
-        return storedIP;
+        UnmanagedMemoryUtil.copyWordsForward(frameData, topSP, WordFactory.unsigned(totalSize));
+        return StoredContinuationAccess.getIP(storedCont);
     }
 
     @Uninterruptible(reason = "Copies stack frames containing references.")
