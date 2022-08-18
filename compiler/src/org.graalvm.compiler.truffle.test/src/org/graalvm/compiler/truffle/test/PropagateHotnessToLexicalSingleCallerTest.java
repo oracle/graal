@@ -188,10 +188,10 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
     public void testDepth() {
         final String name = "Caller";
         CallerRootNode callerRootNode = new CallerRootNode(name + "0", frameDescriptor0 -> {
-            return new CallerRootNode(name + "1", frameDescriptor1-> {
-                return new CallerRootNode(name + "2", frameDescriptor2-> {
-                    return new CallerRootNode(name + "3", frameDescriptor3-> {
-                        return new CallerRootNode(name + "4", frameDescriptor4-> {
+            return new CallerRootNode(name + "1", frameDescriptor1 -> {
+                return new CallerRootNode(name + "2", frameDescriptor2 -> {
+                    return new CallerRootNode(name + "3", frameDescriptor3 -> {
+                        return new CallerRootNode(name + "4", frameDescriptor4 -> {
                             return new RootNodeWithLoop("loop", frameDescriptor0);
                         }, null);
                     }, null);
