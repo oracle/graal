@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -78,8 +79,8 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
             boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures);
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled() &&
-                            ImageSingletons.lookup(SubstrateTargetDescription.class).arch instanceof AMD64;
+            // Currently we only support AMD64, see CPUFeatureRegionEnterNode.generate
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled() && Platform.includedIn(Platform.AMD64.class);
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {

@@ -38,8 +38,8 @@ import jdk.vm.ci.code.Architecture;
 
 /**
  * Utilities for checking the features provided by the target CPU <em>at run time</em>. This allows
- * ahead of time compiled code to make decisions decisions at run time based on the actual CPU
- * features, as opposed to only the flags set at image build time.
+ * ahead of time compiled code to make decisions at run time based on the actual CPU features, as
+ * opposed to only the flags set at image build time.
  * </p>
  *
  * Startup code that runs before the call to {@link RuntimeSupport#executeInitializationHooks()}

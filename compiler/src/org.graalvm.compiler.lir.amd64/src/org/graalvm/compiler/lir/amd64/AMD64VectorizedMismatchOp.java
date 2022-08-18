@@ -63,10 +63,10 @@ import jdk.vm.ci.meta.Value;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-        lineStart = 6453,
-        lineEnd   = 6671,
-        commit    = "4ab77ac60df78eedb16ebe142a51f703165e808d",
-        sha1      = "128d88224b8fc7fa9283072966a28c14fdc1eda5")
+          lineStart = 6380,
+          lineEnd   = 6598,
+          commit    = "d00e7b92b4a6d33f5db6e2aedce5e058832a23de",
+          sha1      = "128d88224b8fc7fa9283072966a28c14fdc1eda5")
 // @formatter:on
 @Opcode("VECTORIZED_MISMATCH")
 public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
