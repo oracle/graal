@@ -49,6 +49,7 @@ import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -326,10 +327,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isTypeMappingEnabled(klass)"
     })
     Object doForeignConcreteClassWrapper(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached BranchProfile errorProfile,
-                    @Cached InitCheck initCheck,
-                    @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+           @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+           @Cached BranchProfile errorProfile,
+           @Cached InitCheck initCheck,
+           @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
             checkHasAllFieldsOrThrow(value, klass, interop, meta);
         } catch (ClassCastException e) {
@@ -353,20 +354,50 @@ public abstract class ToEspressoNode extends EspressoNode {
     Object doForeignClassProxy(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached LookupProxyKlassNode lookupProxyKlassNode,
+                    @Cached LookupTypeConverterNode lookupTypeConverterNode,
                     @Cached BranchProfile errorProfile,
                     @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
-            checkHasAllFieldsOrThrow(value, klass, interop, meta);
-            ObjectKlass proxyKlass = lookupProxyKlassNode.execute(getMetaObjectOrThrow(value, interop), klass);
+            Object metaObject = getMetaObjectOrThrow(value, interop);
+            String metaName = getMetaName(metaObject, interop);
+            // first see if a generated proxy can be used for interface mapped types
+            ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
             if (proxyKlass != null) {
                 return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
             } else {
-                return StaticObject.createForeign(getLanguage(), klass, value, interop);
+                // then check if there's a specific type mapping available
+                // if not a default no-conversion converter is returned
+                return lookupTypeConverterNode.execute(metaName).convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
             }
+        } catch (ClassCastException e) {
+            errorProfile.enter();
+            throw UnsupportedTypeException.create(new java.lang.Object[]{value}, EspressoError.format("Could not cast foreign object to %s: due to: %s", klass.getNameAsString(), e.getMessage()));
+        }
+    }
+
+    @Specialization(guards = {
+                    "isTypeMappingEnabled(klass)",
+                    "!isStaticObject(value)",
+                    "!interop.isNull(value)",
+                    "!isString(meta, klass)",
+                    "!isForeignException(klass)",
+                    "!klass.isAbstract()",
+                    "!isBoxedPrimitive(value)",
+                    "!isHostObject(getContext(), value)"
+    })
+    Object doForeignClassProxyNonHost(Object value, ObjectKlass klass,
+            @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+            @Cached BranchProfile errorProfile,
+            @Cached InitCheck initCheck,
+            @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+        try {
+            checkHasAllFieldsOrThrow(value, klass, interop, meta);
         } catch (ClassCastException e) {
             errorProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: due to: %s", klass.getNameAsString(), e.getMessage()));
         }
+        initCheck.execute(klass);
+        return StaticObject.createForeign(getLanguage(), klass, value, interop);
     }
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isInterface()", "isHostObject(getContext(), value)"})
@@ -377,7 +408,9 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Cached BranchProfile errorProfile) throws UnsupportedTypeException {
         try {
             if (getContext().explicitTypeMappingsEnabled()) {
-                ObjectKlass proxyKlass = lookupProxyKlassNode.execute(getMetaObjectOrThrow(value, interop), klass);
+                Object metaObject = getMetaObjectOrThrow(value, interop);
+                String metaName = getMetaName(metaObject, interop);
+                ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
                 if (proxyKlass != null) {
                     initCheck.execute(klass);
                     return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
@@ -391,14 +424,21 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     private static Object getMetaObjectOrThrow(Object value, InteropLibrary interop) throws ClassCastException {
-        if (interop.hasMetaObject(value)) {
-            try {
-                return interop.getMetaObject(value);
-            } catch (UnsupportedMessageException e) {
-                throw new ClassCastException("Could not lookup meta object");
-            }
+        try {
+            return interop.getMetaObject(value);
+        } catch (UnsupportedMessageException e) {
+            throw new ClassCastException("Could not lookup meta object");
         }
-        throw new ClassCastException("Unable to lookup meta object for foreign object: " + value.getClass());
+    }
+
+    private static String getMetaName(Object metaObject, InteropLibrary interop) {
+        assert interop.isMetaObject(metaObject);
+        try {
+            return interop.asString(interop.getMetaQualifiedName(metaObject));
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
     }
 
     @Fallback

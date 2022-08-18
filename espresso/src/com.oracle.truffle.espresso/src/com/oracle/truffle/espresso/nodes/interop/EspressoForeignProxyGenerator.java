@@ -596,7 +596,11 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                         throw new AssertionError();
                 }
             } else {
-                mv.visitTypeInsn(CHECKCAST, dotToSlash(type.getNameAsString()));
+                if (type.isArray()) {
+                    mv.visitTypeInsn(CHECKCAST, type.getTypeAsString());
+                } else {
+                    mv.visitTypeInsn(CHECKCAST, type.getNameAsString());
+                }
                 mv.visitInsn(ARETURN);
             }
         }
@@ -671,14 +675,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         if (type.isPrimitive()) {
             return String.valueOf(JavaKind.fromTypeString(type.getTypeAsString()).getTypeChar());
         } else if (type.isArray()) {
-            /*
-             * According to JLS 20.3.2, the getName() method on Class does return the VM type
-             * descriptor format for array classes (only); using that should be quicker than the
-             * otherwise obvious code:
-             *
-             * return "[" + getTypeDescriptor(type.getComponentType());
-             */
-            return type.getNameAsString().replace('.', '/');
+            return type.getTypeAsString();
         } else {
             return "L" + dotToSlash(type.getNameAsString()) + ";";
         }

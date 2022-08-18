@@ -205,7 +205,7 @@ public final class EspressoContext {
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
     public final EspressoOptions.JImageMode jimageMode;
-    private final PolyglotInterfaceMappings polyglotInterfaceMappings;
+    private final PolyglotTypeMappings polyglotTypeMappings;
     private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
 
     // Debug option
@@ -314,8 +314,9 @@ public final class EspressoContext {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
-        this.polyglotInterfaceMappings = new PolyglotInterfaceMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings));
-        this.proxyCache = polyglotInterfaceMappings.hasMappings() ? new HashMap<>() : null;
+
+        this.polyglotTypeMappings = new PolyglotTypeMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings), env.getOptions().get(EspressoOptions.PolyglotTypeConverters));
+        this.proxyCache = polyglotTypeMappings.hasInterfaceMappings() ? new HashMap<>() : null;
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
         if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
@@ -468,7 +469,7 @@ public final class EspressoContext {
         if (JDWPOptions != null) {
             jdwpContext.jdwpInit(env, getMainThread(), eventListener);
         }
-        polyglotInterfaceMappings.resolve(this);
+        polyglotTypeMappings.resolve(this);
         referenceDrainer.startReferenceDrain();
     }
 
@@ -1143,11 +1144,11 @@ public final class EspressoContext {
     }
 
     public boolean explicitTypeMappingsEnabled() {
-        return polyglotInterfaceMappings.hasMappings();
+        return polyglotTypeMappings.hasInterfaceMappings();
     }
 
-    public PolyglotInterfaceMappings getPolyglotInterfaceMappings() {
-        return polyglotInterfaceMappings;
+    public PolyglotTypeMappings getPolyglotInterfaceMappings() {
+        return polyglotTypeMappings;
     }
 
     public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String name) {
