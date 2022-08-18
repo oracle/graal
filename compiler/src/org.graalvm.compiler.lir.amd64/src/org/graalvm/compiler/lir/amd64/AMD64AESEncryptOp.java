@@ -25,6 +25,7 @@
 package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
@@ -33,6 +34,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
@@ -96,9 +98,9 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
             // @formatter:on
     });
 
-    private static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, Register xmmShufMask) {
+    public static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, Register xmmShufMask) {
         masm.movdqu(xmmDst, new AMD64Address(key, offset));
-        masm.pshufb(xmmDst, xmmShufMask);
+        VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, xmmShufMask);
     }
 
     @Override

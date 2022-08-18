@@ -61,7 +61,7 @@ public final class Stubs {
                         POPCNT,
                         AVX,
                         AVX2);
-        public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(SSSE3, AVX, AES);
+        public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(AVX, AES);
 
         public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
             if (AESNode.class.equals(klass)) {

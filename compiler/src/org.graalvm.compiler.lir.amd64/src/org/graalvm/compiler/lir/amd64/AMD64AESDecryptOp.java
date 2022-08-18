@@ -26,10 +26,10 @@ package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
 
-import jdk.vm.ci.amd64.AMD64Kind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -39,10 +39,11 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
@@ -94,11 +95,6 @@ public final class AMD64AESDecryptOp extends AMD64LIRInstruction {
             0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f
             // @formatter:on
     });
-
-    private static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, Register xmmShufMask) {
-        masm.movdqu(xmmDst, new AMD64Address(key, offset));
-        masm.pshufb(xmmDst, xmmShufMask);
-    }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
