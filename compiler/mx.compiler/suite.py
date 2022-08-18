@@ -1514,6 +1514,7 @@ suite = {
       ],
       "requires" : [
         "jdk.unsupported",
+        "jdk.jfr"
       ],
       "requiresConcealed" : {
         "java.base" : [
