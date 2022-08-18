@@ -320,14 +320,25 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int javaThreadShouldPostOnExceptionsFlagOffset = getFieldOffset("JavaThread::_should_post_on_exceptions_flag", Integer.class, "int", Integer.MIN_VALUE, JVMCI || JDK >= 12);
 
     public final boolean threadObjectFieldIsHandle;
-    public final int threadObjectOffset;
+    /**
+     * The offset of the {@code JavaThread} field containing the reference to the current thread.
+     */
+    public final int threadCurrentThreadObjectOffset;
     {
         if (JDK <= 15) {
             threadObjectFieldIsHandle = false;
-            threadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
+            threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
+        } else if (JDK < 19) {
+            threadObjectFieldIsHandle = true;
+            threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
         } else {
             threadObjectFieldIsHandle = true;
-            threadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
+            /*
+             * With virtual threads, the value returned by Thread.currentThread() is the new
+             * _vthread field. The _threadObj field is still present but refers to the carrier
+             * thread. The two fields have the same value in non-virtual threads.
+             */
+            threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_vthread", Integer.class, "OopHandle");
         }
     }
 
