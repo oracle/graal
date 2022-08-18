@@ -40,17 +40,18 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.concurrent.atomic.AtomicReference;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public final class InstrumentSystemThreadTest extends AbstractInstrumentationTest {
 
@@ -131,7 +132,7 @@ public final class InstrumentSystemThreadTest extends AbstractInstrumentationTes
     @Test
     public void testEnterInSystemThread() throws InterruptedException {
         AtomicReference<Throwable> exceptionRef = new AtomicReference<>();
-        TruffleContext innerContext = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        TruffleContext innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true).build();
         Thread thread = instrumentEnv.createSystemThread(() -> {
             try {
                 innerContext.enter(null);
