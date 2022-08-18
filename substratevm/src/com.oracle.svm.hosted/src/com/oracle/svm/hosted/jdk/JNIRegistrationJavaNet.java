@@ -69,11 +69,10 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                             "java.net.DefaultDatagramSocketImplFactory");
         }
         if (isWindows()) {
-            rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
             if (JavaVersionUtil.JAVA_SPEC <= 17) {
                 /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
                 /* Caches networking properties. */
-                rerunClassInit(a, "java.net.PlainSocketImpl");
+                rerunClassInit(a, "java.net.PlainSocketImpl", "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
             }
         } else {
             assert isPosix();
