@@ -1025,7 +1025,6 @@ public class BinaryParser extends BinaryStreamParser {
                         break;
                     case Instructions.TABLE_INIT: {
                         checkBulkMemoryOpsSupport(miscOpcode);
-                        assertTrue(module.tableExists(), Failure.UNKNOWN_TABLE);
                         final int elementIndex = readUnsignedInt32();
                         module.checkElemIndex(elementIndex);
                         readTableIndex();
@@ -1036,7 +1035,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.TABLE_COPY:
                         checkBulkMemoryOpsSupport(miscOpcode);
-                        assertTrue(module.tableExists(), Failure.UNKNOWN_TABLE);
                         readTableIndex();
                         readTableIndex();
                         state.popChecked(I32_TYPE);
@@ -1051,7 +1049,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_INIT: {
                         checkBulkMemoryOpsSupport(miscOpcode);
-                        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
                         final int dataIndex = readUnsignedInt32();
                         module.checkDataSegmentIndex(dataIndex);
                         readMemoryIndex();
@@ -1062,7 +1059,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_FILL: {
                         checkBulkMemoryOpsSupport(miscOpcode);
-                        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
                         readMemoryIndex();
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
@@ -1071,7 +1067,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_COPY: {
                         checkBulkMemoryOpsSupport(miscOpcode);
-                        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
                         readMemoryIndex();
                         readMemoryIndex();
                         state.popChecked(I32_TYPE);
