@@ -241,10 +241,12 @@ import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
 import static org.graalvm.wasm.nodes.WasmFrame.popLong;
+import static org.graalvm.wasm.nodes.WasmFrame.popReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
+import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.util.ExtraDataAccessor.CALL_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_PROFILE_OFFSET;
@@ -274,12 +276,12 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmMath;
-import org.graalvm.wasm.WasmRefNull;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
@@ -719,7 +721,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         enterErrorBranch();
                         throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
                     }
-                    if (element == WasmRefNull.INSTANCE) {
+                    if (element == WasmConstant.NULL) {
                         enterErrorBranch();
                         throw WasmException.format(Failure.NULL_REFERENCE, this, "Table element at index %d is null.", elementIndex);
                     }
@@ -1829,6 +1831,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case WasmType.F64_TYPE:
                 context.globals().storeLong(instance.globalAddress(index), Double.doubleToRawLongBits(popDouble(frame, stackPointer)));
                 break;
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
+                context.globals().storeReference(instance.globalAddress(index), popReference(frame, stackPointer));
+                break;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
         }
@@ -1849,6 +1855,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             case WasmType.F64_TYPE:
                 pushDouble(frame, stackPointer, Double.longBitsToDouble(context.globals().loadAsLong(instance.globalAddress(index))));
+                break;
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
+                pushReference(frame, stackPointer, context.globals().loadAsReference(instance.globalAddress(index)));
                 break;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");

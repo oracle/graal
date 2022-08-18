@@ -94,6 +94,7 @@ public enum Failure {
     UNEXPECTED_END_OF_BLOCK(Type.INVALID, "cannot exit unspecified block"),
     UNKNOWN_ELEM_SEGMENT(Type.INVALID, "unknown elem segment"),
     UNKNOWN_DATA_SEGMENT(Type.INVALID, "unknown data segment"),
+    UNKNOWN_REFERENCE(Type.INVALID, "unknown reference"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),

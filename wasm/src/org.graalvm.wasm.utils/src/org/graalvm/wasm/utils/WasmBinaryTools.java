@@ -103,6 +103,7 @@ public class WasmBinaryTools {
                                         "-v",
                                         "--no-check",
                                         "--enable-bulk-memory",
+                                        "--enable-reference-types",
                                         "-o",
                                         output.getPath(),
                         });

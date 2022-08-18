@@ -53,13 +53,13 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
@@ -278,6 +278,39 @@ public class WasmJsApiSuite {
     @Test
     public void testInstantiateWithImportGlobalF64() throws IOException {
         checkInstantiateWithImportGlobal(binaryWithGlobalImportF64, "f64", Math.E);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance exportInstance = moduleInstantiate(wasm, binaryWithExports, null);
+            final Object func = WebAssembly.instanceExport(exportInstance, "main");
+            final WasmGlobal global = WebAssembly.globalAlloc(ValueType.anyfunc, false, func);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "host", Dictionary.create(new Object[]{
+                                            "defaultGlobal", global
+                            }),
+            });
+            final WasmInstance instance = moduleInstantiate(wasm, binaryWithGlobalImportAnyfunc, importObject);
+            try {
+                InteropLibrary interop = InteropLibrary.getUncached();
+                final Object readGlobal1 = WebAssembly.instanceExport(instance, "readGlobal1");
+                final Object readGlobal2 = WebAssembly.instanceExport(instance, "readGlobal2");
+                final Object result1 = interop.execute(readGlobal1);
+                final Object result2 = interop.execute(readGlobal2);
+                Assert.assertEquals("Must be " + func + " initially.", func, result1);
+                Assert.assertEquals("Must be " + func + " initially.", func, result2);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+
+        });
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalExternref() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportExternref, "externref", "foo");
     }
 
     @Test
@@ -1108,7 +1141,7 @@ public class WasmJsApiSuite {
 
     private static void checkEmbedderData(Object wasmEntity) {
         Object defaultEmbedderData = WebAssembly.embedderDataGet(new Object[]{wasmEntity});
-        Assert.assertEquals("Unexpected default embedder data", WasmVoidResult.getInstance(), defaultEmbedderData);
+        Assert.assertEquals("Unexpected default embedder data", WasmConstant.VOID, defaultEmbedderData);
 
         Object newEmbedderData = new Object();
         WebAssembly.embedderDataSet(new Object[]{wasmEntity, newEmbedderData});
@@ -1585,6 +1618,73 @@ public class WasmJsApiSuite {
 
     }
 
+    @Test
+    public void testImportManyTables() throws IOException, InterruptedException {
+        String importManyTablesWat = "(module" +
+                        "(table $table0 (import \"tables\" \"table0\") 1 1 funcref)" +
+                        "(table $table1 (import \"tables\" \"table1\") 1 1 funcref)" +
+                        "(table $table2 (import \"tables\" \"table2\") 1 1 funcref)" +
+                        "(table $table3 (import \"tables\" \"table3\") 1 1 funcref)" +
+                        "(table $table4 (import \"tables\" \"table4\") 1 1 externref)" +
+                        "(table $table5 (import \"tables\" \"table5\") 1 1 externref)" +
+                        "(table $table6 (import \"tables\" \"table6\") 1 1 externref)" +
+                        "(table $table7 (import \"tables\" \"table7\") 1 1 externref)" +
+                        "(table $table8 (import \"tables\" \"table8\") 1 1 externref)" +
+                        "(func $one (result i32)" +
+                        "   i32.const 1" +
+                        ")" +
+                        "(func (export \"funcInit\")" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 0 0" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 1 0" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 2 0" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 3 0" +
+                        ")" +
+                        "(func (export \"funcVal\") (param i32) (result funcref)" +
+                        "   table.get 0" +
+                        ")" +
+                        "(func (export \"externVal\") (param i32) (result externref)" +
+                        "   table.get 4" +
+                        ")" +
+                        "(elem funcref (ref.func 0))" +
+                        ")";
+        byte[] importManyTablesBytes = compileWat("importManyTables", importManyTablesWat);
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "tables", Dictionary.create(new Object[]{
+                                            "table0", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table1", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table2", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table3", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table4", WebAssembly.tableAlloc(1, 1, TableKind.externref),
+                                            "table5", WebAssembly.tableAlloc(1, 1, TableKind.externref),
+                                            "table6", WebAssembly.tableAlloc(1, 1, TableKind.externref),
+                                            "table7", WebAssembly.tableAlloc(1, 1, TableKind.externref),
+                                            "table8", WebAssembly.tableAlloc(1, 1, TableKind.externref),
+                            })
+            });
+            WasmInstance instance = moduleInstantiate(wasm, importManyTablesBytes, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                lib.execute(WebAssembly.instanceExport(instance, "funcInit"));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
@@ -1822,6 +1922,50 @@ public class WasmJsApiSuite {
                     (byte) 0x01, (byte) 0x7c, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
                     (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7c,
                     (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7c, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result funcref)))
+    // (global $global1 (import "host" "defaultGlobal") funcref)
+    // (global $global2 funcref (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result funcref)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result funcref)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportAnyfunc = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x70, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x70,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x70, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result externref)))
+    // (global $global1 (import "host" "defaultGlobal") externref)
+    // (global $global2 externref (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result externref)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result externref)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportExternref = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x6f, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x6f,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x6f, (byte) 0x00, (byte) 0x23, (byte) 0x00,
                     (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
                     (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
                     (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,

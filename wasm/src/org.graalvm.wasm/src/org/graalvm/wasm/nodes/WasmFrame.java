@@ -54,10 +54,13 @@ public abstract class WasmFrame {
             // Needed to avoid keeping track of popped slots in FrameStates.
             frame.clearPrimitiveStatic(slot);
         }
+        frame.clearObjectStatic(slot);
     }
 
     public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        // Current workaround
         frame.copyPrimitiveStatic(sourceSlot, targetSlot);
+        frame.copyObjectStatic(sourceSlot, targetSlot);
     }
 
     public static boolean popBoolean(VirtualFrame frame, int slot) {
@@ -119,5 +122,15 @@ public abstract class WasmFrame {
 
     public static void pushDouble(VirtualFrame frame, int slot, double value) {
         frame.setDoubleStatic(slot, value);
+    }
+
+    public static Object popReference(VirtualFrame frame, int slot) {
+        Object result = frame.getObjectStatic(slot);
+        frame.clearObjectStatic(slot);
+        return result;
+    }
+
+    public static void pushReference(VirtualFrame frame, int slot, Object value) {
+        frame.setObjectStatic(slot, value);
     }
 }

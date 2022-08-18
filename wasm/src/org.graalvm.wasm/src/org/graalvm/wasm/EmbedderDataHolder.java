@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ package org.graalvm.wasm;
  * Superclass for wasm entities that can hold embedder data.
  */
 public class EmbedderDataHolder {
-    private Object embedderData = WasmVoidResult.getInstance();
+    private Object embedderData = WasmConstant.VOID;
 
     public void setEmbedderData(Object embedderData) {
         this.embedderData = embedderData;

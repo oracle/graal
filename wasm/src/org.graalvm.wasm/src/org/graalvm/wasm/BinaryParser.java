@@ -54,6 +54,7 @@ import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_TYPE;
+import static org.graalvm.wasm.WasmType.NULL_TYPE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
 
@@ -1169,6 +1170,7 @@ public class BinaryParser extends BinaryStreamParser {
             case Instructions.GLOBAL_GET:
                 offsetGlobalIndex = readGlobalIndex();
                 assertIntEqual(module.globalMutability(offsetGlobalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
+                assertByteEqual(module.globalValueType(offsetGlobalIndex), I32_TYPE, Failure.TYPE_MISMATCH);
                 break;
             default:
                 throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for table offset expression: 0x%02X", instruction);
@@ -1187,15 +1189,14 @@ public class BinaryParser extends BinaryStreamParser {
         return functionIndices;
     }
 
-    private byte readElemKind() {
+    private void checkElemKind() {
         final byte elementKind = read1();
         if (elementKind != 0x00) {
             throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid element kind: 0x%02X", elementKind);
         }
-        return elementKind;
     }
 
-    private long[] readElemExpressions() {
+    private long[] readElemExpressions(byte elemType) {
         final int length = readLength();
         final long[] functionIndices = new long[length];
         for (int i = 0; i < length; i++) {
@@ -1203,14 +1204,23 @@ public class BinaryParser extends BinaryStreamParser {
             switch (opcode) {
                 case Instructions.REF_NULL:
                     int type = read1() & 0xFF;
-                    if (type != FUNCREF_TYPE) {
-                        throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid ref.null type: 0x%02X", type);
+                    if (referenceTypes && type != elemType) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid ref.null type: 0x%02X", type);
                     }
-                    // Null functions are represented by 0
-                    functionIndices[i] = 0L;
+                    functionIndices[i] = ((long) NULL_TYPE << 32);
                     break;
                 case Instructions.REF_FUNC:
+                    if (elemType != FUNCREF_TYPE) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid element type: 0x%02X", FUNCREF_TYPE);
+                    }
                     functionIndices[i] = ((long) FUNCREF_TYPE << 32) | readDeclaredFunctionIndex();
+                    break;
+                case Instructions.GLOBAL_GET:
+                    final int globalIndex = readGlobalIndex();
+                    assertIntEqual(module.globalMutability(globalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
+                    final byte valueType = module.globalValueType(globalIndex);
+                    assertByteEqual(valueType, elemType, Failure.TYPE_MISMATCH);
+                    functionIndices[i] = ((long) I32_TYPE << 32) | globalIndex;
                     break;
                 default:
                     throw WasmException.format(Failure.ILLEGAL_OPCODE, "Invalid instruction for table elem expression: 0x%02X", opcode);
@@ -1225,39 +1235,48 @@ public class BinaryParser extends BinaryStreamParser {
         module.limits().checkElementSegmentCount(numElements);
 
         for (int elemSegmentId = 0; elemSegmentId != numElements; ++elemSegmentId) {
-            final int mode;
+            int mode;
             final int currentOffsetAddress;
             final int currentOffsetGlobalIndex;
             final long[] elements;
             final int tableIndex;
+            final byte elemType;
             if (wasmContext.getContextOptions().isBulkMemoryOps()) {
                 final int sectionType = readUnsignedInt32();
                 mode = sectionType & 0b001;
                 final boolean useTableIndex = (sectionType & 0b010) != 0;
                 final boolean useExpressions = (sectionType & 0b100) != 0;
                 final boolean useType = (sectionType & 0b011) != 0;
-                if (useTableIndex) {
-                    tableIndex = readTableIndex();
-                } else {
-                    tableIndex = 0;
-                }
                 if (mode == SegmentMode.ACTIVE) {
+                    if (useTableIndex) {
+                        tableIndex = readTableIndex();
+                    } else {
+                        tableIndex = 0;
+                    }
                     readOffsetExpression(multiResult);
                     currentOffsetAddress = multiResult[0];
                     currentOffsetGlobalIndex = multiResult[1];
                 } else {
+                    mode = useTableIndex ? SegmentMode.DECLARATIVE : SegmentMode.PASSIVE;
+                    if (!referenceTypes) {
+                        assertIntEqual(mode, SegmentMode.PASSIVE, "Enable reference types to use declarative element sections", Failure.TYPE_MISMATCH);
+                    }
+                    tableIndex = 0;
                     currentOffsetAddress = 0;
                     currentOffsetGlobalIndex = 0;
                 }
                 if (useExpressions) {
                     if (useType) {
-                        readRefType();
+                        elemType = readRefType();
+                    } else {
+                        elemType = FUNCREF_TYPE;
                     }
-                    elements = readElemExpressions();
+                    elements = readElemExpressions(elemType);
                 } else {
                     if (useType) {
-                        readElemKind();
+                        checkElemKind();
                     }
+                    elemType = FUNCREF_TYPE;
                     elements = readFunctionIndices();
                 }
             } else {
@@ -1267,6 +1286,7 @@ public class BinaryParser extends BinaryStreamParser {
                 currentOffsetAddress = multiResult[0];
                 currentOffsetGlobalIndex = multiResult[1];
                 elements = readFunctionIndices();
+                elemType = 0;
             }
             module.incrementElemSegmentCount();
 
@@ -1291,19 +1311,21 @@ public class BinaryParser extends BinaryStreamParser {
                     final Linker linker = Objects.requireNonNull(linkedContext.linker());
                     linker.immediatelyResolveElemSegment(linkedContext, linkedInstance, tableIndex, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, elements);
                 }
-            } else {
+            } else if (mode == SegmentMode.PASSIVE) {
                 if (linkedContext == null || linkedInstance == null) {
                     // Reading of the elements segment occurs during parsing, so add a linker
                     // action.
-                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveElemSegment(instance, currentElemSegmentId, elements)));
+                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, elemType, elements)));
                 } else {
                     // Reading of the elements segment is called after linking (this happens when
                     // this method is called from #resetTableState()), so initialize the element
                     // instance directly.
                     final Linker linker = Objects.requireNonNull(linkedContext.linker());
-                    linker.immediatelyResolvePassiveElementSegment(linkedInstance, currentElemSegmentId, elements);
+                    linker.immediatelyResolvePassiveElementSegment(linkedContext, linkedInstance, currentElemSegmentId, elemType, elements);
                 }
             }
+            // We don't need to perform any action on declarative sections, because functions
+            // already exist as references in our implementation
         }
     }
 
@@ -1362,8 +1384,9 @@ public class BinaryParser extends BinaryStreamParser {
             final byte mutability = readMutability();
             long value = 0;
             int existingIndex = -1;
-            final byte instruction = read1();
+            final int instruction = read1() & 0xFF;
             boolean isInitialized;
+            final boolean isFunctionOrNull;
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
             switch (instruction) {
@@ -1371,27 +1394,43 @@ public class BinaryParser extends BinaryStreamParser {
                     assertByteEqual(type, I32_TYPE, Failure.TYPE_MISMATCH);
                     value = readSignedInt32();
                     isInitialized = true;
+                    isFunctionOrNull = false;
                     break;
                 case Instructions.I64_CONST:
                     assertByteEqual(type, I64_TYPE, Failure.TYPE_MISMATCH);
                     value = readSignedInt64();
                     isInitialized = true;
+                    isFunctionOrNull = false;
                     break;
                 case Instructions.F32_CONST:
                     assertByteEqual(type, F32_TYPE, Failure.TYPE_MISMATCH);
                     value = readFloatAsInt32();
                     isInitialized = true;
+                    isFunctionOrNull = false;
                     break;
                 case Instructions.F64_CONST:
                     assertByteEqual(type, F64_TYPE, Failure.TYPE_MISMATCH);
                     value = readFloatAsInt64();
                     isInitialized = true;
+                    isFunctionOrNull = false;
+                    break;
+                case Instructions.REF_NULL:
+                    assertTrue(WasmType.isReferenceType(type), Failure.TYPE_MISMATCH);
+                    isInitialized = true;
+                    isFunctionOrNull = true;
+                    break;
+                case Instructions.REF_FUNC:
+                    assertByteEqual(type, FUNCREF_TYPE, Failure.TYPE_MISMATCH);
+                    value = readDeclaredFunctionIndex();
+                    isInitialized = false;
+                    isFunctionOrNull = true;
                     break;
                 case Instructions.GLOBAL_GET:
                     existingIndex = readGlobalIndex();
                     assertUnsignedIntLess(existingIndex, module.symbolTable().importedGlobals().size(), Failure.UNKNOWN_GLOBAL);
                     assertByteEqual(type, module.symbolTable().globalValueType(existingIndex), Failure.TYPE_MISMATCH);
                     isInitialized = false;
+                    isFunctionOrNull = false;
                     break;
                 default:
                     throw WasmException.create(Failure.TYPE_MISMATCH);
@@ -1402,11 +1441,17 @@ public class BinaryParser extends BinaryStreamParser {
             final int currentGlobalIndex = globalIndex;
             final int currentExistingIndex = existingIndex;
             final long currentValue = value;
+            final int currentFunctionIndex = (int) value;
             module.addLinkAction((context, instance) -> {
                 final GlobalRegistry globals = context.globals();
                 final int address = instance.globalAddress(currentGlobalIndex);
                 if (isInitialized) {
-                    globals.storeLong(address, currentValue);
+                    if (isFunctionOrNull) {
+                        // Only null is possible
+                        globals.storeReference(address, WasmConstant.NULL);
+                    } else {
+                        globals.storeLong(address, currentValue);
+                    }
                     context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
                     if (!module.symbolTable().importedGlobals().containsKey(currentExistingIndex)) {
@@ -1415,7 +1460,12 @@ public class BinaryParser extends BinaryStreamParser {
                         fail(Failure.UNSPECIFIED_MALFORMED, "The initializer for global " + currentGlobalIndex + " in module '" + module.name() +
                                         "' refers to a non-imported global.");
                     }
-                    context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, currentExistingIndex);
+                    if (isFunctionOrNull) {
+                        // Has to be a function reference
+                        context.linker().resolveGlobalFunctionInitialization(context, instance, currentGlobalIndex, currentFunctionIndex);
+                    } else {
+                        context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, currentExistingIndex);
+                    }
                 }
             });
         }
@@ -1561,9 +1611,6 @@ public class BinaryParser extends BinaryStreamParser {
 
     private int readTableIndex() {
         final int index = readUnsignedInt32();
-        // At the moment, WebAssembly (1.0, MVP) only supports one table instance, thus the only
-        // valid table index is 0.
-        assertIntEqual(index, 0, Failure.UNKNOWN_TABLE);
         assertTrue(module.symbolTable().checkTableIndex(index), Failure.UNKNOWN_TABLE);
         return index;
     }

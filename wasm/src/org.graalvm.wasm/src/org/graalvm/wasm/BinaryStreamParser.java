@@ -328,6 +328,8 @@ public abstract class BinaryStreamParser {
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
                 break;
             default:
                 Assert.fail(Failure.MALFORMED_VALUE_TYPE, String.format("Invalid value type: 0x%02X", b));

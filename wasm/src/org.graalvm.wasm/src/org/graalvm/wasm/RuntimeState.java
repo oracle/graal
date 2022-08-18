@@ -66,7 +66,7 @@ public class RuntimeState {
      * This array is monotonically populated from the left. An index i denotes the i-th global in
      * this module. The value at the index i denotes the address of the global in the memory space
      * for all the globals from all the modules (see {@link GlobalRegistry}).
-     *
+     * <p>
      * This separation of global indices is done because the index spaces of the globals are
      * module-specific, and the globals can be imported across modules. Thus, the address-space of
      * the globals is not the same as the module-specific index-space.
@@ -75,7 +75,7 @@ public class RuntimeState {
 
     /**
      * The table from the context-specific table space, which this module is using.
-     *
+     * <p>
      * In the current WebAssembly specification, a module can use at most one table. The value
      * {@code null} denotes that this module uses no table.
      */
@@ -83,12 +83,13 @@ public class RuntimeState {
 
     /**
      * Memory that this module is using.
-     *
+     * <p>
      * In the current WebAssembly specification, a module can use at most one memory. The value
      * {@code null} denotes that this module uses no memory.
      */
     @CompilationFinal private WasmMemory memory;
 
+    @CompilationFinal(dimensions = 1) private byte[] elementInstanceTypes;
     @CompilationFinal(dimensions = 0) private Object[][] elementInstances;
 
     @CompilationFinal(dimensions = 0) private byte[][] dataInstances;
@@ -119,6 +120,7 @@ public class RuntimeState {
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
+        this.elementInstanceTypes = null;
         this.elementInstances = null;
         this.dataInstances = null;
     }
@@ -249,23 +251,35 @@ public class RuntimeState {
 
     private void ensureElementInstanceCapacity(int index) {
         if (elementInstances == null) {
-            elementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+            final int size = Math.max(Integer.highestOneBit(index) << 1, 2);
+            elementInstanceTypes = new byte[size];
+            elementInstances = new Object[size][];
         } else if (index >= elementInstances.length) {
-            final Object[][] nElementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length)][];
+            final int size = Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length);
+            final byte[] nElementInstanceTypes = new byte[size];
+            final Object[][] nElementInstances = new Object[size][];
+            System.arraycopy(elementInstanceTypes, 0, nElementInstanceTypes, 0, elementInstanceTypes.length);
             System.arraycopy(elementInstances, 0, nElementInstances, 0, elementInstances.length);
+            elementInstanceTypes = nElementInstanceTypes;
             elementInstances = nElementInstances;
         }
     }
 
-    void setElementInstance(int index, Object[] elements) {
+    void setElementInstance(int index, byte type, Object[] elements) {
         assert elements != null;
         ensureElementInstanceCapacity(index);
+        elementInstanceTypes[index] = type;
         elementInstances[index] = elements;
     }
 
     public void dropElementInstance(int index) {
         assert index < elementInstances.length;
         elementInstances[index] = null;
+    }
+
+    public byte elementInstanceType(int index) {
+        assert index < elementInstanceTypes.length;
+        return elementInstanceTypes[index];
     }
 
     public Object[] elementInstance(int index) {

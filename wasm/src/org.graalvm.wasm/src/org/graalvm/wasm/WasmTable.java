@@ -187,12 +187,8 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      *
      * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
      */
-    public void initialize(int i, WasmFunctionInstance function) {
-        elements[i] = function;
-    }
-
-    public void initializeWithNull(int i) {
-        elements[i] = WasmRefNull.INSTANCE;
+    public void initialize(int i, Object element) {
+        elements[i] = element;
     }
 
     /**

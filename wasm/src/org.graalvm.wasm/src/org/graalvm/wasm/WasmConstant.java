@@ -40,10 +40,54 @@
  */
 package org.graalvm.wasm;
 
-public final class WasmRefNull {
-    public static final WasmRefNull INSTANCE = new WasmRefNull();
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-    private WasmRefNull() {
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"static-method", "unused"})
+public class WasmConstant implements TruffleObject {
+    public static final WasmConstant VOID = new WasmConstant("wasm-void-result", WasmType.VOID, false);
+    public static final WasmConstant NULL = new WasmConstant("wasm-ref-null", WasmType.NULL, true);
+    private final String name;
+    private final Object metaObject;
+    private final boolean isNull;
 
+    protected WasmConstant(String name, Object metaObject, boolean isNull) {
+        this.name = name;
+        this.metaObject = metaObject;
+        this.isNull = isNull;
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return WasmLanguage.class;
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return metaObject;
+    }
+
+    @ExportMessage(name = "toDisplayString")
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return name;
+    }
+
+    @ExportMessage
+    boolean isNull() {
+        return isNull;
     }
 }

@@ -55,6 +55,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
@@ -64,7 +65,6 @@ import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -506,7 +506,7 @@ public class WebAssembly extends Dictionary {
     public static Object tableRead(WasmTable table, int index) {
         try {
             final Object result = table.get(index);
-            return result == null ? WasmVoidResult.getInstance() : result;
+            return result == null ? WasmConstant.VOID : result;
         } catch (IndexOutOfBoundsException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
@@ -526,11 +526,11 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Object tableWrite(WasmTable table, int index, Object element) {
-        final WasmFunctionInstance functionInstance;
+        final Object functionInstance;
         if (element instanceof WasmFunctionInstance) {
-            functionInstance = (WasmFunctionInstance) element;
+            functionInstance = element;
         } else if (InteropLibrary.getUncached(element).isNull(element)) {
-            functionInstance = null;
+            functionInstance = WasmConstant.NULL;
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
         }
@@ -541,7 +541,7 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
 
-        return WasmVoidResult.getInstance();
+        return WasmConstant.VOID;
     }
 
     private static Object tableSize(Object[] args) {
@@ -647,7 +647,7 @@ public class WebAssembly extends Dictionary {
 
     private static Object memSetGrowCallback(WasmMemory memory, Object callback) {
         memory.setGrowCallback(callback);
-        return WasmVoidResult.getInstance();
+        return WasmConstant.VOID;
     }
 
     public static void invokeMemGrowCallback(WasmMemory memory) {
@@ -671,7 +671,7 @@ public class WebAssembly extends Dictionary {
                 return WasmContext.get(null).environment().asGuestValue(buffer);
             }
         }
-        return WasmVoidResult.getInstance();
+        return WasmConstant.VOID;
     }
 
     private static Object globalAlloc(Object[] args) {
@@ -709,6 +709,18 @@ public class WebAssembly extends Dictionary {
                     return new DefaultWasmGlobal(valueType, mutable, Float.floatToRawIntBits(valueInterop.asFloat(value)));
                 case f64:
                     return new DefaultWasmGlobal(valueType, mutable, Double.doubleToRawLongBits(valueInterop.asDouble(value)));
+                case anyfunc:
+                    if (valueInterop.isNull(value)) {
+                        return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
+                    } else if (value instanceof WasmFunctionInstance) {
+                        return new DefaultWasmGlobal(valueType, mutable, value);
+                    }
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
+                case externref:
+                    if (valueInterop.isNull(value)) {
+                        return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
+                    }
+                    return new DefaultWasmGlobal(valueType, mutable, value);
                 default:
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
             }
@@ -736,6 +748,10 @@ public class WebAssembly extends Dictionary {
                 return Float.intBitsToFloat(global.loadAsInt());
             case f64:
                 return Double.longBitsToDouble(global.loadAsLong());
+            case anyfunc:
+            case externref:
+                return global.loadAsReference();
+
         }
         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Incorrect internal Global type");
     }
@@ -779,8 +795,24 @@ public class WebAssembly extends Dictionary {
                 }
                 global.storeLong(Double.doubleToRawLongBits((double) value));
                 break;
+            case anyfunc:
+                if (InteropLibrary.getUncached(value).isNull(value)) {
+                    global.storeReference(WasmConstant.NULL);
+                } else if (!(value instanceof WasmFunctionInstance)) {
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
+                } else {
+                    global.storeReference(value);
+                }
+                break;
+            case externref:
+                if (InteropLibrary.getUncached(value).isNull(value)) {
+                    global.storeReference(WasmConstant.NULL);
+                } else {
+                    global.storeReference(value);
+                }
+                break;
         }
-        return WasmVoidResult.getInstance();
+        return WasmConstant.VOID;
     }
 
     private static Object instanceExport(Object[] args) {
@@ -827,7 +859,7 @@ public class WebAssembly extends Dictionary {
     public static Object embedderDataSet(Object[] args) {
         checkArgumentCount(args, 2);
         getEmbedderDataHolder(args).setEmbedderData(args[1]);
-        return WasmVoidResult.getInstance();
+        return WasmConstant.VOID;
     }
 
     public static Object embedderDataGet(Object[] args) {

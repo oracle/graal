@@ -260,9 +260,29 @@ public class Linker {
             final int sourceAddress = instance.globalAddress(sourceGlobalIndex);
             final int address = instance.globalAddress(globalIndex);
             final GlobalRegistry globals = context.globals();
-            globals.storeLong(address, globals.loadAsLong(sourceAddress));
+            if (WasmType.isNumberType(instance.module().globalValueType(sourceGlobalIndex))) {
+                globals.storeLong(address, globals.loadAsLong(sourceAddress));
+            } else {
+                globals.storeReference(address, globals.loadAsReference(sourceAddress));
+            }
         };
         final Sym[] dependencies = new Sym[]{new InitializeGlobalSym(instance.name(), sourceGlobalIndex)};
+        resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, resolveAction);
+    }
+
+    void resolveGlobalFunctionInitialization(WasmContext context, WasmInstance instance, int globalIndex, int functionIndex) {
+        final WasmFunction function = instance.module().function(functionIndex);
+        final Runnable resolveAction = () -> {
+            final int address = instance.globalAddress(globalIndex);
+            final GlobalRegistry globals = context.globals();
+            globals.storeReference(address, instance.functionInstance(function));
+        };
+        final Sym[] dependencies;
+        if (function.importDescriptor() != null) {
+            dependencies = new Sym[]{new ImportFunctionSym(instance.name(), function.importDescriptor(), functionIndex)};
+        } else {
+            dependencies = ResolutionDag.NO_DEPENDENCIES;
+        }
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, resolveAction);
     }
 
@@ -450,13 +470,19 @@ public class Linker {
             dependencies.add(new InitializeGlobalSym(instance.name(), offsetGlobalIndex));
         }
         for (final long element : elements) {
-            // Null functions are represented by 0
-            if (element != 0L) {
-                final int functionIndex = (int) element;
-                final WasmFunction function = instance.module().function(functionIndex);
-                if (function.importDescriptor() != null) {
-                    dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
-                }
+            final int initType = (int) (element >> 32);
+            switch (initType) {
+                case WasmType.FUNCREF_TYPE:
+                    final int functionIndex = (int) element;
+                    final WasmFunction function = instance.module().function(functionIndex);
+                    if (function.importDescriptor() != null) {
+                        dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
+                    }
+                    break;
+                case WasmType.I32_TYPE:
+                    final int globalIndex = (int) element;
+                    dependencies.add(new InitializeGlobalSym(instance.name(), globalIndex));
+                    break;
             }
         }
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
@@ -483,49 +509,74 @@ public class Linker {
 
         for (int index = 0; index != elements.length; ++index) {
             final long element = elements[index];
-            // Null functions are represented by 0
-            if (element == 0L) {
-                table.initializeWithNull(baseAddress + index);
-            } else {
-                final int functionIndex = (int) element;
-                final WasmFunction function = instance.module().function(functionIndex);
-                table.initialize(baseAddress + index, instance.functionInstance(function));
+            final int initType = (int) (element >> 32);
+            switch (initType) {
+                case WasmType.NULL_TYPE:
+                    table.initialize(baseAddress + index, WasmConstant.NULL);
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                    final int functionIndex = (int) element;
+                    final WasmFunction function = instance.module().function(functionIndex);
+                    table.initialize(baseAddress + index, instance.functionInstance(function));
+                    break;
+                case WasmType.I32_TYPE:
+                    final int globalIndex = (int) element;
+                    final int globalAddress = instance.globalAddress(globalIndex);
+                    table.initialize(baseAddress + index, context.globals().loadAsReference(globalAddress));
+                    break;
             }
         }
     }
 
-    void resolvePassiveElemSegment(WasmInstance instance, int elemSegmentId, long[] elements) {
-        final Runnable resolveAction = () -> immediatelyResolvePassiveElementSegment(instance, elemSegmentId, elements);
+    void resolvePassiveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, byte elemType, long[] elements) {
+        final Runnable resolveAction = () -> immediatelyResolvePassiveElementSegment(context, instance, elemSegmentId, elemType, elements);
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (elemSegmentId > 0) {
             dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
         }
         for (final long element : elements) {
-            if (element != 0) {
-                final int functionIndex = (int) element;
-                final WasmFunction function = instance.module().function(functionIndex);
-                if (function.importDescriptor() != null) {
-                    dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
-                }
+            final int initType = (int) (element >> 32);
+            switch (initType) {
+                case WasmType.FUNCREF_TYPE:
+                    final int functionIndex = (int) element;
+                    final WasmFunction function = instance.module().function(functionIndex);
+                    if (function.importDescriptor() != null) {
+                        dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
+                    }
+                    break;
+                case WasmType.I32_TYPE:
+                    final int globalIndex = (int) element;
+                    dependencies.add((new InitializeGlobalSym(instance.name(), globalIndex)));
+                    break;
             }
         }
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
 
     }
 
-    void immediatelyResolvePassiveElementSegment(WasmInstance instance, int elemSegmentId, long[] elements) {
+    void immediatelyResolvePassiveElementSegment(WasmContext context, WasmInstance instance, int elemSegmentId, byte elemType, long[] elements) {
         final Object[] initialValues = new Object[elements.length];
         for (int index = 0; index != elements.length; index++) {
             final long element = elements[index];
-            if (element == 0L) {
-                initialValues[index] = WasmRefNull.INSTANCE;
-            } else {
-                final int functionIndex = (int) element;
-                final WasmFunction function = instance.module().function(functionIndex);
-                initialValues[index] = instance.functionInstance(function);
+            final int initType = (int) (element >> 32);
+            switch (initType) {
+                case WasmType.NULL_TYPE:
+                    initialValues[index] = WasmConstant.NULL;
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                    final int functionIndex = (int) element;
+                    final WasmFunction function = instance.module().function(functionIndex);
+                    initialValues[index] = instance.functionInstance(function);
+                    break;
+                case WasmType.I32_TYPE:
+                    final int globalIndex = (int) element;
+                    final int globalAddress = instance.globalAddress(globalIndex);
+                    initialValues[index] = context.globals().loadAsReference(globalAddress);
+                    break;
+
             }
         }
-        instance.setElementInstance(elemSegmentId, initialValues);
+        instance.setElementInstance(elemSegmentId, elemType, initialValues);
     }
 
     static class ResolutionDag {

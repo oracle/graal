@@ -58,6 +58,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 public class WasmType implements TruffleObject {
     public static final byte VOID_TYPE = 0x40;
     @CompilationFinal(dimensions = 1) public static final byte[] VOID_TYPE_ARRAY = {};
+    public static final byte NULL_TYPE = 0x00;
 
     /**
      * Number Types.
@@ -81,6 +82,7 @@ public class WasmType implements TruffleObject {
     public static final byte EXTERNREF_TYPE = 0x6F;
 
     public static final WasmType VOID = new WasmType("void");
+    public static final WasmType NULL = new WasmType("null");
 
     public static String toString(int valueType) {
         CompilerAsserts.neverPartOfCompilation();
@@ -102,6 +104,14 @@ public class WasmType implements TruffleObject {
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
+    }
+
+    public static boolean isNumberType(byte type) {
+        return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE;
+    }
+
+    public static boolean isReferenceType(byte type) {
+        return type == FUNCREF_TYPE || type == EXTERNREF_TYPE;
     }
 
     private final String name;
@@ -138,7 +148,7 @@ public class WasmType implements TruffleObject {
 
     @ExportMessage
     final boolean isMetaInstance(Object instance) throws UnsupportedMessageException {
-        return instance instanceof WasmVoidResult;
+        return instance instanceof WasmConstant;
     }
 
     @Override
