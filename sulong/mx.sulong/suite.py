@@ -196,6 +196,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm",
         "com.oracle.truffle.llvm.tests.pipe",
+        "com.oracle.truffle.llvm.tests.harness",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
@@ -207,6 +208,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "11+",
       "javaProperties" : {
+        "test.sulongtest.harness" : "<path:com.oracle.truffle.llvm.tests.harness>/TestHarness/bin",
         "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
         "test.sulongtest.lib.path" : "<path:SULONG_TEST_NATIVE>",
         "sulongtest.projectRoot" : "<path:com.oracle.truffle.llvm>/../",
@@ -214,6 +216,27 @@ suite = {
         "sulongtest.source.LLVM_TEST_SUITE" : "<path:LLVM_TEST_SUITE>",
         "sulongtest.source.NWCC_SUITE" : "<path:NWCC_SUITE>",
       },
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+    "com.oracle.truffle.llvm.tests.harness" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm",
+        "com.oracle.truffle.llvm.tests.pipe",
+        "truffle:TRUFFLE_TCK",
+        "mx:JUNIT",
+      ],
+      "requires" : [
+        "java.logging",
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "testProject" : True,

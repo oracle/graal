@@ -111,3 +111,8 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutp
         return;
     }
 }
+
+JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_flushStdFiles(JNIEnv *env, jclass self) {
+  fflush(stdout);
+  fflush(stderr);
+}
