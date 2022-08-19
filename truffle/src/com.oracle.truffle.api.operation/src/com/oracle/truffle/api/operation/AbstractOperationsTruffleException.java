@@ -73,7 +73,7 @@ public abstract class AbstractOperationsTruffleException extends AbstractTruffle
 
     private static Node getLocation(Node location, int bci) {
         if (bci >= 0) {
-            return ((OperationNode) location).createLocationNode(bci);
+            return ((OperationRootNode) location).createLocationNode(bci);
         } else {
             return location;
         }

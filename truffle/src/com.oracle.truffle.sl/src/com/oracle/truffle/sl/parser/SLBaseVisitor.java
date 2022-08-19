@@ -92,7 +92,7 @@ public abstract class SLBaseVisitor extends SimpleLanguageOperationsBaseVisitor<
         sourceString = SLStrings.fromJavaString(source.getCharacters().toString());
     }
 
-    protected void SemErr(Token token, String message) {
+    protected void semErr(Token token, String message) {
         assert token != null;
         throwParseError(source, token.getLine(), token.getCharPositionInLine(), token, message);
     }

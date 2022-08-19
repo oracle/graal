@@ -47,13 +47,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public class MetadataKey<T> {
     private final T defaultValue;
-    @CompilationFinal private Function<OperationNode, T> getter;
+    @CompilationFinal private Function<OperationRootNode, T> getter;
 
     public MetadataKey(T defaultValue) {
         this.defaultValue = Objects.requireNonNull(defaultValue);
     }
 
-    void setGetter(Function<OperationNode, T> getter) {
+    void setGetter(Function<OperationRootNode, T> getter) {
         this.getter = getter;
     }
 
@@ -61,7 +61,7 @@ public class MetadataKey<T> {
         return defaultValue;
     }
 
-    public T getValue(OperationNode node) {
+    public T getValue(OperationRootNode node) {
         if (getter == null) {
             throw new ClassCastException();
         }

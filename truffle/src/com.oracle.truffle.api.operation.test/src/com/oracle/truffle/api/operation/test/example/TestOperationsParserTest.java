@@ -52,19 +52,19 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.OperationParser;
 
 public class TestOperationsParserTest {
     // @formatter:off
 
     private static RootCallTarget parse(OperationParser<TestOperationsBuilder> builder) {
-        OperationNode operationsNode = parseNode(builder);
+        OperationRootNode operationsNode = parseNode(builder);
         System.out.println(operationsNode.dump());
         return new TestRootNode(operationsNode).getCallTarget();
     }
 
-    private static OperationNode parseNode(OperationParser<TestOperationsBuilder> builder) {
+    private static OperationRootNode parseNode(OperationParser<TestOperationsBuilder> builder) {
         return TestOperationsBuilder.create(OperationConfig.DEFAULT, builder).getNodes().get(0);
     }
 
@@ -833,7 +833,7 @@ public class TestOperationsParserTest {
     public void testMetadata() {
         final String value = "test data";
 
-        OperationNode node = parseNode(b -> {
+        OperationRootNode node = parseNode(b -> {
             b.setTestData(value);
             b.publish();
         });
@@ -846,7 +846,7 @@ public class TestOperationsParserTest {
     public void testMetadataChange() {
         final String value = "test data";
 
-        OperationNode node = parseNode(b -> {
+        OperationRootNode node = parseNode(b -> {
             b.setTestData("some old value");
             b.setTestData(value);
             b.publish();
@@ -858,7 +858,7 @@ public class TestOperationsParserTest {
 
     @Test
     public void testMetadataDefaultValue() {
-        OperationNode node = parseNode(b -> {
+        OperationRootNode node = parseNode(b -> {
             b.publish();
         });
 

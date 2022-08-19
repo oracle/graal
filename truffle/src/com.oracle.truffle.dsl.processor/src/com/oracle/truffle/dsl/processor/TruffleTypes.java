@@ -244,7 +244,7 @@ public class TruffleTypes {
     public static final String OperationConfig_Name = "com.oracle.truffle.api.operation.OperationConfig";
     public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
     public static final String OperationLocal_Name = "com.oracle.truffle.api.operation.OperationLocal";
-    public static final String OperationNode_Name = "com.oracle.truffle.api.operation.OperationNode";
+    public static final String OperationRootNode_Name = "com.oracle.truffle.api.operation.OperationRootNode";
     public static final String OperationNodes_Name = "com.oracle.truffle.api.operation.OperationNodes";
     public static final String OperationProxy_Name = "com.oracle.truffle.api.operation.OperationProxy";
     public static final String OperationBuilder_Name = "com.oracle.truffle.api.operation.OperationBuilder";
@@ -266,7 +266,7 @@ public class TruffleTypes {
     public final DeclaredType OperationConfig = c.getDeclaredTypeOptional(OperationConfig_Name);
     public final DeclaredType OperationLabel = c.getDeclaredTypeOptional(OperationLabel_Name);
     public final DeclaredType OperationLocal = c.getDeclaredTypeOptional(OperationLocal_Name);
-    public final DeclaredType OperationNode = c.getDeclaredTypeOptional(OperationNode_Name);
+    public final DeclaredType OperationRootNode = c.getDeclaredTypeOptional(OperationRootNode_Name);
     public final DeclaredType OperationNodes = c.getDeclaredTypeOptional(OperationNodes_Name);
     public final DeclaredType OperationProxy = c.getDeclaredTypeOptional(OperationProxy_Name);
     public final DeclaredType OperationBuilder = c.getDeclaredTypeOptional(OperationBuilder_Name);

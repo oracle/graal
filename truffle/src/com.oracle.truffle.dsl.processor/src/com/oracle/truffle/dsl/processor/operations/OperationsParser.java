@@ -83,9 +83,11 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         OperationsData data = new OperationsData(ProcessorContext.getInstance(), typeElement, generateOperationsMirror);
 
+        data.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
+
         // check basic declaration properties
-        if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
-            data.addError(typeElement, "Operations class must be declared final.");
+        if (!typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
+            data.addError(typeElement, "Operations class must be declared abstract.");
         }
 
         if (ElementUtils.findParentEnclosingType(typeElement).isPresent()) {

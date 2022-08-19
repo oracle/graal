@@ -374,7 +374,7 @@ public abstract class Instruction {
         this.internalName = OperationGeneratorUtils.toScreamCase(name);
         this.numPushedValues = numPushedValues;
 
-        this.opcodeIdField = new CodeVariableElement(Set.of(Modifier.STATIC, Modifier.FINAL), context.getType(int.class), "INSTR_" + internalName);
+        this.opcodeIdField = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL), context.getType(int.class), "INSTR_" + internalName);
         opcodeIdField.createInitBuilder().string("" + id);
     }
 
@@ -515,7 +515,7 @@ public abstract class Instruction {
 
         // todo: instruments
 
-        b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
+        b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
 
         b.tree(createCustomEmitCodeAfter(vars, args));
 
@@ -710,7 +710,7 @@ public abstract class Instruction {
 
     private CodeVariableElement createConstant(String constantName, int value) {
         CodeVariableElement result = new CodeVariableElement(
-                        Set.of(Modifier.STATIC, Modifier.FINAL),
+                        Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL),
                         context.getType(int.class),
                         constantName);
         result.createInitBuilder().string("" + value);

@@ -127,8 +127,8 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
     private FrameDescriptor.Builder frameDescriptorBuilder;
 
-    private SLStatementVisitor STATEMENT_VISITOR = new SLStatementVisitor();
-    private SLExpressionVisitor EXPRESSION_VISITOR = new SLExpressionVisitor();
+    private SLStatementVisitor statementVisitor = new SLStatementVisitor();
+    private SLExpressionVisitor expressionVisitor = new SLExpressionVisitor();
     private int loopDepth = 0;
     private final Map<TruffleString, RootCallTarget> functions = new HashMap<>();
 
@@ -162,7 +162,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
             methodNodes.add(assignment);
         }
 
-        SLStatementNode bodyNode = STATEMENT_VISITOR.visitBlock(ctx.body);
+        SLStatementNode bodyNode = statementVisitor.visitBlock(ctx.body);
 
         exitFunction();
 
@@ -243,7 +243,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         @Override
         public SLStatementNode visitBreak_statement(Break_statementContext ctx) {
             if (loopDepth == 0) {
-                SemErr(ctx.b, "break used outside of loop");
+                semErr(ctx.b, "break used outside of loop");
             }
             final SLBreakNode breakNode = new SLBreakNode();
             srcFromToken(breakNode, ctx.b);
@@ -253,7 +253,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         @Override
         public SLStatementNode visitContinue_statement(Continue_statementContext ctx) {
             if (loopDepth == 0) {
-                SemErr(ctx.c, "continue used outside of loop");
+                semErr(ctx.c, "continue used outside of loop");
             }
             final SLContinueNode continueNode = new SLContinueNode();
             srcFromToken(continueNode, ctx.c);
@@ -262,7 +262,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
         @Override
         public SLStatementNode visitWhile_statement(While_statementContext ctx) {
-            SLExpressionNode conditionNode = EXPRESSION_VISITOR.visitExpression(ctx.condition);
+            SLExpressionNode conditionNode = expressionVisitor.visitExpression(ctx.condition);
 
             loopDepth++;
             SLStatementNode bodyNode = visitBlock(ctx.body);
@@ -278,7 +278,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
         @Override
         public SLStatementNode visitIf_statement(If_statementContext ctx) {
-            SLExpressionNode conditionNode = EXPRESSION_VISITOR.visitExpression(ctx.condition);
+            SLExpressionNode conditionNode = expressionVisitor.visitExpression(ctx.condition);
             SLStatementNode thenPartNode = visitBlock(ctx.then);
             SLStatementNode elsePartNode = ctx.alt == null ? null : visitBlock(ctx.alt);
 
@@ -295,7 +295,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
             final SLExpressionNode valueNode;
             if (ctx.expression() != null) {
-                valueNode = EXPRESSION_VISITOR.visitExpression(ctx.expression());
+                valueNode = expressionVisitor.visitExpression(ctx.expression());
             } else {
                 valueNode = null;
             }
@@ -314,7 +314,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
         @Override
         public SLStatementNode visitExpression_statement(Expression_statementContext ctx) {
-            return EXPRESSION_VISITOR.visitExpression(ctx.expression());
+            return expressionVisitor.visitExpression(ctx.expression());
         }
 
         @Override
@@ -500,7 +500,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
             }
 
             for (ExpressionContext child : ctx.expression()) {
-                parameters.add(EXPRESSION_VISITOR.visitExpression(child));
+                parameters.add(expressionVisitor.visitExpression(child));
             }
 
             final SLExpressionNode result = new SLInvokeNode(receiver, parameters.toArray(new SLExpressionNode[parameters.size()]));
@@ -520,14 +520,14 @@ public class SLNodeVisitor extends SLBaseVisitor {
         public SLExpressionNode visitMemberAssign(MemberAssignContext ctx) {
             final SLExpressionNode result;
             if (assignmentName == null) {
-                SemErr(ctx.expression().start, "invalid assignment target");
+                semErr(ctx.expression().start, "invalid assignment target");
                 result = null;
             } else if (assignmentReceiver == null) {
-                SLExpressionNode valueNode = EXPRESSION_VISITOR.visitExpression(ctx.expression());
+                SLExpressionNode valueNode = expressionVisitor.visitExpression(ctx.expression());
                 result = createAssignment((SLStringLiteralNode) assignmentName, valueNode, null);
             } else {
                 // create write property
-                SLExpressionNode valueNode = EXPRESSION_VISITOR.visitExpression(ctx.expression());
+                SLExpressionNode valueNode = expressionVisitor.visitExpression(ctx.expression());
 
                 result = SLWritePropertyNodeGen.create(assignmentReceiver, assignmentName, valueNode);
 
@@ -572,7 +572,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
                 receiver = createRead(assignmentName);
             }
 
-            SLExpressionNode nameNode = EXPRESSION_VISITOR.visitExpression(ctx.expression());
+            SLExpressionNode nameNode = expressionVisitor.visitExpression(ctx.expression());
             assignmentName = nameNode;
 
             final SLExpressionNode result = SLReadPropertyNodeGen.create(receiver, nameNode);

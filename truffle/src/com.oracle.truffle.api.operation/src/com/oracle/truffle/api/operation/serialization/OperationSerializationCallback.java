@@ -43,12 +43,12 @@ package com.oracle.truffle.api.operation.serialization;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationRootNode;
 
 @FunctionalInterface
 public interface OperationSerializationCallback {
     interface Context {
-        void serializeOperationNode(DataOutputStream buffer, OperationNode node) throws IOException;
+        void serializeOperationNode(DataOutputStream buffer, OperationRootNode node) throws IOException;
     }
 
     void serialize(Context context, DataOutputStream buffer, Object object) throws IOException;

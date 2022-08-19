@@ -52,7 +52,7 @@ import com.oracle.truffle.api.source.Source;
 
 public abstract class OperationNodes {
     protected final OperationParser<? extends OperationBuilder> parse;
-    @CompilationFinal(dimensions = 1) protected OperationNode[] nodes;
+    @CompilationFinal(dimensions = 1) protected OperationRootNode[] nodes;
     @CompilationFinal(dimensions = 1) protected Source[] sources;
     @CompilationFinal private boolean hasInstrumentation;
 
@@ -60,7 +60,7 @@ public abstract class OperationNodes {
         this.parse = parse;
     }
 
-    public List<OperationNode> getNodes() {
+    public List<OperationRootNode> getNodes() {
         return List.of(nodes);
     }
 
@@ -93,7 +93,7 @@ public abstract class OperationNodes {
     }
 
     @SuppressWarnings("hiding")
-    protected abstract void reparseImpl(OperationConfig config, OperationParser<? extends OperationBuilder> parse, OperationNode[] nodes);
+    protected abstract void reparseImpl(OperationConfig config, OperationParser<? extends OperationBuilder> parse, OperationRootNode[] nodes);
 
     void reparse(OperationConfig config) {
         CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");

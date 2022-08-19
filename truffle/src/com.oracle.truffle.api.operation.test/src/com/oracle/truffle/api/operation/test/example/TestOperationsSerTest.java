@@ -49,7 +49,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.operation.OperationConfig;
-import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.OperationNodes;
 
 public class TestOperationsSerTest {
@@ -72,7 +72,7 @@ public class TestOperationsSerTest {
             assert false;
         }
 
-        OperationNode node = nodes2.getNodes().get(0);
+        OperationRootNode node = nodes2.getNodes().get(0);
         TestRootNode root = new TestRootNode(node);
         return root;
     }

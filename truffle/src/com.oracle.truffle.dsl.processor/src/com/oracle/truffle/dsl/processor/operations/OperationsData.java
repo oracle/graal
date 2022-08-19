@@ -48,6 +48,7 @@ import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -72,6 +73,8 @@ public class OperationsData extends Template {
 
     private boolean isGenerateAOT;
     private boolean isGenerateUncached;
+
+    public DeclaredType languageClass;
 
     private int numTosSlots;
 

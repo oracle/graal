@@ -40,43 +40,69 @@
  */
 package com.oracle.truffle.api.operation;
 
+import java.lang.reflect.Field;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public abstract class OperationNode extends Node {
+import sun.misc.Unsafe;
 
-    protected final OperationNodes nodes;
+public abstract class OperationRootNode extends RootNode {
+
+    protected OperationNodes nodes;
+
+    protected static final Unsafe UNSAFE;
+
+    static {
+        Unsafe u;
+        try {
+            u = Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+            try {
+                Field f = Unsafe.class.getDeclaredField("theUnsafe");
+                f.setAccessible(true);
+                u = (Unsafe) f.get(null);
+            } catch (Exception ex) {
+                throw new Error(ex);
+            }
+        }
+        UNSAFE = u;
+    }
 
     private static final int SOURCE_INFO_BCI_INDEX = 0;
     private static final int SOURCE_INFO_START = 1;
     private static final int SOURCE_INFO_LENGTH = 2;
     private static final int SOURCE_INFO_STRIDE = 3;
 
-    protected OperationNode(OperationNodes nodes) {
-        this.nodes = nodes;
+    protected OperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    protected OperationRootNode(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
+        this(language, frameDescriptor.build());
     }
 
     protected abstract int[] getSourceInfo();
 
-    public abstract FrameDescriptor createFrameDescriptor();
-
+    @Override
     public abstract Object execute(VirtualFrame frame);
 
     public final OperationNodes getOperationNodes() {
         return nodes;
     }
 
-    public final <T> T getMetadata(MetadataKey<T> key) {
+    public <T> T getMetadata(MetadataKey<T> key) {
         return key.getValue(this);
     }
 
-    protected static <T> void setMetadataAccessor(MetadataKey<T> key, Function<OperationNode, T> getter) {
+    protected static <T> void setMetadataAccessor(MetadataKey<T> key, Function<OperationRootNode, T> getter) {
         key.setGetter(getter);
     }
 

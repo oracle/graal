@@ -57,15 +57,14 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationNode;
 import com.oracle.truffle.api.operation.OperationNodes;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.nodes.SLOperationsRootNode;
+import com.oracle.truffle.sl.operations.SLOperationRootNode;
+import com.oracle.truffle.sl.operations.SLOperationRootNodeGen;
 import com.oracle.truffle.sl.operations.SLOperationSerialization;
-import com.oracle.truffle.sl.operations.SLOperations;
-import com.oracle.truffle.sl.operations.SLOperationsBuilder;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.ArithmeticContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.BlockContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Break_statementContext;
@@ -96,10 +95,10 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public final class SLOperationsVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = true;
-    private static final boolean FORCE_SERIALIZE = true;
+    private static final boolean FORCE_SERIALIZE = false;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
-        OperationNodes nodes = SLOperationsBuilder.create(OperationConfig.DEFAULT, builder -> {
+        OperationNodes nodes = SLOperationRootNodeGen.create(OperationConfig.DEFAULT, builder -> {
             SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, builder);
             parseSLImpl(source, visitor);
         });
@@ -107,16 +106,15 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         if (FORCE_SERIALIZE) {
             try {
                 byte[] serializedData = SLOperationSerialization.serializeNodes(nodes);
-                nodes = SLOperationSerialization.deserializeNodes(serializedData);
+                nodes = SLOperationSerialization.deserializeNodes(language, serializedData);
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         }
 
-        for (OperationNode node : nodes.getNodes()) {
-            TruffleString name = node.getMetadata(SLOperations.MethodName);
-            SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node);
-            RootCallTarget callTarget = rootNode.getCallTarget();
+        for (OperationRootNode node : nodes.getNodes()) {
+            TruffleString name = node.getMetadata(SLOperationRootNode.MethodName);
+            RootCallTarget callTarget = node.getCallTarget();
             functions.put(name, callTarget);
         }
     }
@@ -127,12 +125,12 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         return roots;
     }
 
-    private SLOperationsVisitor(SLLanguage language, Source source, SLOperationsBuilder builder) {
+    private SLOperationsVisitor(SLLanguage language, Source source, SLOperationRootNodeGen.Builder builder) {
         super(language, source);
         this.b = builder;
     }
 
-    private final SLOperationsBuilder b;
+    private final SLOperationRootNodeGen.Builder b;
 
     private OperationLabel breakLabel;
     private OperationLabel continueLabel;
@@ -184,7 +182,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         b.endTag();
         b.endSource();
 
-        OperationNode node = b.publish();
+        OperationRootNode node = b.publish(language);
 
         if (DO_LOG_NODE_CREATION) {
             try {
@@ -192,7 +190,9 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
                 System./**/out.printf(" Node: %s%n", name);
                 System./**/out.println(node.dump());
                 System./**/out.println("----------------------------------------------");
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                System./**/out.println("error while dumping: ");
+                ex.printStackTrace(System.out);
             }
         }
 
@@ -219,7 +219,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     @Override
     public Void visitBreak_statement(Break_statementContext ctx) {
         if (breakLabel == null) {
-            SemErr(ctx.b, "break used outside of loop");
+            semErr(ctx.b, "break used outside of loop");
         }
 
         b.beginTag(StandardTags.StatementTag.class);
@@ -232,7 +232,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     @Override
     public Void visitContinue_statement(Continue_statementContext ctx) {
         if (continueLabel == null) {
-            SemErr(ctx.c, "continue used outside of loop");
+            semErr(ctx.c, "continue used outside of loop");
         }
 
         b.beginTag(StandardTags.StatementTag.class);
@@ -595,9 +595,9 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         Member_expressionContext last = members.get(idx);
 
         if (last instanceof MemberCallContext) {
-            SemErr(errorToken, "invalid assignment target");
+            semErr(errorToken, "invalid assignment target");
         } else if (last instanceof MemberAssignContext) {
-            SemErr(errorToken, "invalid assignment target");
+            semErr(errorToken, "invalid assignment target");
         } else if (last instanceof MemberFieldContext) {
             MemberFieldContext lastCtx = (MemberFieldContext) last;
 

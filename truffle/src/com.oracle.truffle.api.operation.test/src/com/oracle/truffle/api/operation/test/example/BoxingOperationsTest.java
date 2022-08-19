@@ -55,7 +55,7 @@ import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.test.example.BoxingOperations.ObjectProducer;
@@ -66,13 +66,13 @@ public class BoxingOperationsTest {
     // than it needs to
 
     private static RootCallTarget parse(OperationParser<BoxingOperationsBuilder> parser) {
-        OperationNode node = parseNode(parser);
+        OperationRootNode node = parseNode(parser);
         return new TestRootNode(node).getCallTarget();
     }
 
-    private static OperationNode parseNode(OperationParser<BoxingOperationsBuilder> parser) {
+    private static OperationRootNode parseNode(OperationParser<BoxingOperationsBuilder> parser) {
         OperationNodes nodes = BoxingOperationsBuilder.create(OperationConfig.DEFAULT, parser);
-        OperationNode node = nodes.getNodes().get(0);
+        OperationRootNode node = nodes.getNodes().get(0);
         return node;
     }
 
@@ -262,7 +262,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testLBEMultipleLoads() {
-        OperationNode node = parseNode(b -> {
+        OperationRootNode node = parseNode(b -> {
             OperationLocal local = b.createLocal();
 
             b.beginStoreLocal(local);

@@ -42,13 +42,13 @@ package com.oracle.truffle.api.operation.test.example;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationRootNode;
 
 public class TestRootNode extends RootNode {
 
-    @Child private OperationNode node;
+    @Child private OperationRootNode node;
 
-    TestRootNode(OperationNode node) {
+    TestRootNode(OperationRootNode node) {
         super(null, node.createFrameDescriptor());
         this.node = node;
     }

@@ -45,9 +45,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.TruffleLanguage;
+
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GenerateOperations {
+
+    Class<? extends TruffleLanguage<?>> languageClass();
+
     String decisionsFile() default "";
 
     String[] decisionOverrideFiles() default {};

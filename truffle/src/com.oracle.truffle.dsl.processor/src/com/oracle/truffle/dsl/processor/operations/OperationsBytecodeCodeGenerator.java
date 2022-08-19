@@ -89,7 +89,7 @@ public class OperationsBytecodeCodeGenerator {
     private static final String ConditionProfile_Name = "com.oracle.truffle.api.profiles.ConditionProfile";
     final DeclaredType typeConditionProfile = context.getDeclaredType(ConditionProfile_Name);
 
-    private final CodeTypeElement typBuilderImpl;
+    private final CodeTypeElement typEnclosingElement;
     private final OperationsData m;
     private final boolean withInstrumentation;
     private final boolean isUncached;
@@ -97,9 +97,9 @@ public class OperationsBytecodeCodeGenerator {
     private final CodeTypeElement opNodeImpl;
     private final CodeTypeElement typExceptionHandler;
 
-    public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, CodeTypeElement baseClass, CodeTypeElement opNodeImpl, CodeTypeElement typExceptionHandler, OperationsData m,
+    public OperationsBytecodeCodeGenerator(CodeTypeElement typEnclosingElement, CodeTypeElement baseClass, CodeTypeElement opNodeImpl, CodeTypeElement typExceptionHandler, OperationsData m,
                     boolean withInstrumentation, boolean isUncached) {
-        this.typBuilderImpl = typBuilderImpl;
+        this.typEnclosingElement = typEnclosingElement;
         this.baseClass = baseClass;
         this.opNodeImpl = opNodeImpl;
         this.typExceptionHandler = typExceptionHandler;
@@ -537,8 +537,8 @@ public class OperationsBytecodeCodeGenerator {
             if (m.isTracing()) {
                 CodeExecutableElement metGetSpecBits = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), arrayOf(context.getType(boolean.class)),
                                 "doGetStateBits_" + cinstr.getUniqueName() + "_");
-                metGetSpecBits.setEnclosingElement(typBuilderImpl);
-                typBuilderImpl.add(metGetSpecBits);
+                metGetSpecBits.setEnclosingElement(typEnclosingElement);
+                typEnclosingElement.add(metGetSpecBits);
 
                 metGetSpecBits.addParameter(new CodeVariableElement(arrayOf(context.getType(short.class)), "$bc"));
                 metGetSpecBits.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));

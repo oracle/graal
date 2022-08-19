@@ -112,10 +112,10 @@ public class SLOperationSerialization {
         buffer.write(data);
     }
 
-    public static OperationNodes deserializeNodes(byte[] inputData) throws IOException {
+    public static OperationNodes deserializeNodes(SLLanguage language, byte[] inputData) throws IOException {
         ByteBuffer buf = ByteBuffer.wrap(inputData);
 
-        return SLOperationsBuilder.deserialize(OperationConfig.DEFAULT, buf, new OperationDeserializationCallback() {
+        return SLOperationRootNodeGen.deserialize(language, OperationConfig.DEFAULT, buf, new OperationDeserializationCallback() {
             public Object deserialize(OperationDeserializationCallback.Context context, ByteBuffer buffer) throws IOException {
                 byte tag;
                 switch (tag = buffer.get()) {

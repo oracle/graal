@@ -139,7 +139,7 @@ public class BranchInstruction extends Instruction {
                 b.statement("uncachedExecuteCount--");
                 b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();
 
-                b.statement("$this.changeInterpreters(OperationNodeImpl.COMMON_EXECUTE)");
+                b.statement("$this.changeInterpreters(COMMON_EXECUTE)");
                 b.statement("return ($sp << 16) | targetBci");
 
                 b.end();

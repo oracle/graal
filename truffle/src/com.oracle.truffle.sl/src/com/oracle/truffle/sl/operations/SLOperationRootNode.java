@@ -42,11 +42,13 @@ package com.oracle.truffle.sl.operations;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -56,13 +58,14 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.GenerateOperations;
-import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
 import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNode;
@@ -81,7 +84,10 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-@GenerateOperations(decisionsFile = "decisions.json", boxingEliminationTypes = {long.class, boolean.class})
+@GenerateOperations(//
+                languageClass = SLLanguage.class, //
+                decisionsFile = "decisions.json", //
+                boxingEliminationTypes = {long.class, boolean.class})
 @GenerateUncached
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
@@ -99,9 +105,18 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLToBooleanNode.class)
 @ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, continueWhen = true)
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
-public final class SLOperations {
+public abstract class SLOperationRootNode extends OperationRootNode {
 
-    @Metadata public static final MetadataKey<TruffleString> MethodName = new MetadataKey<>(SLStrings.EMPTY_STRING);
+    protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @GenerateOperations.Metadata //
+    public static final MetadataKey<TruffleString> MethodName = new MetadataKey<>(SLStrings.EMPTY_STRING);
 
     @Operation
     @TypeSystemReference(SLTypes.class)
