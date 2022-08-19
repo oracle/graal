@@ -201,6 +201,8 @@ public final class EspressoContext {
         this.methodHandleIntrinsics = new MethodHandleIntrinsics();
 
         this.espressoEnv = new EspressoEnv(this, env);
+        this.classLoadingEnv = new ClassLoadingEnv(getLanguage(), getLogger(), getTimers());
+        this.bootClassLoaderID = classLoadingEnv.getNewLoaderId();
     }
 
     public ClassRegistries getRegistries() {
@@ -568,8 +570,8 @@ public final class EspressoContext {
         }
         StaticObject bindingsLoader = k.allocateInstance();
         init.invokeDirect(bindingsLoader,
-                /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
-                /* parent */ systemClassLoader);
+                        /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
+                        /* parent */ systemClassLoader);
         return bindingsLoader;
     }
 
