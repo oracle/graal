@@ -612,10 +612,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         Map<String, Set<Service>> availableServices = new HashMap<>();
         for (Provider provider : Security.getProviders()) {
             for (Service s : provider.getServices()) {
-                availableServices.computeIfAbsent(s.getType(), t -> new HashSet<>()).add(s);
+                if (isValid(s)) {
+                    availableServices.computeIfAbsent(s.getType(), t -> new HashSet<>()).add(s);
+                }
             }
         }
         return availableServices;
+    }
+
+    /**
+     * Check is service is valid. See {@code java.security.Provider.Service#isValid()}.
+     *
+     * Presumably, this is only needed due to an upstream bug introduced in JDK 19 [GR-40544].
+     */
+    private static boolean isValid(Service s) {
+        return (s.getType() != null) && (s.getAlgorithm() != null) && (s.getClassName() != null);
     }
 
     /**
