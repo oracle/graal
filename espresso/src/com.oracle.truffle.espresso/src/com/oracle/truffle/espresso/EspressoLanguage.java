@@ -212,10 +212,18 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 inner.preInitializeContext();
                 extractDataFrom(inner.getLanguage());
                 languageCache.logCacheStatus();
-                exitContext(context, ExitMode.HARD, 0);
+
+                // This is needed to ensure that there are no references to the inner context
+                inner = null;
             } finally {
                 ctx.leave(null, prev);
                 ctx.close();
+
+                // This is needed to ensure that there are no references to the inner context
+                ctx = null;
+
+                // Ensure that weak references will get collected
+                System.gc();
             }
         } else {
             context.initializeContext();
