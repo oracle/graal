@@ -165,7 +165,8 @@ ce_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 
 ce_win_complete_components = ['bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'icu4j', 'ins', 'insight', 'insightheap', 'java', 'js', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm', 'vvm']
 ce_aarch64_complete_components = ce_win_complete_components + ['llp', 'llrc', 'llrl', 'llrn', 'pyn', 'pynl', 'rby', 'rbyl', 'svml']
 ce_complete_components = ce_aarch64_complete_components + ['ellvm', 'R', 'bRMain']
-ce_darwin_aarch64_complete_components = ['bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'java', 'js', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'nfi-libffi', 'ni', 'nic', 'nil', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm', 'vvm']
+ce_darwin_aarch64_complete_components = list(ce_aarch64_complete_components)
+ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
 ce_ruby_components = ['cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'tfl', 'tflm']
 ce_python_components = llvm_components + ['bgu', 'blli', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm']
 ce_fastr_components = ce_components + llvm_components + ['R', 'bRMain', 'llrn', 'llp', 'blli', 'llrc', 'ni', 'nil', 'svm', 'bgu', 'svmsl', 'svmnfi', 'snative-image-agent', 'bnative-image', 'snative-image-diagnostics-agent', 'llrl']
@@ -174,8 +175,7 @@ ce_no_native_components = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm',
 mx_sdk_vm.register_vm_config('ce', ['insight', 'insightheap', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm'], _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-aarch64')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin')
-# GR-34811: `ce-darwin-aarch64` can be removed once svml builds
-mx_sdk_vm.register_vm_config('ce', [x for x in ce_components if x != 'svml'], _suite, env_file='ce-darwin-aarch64')
+mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin-aarch64')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
 mx_sdk_vm.register_vm_config('ce', ce_components + ['js'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['js', 'njs', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
