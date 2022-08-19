@@ -557,7 +557,6 @@ suite = {
             "bin/llvm-opt-report*",
             "bin/llvm-pdbutil*",
             "bin/llvm-profdata*",
-            "bin/llvm-rc*",
             "bin/llvm-rtdyld*",
             "bin/llvm-size*",
             "bin/llvm-split*",

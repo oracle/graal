@@ -1905,6 +1905,9 @@ suite = {
               "./" : [
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/include"
               ],
+              "./cmake/" : [
+                "file:cmake/toolchain-native.cmake",
+              ],
               "./native/lib/" : [
                 "dependency:com.oracle.truffle.llvm.libraries.pthread/lib/*",
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/bin/*",
@@ -1921,6 +1924,9 @@ suite = {
             "layout" : {
               "./": [
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
+              ],
+              "./cmake/" : [
+                "file:cmake/toolchain-native.cmake",
               ],
               "./native/lib/" : [
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
