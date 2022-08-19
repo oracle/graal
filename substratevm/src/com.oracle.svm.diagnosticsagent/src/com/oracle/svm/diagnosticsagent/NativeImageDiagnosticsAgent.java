@@ -221,9 +221,8 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
     }
 
     private void handleInitBreakpoint(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
-        WordPointer thisPtr = StackValue.get(WordPointer.class);
-        check(jvmti.getFunctions().GetLocalInstance().invoke(jvmti, thread, 0, thisPtr));
-        JNIObjectHandle thisHandle = thisPtr.read();
+        JNIObjectHandle thisHandle = Support.getReceiver(thread);
+        VMError.guarantee(thisHandle.notEqual(nullHandle()));
         ObjectInstantiationTraceCreator stackTraceCreator = new ObjectInstantiationTraceCreator(jvmti, jni);
         JNIObjectHandle threadStackTrace = stackTraceCreator.getStackTraceArray();
         if (!stackTraceCreator.encounteredObjectInstantiatedReportCall()) {
@@ -277,7 +276,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
                 }
             }
 
-            VMError.guarantee(clinitTrackingSupportModule.notEqual(nullHandle()), "The the module name that provides clinit reporting support has changed.");
+            VMError.guarantee(clinitTrackingSupportModule.notEqual(nullHandle()), "The module name that provides clinit reporting support has changed.");
             for (int i = 0; i < moduleCount; ++i) {
                 JNIObjectHandle module = modulesArrayPtr.read(i);
                 check(jvmti.getFunctions().AddModuleOpens().invoke(jvmti, clinitTrackingSupportModule, packageName.get(), module));
