@@ -43,12 +43,15 @@ package com.oracle.truffle.api.operation.test.example;
 import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
@@ -58,18 +61,26 @@ import com.oracle.truffle.api.operation.LocalSetter;
 import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
 
-@GenerateOperations
+@GenerateOperations(languageClass = TestLanguage.class)
 @GenerateUncached
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)
-public final class TestOperations {
+public abstract class TestOperations extends OperationRootNode {
+
+    protected TestOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    protected TestOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
 
     @Metadata public static final MetadataKey<String> TestData = new MetadataKey<>("default value");
 
     private static class TestException extends AbstractOperationsTruffleException {
-
         private static final long serialVersionUID = -9143719084054578413L;
 
         TestException(String string, Node node, int bci) {
@@ -165,6 +176,14 @@ public final class TestOperations {
             return cachedI;
         }
     }
+}
+
+class TestLanguage extends TruffleLanguage<Object> {
+    @Override
+    protected Object createContext(Env env) {
+        return new Object();
+    }
+
 }
 
 class Association {

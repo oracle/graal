@@ -49,7 +49,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.operation.OperationConfig;
-import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.OperationNodes;
 
 public class TestOperationsSerTest {
@@ -57,29 +56,27 @@ public class TestOperationsSerTest {
     @Test
     public void testSer() {
         byte[] byteArray = createByteArray();
-        TestRootNode root = deserialize(byteArray);
+        TestOperations root = deserialize(byteArray);
 
         Assert.assertEquals(3L, root.getCallTarget().call());
     }
 
-    private static TestRootNode deserialize(byte[] byteArray) {
+    private static TestOperations deserialize(byte[] byteArray) {
         OperationNodes nodes2 = null;
         try {
-            nodes2 = TestOperationsBuilder.deserialize(OperationConfig.DEFAULT, ByteBuffer.wrap(byteArray), (ctx, buf2) -> {
+            nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, ByteBuffer.wrap(byteArray), (ctx, buf2) -> {
                 return buf2.getLong();
             });
         } catch (IOException e) {
-            assert false;
+            Assert.fail();
         }
 
-        OperationRootNode node = nodes2.getNodes().get(0);
-        TestRootNode root = new TestRootNode(node);
-        return root;
+        return (TestOperations) nodes2.getNodes().get(0);
     }
 
     private static byte[] createByteArray() {
 
-        OperationNodes nodes = TestOperationsBuilder.create(OperationConfig.DEFAULT, b -> {
+        OperationNodes nodes = TestOperationsGen.create(OperationConfig.DEFAULT, b -> {
             b.beginReturn();
             b.beginAddOperation();
             b.emitConstObject(1L);
@@ -87,7 +84,7 @@ public class TestOperationsSerTest {
             b.endAddOperation();
             b.endReturn();
 
-            b.publish();
+            b.publish(null);
         });
 
         boolean[] haveConsts = new boolean[2];

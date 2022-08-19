@@ -51,6 +51,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
@@ -65,13 +67,15 @@ public class BoxingOperationsTest {
     // todo: all of these tests should somehow check that e&s is not called more times
     // than it needs to
 
-    private static RootCallTarget parse(OperationParser<BoxingOperationsBuilder> parser) {
+    private static final BoxingLanguage LANGUAGE = null;
+
+    private static RootCallTarget parse(OperationParser<BoxingOperationsGen.Builder> parser) {
         OperationRootNode node = parseNode(parser);
-        return new TestRootNode(node).getCallTarget();
+        return node.getCallTarget();
     }
 
-    private static OperationRootNode parseNode(OperationParser<BoxingOperationsBuilder> parser) {
-        OperationNodes nodes = BoxingOperationsBuilder.create(OperationConfig.DEFAULT, parser);
+    private static OperationRootNode parseNode(OperationParser<BoxingOperationsGen.Builder> parser) {
+        OperationNodes nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
         OperationRootNode node = nodes.getNodes().get(0);
         return node;
     }
@@ -85,7 +89,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -102,7 +106,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -119,7 +123,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -136,7 +140,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -155,7 +159,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -184,7 +188,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -213,7 +217,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -242,7 +246,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
         for (int i = 0; i < 3; i++) {
@@ -277,10 +281,10 @@ public class BoxingOperationsTest {
             b.emitLoadLocal(local);
             b.endReturn();
 
-            b.publish();
+            b.publish(LANGUAGE);
         });
 
-        RootCallTarget root = new TestRootNode(node).getCallTarget();
+        RootCallTarget root = node.getCallTarget();
 
         for (int i = 0; i < 100; i++) {
             Assert.assertEquals(1L, root.call());
@@ -338,9 +342,17 @@ class BoxingTypeSystem {
     }
 }
 
-@GenerateOperations(boxingEliminationTypes = {boolean.class, int.class, long.class})
+@GenerateOperations(languageClass = BoxingLanguage.class, boxingEliminationTypes = {boolean.class, int.class, long.class})
 @SuppressWarnings("unused")
-final class BoxingOperations {
+abstract class BoxingOperations extends OperationRootNode {
+
+    protected BoxingOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    protected BoxingOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
