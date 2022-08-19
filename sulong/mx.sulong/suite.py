@@ -881,7 +881,7 @@ suite = {
         "CMAKE_BUILD_TYPE" : "Release",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
-        "CMAKE_LINKER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
+        "CMAKE_LINKER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:lld-link>",
       },
       "license" : "BSD-new",
     },
