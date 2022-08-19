@@ -177,6 +177,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     }
 
     public HostedMethod cloneSpecialized(List<Pair<HostedMethod, Integer>> context) {
+        // TODO BS Use create to make a unique named HostedMethod
         HostedMethod copy = new HostedMethod(this, context);
         assert copy.vtableIndex == -1;
         // isParsed will be set as false but doesnt seem to have any impact since we are already
