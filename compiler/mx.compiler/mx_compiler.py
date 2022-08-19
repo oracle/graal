@@ -546,6 +546,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=True) as t:
             if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
+    # ensure we can also run on C2
+    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=True) as t:
+        if t: _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + benchVmArgs)
+
     # run Scala DaCapo benchmarks #
     ###############################
     scala_dacapo_suite = mx_graal_benchmark.ScalaDaCapoBenchmarkSuite()

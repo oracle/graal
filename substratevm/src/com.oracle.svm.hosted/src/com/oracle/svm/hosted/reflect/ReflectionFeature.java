@@ -128,7 +128,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      * {@link SubstrateConstructorAccessor allocating a new instance} using reflection. The accessor
      * instances use function pointer calls to invocation stubs. The invocation stubs unpack the
      * Object[] array arguments and invoke the actual method.
-     * 
+     *
      * The stubs are methods with manually created Graal IR:
      * {@link ReflectionExpandSignatureMethod}. Since they are only invoked via function pointers
      * and never at a normal call site, they need to be registered for compilation manually. From
@@ -136,7 +136,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      *
      * The stubs then perform another function pointer call to the actual target method. This is
      * either a direct target stored in the accessor, or a virtual target loaded from the vtable.
-     * 
+     *
      * {@link ConcurrentHashMap#computeIfAbsent} guarantees that this method is called only once per
      * member, so no further synchronization is necessary.
      */
@@ -319,7 +319,7 @@ final class SignatureKey {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj.getClass() != SignatureKey.class) {
+        if (obj == null || obj.getClass() != SignatureKey.class) {
             return false;
         }
         SignatureKey other = (SignatureKey) obj;

@@ -99,9 +99,11 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
             return false;
         }
 
-        IterativeConditionalEliminationPhase phase = (IterativeConditionalEliminationPhase) obj;
+        IterativeConditionalEliminationPhase that = (IterativeConditionalEliminationPhase) obj;
 
-        return this.getClass().equals(phase.getClass()) && this.fullSchedule == phase.fullSchedule && this.canonicalizer.equals(phase.canonicalizer) &&
-                        this.conditionalEliminationPhase.equals(conditionalEliminationPhase);
+        return this.getClass().equals(that.getClass()) &&
+                        this.fullSchedule == that.fullSchedule &&
+                        this.canonicalizer.equals(that.canonicalizer) &&
+                        this.conditionalEliminationPhase.equals(that.conditionalEliminationPhase);
     }
 }

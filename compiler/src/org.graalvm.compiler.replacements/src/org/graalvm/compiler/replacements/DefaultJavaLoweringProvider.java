@@ -339,6 +339,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             divRemFixed = graph.add(new SignedDivNode(dividend, divisor, divRem.getGuard()));
         } else if (divRem instanceof SignedFloatingIntegerRemNode) {
             divRemFixed = graph.add(new SignedRemNode(dividend, divisor, divRem.getGuard()));
+        } else {
+            throw GraalError.shouldNotReachHere("divRem is null or has unexpected type: " + divRem);
         }
         divRemFixed.setCanDeopt(false);
         divRem.replaceAtUsagesAndDelete(divRemFixed);

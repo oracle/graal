@@ -258,20 +258,19 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             return false;
         }
 
-        CanonicalizerPhase phase = (CanonicalizerPhase) obj;
+        CanonicalizerPhase that = (CanonicalizerPhase) obj;
 
-        if (this.customSimplification == null && phase.customSimplification != null) {
+        if (!this.getClass().equals(that.getClass()) || !this.features.equals(that.features)) {
             return false;
         }
 
-        if (this.customSimplification != null && phase.customSimplification == null) {
+        if (this.customSimplification == null) {
+            return that.customSimplification == null;
+        } else if (that.customSimplification == null) {
             return false;
         }
 
-        return this.getClass().equals(phase.getClass()) &&
-                        this.features.equals(phase.features) &&
-                        ((this.customSimplification == null && phase.customSimplification == null) ||
-                                        this.customSimplification.getClass().equals(phase.customSimplification.getClass()));
+        return this.customSimplification.getClass().equals(that.customSimplification.getClass());
     }
 
     @SuppressWarnings("try")
