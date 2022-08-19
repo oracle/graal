@@ -28,16 +28,16 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Array;
 
-import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 /**
+ * Supported API is available to replace this non-API annotation: Use
+ * {@link BeforeAnalysisAccess#registerFieldValueTransformer}.
+ *
  * Mechanism to change the value of a field. Normally, field values in the native image heap of the
  * Substrate VM are just taken from the host VM. This annotation allows the field value to be
  * intercepted and recomputed.
@@ -112,109 +112,9 @@ public @interface RecomputeFieldValue {
          */
         Manual,
         /**
-         * Use a {@link CustomFieldValueComputer} or {@link CustomFieldValueTransformer}, which is
-         * specified as the target class.
+         * Use a {@link FieldValueTransformer}, which is specified as the target class.
          */
         Custom,
-    }
-
-    enum ValueAvailability {
-        /** Value is independent of analysis/compilation results. */
-        BeforeAnalysis,
-        /** Value depends on data computed by the analysis. */
-        AfterAnalysis,
-        /** Value depends on data computed during compilation. */
-        AfterCompilation
-    }
-
-    interface CustomFieldValueProvider {
-
-        /**
-         * When is the value for this custom computation available? By default, it is assumed that
-         * the value is available {@link ValueAvailability#BeforeAnalysis before analysis}, i.e., it
-         * doesn't depend on analysis results.
-         */
-        ValueAvailability valueAvailability();
-
-        /**
-         * Specify types that this field can take if the value is not available for analysis. The
-         * concrete type of the computed value can be a subtype of one of the specified types as
-         * specified by {@link Class#isAssignableFrom(Class)}. If the array contains `null` then the
-         * field value can also be null.
-         */
-        default Class<?>[] types() {
-            if (valueAvailability() != ValueAvailability.BeforeAnalysis) {
-                throw VMError.shouldNotReachHere("Custom value field whose value is not available during analysis " +
-                                "must override CustomFieldValueProvider.types() and specify types for analysis.");
-            }
-            return null;
-        }
-    }
-
-    /**
-     * Custom recomputation of field values. A class implementing this interface must have a
-     * no-argument constructor, which is used to instantiate it before invoking {@link #compute}.
-     */
-    interface CustomFieldValueComputer extends CustomFieldValueProvider {
-        /**
-         * Computes the new field value. This method can already be invoked during the analysis,
-         * especially when it computes the value of an object field that needs to be visited.
-         *
-         * @param metaAccess The {@code AnalysisMetaAccess} instance during the analysis or
-         *            {@code HostedMetaAccess} instance after the analysis.
-         * @param original The original field (if {@link RecomputeFieldValue} is used for an
-         *            {@link Alias} field).
-         * @param annotated The field annotated with {@link RecomputeFieldValue}.
-         * @param receiver The original object for instance fields, or {@code null} for static
-         *            fields.
-         * @return The new field value.
-         */
-        Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver);
-    }
-
-    /**
-     * Custom recomputation of field values. A class implementing this interface must have a
-     * no-argument constructor, which is used to instantiate it before invoking {@link #transform}.
-     *
-     * In contrast to {@link CustomFieldValueComputer}, the {@link #transform} method also has the
-     * original field value as a parameter. This is convenient if the new value depends on the
-     * original value, but also requires the original field to be present, e.g., it cannot be use
-     * for {@link Inject injected fields}.
-     */
-    interface CustomFieldValueTransformer extends CustomFieldValueProvider {
-        /**
-         * Computes the new field value. This method can already be invoked during the analysis,
-         * especially when it computes the value of an object field that needs to be visited.
-         *
-         * @param metaAccess The {@code AnalysisMetaAccess} instance during the analysis or
-         *            {@code HostedMetaAccess} instance after the analysis.
-         * @param original The original field.
-         * @param annotated The field annotated with {@link RecomputeFieldValue}.
-         * @param receiver The original object for instance fields, or {@code null} for static
-         *            fields.
-         * @return The new field value.
-         */
-        Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue);
-    }
-
-    /**
-     * Reset an array field to a new empty array of the same type and length.
-     */
-    final class NewEmptyArrayTransformer implements CustomFieldValueTransformer {
-        @Override
-        public ValueAvailability valueAvailability() {
-            return ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
-            if (originalValue == null) {
-                return null;
-            } else {
-                int originalLength = Array.getLength(originalValue);
-                return Array.newInstance(originalValue.getClass().getComponentType(), originalLength);
-            }
-        }
     }
 
     /**

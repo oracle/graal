@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.methodhandles;
+package com.oracle.svm.core.fieldvaluetransformer;
 
-import java.lang.ref.SoftReference;
+import java.lang.reflect.Array;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-@TargetClass(className = "java.lang.invoke.MethodTypeForm")
-final class Target_java_lang_invoke_MethodTypeForm {
-
-    /*
-     * The following two fields are arrays that are filled lazily. Resetting them brings them into a
-     * consistent state, to avoid problems when the lazily initialization happens during image heap
-     * writing.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
-    private SoftReference<?>[] methodHandles;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
-    private SoftReference<?>[] lambdaForms;
+/**
+ * Reset an array field to a new empty array of the same type and length.
+ */
+public final class NewEmptyArrayFieldValueTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (originalValue == null) {
+            return null;
+        }
+        int originalLength = Array.getLength(originalValue);
+        return Array.newInstance(originalValue.getClass().getComponentType(), originalLength);
+    }
 }

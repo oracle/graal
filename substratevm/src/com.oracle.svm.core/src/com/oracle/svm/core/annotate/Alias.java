@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.annotate;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Mechanism for referring to fields and methods otherwise inaccessible due to Java language access
@@ -40,10 +40,12 @@ import java.lang.annotation.Target;
  * <p>
  * The idiom for using {@link Alias} is somewhat related to the {@link Substitute} annotation, but
  * reversed; both are often used in combination. In both cases a separate class is used to declare
- * the aliased or substituted methods. In the substitution case occurrences of {@code this} actually
- * refer to the instance of the class being substituted. In the aliased case we pretend that the
- * class declaring the aliased method is an instance of the aliasee in order to access its fields or
- * invoke its methods.
+ * the aliased and/or substituted methods. In the substitution case occurrences of {@code this}
+ * actually refer to the instance of the class being substituted. In the aliased case we pretend
+ * that the class declaring the aliased method or field is an instance of the aliasee in order to
+ * access its fields or invoke its methods. An alias is always called (method alias) or accessed
+ * (field alias), whereas a substitution method is only implemented (usually not called directly).
+ * In the body of a substitution method, aliases are often called or accessed.
  * <p>
  * The element can also be annotated with {@link TargetElement} to specify additional properties.
  * See {@link TargetClass} for an overview of the annotation system.

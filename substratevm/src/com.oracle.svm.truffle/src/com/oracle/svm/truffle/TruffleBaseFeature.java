@@ -47,8 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.heap.Pod;
-import com.oracle.svm.hosted.heap.PodSupport;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -62,10 +60,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -82,6 +80,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalObjectReplacer;
@@ -92,9 +93,10 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.util.DirectAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -121,8 +123,6 @@ import com.oracle.truffle.api.staticobject.StaticShape;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -346,6 +346,13 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
         if (needsAllEncodings) {
             ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
         }
+
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "byteArrayOffset"),
+                        new ArrayBasedShapeGeneratorOffsetTransformer("primitive"));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "objectArrayOffset"),
+                        new ArrayBasedShapeGeneratorOffsetTransformer("object"));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "shapeOffset"),
+                        new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
     }
 
     public static void preInitializeEngine() {
@@ -816,7 +823,7 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
     @Alias
     native void initOffset(int o);
 
-    public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+    public static final class OffsetTransformer implements FieldValueTransformer {
         /*
          * We have to use reflection to access private members instead of aliasing them in the
          * substitution class since substitutions are present only at runtime
@@ -828,13 +835,7 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
         }
 
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated,
-                        Object receiver, Object originalValue) {
+        public Object transform(Object receiver, Object originalValue) {
             int offset = (int) originalValue;
             if (offset == 0) {
                 /*
@@ -887,61 +888,30 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
     }
 }
 
-@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator {
+final class ArrayBasedShapeGeneratorOffsetTransformer implements FieldValueTransformerWithAvailability {
+    static final Class<?> SHAPE_GENERATOR = ReflectionUtil.lookupClass(false, "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
 
-    public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
-        private static final Class<?> SHAPE_GENERATOR;
+    private final String storageClassFieldName;
 
-        static {
-            try {
-                SHAPE_GENERATOR = Class.forName("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
-            } catch (ClassNotFoundException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
-        }
-
-        @Override
-        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated,
-                        Object receiver, Object originalValue) {
-            Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass",
-                            receiver);
-            String name;
-            switch (original.getName()) {
-                case "byteArrayOffset":
-                    name = "primitive";
-                    break;
-                case "objectArrayOffset":
-                    name = "object";
-                    break;
-                case "shapeOffset":
-                    name = "shape";
-                    break;
-                default:
-                    throw VMError.shouldNotReachHere();
-            }
-            Field f = ReflectionUtil.lookupField(generatedStorageClass, name);
-            assert metaAccess instanceof HostedMetaAccess;
-            return ((HostedMetaAccess) metaAccess).lookupJavaField(f).getLocation();
-        }
-
-        @Override
-        public Class<?>[] types() {
-            return new Class<?>[]{int.class};
-        }
+    ArrayBasedShapeGeneratorOffsetTransformer(String storageClassFieldName) {
+        this.storageClassFieldName = storageClassFieldName;
     }
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
-    int byteArrayOffset;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
-    int objectArrayOffset;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
-    int shapeOffset;
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", receiver);
+        Field field = ReflectionUtil.lookupField(generatedStorageClass, storageClassFieldName);
+        int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, false);
+        if (offset <= 0) {
+            throw VMError.shouldNotReachHere("Field is not marked as accessed: " + field);
+        }
+        return Integer.valueOf(offset);
+    }
 }
 
 /*
@@ -1031,23 +1001,22 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class) //
     private long offset;
 
-    private static class OffsetComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    private static class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.AfterAnalysis;
         }
 
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             Class<?> declaringClass = ReflectionUtil.readField(receiver.getClass(), "declaringClass", receiver);
             String name = ReflectionUtil.readField(receiver.getClass(), "name", receiver);
             Field field = ReflectionUtil.lookupField(declaringClass, name);
-            return (long) metaAccess.lookupJavaField(field).getOffset();
-        }
-
-        @Override
-        public Class<?>[] types() {
-            return new Class<?>[]{long.class};
+            int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, false);
+            if (offset <= 0) {
+                throw VMError.shouldNotReachHere("Field is not marked as accessed: " + field);
+            }
+            return Long.valueOf(offset);
         }
     }
 }
