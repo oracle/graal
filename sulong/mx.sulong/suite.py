@@ -48,7 +48,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -67,7 +67,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -86,7 +86,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -105,7 +105,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -124,7 +124,7 @@ suite = {
         "<others>" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -138,7 +138,7 @@ suite = {
         "<others>" : {
           "aarch64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -152,7 +152,7 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
         },
         "windows" : {
@@ -168,7 +168,7 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
         },
         "windows" : {
@@ -184,7 +184,7 @@ suite = {
         "windows" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
         },
         "<others>" : {
