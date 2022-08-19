@@ -109,9 +109,17 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
     }
 
     public void removeExit() {
+        removeExit(false);
+    }
+
+    public void removeExit(boolean forKillCFG) {
         this.removeProxies();
         FrameState loopStateAfter = this.stateAfter();
-        graph().replaceFixedWithFixed(this, graph().add(new BeginNode()));
+        if (!forKillCFG || predecessor() != null) {
+            // When killing control flow, don't replace this node with a BeginNode if it appears
+            // this node is soon to be killed because it's missing a predecessor
+            graph().replaceFixedWithFixed(this, graph().add(new BeginNode()));
+        }
         if (loopStateAfter != null) {
             GraphUtil.tryKillUnused(loopStateAfter);
         }
