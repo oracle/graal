@@ -2944,6 +2944,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
 
 def _needs_stage1_jimage(stage1_dist, final_dist):
+    assert isinstance(stage1_dist.jimage_jars, set) and isinstance(final_dist.jimage_jars, set)
     return stage1_dist.jimage_jars != final_dist.jimage_jars
 
 
