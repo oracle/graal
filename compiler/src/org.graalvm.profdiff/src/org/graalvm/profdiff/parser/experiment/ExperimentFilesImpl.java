@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,19 +59,19 @@ public class ExperimentFilesImpl implements ExperimentFiles {
     }
 
     @Override
-    public Reader getProftoolOutput() throws FileNotFoundException {
-        return new FileReader(proftoolOutputPath);
+    public NamedReader getProftoolOutput() throws FileNotFoundException {
+        return new NamedReader(proftoolOutputPath, new FileReader(proftoolOutputPath));
     }
 
     @Override
-    public List<Reader> getOptimizationLogs() throws IOException {
+    public List<NamedReader> getOptimizationLogs() throws IOException {
         File[] files = new File(optimizationLogPath).listFiles();
         if (files == null) {
             throw new IOException("The provided optimization log path does not denote a directory");
         }
-        List<Reader> readers = new ArrayList<>();
+        List<NamedReader> readers = new ArrayList<>();
         for (File file : files) {
-            readers.add(new FileReader(file));
+            readers.add(new NamedReader(file.getPath(), new FileReader(file)));
         }
         return readers;
     }

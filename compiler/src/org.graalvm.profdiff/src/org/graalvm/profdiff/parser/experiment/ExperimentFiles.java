@@ -35,6 +35,35 @@ import org.graalvm.profdiff.core.ExperimentId;
  * Represents a list of files from which an experiment is parsed.
  */
 public interface ExperimentFiles {
+
+    /**
+     * {@link Reader A reader} with a name to facilitate better error messages.
+     */
+    class NamedReader {
+        private final String name;
+
+        private final Reader reader;
+
+        public NamedReader(String name, Reader reader) {
+            this.name = name;
+            this.reader = reader;
+        }
+
+        /**
+         * Gets the name of the reader.
+         */
+        public String getName() {
+            return name;
+        }
+
+        /**
+         * Gets the reader.
+         */
+        public Reader getReader() {
+            return reader;
+        }
+    }
+
     /**
      * Gets the ID of the experiment to which the files belong.
      *
@@ -43,11 +72,11 @@ public interface ExperimentFiles {
     ExperimentId getExperimentId();
 
     /**
-     * Gets the {@link Reader} reading the JSON output of proftool (mx profjson).
+     * Gets the {@link NamedReader} reading the JSON output of proftool (mx profjson).
      *
      * @return the reader with the proftool output
      */
-    Reader getProftoolOutput() throws FileNotFoundException;
+    NamedReader getProftoolOutput() throws FileNotFoundException;
 
     /**
      * Gets the list of readers reading an optimization log. Each reader should describe one
@@ -55,5 +84,5 @@ public interface ExperimentFiles {
      *
      * @return the list of readers each reading an optimization log
      */
-    List<Reader> getOptimizationLogs() throws IOException;
+    List<NamedReader> getOptimizationLogs() throws IOException;
 }

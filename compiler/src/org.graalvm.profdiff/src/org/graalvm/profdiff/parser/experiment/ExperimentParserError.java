@@ -27,20 +27,18 @@ package org.graalvm.profdiff.parser.experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 
 /**
- * Indicates that an experiment file was unexpectedly structured and could not be parsed.
+ * Indicates that an experiment could not be parsed.
  */
 @SuppressWarnings("serial")
-public class ExperimentParserTypeError extends ExperimentParserError {
+public class ExperimentParserError extends Exception {
     /**
-     * Constructs an experiment parser type error.
+     * Constructs an experiment parser error.
      *
      * @param experimentId the ID of the experiment that could not be parsed
      * @param resourceName the name of the resource from the experiment that could not be parsed
-     * @param objectName the name of the object in the resource that could not be parsed
-     * @param expectedType the expected type of the object
-     * @param actualObject the actual parsed object
+     * @param message a clarification of the error
      */
-    ExperimentParserTypeError(ExperimentId experimentId, String resourceName, String objectName, Class<?> expectedType, Object actualObject) {
-        super(experimentId, resourceName, "expected " + objectName + " to be an instance of " + expectedType.getSimpleName() + " but got \"" + actualObject.toString() + "\"");
+    ExperimentParserError(ExperimentId experimentId, String resourceName, String message) {
+        super("Failed to parse experiment " + experimentId + " in " + resourceName + ": " + message);
     }
 }

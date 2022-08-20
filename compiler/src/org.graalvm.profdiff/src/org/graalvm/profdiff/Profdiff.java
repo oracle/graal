@@ -50,7 +50,7 @@ import org.graalvm.profdiff.parser.args.UnknownArgumentException;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
 import org.graalvm.profdiff.parser.experiment.ExperimentFilesImpl;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserTypeError;
+import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 import org.graalvm.profdiff.util.StdoutWriter;
 import org.graalvm.profdiff.util.Writer;
 
@@ -156,7 +156,7 @@ public class Profdiff {
         } catch (IOException e) {
             System.err.println("Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId() + ": " + e.getMessage());
             System.exit(1);
-        } catch (ExperimentParserTypeError e) {
+        } catch (ExperimentParserError e) {
             System.err.println(e.getMessage());
             System.exit(1);
         }

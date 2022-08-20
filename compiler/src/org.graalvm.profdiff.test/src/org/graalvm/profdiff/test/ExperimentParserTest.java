@@ -30,7 +30,6 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -41,17 +40,17 @@ import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserTypeError;
+import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 import org.junit.Test;
 
 public class ExperimentParserTest {
     private static class ExperimentResources implements ExperimentFiles {
         private static final String RESOURCE_DIR = "org/graalvm/profdiff/test/resources/";
 
-        private Reader getReaderForResource(String name) {
+        private NamedReader getReaderForResource(String name) {
             InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream(name);
             assert resourceAsStream != null;
-            return new InputStreamReader(resourceAsStream);
+            return new NamedReader(name, new InputStreamReader(resourceAsStream));
         }
 
         @Override
@@ -60,19 +59,19 @@ public class ExperimentParserTest {
         }
 
         @Override
-        public Reader getProftoolOutput() {
+        public NamedReader getProftoolOutput() {
             return getReaderForResource(RESOURCE_DIR + "profile.json");
         }
 
         @Override
-        public List<Reader> getOptimizationLogs() {
+        public List<NamedReader> getOptimizationLogs() {
             return List.of(getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-1.json"),
                             getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-2.json"));
         }
     }
 
     @Test
-    public void testExperimentParser() throws ExperimentParserTypeError, IOException {
+    public void testExperimentParser() throws ExperimentParserError, IOException {
         ExperimentFiles experimentFiles = new ExperimentResources();
         ExperimentParser experimentParser = new ExperimentParser(experimentFiles);
         Experiment experiment = experimentParser.parse();
