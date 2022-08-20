@@ -550,7 +550,10 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         if (!streams.isEmpty()) {
             String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
-            streams.forEach((stream) -> stream.println(json));
+            for (PrintStream stream : streams) {
+                stream.println(json);
+                stream.close();
+            }
         }
     }
 
