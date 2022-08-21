@@ -26,6 +26,7 @@ The following options are supported across both GraalVM Community and Enterprise
 * `--enable-all-security-services`: add all security service classes to a native executable
 * `--enable-http`: enable HTTP support in a native executable
 * `--enable-https`: enable HTTPS support in a native executable
+* `--enable-preview`: allow classes to depend on preview features of this release
 * `--enable-url-protocols`: list comma-separated URL protocols to enable
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
 * `--force-fallback`: force building of a fallback native executable

@@ -124,6 +124,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
+            case "--enable-preview":
+                args.poll();
+                nativeImage.addCustomJavaArgs("--enable-preview");
+                return true;
         }
 
         String singleArgClasspathPrefix = newStyleClasspathOptionName + "=";

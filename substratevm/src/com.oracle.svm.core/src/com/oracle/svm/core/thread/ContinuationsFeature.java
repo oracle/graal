@@ -61,7 +61,7 @@ public class ContinuationsFeature implements Feature {
              * field, and unparking a virtual thread in additionalMonitorsLock.unlock causes a
              * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
              */
-            throw UserError.abort("Continuations are currently supported only on JDK 17 with option %s, or on JDK 19 with preview features enabled (-J--enable-preview).",
+            throw UserError.abort("Continuations are currently supported only on JDK 17 with option %s, or on JDK 19 with preview features enabled (--enable-preview).",
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }
