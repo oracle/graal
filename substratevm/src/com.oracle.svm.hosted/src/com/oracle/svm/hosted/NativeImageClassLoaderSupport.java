@@ -33,6 +33,7 @@ import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -53,6 +54,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -65,8 +67,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
-import com.oracle.svm.util.AnnotationExtracter;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
@@ -81,8 +81,11 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.AnnotationExtracter;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.module.Modules;
 
@@ -354,6 +357,11 @@ public class NativeImageClassLoaderSupport {
     }
 
     void processClassLoaderOptions() {
+
+        if (NativeImageClassLoaderOptions.ListModules.getValue(parsedHostedOptions)) {
+            processListModulesOption(moduleLayerForImageBuild);
+        }
+
         processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addExportsToAllUnnamed(val.module, val.packageName);
@@ -381,6 +389,32 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         });
+    }
+
+    private static void processListModulesOption(ModuleLayer layer) {
+        Class<?> launcherHelperClass = ReflectionUtil.lookupClass(false, "sun.launcher.LauncherHelper");
+        Method showModuleMethod = ReflectionUtil.lookupMethod(launcherHelperClass, "showModule", ModuleReference.class);
+
+        boolean first = true;
+        for (ModuleLayer moduleLayer : allLayers(layer)) {
+            List<ResolvedModule> resolvedModules = moduleLayer.configuration().modules().stream()
+                            .sorted(Comparator.comparing(ResolvedModule::name))
+                            .collect(Collectors.toList());
+            if (first) {
+                first = false;
+            } else if (!resolvedModules.isEmpty()) {
+                System.out.println();
+            }
+            for (ResolvedModule resolvedModule : resolvedModules) {
+                try {
+                    showModuleMethod.invoke(null, resolvedModule.reference());
+                } catch (ReflectiveOperationException e) {
+                    throw VMError.shouldNotReachHere("Unable to " + showModuleMethod + " for printing list of modules.", e);
+                }
+            }
+        }
+
+        throw new InterruptImageBuilding("");
     }
 
     public void propagateQualifiedExports(String fromTargetModule, String toTargetModule) {
