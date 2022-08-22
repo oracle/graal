@@ -41,6 +41,6 @@ public class ExperimentParserTypeError extends ExperimentParserError {
      * @param actualObject the actual parsed object
      */
     ExperimentParserTypeError(ExperimentId experimentId, String resourceName, String objectName, Class<?> expectedType, Object actualObject) {
-        super(experimentId, resourceName, "expected " + objectName + " to be an instance of " + expectedType.getSimpleName() + " but got \"" + actualObject.toString() + "\"");
+        super(experimentId, resourceName, "expected " + objectName + " to be an instance of " + expectedType.getSimpleName() + " but got \"" + actualObject + "\"");
     }
 }
