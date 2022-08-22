@@ -44,6 +44,8 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 
+import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
+
 /**
  * Provides access to the underlying OS-specific memory that stores the performance data.
  *
@@ -89,13 +91,13 @@ public class PerfMemory {
     }
 
     private static PerfMemoryProvider getPerfMemoryProvider() {
-        if (tryAcquirePerfDataFile()) {
+        if (PerfDataMemoryMappedFile.getValue() && tryAcquirePerfDataFile()) {
             return ImageSingletons.lookup(PerfMemoryProvider.class);
         }
 
         /*
-         * Another isolate already owns the perf data file, so this isolate needs to use C heap
-         * memory instead.
+         * Memory mapped file support is disabled or another isolate already owns the perf data
+         * file. Either way, this isolate needs to use C heap memory instead.
          */
         return new CHeapPerfMemoryProvider();
     }

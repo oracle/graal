@@ -31,6 +31,7 @@ import java.util.ArrayList;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
@@ -109,7 +110,7 @@ public class PerfManager {
 
     public static boolean usePerfData() {
         int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UsePerfData);
-        return VMInspectionOptions.AllowVMInspection.getValue() && IsolateArgumentParser.getBooleanOptionValue(optionIndex);
+        return VMInspectionOptions.hasJvmstatSupport() && IsolateArgumentParser.getBooleanOptionValue(optionIndex);
     }
 
     /** Returns a pointer into the image heap. */
@@ -271,6 +272,9 @@ public class PerfManager {
     }
 
     public static class Options {
+        @Option(help = "Determines if the collected performance data should be written to a memory-mapped file so that it can be accessed by external tools.")//
+        public static final HostedOptionKey<Boolean> PerfDataMemoryMappedFile = new HostedOptionKey<>(true);
+
         @Option(help = "Size of performance data memory region. Will be rounded up to a multiple of the native os page size.")//
         public static final RuntimeOptionKey<Integer> PerfDataMemorySize = new RuntimeOptionKey<>(32 * 1024, Immutable);
 

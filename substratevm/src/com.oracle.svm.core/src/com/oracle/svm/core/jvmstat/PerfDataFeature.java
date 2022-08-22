@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.zip.ZipFile;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.VMInspectionOptions;

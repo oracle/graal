@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.jvmstat;
 
+import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
 import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.READ;
@@ -72,6 +73,11 @@ import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 
+/**
+ * This class uses high-level JDK features at the moment. In the future, we will need to rewrite
+ * this code so that it can be executed during the isolate startup (i.e., in uninterruptible code),
+ * see GR-40601.
+ */
 class PosixPerfMemoryProvider implements PerfMemoryProvider {
     // Prefix of performance data file.
     private static final String PERFDATA_NAME = "hsperfdata";
@@ -275,7 +281,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 class PosixPerfMemoryFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasJvmstatSupport();
+        return VMInspectionOptions.hasJvmstatSupport() && PerfDataMemoryMappedFile.getValue();
     }
 
     @Override
