@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;

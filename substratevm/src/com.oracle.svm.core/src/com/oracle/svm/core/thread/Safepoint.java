@@ -48,13 +48,13 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.StubCallingConvention;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrTicks;

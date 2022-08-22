@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

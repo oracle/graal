@@ -29,7 +29,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.Hybrid;
+import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;

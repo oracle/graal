@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 

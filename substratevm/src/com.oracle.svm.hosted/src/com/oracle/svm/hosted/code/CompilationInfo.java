@@ -35,8 +35,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.Specialize;
+import com.oracle.svm.core.deopt.DeoptTest;
+import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
 import com.oracle.svm.hosted.meta.HostedMethod;

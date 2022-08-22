@@ -29,9 +29,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 
 import java.util.ArrayList;
 
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
@@ -43,9 +40,12 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
 

@@ -45,11 +45,10 @@ import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.annotate.DeoptTest;
+import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
@@ -61,6 +60,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;

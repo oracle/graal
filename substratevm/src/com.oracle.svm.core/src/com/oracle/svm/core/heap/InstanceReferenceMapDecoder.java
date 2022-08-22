@@ -28,8 +28,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.thread.Continuation;

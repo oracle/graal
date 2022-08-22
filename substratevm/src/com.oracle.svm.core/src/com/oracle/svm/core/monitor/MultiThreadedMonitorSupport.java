@@ -41,8 +41,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.WeakIdentityHashMap;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;

@@ -67,7 +67,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
+import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.config.ConfigurationValues;

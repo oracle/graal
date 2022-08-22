@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.Space;

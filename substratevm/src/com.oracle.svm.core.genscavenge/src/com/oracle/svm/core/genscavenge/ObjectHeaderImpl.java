@@ -40,7 +40,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;

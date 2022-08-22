@@ -36,7 +36,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;

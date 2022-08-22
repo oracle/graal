@@ -70,7 +70,7 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;

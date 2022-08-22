@@ -55,7 +55,7 @@ import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;

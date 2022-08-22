@@ -27,7 +27,6 @@ package com.oracle.svm.core.heap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;

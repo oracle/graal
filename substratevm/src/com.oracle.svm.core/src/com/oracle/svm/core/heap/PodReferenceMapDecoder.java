@@ -33,7 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;

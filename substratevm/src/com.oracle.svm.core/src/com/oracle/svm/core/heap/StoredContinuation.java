@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.annotate.Hybrid;
+import com.oracle.svm.core.hub.Hybrid;
 
 /** Execution state of a continuation, use via {@link StoredContinuationAccess}. */
 @Hybrid(componentType = long.class)
