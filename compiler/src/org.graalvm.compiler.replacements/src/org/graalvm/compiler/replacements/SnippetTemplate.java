@@ -2231,7 +2231,7 @@ public class SnippetTemplate {
         })) {
             EconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             if (scope != null) {
-                log.addLog(duplicates, snippet.getInliningLog());
+                log.addLog(duplicates, snippet.getInliningLog(), true);
             }
             NodeSourcePosition position = replacee.getNodeSourcePosition();
             InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);

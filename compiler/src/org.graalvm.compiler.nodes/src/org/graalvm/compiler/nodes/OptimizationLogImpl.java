@@ -592,6 +592,8 @@ public class OptimizationLogImpl implements OptimizationLog {
     /**
      * Converts an inlining subtree to a JSON map starting from a callsite.
      *
+     * Subtrees representing a node replaced by an inlined snippet are not included.
+     *
      * @param callsite the root of the inlining subtree
      * @param methodNameFormatter a function that formats method names
      * @return inlining subtree as a JSON map
@@ -603,6 +605,9 @@ public class OptimizationLogImpl implements OptimizationLog {
         map.put("bci", callsite.getBci());
         List<Object> inlined = null;
         for (InliningLog.Callsite child : callsite.children) {
+            if (child.isInlinedSnippet()) {
+                continue;
+            }
             for (InliningLog.Decision decision : child.decisions) {
                 if (decision.isPositive()) {
                     if (inlined == null) {
