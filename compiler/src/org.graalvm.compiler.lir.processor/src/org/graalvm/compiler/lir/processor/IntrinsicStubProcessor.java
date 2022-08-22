@@ -296,7 +296,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                     case substrate:
                         imports.addAll(List.of(
                                         "com.oracle.svm.core.SubstrateTargetDescription",
-                                        "com.oracle.svm.core.annotate.Uninterruptible",
+                                        "com.oracle.svm.core.Uninterruptible",
                                         "com.oracle.svm.core.snippets.SubstrateForeignCallTarget",
                                         "com.oracle.svm.core.cpufeature.Stubs",
                                         "com.oracle.svm.graal.RuntimeCPUFeatureRegion",

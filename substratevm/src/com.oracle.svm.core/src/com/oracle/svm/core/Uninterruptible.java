@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -30,7 +30,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
 
-import com.oracle.svm.core.NeverInline;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
