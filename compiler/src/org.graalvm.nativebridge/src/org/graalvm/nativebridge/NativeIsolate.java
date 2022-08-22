@@ -24,8 +24,6 @@
  */
 package org.graalvm.nativebridge;
 
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -36,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.LongPredicate;
 import java.util.function.Supplier;
 
 import jdk.vm.ci.services.Services;
@@ -287,7 +284,7 @@ public final class NativeIsolate {
     }
 
     private synchronized void detachThread(NativeIsolateThread nativeIsolateThread) {
-        if (state.isValid() && !nativeIsolateThread.isNativeThread()) {
+        if (state.isValid() && nativeIsolateThread != null && !nativeIsolateThread.isNativeThread()) {
             config.detachThread(nativeIsolateThread.isolateThread);
         }
     }
