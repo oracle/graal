@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.util.VMError;

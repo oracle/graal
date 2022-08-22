@@ -27,7 +27,7 @@ package com.oracle.svm.truffle.api;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;

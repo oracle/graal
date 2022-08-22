@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;

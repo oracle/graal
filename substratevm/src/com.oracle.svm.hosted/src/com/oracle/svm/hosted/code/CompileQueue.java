@@ -144,7 +144,7 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptTest;

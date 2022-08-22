@@ -40,7 +40,7 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;

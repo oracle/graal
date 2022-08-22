@@ -34,7 +34,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 @AutomaticFeature
 @Platforms(Platform.AARCH64.class)

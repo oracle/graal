@@ -25,7 +25,7 @@
 package com.oracle.svm.core.hub;
 
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 @DuplicatedInNativeCode
 public enum HubType {

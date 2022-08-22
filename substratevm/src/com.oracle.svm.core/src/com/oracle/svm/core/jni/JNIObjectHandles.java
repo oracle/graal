@@ -39,7 +39,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;

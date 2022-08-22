@@ -106,7 +106,7 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CUnsigned;

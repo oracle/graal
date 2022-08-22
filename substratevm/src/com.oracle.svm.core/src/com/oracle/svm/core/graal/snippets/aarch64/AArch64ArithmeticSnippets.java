@@ -45,7 +45,7 @@ import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;

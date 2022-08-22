@@ -36,7 +36,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.log.Log;

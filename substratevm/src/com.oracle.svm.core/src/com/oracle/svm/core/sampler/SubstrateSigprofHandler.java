@@ -48,7 +48,7 @@ import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;

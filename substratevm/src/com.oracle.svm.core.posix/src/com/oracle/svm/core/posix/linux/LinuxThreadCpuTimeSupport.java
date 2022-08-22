@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;

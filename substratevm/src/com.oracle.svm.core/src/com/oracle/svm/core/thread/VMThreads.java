@@ -44,7 +44,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.heap.Heap;

@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;

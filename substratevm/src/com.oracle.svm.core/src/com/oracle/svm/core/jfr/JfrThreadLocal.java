@@ -34,7 +34,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;

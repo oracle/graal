@@ -32,8 +32,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-
 public class IsolateListenerSupport {
     private IsolateListener[] listeners;
 

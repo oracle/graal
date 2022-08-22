@@ -38,7 +38,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 
 public final class ReferenceAccessImpl implements ReferenceAccess {

@@ -46,7 +46,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.locks.VMCondition;

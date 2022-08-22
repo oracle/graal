@@ -38,7 +38,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;

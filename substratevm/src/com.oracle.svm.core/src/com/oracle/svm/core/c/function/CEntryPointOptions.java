@@ -37,7 +37,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterIsolatePrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveEpilogue;

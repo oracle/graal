@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.windows.headers.Process;

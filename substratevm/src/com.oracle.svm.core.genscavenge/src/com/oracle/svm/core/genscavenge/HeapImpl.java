@@ -52,7 +52,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;

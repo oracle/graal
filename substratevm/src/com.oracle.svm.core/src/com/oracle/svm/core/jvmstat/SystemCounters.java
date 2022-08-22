@@ -28,7 +28,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationListener;
 import org.graalvm.nativeimage.ImageSingletons;

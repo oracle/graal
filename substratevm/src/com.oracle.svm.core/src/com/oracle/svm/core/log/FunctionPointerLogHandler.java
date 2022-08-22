@@ -25,7 +25,7 @@
 package com.oracle.svm.core.log;
 
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.headers.LibC;

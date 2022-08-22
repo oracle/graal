@@ -33,7 +33,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.amd64.AMD64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;

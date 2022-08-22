@@ -44,7 +44,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK17_0_2OrLater;
 import com.oracle.svm.core.util.VMError;

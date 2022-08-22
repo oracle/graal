@@ -25,7 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;

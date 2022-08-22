@@ -32,7 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Manages the global JFR memory. A lot of the methods must be uninterruptible to ensure that we can

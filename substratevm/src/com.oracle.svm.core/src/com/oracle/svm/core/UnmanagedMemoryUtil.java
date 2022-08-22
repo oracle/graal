@@ -28,8 +28,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-
 /**
  * The methods in this class are mainly used to fill or copy unmanaged (i.e., <b>non</b>-Java heap)
  * memory. None of the methods cares about Java semantics like GC barriers or the Java memory model.

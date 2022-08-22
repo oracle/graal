@@ -44,7 +44,7 @@ import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;

@@ -44,7 +44,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.llvm.util.LLVMDirectives;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;

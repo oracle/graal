@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
