@@ -46,6 +46,7 @@ import org.graalvm.wasm.test.suites.arithmetic.Float32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Float64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer64Suite;
+import org.graalvm.wasm.test.suites.arithmetic.ReferenceTypeSuite;
 import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
 import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
 import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
@@ -94,7 +95,8 @@ import org.junit.runners.Suite;
                 WasmImplementationLimitationsSuite.class,
                 ExtraDataSuite.class,
                 TableInitializationSuite.class,
-                TableSuite.class
+                TableSuite.class,
+                ReferenceTypeSuite.class
 })
 public class WasmTestSuite {
     @Test

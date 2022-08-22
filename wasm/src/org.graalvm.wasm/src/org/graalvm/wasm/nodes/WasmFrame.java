@@ -49,12 +49,23 @@ public abstract class WasmFrame {
         // no instances
     }
 
+    public static void dropPrimitive(VirtualFrame frame, int slot) {
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.clearPrimitiveStatic(slot);
+        }
+    }
+
     public static void drop(VirtualFrame frame, int slot) {
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
             frame.clearPrimitiveStatic(slot);
         }
         frame.clearObjectStatic(slot);
+    }
+
+    public static void copyPrimitive(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copyPrimitiveStatic(sourceSlot, targetSlot);
     }
 
     public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {

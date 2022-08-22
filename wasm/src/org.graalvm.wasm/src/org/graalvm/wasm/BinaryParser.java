@@ -81,7 +81,6 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
-import org.graalvm.wasm.parser.validation.ValidationErrors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -133,8 +132,8 @@ public class BinaryParser extends BinaryStreamParser {
             if (sectionID != Section.CUSTOM) {
                 if (Section.isNextSectionIdValid(sectionID, lastNonCustomSection)) {
                     lastNonCustomSection = sectionID;
-                } else if (lastNonCustomSection == sectionID) {
-                    throw WasmException.create(Failure.DUPLICATED_SECTION, "Duplicated section " + sectionID);
+                } else if (sectionID > Section.LAST_SECTION_ID || lastNonCustomSection == sectionID) {
+                    throw WasmException.create(Failure.UNEXPECTED_CONTENT_AFTER_LAST_SECTION);
                 } else {
                     throw WasmException.create(Failure.INVALID_SECTION_ORDER, "Section " + sectionID + " defined after section " + lastNonCustomSection);
                 }
@@ -288,6 +287,7 @@ public class BinaryParser extends BinaryStreamParser {
         final int numTypes = readLength();
         module.limits().checkTypeCount(numTypes);
         for (int t = 0; t != numTypes; ++t) {
+            assertTrue(canRead(), Failure.LENGTH_OUT_OF_BOUNDS);
             final byte type = read1();
             if (type == 0x60) {
                 readFunctionType();
@@ -391,13 +391,13 @@ public class BinaryParser extends BinaryStreamParser {
             final ByteArrayList locals = readCodeEntryLocals();
             final int localCount = locals.size() + module.function(numImportedFunctions + entryIndex).paramCount();
             module.limits().checkLocalCount(localCount);
-            codeEntries[entryIndex] = readCodeEntry(numImportedFunctions + entryIndex, locals, startOffset + codeEntrySize);
+            codeEntries[entryIndex] = readCodeEntry(numImportedFunctions + entryIndex, locals, startOffset + codeEntrySize, entryIndex < numCodeEntries - 1);
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
         }
         module.setCodeEntries(codeEntries);
     }
 
-    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset) {
+    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction) {
         final WasmFunction function = module.symbolTable().function(functionIndex);
         int paramCount = function.paramCount();
         byte[] localTypes = new byte[function.paramCount() + locals.size()];
@@ -412,7 +412,7 @@ public class BinaryParser extends BinaryStreamParser {
             resultTypes[i] = function.resultTypeAt(i);
         }
 
-        return readFunction(functionIndex, localTypes, resultTypes, endOffset);
+        return readFunction(functionIndex, localTypes, resultTypes, endOffset, hasNextFunction);
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -466,7 +466,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int endOffset) {
+    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int endOffset, boolean hasNextFunction) {
         final ParserState state = new ParserState();
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         int startOffset = offset;
@@ -608,8 +608,10 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.CALL_INDIRECT: {
 
-                    int expectedFunctionTypeIndex = readUnsignedInt32();
+                    final int tableIndex = readTableIndex();
+                    assertByteEqual(FUNCREF_TYPE, module.tableElementType(tableIndex), Failure.TYPE_MISMATCH);
 
+                    final int expectedFunctionTypeIndex = readUnsignedInt32();
                     // Pop the function index to call
                     state.popChecked(I32_TYPE);
                     state.checkFunctionTypeExists(expectedFunctionTypeIndex, module.typeCount());
@@ -630,21 +632,29 @@ public class BinaryParser extends BinaryStreamParser {
                     state.pushAll(callResultTypes);
                     state.addIndirectCall(callNodes.size());
                     callNodes.add(new CallNode());
-                    final int tableIndex = read1();
-                    if (!module.checkTableIndex(tableIndex)) {
-                        throw ValidationErrors.createMissingTable();
-                    }
                     break;
                 }
                 case Instructions.DROP:
                     state.pop();
                     break;
-                case Instructions.SELECT:
+                case Instructions.SELECT: {
                     state.popChecked(I32_TYPE); // condition
                     final byte t = state.pop(); // first operand
                     state.popChecked(t); // second operand
+                    assertTrue(WasmType.isNumberType(t), Failure.TYPE_MISMATCH);
                     state.push(t);
                     break;
+                }
+                case Instructions.SELECT_T: {
+                    final int length = readLength();
+                    assertIntEqual(length, 1, Failure.LENGTH_OUT_OF_BOUNDS);
+                    final byte t = readValueType();
+                    state.popChecked(I32_TYPE);
+                    state.popChecked(t);
+                    state.popChecked(t);
+                    state.push(t);
+                    break;
+                }
                 case Instructions.LOCAL_GET: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
@@ -675,6 +685,20 @@ public class BinaryParser extends BinaryStreamParser {
                     assertByteEqual(module.symbolTable().globalMutability(index), (byte) GlobalModifier.MUTABLE,
                                     "Immutable globals cannot be set: " + index, Failure.IMMUTABLE_GLOBAL_WRITE);
                     state.popChecked(module.symbolTable().globalValueType(index));
+                    break;
+                }
+                case Instructions.TABLE_GET: {
+                    final int index = readTableIndex();
+                    final byte elementType = module.tableElementType(index);
+                    state.popChecked(I32_TYPE);
+                    state.push(elementType);
+                    break;
+                }
+                case Instructions.TABLE_SET: {
+                    final int index = readTableIndex();
+                    final byte elementType = module.tableElementType(index);
+                    state.popChecked(elementType);
+                    state.popChecked(I32_TYPE);
                     break;
                 }
                 case Instructions.F32_LOAD:
@@ -738,14 +762,14 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Instructions.MEMORY_SIZE: {
                     final int flag = read1();
-                    assertIntEqual(flag, 0, Failure.ZERO_FLAG_EXPECTED);
+                    assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
                     checkMemoryIndex(0);
                     state.push(I32_TYPE);
                     break;
                 }
                 case Instructions.MEMORY_GROW: {
                     final int flag = read1();
-                    assertIntEqual(flag, 0, Failure.ZERO_FLAG_EXPECTED);
+                    assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
                     checkMemoryIndex(0);
                     state.popChecked(I32_TYPE);
                     state.push(I32_TYPE);
@@ -758,9 +782,16 @@ public class BinaryParser extends BinaryStreamParser {
             }
         }
         assertIntEqual(state.valueStackSize(), resultTypes.length,
-                        "Stack size must match the result type length at the function end", Failure.TYPE_MISMATCH);
-        assertIntEqual(state.controlStackSize(), 0,
-                        "All control structures must be closed", Failure.UNEXPECTED_END);
+                        "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
+        if (hasNextFunction) {
+            assertIntEqual(state.controlStackSize(), 0, Failure.END_OPCODE_EXPECTED);
+        } else {
+            if (state.controlStackSize() != 0) {
+                // Check if we reached the end of the binary
+                peek1();
+                fail(Failure.SECTION_SIZE_MISMATCH, "END opcode expected");
+            }
+        }
         return new CodeEntry(functionIndex, state.maxStackSize(), locals, state.extraData(), callNodes, startOffset, endOffset, resultTypes);
     }
 
@@ -1030,34 +1061,25 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(F64_TYPE);
                         state.push(I64_TYPE);
                         break;
-                    case Instructions.TABLE_INIT: {
-                        checkBulkMemoryOpsSupport(miscOpcode);
-                        final int elementIndex = readUnsignedInt32();
-                        module.checkElemIndex(elementIndex);
-                        readTableIndex();
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
-                        break;
-                    }
-                    case Instructions.TABLE_COPY:
-                        checkBulkMemoryOpsSupport(miscOpcode);
-                        readTableIndex();
-                        readTableIndex();
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
-                        break;
-                    case Instructions.ELEM_DROP: {
-                        checkBulkMemoryOpsSupport(miscOpcode);
-                        final int elementIndex = readUnsignedInt32();
-                        module.checkElemIndex(elementIndex);
-                        break;
-                    }
                     case Instructions.MEMORY_INIT: {
                         checkBulkMemoryOpsSupport(miscOpcode);
                         final int dataIndex = readUnsignedInt32();
                         module.checkDataSegmentIndex(dataIndex);
+                        readMemoryIndex();
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        break;
+                    }
+                    case Instructions.DATA_DROP: {
+                        checkBulkMemoryOpsSupport(miscOpcode);
+                        final int dataIndex = readUnsignedInt32();
+                        module.checkDataSegmentIndex(dataIndex);
+                        break;
+                    }
+                    case Instructions.MEMORY_COPY: {
+                        checkBulkMemoryOpsSupport(miscOpcode);
+                        readMemoryIndex();
                         readMemoryIndex();
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
@@ -1072,19 +1094,54 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         break;
                     }
-                    case Instructions.MEMORY_COPY: {
+                    case Instructions.TABLE_INIT: {
                         checkBulkMemoryOpsSupport(miscOpcode);
-                        readMemoryIndex();
-                        readMemoryIndex();
+                        final int tableIndex = readTableIndex();
+                        final byte elementType = module.tableElementType(tableIndex);
+                        final int elementIndex = readUnsignedInt32();
+                        module.checkElemIndex(elementIndex);
+                        module.checkElemType(elementIndex, elementType);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
                         break;
                     }
-                    case Instructions.DATA_DROP: {
+                    case Instructions.ELEM_DROP: {
                         checkBulkMemoryOpsSupport(miscOpcode);
-                        final int dataIndex = readUnsignedInt32();
-                        module.checkDataSegmentIndex(dataIndex);
+                        final int elementIndex = readUnsignedInt32();
+                        module.checkElemIndex(elementIndex);
+                        break;
+                    }
+                    case Instructions.TABLE_COPY:
+                        checkBulkMemoryOpsSupport(miscOpcode);
+                        final int sourceTableIndex = readTableIndex();
+                        final byte sourceElementType = module.tableElementType(sourceTableIndex);
+                        final int destinationTableIndex = readTableIndex();
+                        final byte destinationElementType = module.tableElementType(destinationTableIndex);
+                        assertByteEqual(sourceElementType, destinationElementType, Failure.TYPE_MISMATCH);
+                        break;
+                    case Instructions.TABLE_SIZE: {
+                        checkReferenceTypesSupport(miscOpcode);
+                        readTableIndex();
+                        state.push(I32_TYPE);
+                        break;
+                    }
+                    case Instructions.TABLE_GROW: {
+                        checkReferenceTypesSupport(miscOpcode);
+                        final int tableIndex = readTableIndex();
+                        final byte elementType = module.tableElementType(tableIndex);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(elementType);
+                        state.push(I32_TYPE);
+                        break;
+                    }
+                    case Instructions.TABLE_FILL: {
+                        checkReferenceTypesSupport(miscOpcode);
+                        final int tableIndex = readTableIndex();
+                        final byte elementType = module.tableElementType(tableIndex);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(elementType);
+                        state.popChecked(I32_TYPE);
                         break;
                     }
                     default:
@@ -1103,6 +1160,22 @@ public class BinaryParser extends BinaryStreamParser {
                 checkSignExtensionOpsSupport(opcode);
                 state.popChecked(I64_TYPE);
                 state.push(I64_TYPE);
+                break;
+            case Instructions.REF_NULL:
+                checkReferenceTypesSupport(opcode);
+                final byte type = readRefType();
+                state.push(type);
+                break;
+            case Instructions.REF_IS_NULL:
+                checkReferenceTypesSupport(opcode);
+                state.popReferenceTypeChecked();
+                state.push(I32_TYPE);
+                break;
+            case Instructions.REF_FUNC:
+                checkReferenceTypesSupport(opcode);
+                final int functionIndex = readDeclaredFunctionIndex();
+                module.checkFunctionReference(functionIndex);
+                state.push(FUNCREF_TYPE);
                 break;
             default:
                 fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
@@ -1125,7 +1198,11 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void checkBulkMemoryOpsSupport(int opcode) {
-        checkContextOption(wasmContext.getContextOptions().isBulkMemoryOps(), "Bulk-memory operations are not enabled (opcode: 0x%02x", opcode);
+        checkContextOption(wasmContext.getContextOptions().isBulkMemoryOps(), "Bulk-memory operations are not enabled (opcode: 0x%02x)", opcode);
+    }
+
+    private void checkReferenceTypesSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().isReferenceTypes(), "Reference types are not enabled (opcode: 0x%02x)", opcode);
     }
 
     private void store(ParserState state, byte type, int n) {
@@ -1184,7 +1261,9 @@ public class BinaryParser extends BinaryStreamParser {
         final int length = readLength();
         final long[] functionIndices = new long[length];
         for (int index = 0; index != length; ++index) {
-            functionIndices[index] = ((long) FUNCREF_TYPE << 32) | readDeclaredFunctionIndex();
+            final int functionIndex = readDeclaredFunctionIndex();
+            module.addFunctionReference(functionIndex);
+            functionIndices[index] = ((long) FUNCREF_TYPE << 32) | functionIndex;
         }
         return functionIndices;
     }
@@ -1203,7 +1282,7 @@ public class BinaryParser extends BinaryStreamParser {
             int opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.REF_NULL:
-                    int type = read1() & 0xFF;
+                    final byte type = readRefType();
                     if (referenceTypes && type != elemType) {
                         fail(Failure.TYPE_MISMATCH, "Invalid ref.null type: 0x%02X", type);
                     }
@@ -1213,7 +1292,9 @@ public class BinaryParser extends BinaryStreamParser {
                     if (elemType != FUNCREF_TYPE) {
                         fail(Failure.TYPE_MISMATCH, "Invalid element type: 0x%02X", FUNCREF_TYPE);
                     }
-                    functionIndices[i] = ((long) FUNCREF_TYPE << 32) | readDeclaredFunctionIndex();
+                    final int functionIndex = readDeclaredFunctionIndex();
+                    module.addFunctionReference(functionIndex);
+                    functionIndices[i] = ((long) FUNCREF_TYPE << 32) | functionIndex;
                     break;
                 case Instructions.GLOBAL_GET:
                     final int globalIndex = readGlobalIndex();
@@ -1286,9 +1367,9 @@ public class BinaryParser extends BinaryStreamParser {
                 currentOffsetAddress = multiResult[0];
                 currentOffsetGlobalIndex = multiResult[1];
                 elements = readFunctionIndices();
-                elemType = 0;
+                elemType = FUNCREF_TYPE;
             }
-            module.incrementElemSegmentCount();
+            module.addElemSegment(elemType);
 
             // Copy the contents, or schedule a linker task for this.
             final int currentElemSegmentId = elemSegmentId;
@@ -1324,8 +1405,6 @@ public class BinaryParser extends BinaryStreamParser {
                     linker.immediatelyResolvePassiveElementSegment(linkedContext, linkedInstance, currentElemSegmentId, elemType, elements);
                 }
             }
-            // We don't need to perform any action on declarative sections, because functions
-            // already exist as references in our implementation
         }
     }
 
@@ -1344,12 +1423,14 @@ public class BinaryParser extends BinaryStreamParser {
 
         module.limits().checkExportCount(numExports);
         for (int i = 0; i != numExports; ++i) {
+            assertTrue(canRead(), Failure.LENGTH_OUT_OF_BOUNDS);
             String exportName = readName();
             byte exportType = readExportType();
             switch (exportType) {
                 case ExportIdentifier.FUNCTION: {
                     int functionIndex = readDeclaredFunctionIndex();
                     module.symbolTable().exportFunction(functionIndex, exportName);
+                    module.addFunctionReference(functionIndex);
                     break;
                 }
                 case ExportIdentifier.TABLE: {
@@ -1415,13 +1496,16 @@ public class BinaryParser extends BinaryStreamParser {
                     isFunctionOrNull = false;
                     break;
                 case Instructions.REF_NULL:
+                    assertByteEqual(type, readRefType(), Failure.TYPE_MISMATCH);
                     assertTrue(WasmType.isReferenceType(type), Failure.TYPE_MISMATCH);
                     isInitialized = true;
                     isFunctionOrNull = true;
                     break;
                 case Instructions.REF_FUNC:
                     assertByteEqual(type, FUNCREF_TYPE, Failure.TYPE_MISMATCH);
-                    value = readDeclaredFunctionIndex();
+                    final int functionIndex = readDeclaredFunctionIndex();
+                    module.addFunctionReference(functionIndex);
+                    value = functionIndex;
                     isInitialized = false;
                     isFunctionOrNull = true;
                     break;
@@ -1454,7 +1538,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
-                    if (!module.symbolTable().importedGlobals().containsKey(currentExistingIndex)) {
+                    if (currentExistingIndex != -1 && !module.symbolTable().importedGlobals().containsKey(currentExistingIndex)) {
                         // The current WebAssembly spec says constant expressions can only refer to
                         // imported globals. We can easily remove this restriction in the future.
                         fail(Failure.UNSPECIFIED_MALFORMED, "The initializer for global " + currentGlobalIndex + " in module '" + module.name() +
@@ -1700,7 +1784,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private String readName() {
         int nameLength = readLength();
-        assertUnsignedIntLessOrEqual(offset + nameLength, data.length, Failure.UNEXPECTED_END);
+        assertUnsignedIntLessOrEqual(offset + nameLength, data.length, Failure.LENGTH_OUT_OF_BOUNDS);
 
         // Decode and verify UTF-8 encoding of the name
         CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
@@ -1807,8 +1891,9 @@ public class BinaryParser extends BinaryStreamParser {
                 readValueType();
                 // Read mutability;
                 read1();
-                byte instruction = read1();
+                int instruction = read1() & 0xFF;
                 long value = 0;
+                Object refValue = null;
                 switch (instruction) {
                     case Instructions.I32_CONST: {
                         value = readSignedInt32();
@@ -1826,6 +1911,16 @@ public class BinaryParser extends BinaryStreamParser {
                         value = readFloatAsInt64();
                         break;
                     }
+                    case Instructions.REF_NULL: {
+                        readRefType();
+                        refValue = WasmConstant.NULL;
+                        break;
+                    }
+                    case Instructions.REF_FUNC: {
+                        final int functionIndex = readDeclaredFunctionIndex();
+                        refValue = instance.functionInstance(functionIndex);
+                        break;
+                    }
                     case Instructions.GLOBAL_GET: {
                         int existingIndex = readGlobalIndex();
                         final int existingAddress = instance.globalAddress(existingIndex);
@@ -1836,7 +1931,11 @@ public class BinaryParser extends BinaryStreamParser {
                 // Read END.
                 read1();
                 final int address = instance.globalAddress(globalIndex);
-                globals.storeLong(address, value);
+                if (refValue == null) {
+                    globals.storeLong(address, value);
+                } else {
+                    globals.storeReference(address, refValue);
+                }
             }
         }
     }

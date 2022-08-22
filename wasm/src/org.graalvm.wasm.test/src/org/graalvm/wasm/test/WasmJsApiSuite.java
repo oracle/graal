@@ -1626,12 +1626,8 @@ public class WasmJsApiSuite {
                         "(table $table2 (import \"tables\" \"table2\") 1 1 funcref)" +
                         "(table $table3 (import \"tables\" \"table3\") 1 1 funcref)" +
                         "(table $table4 (import \"tables\" \"table4\") 1 1 externref)" +
-                        "(table $table5 (import \"tables\" \"table5\") 1 1 externref)" +
-                        "(table $table6 (import \"tables\" \"table6\") 1 1 externref)" +
-                        "(table $table7 (import \"tables\" \"table7\") 1 1 externref)" +
-                        "(table $table8 (import \"tables\" \"table8\") 1 1 externref)" +
-                        "(func $one (result i32)" +
-                        "   i32.const 1" +
+                        "(func $id (param i32) (result i32)" +
+                        "   local.get 0" +
                         ")" +
                         "(func (export \"funcInit\")" +
                         "   i32.const 0" +
@@ -1651,10 +1647,30 @@ public class WasmJsApiSuite {
                         "   i32.const 1" +
                         "   table.init 3 0" +
                         ")" +
-                        "(func (export \"funcVal\") (param i32) (result funcref)" +
-                        "   table.get 0" +
+                        "(func (export \"funcSum\") (result i32)" +
+                        "   i32.const 1" +
+                        "   i32.const 0" +
+                        "   call_indirect 0 (type 0)" +
+                        "   i32.const 2" +
+                        "   i32.const 0" +
+                        "   call_indirect 1 (type 0)" +
+                        "   i32.const 3" +
+                        "   i32.const 0" +
+                        "   call_indirect 2 (type 0)" +
+                        "   i32.const 4" +
+                        "   i32.const 0" +
+                        "   call_indirect 3 (type 0)" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        "   i32.add" +
                         ")" +
-                        "(func (export \"externVal\") (param i32) (result externref)" +
+                        "(func (export \"setTable4\") (param i32 externref)" +
+                        "   local.get 0" +
+                        "   local.get 1" +
+                        "   table.set 4" +
+                        ")" +
+                        "(func (export \"getTable4\") (param i32) (result externref)" +
+                        "   local.get 0" +
                         "   table.get 4" +
                         ")" +
                         "(elem funcref (ref.func 0))" +
@@ -1679,6 +1695,11 @@ public class WasmJsApiSuite {
             try {
                 InteropLibrary lib = InteropLibrary.getUncached();
                 lib.execute(WebAssembly.instanceExport(instance, "funcInit"));
+                Object val = lib.execute(WebAssembly.instanceExport(instance, "funcSum"));
+                Assert.assertEquals("Unexpected sum", 10, lib.asInt(val));
+                final Object foo = "foo";
+                lib.execute(WebAssembly.instanceExport(instance, "setTable4"), 0, foo);
+                Assert.assertEquals("Unexpected string", "foo", lib.execute(WebAssembly.instanceExport(instance, "getTable4"), 0));
             } catch (InteropException e) {
                 throw new RuntimeException(e);
             }

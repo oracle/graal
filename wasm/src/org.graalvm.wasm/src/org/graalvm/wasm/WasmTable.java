@@ -89,6 +89,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         this.declaredMaxSize = declaredMaxSize;
         this.maxAllowedSize = maxAllowedSize;
         this.elements = new Object[declaredMinSize];
+        Arrays.fill(this.elements, WasmConstant.NULL);
         this.elemType = elemType;
     }
 
@@ -112,6 +113,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      */
     public void reset() {
         elements = new Object[declaredMinSize];
+        Arrays.fill(elements, WasmConstant.NULL);
     }
 
     /**
@@ -204,5 +206,21 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         } else {
             throw new IllegalArgumentException("Cannot grow table above max limit " + maxAllowedSize);
         }
+    }
+
+    public int grow(int delta, Object value) {
+        final int size = size();
+        final int targetSize = size + delta;
+        if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0 && size < targetSize) {
+            elements = Arrays.copyOf(elements, targetSize);
+            Arrays.fill(elements, size, targetSize, value);
+            return size;
+        }
+        return -1;
+    }
+
+    public void fill(int offset, int length, Object value) {
+        assert offset + length <= size();
+        Arrays.fill(elements, offset, offset + length, value);
     }
 }

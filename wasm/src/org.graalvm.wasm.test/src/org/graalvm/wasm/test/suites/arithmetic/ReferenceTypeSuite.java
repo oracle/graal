@@ -38,18 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test.suites.table;
+package org.graalvm.wasm.test.suites.arithmetic;
 
 import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
 import java.io.IOException;
 
-public class TableSuite extends WasmFileSuite {
-
+public class ReferenceTypeSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
-        return "table";
+        return "references";
     }
 
     @Override

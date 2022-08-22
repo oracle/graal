@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -246,6 +247,10 @@ public abstract class BinaryStreamParser {
         return data[initialOffset];
     }
 
+    public boolean canRead() {
+        return offset >= 0 && offset < data.length;
+    }
+
     public static byte rawPeek1(byte[] data, int initialOffset) {
         return data[initialOffset];
     }
@@ -296,7 +301,7 @@ public abstract class BinaryStreamParser {
      * Reads the block type at the current location. The result is provided as two values. The first
      * is the actual value of the block type. The second is an indicator if it is a single result
      * type or a multi-value result.
-     * 
+     *
      * @param result The array used for returning the result.
      *
      */

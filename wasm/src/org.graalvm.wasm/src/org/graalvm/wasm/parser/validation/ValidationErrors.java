@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,10 @@ public class ValidationErrors {
                 return "f32";
             case WasmType.F64_TYPE:
                 return "f64";
+            case WasmType.FUNCREF_TYPE:
+                return "funcref";
+            case WasmType.EXTERNREF_TYPE:
+                return "externref";
         }
         return "unknown";
     }
@@ -108,11 +112,6 @@ public class ValidationErrors {
     @TruffleBoundary
     public static WasmException createMissingLabel(int expected, int max) {
         return WasmException.format(Failure.UNKNOWN_LABEL, "Unknown branch label %d (max %d).", expected, max);
-    }
-
-    @TruffleBoundary
-    public static WasmException createMissingTable() {
-        return WasmException.create(Failure.UNKNOWN_TABLE, "Missing table.");
     }
 
     @TruffleBoundary

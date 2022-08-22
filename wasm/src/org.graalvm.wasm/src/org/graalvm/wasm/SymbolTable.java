@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
@@ -51,6 +52,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -341,8 +343,11 @@ public abstract class SymbolTable {
     private final List<WasmCustomSection> customSections;
 
     @CompilationFinal private int elemSegmentCount;
+    @CompilationFinal(dimensions = 1) private byte[] elemSegmentTypes;
     @CompilationFinal private boolean dataCountExists;
     @CompilationFinal private int dataSegmentCount;
+
+    @CompilationFinal private final EconomicSet<Integer> functionReferences;
 
     SymbolTable() {
         CompilerAsserts.neverPartOfCompilation();
@@ -372,8 +377,10 @@ public abstract class SymbolTable {
         this.exportedMemoryNames = new ArrayList<>();
         this.customSections = new ArrayList<>();
         this.elemSegmentCount = 0;
+        this.elemSegmentTypes = null;
         this.dataCountExists = false;
         this.dataSegmentCount = 0;
+        this.functionReferences = EconomicSet.create();
     }
 
     private void checkNotParsed() {
@@ -393,6 +400,12 @@ public abstract class SymbolTable {
 
     public void checkFunctionIndex(int funcIndex) {
         assertUnsignedIntLess(funcIndex, numFunctions, Failure.UNKNOWN_FUNCTION);
+    }
+
+    private static byte[] reallocate(byte[] array, int currentSize, int newLength) {
+        byte[] newArray = new byte[newLength];
+        System.arraycopy(array, 0, newArray, 0, currentSize);
+        return newArray;
     }
 
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
@@ -997,12 +1010,27 @@ public abstract class SymbolTable {
         return customSections;
     }
 
-    public void incrementElemSegmentCount() {
+    private void ensureElemCapacity(int index) {
+        if (elemSegmentTypes == null) {
+            elemSegmentTypes = new byte[Math.max(Integer.highestOneBit(index) << 1, 2)];
+        } else if (elemSegmentTypes.length <= index) {
+            int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * elemSegmentTypes.length);
+            elemSegmentTypes = reallocate(elemSegmentTypes, elemSegmentCount, newLength);
+        }
+    }
+
+    public void addElemSegment(byte elemType) {
+        ensureElemCapacity(elemSegmentCount);
+        elemSegmentTypes[elemSegmentCount] = elemType;
         elemSegmentCount++;
     }
 
     public void checkElemIndex(int elemIndex) {
         assertUnsignedIntLess(elemIndex, elemSegmentCount, Failure.UNKNOWN_ELEM_SEGMENT);
+    }
+
+    public void checkElemType(int elemIndex, byte expectedType) {
+        assertByteEqual(expectedType, elemSegmentTypes[elemIndex], Failure.TYPE_MISMATCH);
     }
 
     public void checkDataSegmentIndex(int dataIndex) {
@@ -1019,5 +1047,13 @@ public abstract class SymbolTable {
         if (dataCountExists) {
             assertIntEqual(numberOfDataSegments, this.dataSegmentCount, Failure.DATA_COUNT_MISMATCH);
         }
+    }
+
+    public void addFunctionReference(int functionIndex) {
+        functionReferences.add(functionIndex);
+    }
+
+    public void checkFunctionReference(int functionIndex) {
+        assertTrue(functionReferences.contains(functionIndex), Failure.UNDECLARED_FUNCTION_REFERENCE);
     }
 }

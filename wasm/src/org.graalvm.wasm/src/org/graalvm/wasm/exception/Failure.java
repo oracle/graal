@@ -47,10 +47,11 @@ public enum Failure {
     INTEGER_REPRESENTATION_TOO_LONG(Type.MALFORMED, "integer representation too long"),
     INTEGER_TOO_LARGE(Type.MALFORMED, "integer too large"),
     UNEXPECTED_END(Type.MALFORMED, "unexpected end of section or function"),
+    UNEXPECTED_END_OPCODE(Type.MALFORMED, "unexpected end"),
     MALFORMED_VALUE_TYPE(Type.MALFORMED, "malformed value type"),
     INVALID_MAGIC_NUMBER(Type.MALFORMED, "magic header not detected"),
     INVALID_VERSION_NUMBER(Type.MALFORMED, "unknown binary version"),
-    ZERO_FLAG_EXPECTED(Type.MALFORMED, "zero flag expected"),
+    ZERO_BYTE_EXPECTED(Type.MALFORMED, "zero byte expected"),
     SECTION_SIZE_MISMATCH(Type.MALFORMED, "section size mismatch"),
     TOO_MANY_LOCALS(Type.MALFORMED, "too many locals"),
     FUNCTIONS_CODE_INCONSISTENT_LENGTHS(Type.MALFORMED, "function and code section have inconsistent lengths"),
@@ -63,8 +64,9 @@ public enum Failure {
     ILLEGAL_OPCODE(Type.MALFORMED, "illegal opcode"),
     MALFORMED_REFERENCE_TYPE(Type.MALFORMED, "malformed reference type"),
     MALFORMED_IMPORT_KIND(Type.MALFORMED, "malformed import kind"),
+    END_OPCODE_EXPECTED(Type.MALFORMED, "END opcode expected"),
+    UNEXPECTED_CONTENT_AFTER_LAST_SECTION(Type.MALFORMED, "unexpected content after last section"),
     // GraalWasm-specific:
-    DUPLICATED_SECTION(Type.MALFORMED, "duplicated section"),
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
     DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
 
@@ -95,6 +97,7 @@ public enum Failure {
     UNKNOWN_ELEM_SEGMENT(Type.INVALID, "unknown elem segment"),
     UNKNOWN_DATA_SEGMENT(Type.INVALID, "unknown data segment"),
     UNKNOWN_REFERENCE(Type.INVALID, "unknown reference"),
+    UNDECLARED_FUNCTION_REFERENCE(Type.INVALID, "undeclared function reference"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),

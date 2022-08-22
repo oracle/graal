@@ -203,6 +203,24 @@ public class ParserState {
     }
 
     /**
+     * Pops the topmost value type from the stack and checks if it is a reference type.
+     *
+     * @throws WasmException If the stack is empty or the value type is not a reference type.
+     */
+    public void popReferenceTypeChecked() {
+        if (availableStackSize() != 0) {
+            final byte value = valueStack.popBack();
+            if (value == WasmType.FUNCREF_TYPE || value == WasmType.EXTERNREF_TYPE) {
+                return;
+            }
+            // Push value back onto the stack and perform a checked pop to get the correct error
+            // message
+            valueStack.push(value);
+        }
+        popChecked(WasmType.FUNCREF_TYPE);
+    }
+
+    /**
      * Pops the topmost value types from the stack and checks if they are equivalent to the given
      * set of value types.
      * 
