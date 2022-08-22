@@ -100,10 +100,9 @@ public final class ModuleLayerFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
-        Set<String> baseModules = ModuleLayer.boot().modules()
+        Map<String, Module> baseModules = ModuleLayer.boot().modules()
                         .stream()
-                        .map(Module::getName)
-                        .collect(Collectors.toSet());
+                        .collect(Collectors.toMap(Module::getName, m -> m));
         ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(Configuration.empty()), accessImpl.imageClassLoader, baseModules, Set.of());
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
         access.registerObjectReplacer(this::replaceHostedModules);
@@ -160,10 +159,15 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .filter(ModuleLayerFeatureUtils::isModuleSynthetic)
                         .collect(Collectors.toSet());
 
-        Set<String> allReachableModules = analysisReachableNamedModules
+        Set<String> allReachableModuleNames = analysisReachableNamedModules
                         .stream()
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
+
+        Map<String, Module> allReachableModules = analysisReachableNamedModules
+                        .stream()
+                        .filter(m -> allReachableModuleNames.contains(m.getName()))
+                        .collect(Collectors.toMap(Module::getName, m -> m));
 
         ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(Configuration.empty()), accessImpl.imageClassLoader, allReachableModules, analysisReachableSyntheticModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
@@ -179,7 +183,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         return Stream.concat(Stream.of(m.getName()), requiredModules);
     }
 
-    private ModuleLayer synthesizeRuntimeModuleLayer(List<Configuration> parentConfigs, ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
+    private ModuleLayer synthesizeRuntimeModuleLayer(List<Configuration> parentConfigs, ImageClassLoader cl, Map<String, Module> reachableModules, Set<Module> syntheticModules) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
          * {@link NativeImageClassLoaderSupport}.
@@ -187,13 +191,17 @@ public final class ModuleLayerFeature implements InternalFeature {
         NativeImageClassLoaderSupport classLoaderSupport = cl.classLoaderSupport;
         ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
         ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
-        Configuration cf = synthesizeRuntimeModuleLayerConfiguration(beforeFinder, parentConfigs, afterFinder, reachableModules);
+        Configuration cf = synthesizeRuntimeModuleLayerConfiguration(beforeFinder, parentConfigs, afterFinder, reachableModules.keySet());
         ModuleLayer runtimeModuleLayer = null;
         try {
             runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(cf);
-            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeModuleLayer);
+            Function<String, ClassLoader> clf = name -> {
+                Module module = reachableModules.get(name);
+                return module == null ? classLoaderSupport.getClassLoader() : module.getClassLoader();
+            };
+            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeModuleLayer, clf);
             for (Module syntheticModule : syntheticModules) {
-                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule.getName(), syntheticModule.getDescriptor());
+                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule, syntheticModule.getDescriptor());
                 nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
                 moduleLayerFeatureUtils.patchModuleLayerField(runtimeSyntheticModule, runtimeModuleLayer);
             }
@@ -209,7 +217,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         Map<Module, Module> modulePairs = analysisReachableNamedModules
                         .stream()
-                        .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.nameToModuleLookup.get(m.getName())));
+                        .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
         modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
         modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.everyoneModule);
 
@@ -324,7 +332,7 @@ public final class ModuleLayerFeature implements InternalFeature {
     }
 
     private static final class ModuleLayerFeatureUtils {
-        private final Map<String, Module> nameToModuleLookup;
+        private final Map<ClassLoader, Map<String, Module>> runtimeModules;
         private final ImageClassLoader imageClassLoader;
 
         private final Module allUnnamedModule;
@@ -344,7 +352,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Field moduleLayerParentsField;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
-            nameToModuleLookup = new HashMap<>();
+            runtimeModules = new HashMap<>();
             imageClassLoader = cl;
             Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
@@ -402,9 +410,9 @@ public final class ModuleLayerFeature implements InternalFeature {
             return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
+        public Module getRuntimeModuleForHostedModule(Module hostedModule, boolean optional) {
             if (hostedModule.isNamed()) {
-                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getName(), runtimeModuleDescriptor);
+                return getRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), optional);
             }
 
             /*
@@ -421,24 +429,54 @@ public final class ModuleLayerFeature implements InternalFeature {
 
             if (hostedModule == everyoneModule) {
                 return everyoneModule;
+            } else {
+                return allUnnamedModule;
             }
-
-            return allUnnamedModule;
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
-            if (nameToModuleLookup.containsKey(hostedModuleName)) {
-                return nameToModuleLookup.get(hostedModuleName);
-            } else {
-                Module runtimeModule;
-                try {
-                    runtimeModule = moduleConstructor.newInstance(imageClassLoader.getClassLoader(), runtimeModuleDescriptor);
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
-                    throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
+        public Module getRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, boolean optional) {
+            Map<String, Module> loaderRuntimeModules = runtimeModules.get(loader);
+            if (loaderRuntimeModules == null) {
+                if (optional) {
+                    return null;
+                } else {
+                    throw VMError.shouldNotReachHere("No runtime modules registered for class loader: " + loader);
                 }
-                nameToModuleLookup.put(hostedModuleName, runtimeModule);
+            }
+            Module runtimeModule = loaderRuntimeModules.get(hostedModuleName);
+            if (runtimeModule == null) {
+                if (optional) {
+                    return null;
+                } else {
+                    throw VMError.shouldNotReachHere("Runtime module " + hostedModuleName + "is not registered for class loader: " + loader);
+                }
+            } else {
                 return runtimeModule;
             }
+        }
+
+        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
+            if (hostedModule.isNamed()) {
+                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), runtimeModuleDescriptor);
+            } else {
+                return hostedModule == everyoneModule ? everyoneModule : allUnnamedModule;
+            }
+        }
+
+        public Module getOrCreateRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
+            Module runtimeModule = getRuntimeModuleForHostedModule(loader, hostedModuleName, true);
+            if (runtimeModule != null) {
+                return runtimeModule;
+            }
+
+            try {
+                runtimeModule = moduleConstructor.newInstance(loader, runtimeModuleDescriptor);
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+                throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
+            }
+            runtimeModules.putIfAbsent(loader, new HashMap<>());
+            runtimeModules.get(loader).put(hostedModuleName, runtimeModule);
+            return runtimeModule;
         }
 
         /**
@@ -448,9 +486,9 @@ public final class ModuleLayerFeature implements InternalFeature {
          * and removal of VM state updates (otherwise we would be re-defining modules to the host
          * VM).
          */
-        Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer)
+        Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeModuleLayer, Function<String, ClassLoader> clf)
                         throws IllegalAccessException, InvocationTargetException {
-            Configuration cf = runtimeBootLayer.configuration();
+            Configuration cf = runtimeModuleLayer.configuration();
 
             int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
             Map<String, Module> nameToModule = new HashMap<>(cap);
@@ -463,11 +501,12 @@ public final class ModuleLayerFeature implements InternalFeature {
                 ModuleReference mref = resolvedModule.reference();
                 ModuleDescriptor descriptor = mref.descriptor();
                 String name = descriptor.name();
-                Module m = getOrCreateRuntimeModuleForHostedModule(name, descriptor);
+                ClassLoader loader = clf.apply(name);
+                Module m = getOrCreateRuntimeModuleForHostedModule(loader, name, descriptor);
                 if (!descriptor.equals(m.getDescriptor())) {
                     moduleDescriptorField.set(m, descriptor);
                 }
-                patchModuleLayerField(m, runtimeBootLayer);
+                patchModuleLayerField(m, runtimeModuleLayer);
                 nameToModule.put(name, m);
             }
 
@@ -523,7 +562,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                             if (opens.isQualified()) {
                                 Set<Module> targets = new HashSet<>();
                                 for (String target : opens.targets()) {
-                                    Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeBootLayer.parents());
+                                    Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeModuleLayer.parents());
                                     if (m2 != null) {
                                         targets.add(m2);
                                     }
@@ -546,7 +585,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                             if (exports.isQualified()) {
                                 Set<Module> targets = new HashSet<>();
                                 for (String target : exports.targets()) {
-                                    Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeBootLayer.parents());
+                                    Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeModuleLayer.parents());
                                     if (m2 != null) {
                                         if (openToTargets == null || !openToTargets.contains(m2)) {
                                             targets.add(m2);
