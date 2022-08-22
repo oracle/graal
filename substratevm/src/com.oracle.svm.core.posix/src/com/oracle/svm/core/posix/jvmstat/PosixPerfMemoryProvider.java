@@ -60,7 +60,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.VMInspection;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -276,7 +276,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 class PosixPerfMemoryFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspection.isEnabled();
+        return VMInspectionOptions.hasJvmstatSupport();
     }
 
     @Override

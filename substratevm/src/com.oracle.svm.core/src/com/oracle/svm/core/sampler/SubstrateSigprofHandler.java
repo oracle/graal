@@ -75,7 +75,7 @@ class SubstrateSigprofHandlerFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.AllowVMInspection.getValue() && SubstrateSigprofHandler.isProfilingSupported() && ImageInfo.isExecutable();
+        return VMInspectionOptions.hasJFRSupport() && SubstrateSigprofHandler.isProfilingSupported() && ImageInfo.isExecutable();
     }
 
     @Override
@@ -126,7 +126,7 @@ final class SubstrateSigprofHandlerStartupHook implements RuntimeSupport.Hook {
  * instruction pointers, prepare everything necessary for stack walk, do a stack walk and write IPs
  * into buffer.
  * </p>
- * 
+ *
  * <p>
  * The signal handler is as a <b>producer</b>. On the other side of relation is
  * {@link com.oracle.svm.core.jfr.JfrRecorderThread} that is <b>consumer</b>. The
@@ -151,7 +151,7 @@ final class SubstrateSigprofHandlerStartupHook implements RuntimeSupport.Hook {
  * In some rare cases, the profiling is impossible e.g. no available buffers in the pool, unknown IP
  * during stack walk, the thread holds the pool's lock when the signal arrives, etc.
  * </p>
- * 
+ *
  * @see SamplerSpinLock
  * @see SamplerBufferStack
  */

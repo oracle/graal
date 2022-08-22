@@ -1341,7 +1341,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
                 build_args += [
                     '--install-exit-handlers',
-                    '-H:+AllowVMInspection',
+                    '--enable-monitoring=all',
+                    '-H:+DumpRuntimeCompilationOnSignal',
                 ]
 
             if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):
