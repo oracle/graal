@@ -103,7 +103,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         Map<String, Module> baseModules = ModuleLayer.boot().modules()
                         .stream()
                         .collect(Collectors.toMap(Module::getName, m -> m));
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(Configuration.empty()), accessImpl.imageClassLoader, baseModules, Set.of());
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(ModuleLayer.empty()), List.of(Configuration.empty()), accessImpl.imageClassLoader, baseModules, Set.of());
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
         access.registerObjectReplacer(this::replaceHostedModules);
     }
@@ -169,7 +169,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .filter(m -> allReachableModuleNames.contains(m.getName()))
                         .collect(Collectors.toMap(Module::getName, m -> m));
 
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(Configuration.empty()), accessImpl.imageClassLoader, allReachableModules, analysisReachableSyntheticModules);
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(ModuleLayer.empty()), List.of(Configuration.empty()), accessImpl.imageClassLoader, allReachableModules,
+                        analysisReachableSyntheticModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
@@ -183,7 +184,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         return Stream.concat(Stream.of(m.getName()), requiredModules);
     }
 
-    private ModuleLayer synthesizeRuntimeModuleLayer(List<Configuration> parentConfigs, ImageClassLoader cl, Map<String, Module> reachableModules, Set<Module> syntheticModules) {
+    private ModuleLayer synthesizeRuntimeModuleLayer(List<ModuleLayer> parentLayers, List<Configuration> parentConfigs, ImageClassLoader cl, Map<String, Module> reachableModules,
+                    Set<Module> syntheticModules) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
          * {@link NativeImageClassLoaderSupport}.
@@ -205,7 +207,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
                 moduleLayerFeatureUtils.patchModuleLayerField(runtimeSyntheticModule, runtimeModuleLayer);
             }
-            patchRuntimeBootLayer(runtimeModuleLayer, nameToModule);
+            patchRuntimeModuleLayer(runtimeModuleLayer, nameToModule, parentLayers);
             return runtimeModuleLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime module layer: " + runtimeModuleLayer, ex);
@@ -313,22 +315,16 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    private void patchRuntimeBootLayer(ModuleLayer runtimeBootLayer, Map<String, Module> nameToModule) {
+    private void patchRuntimeModuleLayer(ModuleLayer runtimeModuleLayer, Map<String, Module> nameToModule, List<ModuleLayer> parents) {
         try {
-            moduleLayerFeatureUtils.patchModuleLayerNameToModuleField(runtimeBootLayer, nameToModule);
-            moduleLayerFeatureUtils.patchModuleLayerParentsField(runtimeBootLayer, List.of(ModuleLayer.empty()));
-            for (Module m : runtimeBootLayer.modules()) {
-                Optional<Module> hostedModule = ModuleLayer.boot().findModule(m.getName());
-                if (hostedModule.isPresent() && hostedModule.get().getClassLoader() == null) {
-                    moduleLayerFeatureUtils.patchModuleLoaderField(m, null);
-                }
-            }
+            moduleLayerFeatureUtils.patchModuleLayerNameToModuleField(runtimeModuleLayer, nameToModule);
+            moduleLayerFeatureUtils.patchModuleLayerParentsField(runtimeModuleLayer, parents);
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to patch the runtime boot module layer.", ex);
         }
 
         // Ensure that the lazy modules field gets set
-        runtimeBootLayer.modules();
+        runtimeModuleLayer.modules();
     }
 
     private static final class ModuleLayerFeatureUtils {
