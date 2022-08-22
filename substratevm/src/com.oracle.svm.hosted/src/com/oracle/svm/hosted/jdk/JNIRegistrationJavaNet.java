@@ -68,14 +68,12 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                             /* Caches networking properties. */
                             "java.net.DefaultDatagramSocketImplFactory");
         }
-        if (isWindows()) {
-            if (JavaVersionUtil.JAVA_SPEC <= 17) {
-                /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
-                /* Caches networking properties. */
-                rerunClassInit(a, "java.net.PlainSocketImpl", "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
-            }
+        if (isWindows() && JavaVersionUtil.JAVA_SPEC < 19) {
+            /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
+            /* Caches networking properties. */
+            rerunClassInit(a, "java.net.PlainSocketImpl", "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
         } else {
-            assert isPosix();
+            assert isPosix() || JavaVersionUtil.JAVA_SPEC >= 19;
             if (JavaVersionUtil.JAVA_SPEC <= 17) {
                 /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
                 rerunClassInit(a, "java.net.PlainDatagramSocketImpl", "java.net.PlainSocketImpl");
@@ -91,8 +89,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
 
             if (hasPlatformSocketOptions) {
                 /*
-                 * The libextnet was actually introduced in Java 9, but the support for Linux and
-                 * Darwin was added later in Java 10 and Java 11 respectively.
+                 * The libextnet was actually introduced in Java 9, but the support for Linux,
+                 * Darwin and Windows was added later in Java 10, Java 11 and Java 19 respectively.
                  */
                 rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
                 /*
@@ -188,6 +186,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                 a.registerReachabilityHandler(JNIRegistrationJavaNet::registerExtendedOptionsImplInit,
                                 method(a, "sun.net.ExtendedOptionsImpl", "init"));
             }
+        }
+        if (isPosix() || (isWindows() && JavaVersionUtil.JAVA_SPEC >= 19)) {
             if (hasPlatformSocketOptions) {
                 /* Support for the libextnet. */
                 a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
@@ -324,7 +324,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         } else if (isDarwin()) {
             implClassName = "jdk.net.MacOSXSocketOptions";
         } else {
-            throw VMError.shouldNotReachHere("Unexpected platform");
+            VMError.guarantee(isWindows(), "Unexpected platform");
+            implClassName = "jdk.net.WindowsSocketOptions";
         }
         RuntimeReflection.register(clazz(a, implClassName));
         RuntimeReflection.register(constructor(a, implClassName));
