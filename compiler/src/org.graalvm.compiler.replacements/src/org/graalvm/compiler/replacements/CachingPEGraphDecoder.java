@@ -135,7 +135,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     @SuppressWarnings("try")
     private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, CanonicalizerPhase canonicalizer) {
         StructuredGraph graphToEncode;// @formatter:off
-        graphToEncode = new StructuredGraph.Builder(options, debug, allowAssumptions).
+        graphToEncode = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).
                 profileProvider(null).
                 trackNodeSourcePosition(graphBuilderConfig.trackNodeSourcePosition()).
                 method(method).
@@ -159,67 +159,6 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         return graphToEncode;
     }
 
-    private static boolean verifyAssumptions(EncodedGraph graph) {
-        Assumptions assumptions = graph.getAssumptions();
-        if (assumptions == null || assumptions.isEmpty()) {
-            return true; // verified
-        }
-        for (Assumptions.Assumption assumption : assumptions) {
-            if (assumption instanceof Assumptions.LeafType) {
-                Assumptions.LeafType leafType = (Assumptions.LeafType) assumption;
-                /*
-                 * LeafType cannot be fully verified because the assumption doesn't imply that the
-                 * type is (also) concrete. We check a common case (leaf + concrete type).
-                 */
-                Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = leafType.context.findLeafConcreteSubtype();
-                if (assumptionResult != null) {
-                    ResolvedJavaType candidate = assumptionResult.getResult();
-                    if (!leafType.context.equals(candidate)) {
-                        return false;
-                    }
-                }
-            } else if (assumption instanceof Assumptions.ConcreteSubtype) {
-                Assumptions.ConcreteSubtype concreteSubtype = (Assumptions.ConcreteSubtype) assumption;
-                /*
-                 * ConcreteSubtype cannot be fully verified because the assumption doesn't imply
-                 * that the concrete subtype is (also) a leaf. We check a common case (leaf +
-                 * concrete type).
-                 */
-                Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = concreteSubtype.context.findLeafConcreteSubtype();
-                if (assumptionResult != null) {
-                    ResolvedJavaType candidate = assumptionResult.getResult();
-                    /*
-                     * No equality check here because the ConcreteSubtype assumption allows
-                     * non-concrete subtypes for interfaces.
-                     */
-                    if (!concreteSubtype.subtype.isAssignableFrom(candidate)) {
-                        return false;
-                    }
-                }
-            } else if (assumption instanceof Assumptions.ConcreteMethod) {
-                Assumptions.ConcreteMethod concreteMethod = (Assumptions.ConcreteMethod) assumption;
-                /*
-                 * ConcreteMethod is the only assumption that can be verified since it matches
-                 * findUniqueConcreteMethod semantics. If the assumption cannot be retrieved
-                 * (findUniqueConcreteMethod returns null) then it was invalidated.
-                 */
-                Assumptions.AssumptionResult<ResolvedJavaMethod> assumptionResult = concreteMethod.context.findUniqueConcreteMethod(concreteMethod.method);
-                if (assumptionResult == null || !concreteMethod.impl.equals(assumptionResult.getResult())) {
-                    return false;
-                }
-            } else if (assumption instanceof Assumptions.NoFinalizableSubclass || assumption instanceof Assumptions.CallSiteTargetValue ||
-                            "org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption".equals(assumption.getClass().getName())) {
-                /*
-                 * These assumptions cannot be (even partially) verified. The cached graph will be
-                 * invalidated on code installation.
-                 */
-            } else {
-                throw GraalError.shouldNotReachHere("unexpected assumption " + assumption);
-            }
-        }
-        return true;
-    }
-
     @SuppressWarnings({"unused", "try"})
     private EncodedGraph lookupOrCreatePersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         EncodedGraph result = persistentGraphCache.get(method);
@@ -238,7 +177,6 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     @Override
     protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
-        // Graph's assumptions are fresh or validated recently.
         EncodedGraph result = localGraphCache.get(method);
         if (result != null) {
             return result;
@@ -246,32 +184,17 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
         result = persistentGraphCache.get(method);
         if (result == null) {
-            // Embedded assumptions in a fresh encoded graph should be up-to-date, so no need to
-            // validate them.
             result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider);
-            if (result != null) {
-                localGraphCache.put(method, result);
+            // Cached graph from previous compilation may not have source positions, re-parse and store
+            // in compilation-local cache.
+            if (result != null && !result.trackNodeSourcePosition() && graph.trackNodeSourcePosition()) {
+                assert method.hasBytecodes();
+                result = createGraph(method, intrinsicBytecodeProvider);
+                assert result.trackNodeSourcePosition();
             }
-        } else if (!verifyAssumptions(result)) {
-            // Cached graph has invalid assumptions, drop from persistent cache and re-parse.
-            persistentGraphCache.removeKey(method);
-            // Embedded assumptions in a fresh encoded graph should be up-to-date, so no need to
-            // validate them.
-            result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider);
-            if (result != null) {
-                localGraphCache.put(method, result);
-            }
-        } else {
-            // Assumptions validated, avoid further checks.
-            localGraphCache.put(method, result);
         }
 
-        // Cached graph from previous compilation may not have source positions, re-parse and store
-        // in compilation-local cache.
-        if (result != null && !result.trackNodeSourcePosition() && graph.trackNodeSourcePosition()) {
-            assert method.hasBytecodes();
-            result = createGraph(method, intrinsicBytecodeProvider);
-            assert result.trackNodeSourcePosition();
+        if (result != null) {
             localGraphCache.put(method, result);
         }
 

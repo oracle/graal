@@ -417,59 +417,6 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         getPartialEvaluator().purgeEncodedGraphCache();
     }
 
-    @SuppressWarnings("try")
-    @Override
-    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout, org.graalvm.options.OptionValues options) {
-        /*
-         * Catch non-permanent bailouts due to "failed dependencies" aka "invalid assumptions"
-         * during code installation. Since there's no specific exception for such cases, it's
-         * assumed that non-permanent, non-cancellation bailouts are due to "invalid dependencies"
-         * during code installation.
-         */
-        boolean persistentEncodedGraphCache = options.get(PolyglotCompilerOptions.EncodedGraphCache);
-        if (!persistentEncodedGraphCache || bailout instanceof CancellationBailoutException || bailout.isPermanent()) {
-            return;
-        }
-        // Evict only the methods that could have caused the invalidation e.g. methods with
-        // assumptions.
-        if (graph == null || graph.getAssumptions() == null || graph.getAssumptions().isEmpty()) {
-            return;
-        }
-        try (DebugContext.Scope scope = debug.scope("EncodedGraphCache");
-                        DebugCloseable time = EncodedGraphCacheEvictionTime.start(debug)) {
-            EncodedGraphCacheBailouts.increment(debug);
-            assert graph.method() != null;
-            EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache(persistentEncodedGraphCache);
-            /*
-             * At this point, the cache containing invalid graphs may be already purged/dropped, but
-             * there's no way to know in which cache the invalid method is/was present, so all
-             * encoded graphs, including the root and all inlined methods must be evicted. These
-             * bailouts (invalid dependencies) are very rare, the over-evicting impact is
-             * negligible.
-             */
-            if (!graphCache.isEmpty()) {
-                debug.log(DebugContext.VERBOSE_LEVEL, "Evict root %s", graph.method());
-                EncodedGraphCacheRemovedEntries.increment(debug);
-                graphCache.removeKey(graph.method());
-
-                // Bailout may have been caused by an assumption on some inlined method.
-                for (ResolvedJavaMethod method : graph.getMethods()) {
-                    EncodedGraph encodedGraph = graphCache.get(method);
-                    if (encodedGraph == null) {
-                        continue;
-                    }
-
-                    Assumptions assumptions = encodedGraph.getAssumptions();
-                    if (assumptions != null && !assumptions.isEmpty()) {
-                        debug.log(DebugContext.VERBOSE_LEVEL, "\tEvict inlined %s", method);
-                        EncodedGraphCacheRemovedEntries.increment(debug);
-                        graphCache.removeKey(method);
-                    }
-                }
-            }
-        }
-    }
-
     @FunctionalInterface
     interface StubCompilation {
 

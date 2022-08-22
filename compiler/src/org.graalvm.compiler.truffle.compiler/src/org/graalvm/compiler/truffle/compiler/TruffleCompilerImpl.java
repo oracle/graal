@@ -204,10 +204,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
     public static final MemUseTrackerKey CodeInstallationMemUse = DebugContext.memUseTracker("TruffleCodeInstallationMemUse");
 
-    public static final CounterKey EncodedGraphCacheRemovedEntries = DebugContext.counter("EncodedGraphCacheRemovedEntries").doc("# of entries removed from the cache due to bailouts.");
-    public static final CounterKey EncodedGraphCacheBailouts = DebugContext.counter("EncodedGraphCacheBailouts").doc(
-                    "# of (non-permanent) compilation bailouts caused by invalid dependencies (HotSpot assumptions).");
-
     /**
      * Creates a new {@link CompilationIdentifier} for {@code compilable}.
      *
@@ -534,9 +530,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // compilation time and memory usage reported by printer
             printer.finish(compilationResult);
         } catch (Throwable t) {
-            if (t instanceof BailoutException) {
-                handleBailout(debug, graph, (BailoutException) t, wrapper.options);
-            }
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
             if (wrapper.listener != null) {
@@ -581,18 +574,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         for (AnyExtendNode node : graph.getNodes(AnyExtendNode.TYPE)) {
             node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
         }
-    }
-
-    /**
-     * Hook for processing bailout exceptions.
-     *
-     * @param graph graph producing the bailout, can be null
-     * @param bailout {@link BailoutException to process}
-     * @param options
-     */
-    @SuppressWarnings("unused")
-    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout, org.graalvm.options.OptionValues options) {
-        // nop
     }
 
     /**
