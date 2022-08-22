@@ -27,6 +27,7 @@ package com.oracle.svm.graal.stubs;
 import org.graalvm.compiler.lir.GeneratedStubsHolder;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
@@ -45,6 +46,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 VectorizedMismatchNode.class,
                 AMD64ArrayRegionEqualsWithMaskNode.class,
                 AMD64CalcStringAttributesNode.class,
+                AESNode.class,
 })
 public final class SVMIntrinsicStubs {
 }

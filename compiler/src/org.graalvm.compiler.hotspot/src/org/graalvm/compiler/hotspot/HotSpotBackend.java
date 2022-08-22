@@ -146,18 +146,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     private final HotSpotGraalRuntimeProvider runtime;
 
     /**
-     * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.AESCryptPlugin
-     */
-    public static final HotSpotForeignCallDescriptor AESCRYPT_ENCRYPTBLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
-                    "aescrypt_encryptBlock", void.class, Word.class, Word.class, Pointer.class);
-
-    /**
-     * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.AESCryptPlugin
-     */
-    public static final HotSpotForeignCallDescriptor AESCRYPT_DECRYPTBLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
-                    "aescrypt_decryptBlock", void.class, Word.class, Word.class, Pointer.class);
-
-    /**
      * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.CipherBlockChainingCryptPlugin
      */
     public static final HotSpotForeignCallDescriptor CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE,

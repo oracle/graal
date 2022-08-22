@@ -1109,6 +1109,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.replacements",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.aarch64",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "annotationProcessors" : [

@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
+import static org.graalvm.compiler.core.common.GraalOptions.InlineGraalStubs;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -50,7 +50,7 @@ public interface IntrinsicMethodNodeInterface extends ValueNodeInterface, LIRLow
 
     @Override
     default void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
+        if (!InlineGraalStubs.getValue(graph().getOptions())) {
             ForeignCallDescriptor foreignCallDescriptor = getForeignCallDescriptor();
             ForeignCallLinkage linkage = gen.lookupGraalStub(asNode(), foreignCallDescriptor);
             if (linkage != null) {

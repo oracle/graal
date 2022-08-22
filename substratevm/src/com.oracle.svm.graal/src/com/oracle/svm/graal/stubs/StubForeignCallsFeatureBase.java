@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -54,16 +55,18 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private final ForeignCallDescriptor[] foreignCallDescriptors;
         private final boolean isReexecutable;
         private final EnumSet<?> minimumRequiredFeatures;
+        private final EnumSet<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
-        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures) {
-            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures);
+        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures, runtimeCheckedCPUFeatures);
         }
 
-        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures) {
+        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this.foreignCallDescriptors = foreignCallDescriptors;
             this.isReexecutable = isReexecutable;
             this.minimumRequiredFeatures = minimumRequiredFeatures;
+            this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         }
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs() {
@@ -75,8 +78,9 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
-            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || DeoptimizationSupport.enabled();
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(Stubs.getRuntimeCheckedCPUFeatures()) && DeoptimizationSupport.enabled();
+            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures);
+            // Currently we only support AMD64, see CPUFeatureRegionEnterNode.generate
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled() && Platform.includedIn(Platform.AMD64.class);
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {

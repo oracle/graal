@@ -68,6 +68,8 @@ import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.amd64.AMD64AESDecryptOp;
+import org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayCompareToOp;
@@ -747,6 +749,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
         return result;
+    }
+
+    @Override
+    public void emitAESEncrypt(Value from, Value to, Value key) {
+        append(new AMD64AESEncryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public void emitAESDecrypt(Value from, Value to, Value key) {
+        append(new AMD64AESDecryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
     }
 
     @SuppressWarnings("unchecked")

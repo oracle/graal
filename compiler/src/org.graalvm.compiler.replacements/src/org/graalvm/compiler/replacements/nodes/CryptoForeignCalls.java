@@ -22,27 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.stubs;
+package org.graalvm.compiler.replacements.nodes;
 
-import org.graalvm.compiler.lir.GeneratedStubsHolder;
-import org.graalvm.compiler.replacements.nodes.AESNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 
-@GeneratedStubsHolder(targetVM = "hotspot", sources = {
-                ArrayIndexOfNode.class,
-                ArrayEqualsNode.class,
-                ArrayRegionEqualsNode.class,
-                ArrayCompareToNode.class,
-                ArrayRegionCompareToNode.class,
-                ArrayCopyWithConversionsNode.class,
-                VectorizedMismatchNode.class,
-                AESNode.class,
-})
-public final class IntrinsicStubs {
+import jdk.vm.ci.meta.JavaKind;
+
+public class CryptoForeignCalls {
+
+    public static final ForeignCallDescriptor STUB_AES_ENCRYPT = foreignCallDescriptor("aesEncrypt", Pointer.class, Pointer.class, Pointer.class);
+    public static final ForeignCallDescriptor STUB_AES_DECRYPT = foreignCallDescriptor("aesDecrypt", Pointer.class, Pointer.class, Pointer.class);
+
+    public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
+
+    public static final ForeignCallDescriptor[] STUBS = {
+                    STUB_AES_ENCRYPT,
+                    STUB_AES_DECRYPT};
+
+    private static ForeignCallDescriptor foreignCallDescriptor(String name, Class<?>... argTypes) {
+        return new ForeignCallDescriptor(name, void.class, argTypes, false, KILLED_LOCATIONS, false, false);
+    }
 }
