@@ -966,7 +966,6 @@ abstract class HostExecuteNode extends Node {
         @CompilationFinal(dimensions = 1) final HostTargetMapping[] otherMappings;
 
         @Child TypeCheckNode fallback;
-        @Child HostTargetMappingNode targetMapping;
         @Children final SingleMappingNode[] mappingNodes;
         @Children final SingleMappingNode[] otherMappingNodes;
         final int priority;
@@ -987,7 +986,6 @@ abstract class HostExecuteNode extends Node {
             for (int i = 0; i < otherMappings.length; i++) {
                 otherMappingNodes[i] = SingleMappingNodeGen.create();
             }
-            this.targetMapping = HostTargetMappingNode.create();
         }
 
         @Override
