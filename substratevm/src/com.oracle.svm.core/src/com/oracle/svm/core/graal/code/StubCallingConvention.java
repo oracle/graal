@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core.graal.code;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -31,11 +31,11 @@ import java.lang.annotation.Target;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

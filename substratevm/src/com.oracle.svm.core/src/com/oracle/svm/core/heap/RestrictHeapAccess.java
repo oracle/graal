@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,13 +33,23 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks elements that are substituted in different platforms.
- *
- * One reason for this annotation is to track elements whose names must not be changed during jar
- * stripping.
+ * Methods annotated with this annotation have restricted access to the heap. This annotation is
+ * checked transitively, i.e., callees of the annotated method do not need to be annotated.
  */
-@Retention(RetentionPolicy.CLASS)
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE, ElementType.FIELD})
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface SubstituteTarget {
+public @interface RestrictHeapAccess {
+    enum Access {
+        UNRESTRICTED,
+        NO_ALLOCATION;
+
+        public boolean isMoreRestrictiveThan(Access other) {
+            return ordinal() > other.ordinal();
+        }
+    }
+
+    Access access();
+
+    String reason();
 }

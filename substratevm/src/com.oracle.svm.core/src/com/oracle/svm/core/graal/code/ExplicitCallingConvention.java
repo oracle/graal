@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.core.graal.code;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -33,14 +30,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * For classes with this annotation no context sensitive analysis is done. This means that no
- * context information is recorded for objects of the annotated class, i.e., no allocation site or
- * other context information, but only the declared type is used to model objects of the annotated
- * class.
+ * Annotation that overrides the default calling convention used for a method.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.TYPE})
-@Platforms(Platform.HOSTED_ONLY.class)
-public @interface UnknownClass {
-
+@Target(value = {ElementType.METHOD})
+public @interface ExplicitCallingConvention {
+    SubstrateCallingConventionKind value();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -30,15 +33,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Every thus annotated method is never to be inlined by the compiler.
- *
- * This annotation exists primarily for annotating methods that <b>must never</b> be inlined for
- * semantic reasons. Typically, this is to ensure that a separate activation frame is always used
- * for a call to the method.
+ * Every thus annotated method is never trivially inlined by the compiler. Specific inling to
+ * broaden the scope of the PartialEscapePhase is still possible.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-public @interface NeverInline {
+@Platforms(Platform.HOSTED_ONLY.class)
+public @interface NeverInlineTrivial {
 
     /**
      * Documents the reason why the annotated code must not be inlined.

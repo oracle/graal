@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-
 /**
- * Annotation that overrides the default calling convention used for a method.
+ * Every thus annotated method is always inlined by the compiler.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(value = {ElementType.METHOD})
-public @interface ExplicitCallingConvention {
-    SubstrateCallingConventionKind value();
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+@Platforms(Platform.HOSTED_ONLY.class)
+public @interface AlwaysInline {
+
+    /**
+     * Documents the reason why the annotated code must be inlined.
+     */
+    String value();
 }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,19 +33,28 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used to test specialization and deoptimization. This annotation works in conjunction with
- * {@link DeoptTest}. The purpose of these annotations is to test specialization and deoptimization
- * without the need of runtime compilation (which makes things a lot faster).
- * <p>
- * Use {@link Specialize} on methods which call {@link DeoptTest} methods. The arguments of the
- * calls must evaluate to constants and they define the specialization of arguments.
- * <p>
- * Note that there may not be more than one call from a {@link Specialize} method to a
- * {@link DeoptTest} method.
+ * For fields with this annotation no static analysis is done.
+ *
+ * It is assumed that a field of type c may hold a reference to any subtype of c. It is also assumed
+ * that any subtype of c is instantiated.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
+@Target(ElementType.FIELD)
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface Specialize {
+public @interface UnknownObjectField {
 
+    /**
+     * Specify types that this field can take.
+     */
+    Class<?>[] types() default {};
+
+    /**
+     * Specify fully qualified names of types that this field can take.
+     */
+    String[] fullyQualifiedTypes() default {};
+
+    /**
+     * Specify if this field can be null. By default unknown value object fields cannot be null.
+     */
+    boolean canBeNull() default false;
 }

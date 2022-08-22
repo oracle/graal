@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,23 +33,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Methods annotated with this annotation have restricted access to the heap. This annotation is
- * checked transitively, i.e., callees of the annotated method do not need to be annotated.
+ * For classes with this annotation no context sensitive analysis is done. This means that no
+ * context information is recorded for objects of the annotated class, i.e., no allocation site or
+ * other context information, but only the declared type is used to model objects of the annotated
+ * class.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+@Target({ElementType.FIELD, ElementType.TYPE})
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface RestrictHeapAccess {
-    enum Access {
-        UNRESTRICTED,
-        NO_ALLOCATION;
+public @interface UnknownClass {
 
-        public boolean isMoreRestrictiveThan(Access other) {
-            return ordinal() > other.ordinal();
-        }
-    }
-
-    Access access();
-
-    String reason();
 }

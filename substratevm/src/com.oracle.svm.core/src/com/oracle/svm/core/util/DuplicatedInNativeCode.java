@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core.util;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,28 +33,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * For fields with this annotation no static analysis is done.
- *
- * It is assumed that a field of type c may hold a reference to any subtype of c. It is also assumed
- * that any subtype of c is instantiated.
+ * Documents that a value or logic is duplicated in native code so it must not be changed or moved
+ * without adapting native code as well.
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.SOURCE)
+@Target(value = {ElementType.METHOD, ElementType.TYPE, ElementType.FIELD})
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface UnknownObjectField {
-
-    /**
-     * Specify types that this field can take.
-     */
-    Class<?>[] types() default {};
-
-    /**
-     * Specify fully qualified names of types that this field can take.
-     */
-    String[] fullyQualifiedTypes() default {};
-
-    /**
-     * Specify if this field can be null. By default unknown value object fields cannot be null.
-     */
-    boolean canBeNull() default false;
+public @interface DuplicatedInNativeCode {
 }

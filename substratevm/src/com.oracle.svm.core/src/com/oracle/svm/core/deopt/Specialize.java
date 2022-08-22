@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,45 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
+package com.oracle.svm.core.deopt;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Mechanism for excluding a field from the reference map. This is highly unsafe because the garbage
- * collector then does not update the field, so you need to know what you are doing.
+ * Used to test specialization and deoptimization. This annotation works in conjunction with
+ * {@link DeoptTest}. The purpose of these annotations is to test specialization and deoptimization
+ * without the need of runtime compilation (which makes things a lot faster).
+ * <p>
+ * Use {@link Specialize} on methods which call {@link DeoptTest} methods. The arguments of the
+ * calls must evaluate to constants and they define the specialization of arguments.
+ * <p>
+ * Note that there may not be more than one call from a {@link Specialize} method to a
+ * {@link DeoptTest} method.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
+@Target(ElementType.METHOD)
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface ExcludeFromReferenceMap {
+public @interface Specialize {
 
-    /**
-     * Documents the reason why the annotation is used.
-     */
-    String reason();
-
-    /**
-     * If the supplier returns true, the annotated field will be excluded from the reference map.
-     *
-     * The provided class must have a nullary constructor, which is used to instantiate the class.
-     * Then the supplier function is called on the newly instantiated instance.
-     */
-    Class<? extends BooleanSupplier> onlyIf() default ExcludeFromReferenceMap.Always.class;
-
-    /** A {@link BooleanSupplier} that always returns {@code true}. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    class Always implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return true;
-        }
-    }
 }
