@@ -558,6 +558,10 @@
                 "arch": "amd64"
             },
             {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
                 "os": "windows",
                 "arch": "amd64"
             }
@@ -579,6 +583,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             },
             {
                 "os": "windows",
