@@ -462,8 +462,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
-        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                        method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class));
+        } else {
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        }
         a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
                         method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
         a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
