@@ -26,8 +26,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.runtime.PolyglotTypeMappings;
 
 @GenerateUncached
 public abstract class LookupTypeConverterNode extends EspressoNode {
@@ -36,21 +37,22 @@ public abstract class LookupTypeConverterNode extends EspressoNode {
     LookupTypeConverterNode() {
     }
 
-    public abstract PolyglotTypeMappings.TypeConverter execute(String metaName) throws ClassCastException;
+    public abstract PolyglotTypeMappings.TypeConverter execute(Object metaObject, int metaIdentity) throws ClassCastException;
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"metaName.equals(cachedMetaName)"}, limit = "LIMIT")
-    PolyglotTypeMappings.TypeConverter doCached(String metaName,
-                         @Cached("metaName") String cachedMetaName,
-                         @Cached("doUncached(metaName)") PolyglotTypeMappings.TypeConverter converter) throws ClassCastException {
-        assert converter == doUncached(metaName);
+    @Specialization(guards = {"metaIdentity == cachedMetaIdentity"}, limit = "LIMIT")
+    PolyglotTypeMappings.TypeConverter doCached(Object metaObject, int metaIdentity,
+                    @Cached("metaIdentity") int cachedMetaIdentity,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached("doUncached(metaObject, metaIdentity, interop)") PolyglotTypeMappings.TypeConverter converter) throws ClassCastException {
+        assert converter == doUncached(metaObject, metaIdentity, interop);
         return converter;
     }
 
     @TruffleBoundary
     @Specialization(replaces = "doCached")
-    PolyglotTypeMappings.TypeConverter doUncached(String metaName) throws ClassCastException {
-        return getContext().getPolyglotInterfaceMappings().mapTypeConversion(metaName);
+    PolyglotTypeMappings.TypeConverter doUncached(Object metaObject, int metaIdentity,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
+        return getContext().getPolyglotInterfaceMappings().mapTypeConversion(metaObject, metaIdentity, interop);
     }
 }
-

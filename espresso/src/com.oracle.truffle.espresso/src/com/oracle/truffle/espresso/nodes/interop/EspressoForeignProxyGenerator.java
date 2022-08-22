@@ -138,13 +138,13 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     }
 
     @TruffleBoundary
-    public static GeneratedProxyBytes getProxyKlassBytes(String metaName, ObjectKlass[] interfaces, EspressoContext context) {
+    public static GeneratedProxyBytes getProxyKlassBytes(int metaIdentity, ObjectKlass[] interfaces, EspressoContext context) {
         synchronized (context) {
-            GeneratedProxyBytes generatedProxyBytes = context.getProxyBytesOrNull(metaName);
+            GeneratedProxyBytes generatedProxyBytes = context.getProxyBytesOrNull(metaIdentity);
             if (generatedProxyBytes == null) {
                 EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context.getMeta(), interfaces);
                 generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
-                context.registerProxyBytes(metaName, generatedProxyBytes);
+                context.registerProxyBytes(metaIdentity, generatedProxyBytes);
             }
             return generatedProxyBytes;
         }

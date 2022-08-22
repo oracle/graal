@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -35,10 +34,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.PolyglotTypeMappings;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -50,35 +47,35 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     LookupProxyKlassNode() {
     }
 
-    public abstract ObjectKlass execute(Object metaObject, String metaName, Klass targetType) throws ClassCastException;
+    public abstract ObjectKlass execute(Object metaObject, int metaIdentity, Klass targetType) throws ClassCastException;
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"metaName.equals(cachedMetaName)", "targetType == cachedTargetType"}, limit = "LIMIT")
-    ObjectKlass doCached(Object metaObject, String metaName, Klass targetType,
+    @Specialization(guards = {"metaIdentity == cachedIdentity", "targetType == cachedTargetType"}, limit = "LIMIT")
+    ObjectKlass doCached(Object metaObject, int metaIdentity, Klass targetType,
                     @Cached("targetType") Klass cachedTargetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached("metaName") String cachedMetaName,
-                    @Cached("doUncached(metaObject, metaName, targetType, interop)") ObjectKlass cachedProxyKlass) throws ClassCastException {
-        assert cachedProxyKlass == doUncached(metaObject, metaName, targetType, interop);
+                    @Cached("metaIdentity") int cachedIdentity,
+                    @Cached("doUncached(metaObject, metaIdentity, targetType, interop)") ObjectKlass cachedProxyKlass) throws ClassCastException {
+        assert cachedProxyKlass == doUncached(metaObject, metaIdentity, targetType, interop);
         return cachedProxyKlass;
     }
 
     @TruffleBoundary
     @Specialization(replaces = "doCached")
-    ObjectKlass doUncached(Object metaObject, String metaName, Klass targetType,
+    ObjectKlass doUncached(Object metaObject, int metaIdentity, Klass targetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
 
         assert interop.isMetaObject(metaObject);
-        EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes = getContext().getProxyBytesOrNull(metaName);
+        EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes = getContext().getProxyBytesOrNull(metaIdentity);
         if (proxyBytes == null) {
             // cache miss
             Set<ObjectKlass> parentInterfaces = new HashSet<>();
             fillParentInterfaces(metaObject, interop, getContext().getPolyglotInterfaceMappings(), parentInterfaces);
             if (parentInterfaces.isEmpty()) {
-                getContext().registerProxyBytes(metaName, null);
+                getContext().registerProxyBytes(metaIdentity, null);
                 return null;
             }
-            proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaName, parentInterfaces.toArray(new ObjectKlass[parentInterfaces.size()]), getContext());
+            proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaIdentity, parentInterfaces.toArray(new ObjectKlass[parentInterfaces.size()]), getContext());
         }
 
         Klass proxyKlass = lookupOrDefineInBindingsLoader(proxyBytes, getContext());

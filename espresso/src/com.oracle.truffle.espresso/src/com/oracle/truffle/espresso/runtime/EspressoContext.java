@@ -46,6 +46,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -206,7 +207,7 @@ public final class EspressoContext {
     public final boolean UseHostFinalReference;
     public final EspressoOptions.JImageMode jimageMode;
     private final PolyglotTypeMappings polyglotTypeMappings;
-    private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
+    private final HashMap<Integer, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -1151,13 +1152,13 @@ public final class EspressoContext {
         return polyglotTypeMappings;
     }
 
-    public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String name) {
+    public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(int metaIdentity) {
         assert proxyCache != null;
-        return proxyCache.get(name);
+        return proxyCache.get(metaIdentity);
     }
 
-    public void registerProxyBytes(String name, EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes) {
+    public void registerProxyBytes(int metaIdentity, EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes) {
         assert proxyCache != null;
-        proxyCache.put(name, generatedProxyBytes);
+        proxyCache.put(metaIdentity, generatedProxyBytes);
     }
 }

@@ -49,7 +49,6 @@ import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -359,17 +358,17 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
             Object metaObject = getMetaObjectOrThrow(value, interop);
-            String metaName = getMetaName(metaObject, interop);
+            int metaIdentity = interop.identityHashCode(metaObject);
             // first see if a generated proxy can be used for interface mapped types
-            ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
+            ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaIdentity, klass);
             if (proxyKlass != null) {
                 return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
             } else {
                 // then check if there's a specific type mapping available
                 // if not a default no-conversion converter is returned
-                return lookupTypeConverterNode.execute(metaName).convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
+                return lookupTypeConverterNode.execute(metaObject, metaIdentity).convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
             }
-        } catch (ClassCastException e) {
+        } catch (ClassCastException | UnsupportedMessageException e) {
             errorProfile.enter();
             throw UnsupportedTypeException.create(new java.lang.Object[]{value}, EspressoError.format("Could not cast foreign object to %s: due to: %s", klass.getNameAsString(), e.getMessage()));
         }
@@ -409,15 +408,15 @@ public abstract class ToEspressoNode extends EspressoNode {
         try {
             if (getContext().explicitTypeMappingsEnabled()) {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
-                String metaName = getMetaName(metaObject, interop);
-                ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
+                int metaIdentity = interop.identityHashCode(metaObject);
+                ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaIdentity, klass);
                 if (proxyKlass != null) {
                     initCheck.execute(klass);
                     return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
                 }
             }
             throw new ClassCastException();
-        } catch (ClassCastException e) {
+        } catch (UnsupportedMessageException | ClassCastException e) {
             errorProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
         }
@@ -431,7 +430,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
     }
 
-    private static String getMetaName(Object metaObject, InteropLibrary interop) {
+    static String getMetaName(Object metaObject, InteropLibrary interop) {
         assert interop.isMetaObject(metaObject);
         try {
             return interop.asString(interop.getMetaQualifiedName(metaObject));

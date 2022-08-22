@@ -20,16 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.nodes.interop;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -47,15 +51,17 @@ public class PolyglotTypeMappings {
     private UnmodifiableEconomicMap<String, ObjectKlass> resolvedKlasses;
     private final OptionMap<String> typeConverters;
     private UnmodifiableEconomicMap<String, TypeConverter> typeConverterFunctions;
+    private Map<Integer, TypeConverter> identityConverterCache;
 
-    PolyglotTypeMappings(List<String> interfaceMappings, OptionMap<String> typeConverters) {
+    public PolyglotTypeMappings(List<String> interfaceMappings, OptionMap<String> typeConverters) {
         this.interfaceMappings = interfaceMappings;
         this.hasInterfaceMappings = !interfaceMappings.isEmpty();
         this.typeConverters = typeConverters;
+        this.identityConverterCache = new ConcurrentHashMap<>(typeConverters.entrySet().size());
     }
 
     @TruffleBoundary
-    void resolve(EspressoContext context) {
+    public void resolve(EspressoContext context) {
         assert interfaceMappings != null;
 
         // resolve interface mappings
@@ -123,11 +129,18 @@ public class PolyglotTypeMappings {
     }
 
     @TruffleBoundary
-    public TypeConverter mapTypeConversion(String name) {
+    public TypeConverter mapTypeConversion(Object metaObject, int identity, InteropLibrary interop) {
         assert typeConverterFunctions != null;
-        TypeConverter converter = typeConverterFunctions.get(name);
+        TypeConverter converter = identityConverterCache.get(identity);
         if (converter == null) {
-            return EMPTY_CONVERTER;
+            String metaName = ToEspressoNode.getMetaName(metaObject, interop);
+            converter = typeConverterFunctions.get(metaName);
+            if (converter == null) {
+                identityConverterCache.put(identity, EMPTY_CONVERTER);
+                return EMPTY_CONVERTER;
+            } else {
+                identityConverterCache.put(identity, converter);
+            }
         }
         return converter;
     }
