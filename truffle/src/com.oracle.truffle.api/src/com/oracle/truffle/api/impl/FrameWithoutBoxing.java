@@ -653,13 +653,15 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     /**
-     * This method is used to transfer a static slot from one frame to another. This is necessary to
-     * support assertions.
-     * 
+     * This method is used to transfer a static slot from a source frame to a target frame before or
+     * after OSR. This method must exclusively be used inside
+     * {@code BytecodeOSRMetadata#transferIndexedFrameSlot}. It is necessary to support static
+     * assertions.
+     *
+     * @param target The target frame (The frame descriptor of this and the target frame must match)
      * @param slot The slot that should be transferred
-     * @param target The target frame
      */
-    public void transferStaticSlot(int slot, FrameWithoutBoxing target) {
+    void transferOSRStaticSlot(FrameWithoutBoxing target, int slot) {
         if (ASSERTIONS_ENABLED) {
             final byte tag = indexedTags[slot];
             indexedTags[slot] = STATIC_OBJECT_TAG;

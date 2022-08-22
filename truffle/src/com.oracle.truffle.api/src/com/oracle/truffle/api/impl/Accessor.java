@@ -1197,6 +1197,10 @@ public abstract class Accessor {
         }
     }
 
+    public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
+        sourceFrame.transferOSRStaticSlot(targetFrame, slot);
+    }
+
 // A separate class to break the cycle such that Accessor can fully initialize
 // before ...Accessor classes static initializers run, which call methods from Accessor.
     private static class Constants {

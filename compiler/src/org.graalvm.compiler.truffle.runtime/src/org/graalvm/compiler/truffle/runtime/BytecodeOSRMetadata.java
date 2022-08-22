@@ -538,9 +538,7 @@ public final class BytecodeOSRMetadata {
                     target.setObject(slot, source.getObject(slot));
                     break;
                 case FrameWithoutBoxing.STATIC_TAG:
-                    // Since we do not know the actual value of the slot at this point, we
-                    // copy both.
-                    source.transferStaticSlot(slot, target);
+                    GraalRuntimeAccessor.ACCESSOR.transferOSRFrameStaticSlot(source, target, slot);
                     break;
                 case FrameWithoutBoxing.ILLEGAL_TAG:
                     target.clear(slot);
