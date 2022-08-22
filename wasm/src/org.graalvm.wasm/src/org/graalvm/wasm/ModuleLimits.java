@@ -67,9 +67,9 @@ public final class ModuleLimits {
     private final int tableInstanceSizeLimit;
     private final int memoryInstanceSizeLimit;
 
-    public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int tableCountLimit, int importCountLimit, int exportCountLimit, int globalCountLimit, int dataSegmentCountLimit,
-                    int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int resultCountLimit, int multiValueResultCountLimit, int localCountLimit, int tableInstanceSizeLimit,
-                    int memoryInstanceSizeLimit) {
+    public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int tableCountLimit, int importCountLimit, int exportCountLimit, int globalCountLimit,
+                    int dataSegmentCountLimit, int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int resultCountLimit, int multiValueResultCountLimit, int localCountLimit,
+                    int tableInstanceSizeLimit, int memoryInstanceSizeLimit) {
         this.moduleSizeLimit = minUnsigned(moduleSizeLimit, Integer.MAX_VALUE);
         this.typeCountLimit = minUnsigned(typeCountLimit, Integer.MAX_VALUE);
         this.functionCountLimit = minUnsigned(functionCountLimit, Integer.MAX_VALUE);

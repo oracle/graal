@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 public class WasmConstant implements TruffleObject {
     public static final WasmConstant VOID = new WasmConstant("wasm-void-result", WasmType.VOID, false);
     public static final WasmConstant NULL = new WasmConstant("wasm-ref-null", WasmType.NULL, true);
+    public static final WasmConstant MULTI_VALUE = new WasmConstant("wasm-multi-value-result", WasmType.MULTI_VALUE, false);
     private final String name;
     private final Object metaObject;
     private final boolean isNull;

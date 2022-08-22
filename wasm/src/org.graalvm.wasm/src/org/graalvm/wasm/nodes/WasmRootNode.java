@@ -54,7 +54,6 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmMultiValueResult;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -158,14 +157,15 @@ public class WasmRootNode extends RootNode {
             }
         } else {
             moveResultValuesToMultiValueStack(frame, context, resultCount, localCount);
-            return WasmMultiValueResult.INSTANCE;
+            return WasmConstant.MULTI_VALUE;
         }
     }
 
     @ExplodeLoop
     private void moveResultValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        final long[] multiValueStack = context.multiValueStack();
+        final long[] multiValueStack = context.primitiveMultiValueStack();
+        final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
         for (int i = 0; i < resultCount; i++) {
             final int resultType = function.getResultType(i);
             CompilerAsserts.partialEvaluationConstant(resultType);
@@ -181,6 +181,10 @@ public class WasmRootNode extends RootNode {
                     break;
                 case WasmType.F64_TYPE:
                     multiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    referenceMultiValueStack[i] = popReference(frame, localCount + i);
                     break;
                 default:
                     throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);

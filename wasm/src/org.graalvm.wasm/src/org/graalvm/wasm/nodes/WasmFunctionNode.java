@@ -312,7 +312,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.WasmMultiValueResult;
 
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
@@ -683,6 +682,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                 stackPointer++;
                                 break;
                             }
+                            case WasmType.FUNCREF_TYPE:
+                            case WasmType.EXTERNREF_TYPE: {
+                                pushReference(frame, stackPointer, result);
+                                stackPointer++;
+                                break;
+                            }
                             default: {
                                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                             }
@@ -821,6 +826,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                             case WasmType.F64_TYPE: {
                                 pushDouble(frame, stackPointer, (double) result);
+                                stackPointer++;
+                                break;
+                            }
+                            case WasmType.FUNCREF_TYPE:
+                            case WasmType.EXTERNREF_TYPE: {
+                                pushReference(frame, stackPointer, result);
                                 stackPointer++;
                                 break;
                             }
@@ -3283,8 +3294,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @ExplodeLoop
     private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        if (result == WasmMultiValueResult.INSTANCE) {
-            final long[] multiValueStack = instance.context().multiValueStack();
+        if (result == WasmConstant.MULTI_VALUE) {
+            final long[] multiValueStack = instance.context().primitiveMultiValueStack();
+            final Object[] referenceMultiValueStack = instance.context().referenceMultiValueStack();
             for (int i = 0; i < resultCount; i++) {
                 final byte resultType = instance.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
@@ -3300,6 +3312,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         break;
                     case WasmType.F64_TYPE:
                         pushDouble(frame, stackPointer + i, Double.longBitsToDouble(multiValueStack[i]));
+                        break;
+                    case WasmType.FUNCREF_TYPE:
+                    case WasmType.EXTERNREF_TYPE:
+                        pushReference(frame, stackPointer + i, referenceMultiValueStack[i]);
                         break;
                     default:
                         enterErrorBranch();
@@ -3334,6 +3350,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             break;
                         case WasmType.F64_TYPE:
                             pushDouble(frame, stackPointer + i, lib.asDouble(value));
+                            break;
+                        case WasmType.FUNCREF_TYPE:
+                        case WasmType.EXTERNREF_TYPE:
+                            pushReference(frame, stackPointer + i, value);
                             break;
                         default:
                             enterErrorBranch();

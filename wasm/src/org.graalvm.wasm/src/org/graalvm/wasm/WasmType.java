@@ -79,10 +79,13 @@ public class WasmType implements TruffleObject {
      * Reference Types.
      */
     public static final byte FUNCREF_TYPE = 0x70;
+    @CompilationFinal(dimensions = 1) public static final byte[] FUNCREF_TYPE_ARRAY = {FUNCREF_TYPE};
     public static final byte EXTERNREF_TYPE = 0x6F;
+    @CompilationFinal(dimensions = 1) public static final byte[] EXTERNREF_TYPE_ARRAY = {EXTERNREF_TYPE};
 
     public static final WasmType VOID = new WasmType("void");
     public static final WasmType NULL = new WasmType("null");
+    public static final WasmType MULTI_VALUE = new WasmType("multi-value");
 
     public static String toString(int valueType) {
         CompilerAsserts.neverPartOfCompilation();

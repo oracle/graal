@@ -40,15 +40,15 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+
 import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class BinaryStreamParser {
     protected static final int SINGLE_RESULT_VALUE = 0;
@@ -313,6 +313,8 @@ public abstract class BinaryStreamParser {
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
                 offset++;
                 result[0] = type;
                 result[1] = SINGLE_RESULT_VALUE;

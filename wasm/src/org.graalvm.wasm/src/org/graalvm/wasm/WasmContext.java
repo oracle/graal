@@ -217,10 +217,17 @@ public final class WasmContext {
     }
 
     /**
-     * @return The current multi-value stack or null if it has never been resized.
+     * @return The current primitive multi-value stack or null if it has never been resized.
      */
-    public long[] multiValueStack() {
-        return language.multiValueStack().stack();
+    public long[] primitiveMultiValueStack() {
+        return language.multiValueStack().primitiveStack();
+    }
+
+    /**
+     * @return the current reference multi-value stack or null if it has never been resized.
+     */
+    public Object[] referenceMultiValueStack() {
+        return language.multiValueStack().referenceStack();
     }
 
     /**

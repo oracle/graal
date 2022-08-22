@@ -461,6 +461,10 @@ public class BinaryParser extends BinaryStreamParser {
                 return WasmType.F32_TYPE_ARRAY;
             case F64_TYPE:
                 return WasmType.F64_TYPE_ARRAY;
+            case FUNCREF_TYPE:
+                return WasmType.FUNCREF_TYPE_ARRAY;
+            case EXTERNREF_TYPE:
+                return WasmType.EXTERNREF_TYPE_ARRAY;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
         }
