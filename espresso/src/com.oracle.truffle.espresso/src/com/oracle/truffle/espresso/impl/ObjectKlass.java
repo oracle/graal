@@ -45,9 +45,9 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
@@ -73,6 +73,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
@@ -200,10 +201,13 @@ public final class ObjectKlass extends Klass {
         }
         for (int i = 0; i < lkStaticFields.length; i++) {
             Field staticField;
-            if (superKlass == getMeta().java_lang_Enum && !isEnumValuesField(lkStaticFields[i])) {
-                staticField = new EnumConstantField(klassVersion, lkStaticFields[i], pool);
+            LinkedField lkField = lkStaticFields[i];
+            // User-defined static non-final fields should remain modifiable.
+            if (superKlass == getMeta().java_lang_Enum && !isEnumValuesField(lkField) //
+                            && Types.isReference(lkField.getType()) && Modifier.isFinal(lkField.getFlags())) {
+                staticField = new EnumConstantField(klassVersion, lkField, pool);
             } else {
-                staticField = new Field(klassVersion, lkStaticFields[i], pool);
+                staticField = new Field(klassVersion, lkField, pool);
             }
             staticFieldTable[i] = staticField;
         }
