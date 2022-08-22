@@ -99,10 +99,8 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
                         field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable, false);
     }
 
-    public static ValueNode createImmutable(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
-                    OptionValues options, Assumptions assumptions, ValueNode object, ResolvedJavaField field) {
-        return canonical(null, StampFactory.forDeclaredType(assumptions, field.getType(), false), object,
-                        field, constantFields, constantReflection, options, metaAccess, false, false, true);
+    public static LoadFieldNode createOverrideImmutable(LoadFieldNode node) {
+        return new LoadFieldNode(StampPair.create(node.stamp, node.uncheckedStamp), node.object(), node.field(), true);
     }
 
     public static LoadFieldNode createOverrideStamp(StampPair stamp, ValueNode object, ResolvedJavaField field) {

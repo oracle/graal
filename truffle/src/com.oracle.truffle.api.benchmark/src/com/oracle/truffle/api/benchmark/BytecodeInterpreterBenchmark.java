@@ -256,7 +256,6 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
         @BytecodeInterpreterSwitch
         @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
         public int executeUnsafe(VirtualFrame f) {
-
             // VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[0],
             // descriptor);
             final int maxLocals = locals + 2;
@@ -465,7 +464,6 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
 
             int localIndex;
             while (true) {
-
                 switch (bc[bci]) {
                     case BOUNDARY:
                         boundary(f.materialize());

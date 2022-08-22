@@ -58,9 +58,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInli
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.TruffleImmutableFrameFieldPlugin;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleInjectImmutableFrameFieldsPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -405,8 +407,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        TruffleImmutableFrameFieldPlugin.install(plugins, HostedOptionValues.singleton());
+    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+        TruffleInjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
     }
 
     @Override

@@ -22,41 +22,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler;
+package org.graalvm.compiler.truffle.compiler.phases;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class TruffleImmutableFrameFieldPlugin implements NodePlugin {
+/**
+ * This phase should ideally already be done using a node plugin when creating the graph. However
+ * during PE field plugins are currently broken.
+ */
+public class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierContext> {
 
     public static class Options {
         @Option(help = "Whether Truffle should mark final frame fields as immutable.")//
         public static final OptionKey<Boolean> TruffleImmutableFrameFields = new OptionKey<>(true);
     }
 
-    TruffleImmutableFrameFieldPlugin() {
+    TruffleInjectImmutableFrameFieldsPhase() {
     }
 
     @Override
-    public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
-        if (isImmutable(b, field)) {
-            ValueNode result = LoadFieldNode.createImmutable(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), b.getAssumptions(), object, field);
-            b.addPush(field.getJavaKind(), result);
-            return true;
+    protected void run(StructuredGraph graph, HighTierContext context) {
+        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntimeIfAvailable();
+        if (runtime == null) {
+            return;
         }
-        return false;
+
+        ResolvedJavaType frameType = runtime.resolveType(context.getMetaAccess(), "com.oracle.truffle.api.impl.FrameWithoutBoxing");
+        for (Node node : graph.getNodes()) {
+            if (node instanceof LoadFieldNode) {
+                LoadFieldNode fieldNode = (LoadFieldNode) node;
+                if (isForcedImmutable(fieldNode.field(), frameType) && !fieldNode.getLocationIdentity().isImmutable()) {
+                    graph.replaceFixedWithFixed(fieldNode, graph.add(LoadFieldNode.createOverrideImmutable(fieldNode)));
+                }
+            }
+        }
     }
 
-    private static boolean isImmutable(GraphBuilderContext b, ResolvedJavaField field) {
+    private static boolean isForcedImmutable(ResolvedJavaField field, ResolvedJavaType frameType) {
         TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntimeIfAvailable();
         if (runtime == null) {
             return false;
@@ -73,28 +88,18 @@ public class TruffleImmutableFrameFieldPlugin implements NodePlugin {
              */
             return false;
         }
-        if (!field.getDeclaringClass().equals(runtime.resolveType(b.getMetaAccess(), "com.oracle.truffle.api.impl.FrameWithoutBoxing"))) {
+        if (!field.getDeclaringClass().equals(frameType)) {
             return false;
         }
         return true;
     }
 
-    @Override
-    public boolean handleStoreField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode value) {
-// if (isImmutable(b, field)) {
-// StoreFieldNode storeFieldNode = new StoreFieldNode(object, field, maskSubWordValue(value,
-// field.getJavaKind()));
-// b.push(field.getJavaKind(), storeFieldNode);
-// b.setStateAfter(storeFieldNode);
-// return true;
-// }
-        return false;
-    }
-
-    public static void install(Plugins plugins, OptionValues options) {
+    public static void install(PhaseSuite<HighTierContext> highTier, OptionValues options) {
+        // before lowering phase.
         if (Options.TruffleImmutableFrameFields.getValue(options) && TruffleCompilerRuntime.getRuntimeIfAvailable() != null) {
-            plugins.appendNodePlugin(new TruffleImmutableFrameFieldPlugin());
+            var phase = highTier.findPhase(HighTierLoweringPhase.class);
+            phase.previous();
+            phase.add(new TruffleInjectImmutableFrameFieldsPhase());
         }
     }
-
 }

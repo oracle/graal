@@ -121,7 +121,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     @Override
     public String toString(Verbosity verbosity) {
-        if (verbosity == Verbosity.Name) {
+        if (verbosity == Verbosity.Name && field != null) {
             return super.toString(verbosity) + "#" + field.getName();
         } else {
             return super.toString(verbosity);
