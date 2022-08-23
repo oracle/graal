@@ -102,7 +102,6 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     private final LocalVariableTable localVariableTable;
 
     private final String name;
-    // TODO BS should be private, currently used to compare duplicated host methods.
     final String uniqueShortName;
 
     public static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature,
@@ -155,34 +154,21 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         this.specializationReason = SpecializationReason.create();
     }
 
-    private HostedMethod(HostedMethod original, List<Pair<HostedMethod, Integer>> context) {
-        /**
-         * TODO BS should probably integrate with
-         * com.oracle.svm.core.SubstrateUtil.uniqueShortName(jdk.vm.ci.meta.ResolvedJavaMethod)
-         * somehow. We currently use uniqueShortName in the {@link HostedUniverse.MethodComparator}
-         * and we really shouldn't.
-         */
-        this(original.wrapped, original.holder, original.signature, original.constantPool, original.handlers, original.compilationInfo.getDeoptOrigin(), original.name,
-                        original.uniqueShortName + System.identityHashCode(context), original.localVariableTable);
-        /*
-         * TODO BS Do we need a copy of the graph here?
-         *
-         * In the original PR this was a StructuredGraph and we cloneSpecialized it. Now it's a
-         * CompilationGraph (wrapper around EncodedGraph) so do we really need a copy?
-         */
-        compilationInfo.setGraph(original.compilationInfo.getCompilationGraph());
-        compilationInfo.setCompileOptions(original.compilationInfo.getCompileOptions());
-        staticAnalysisResults = new StaticAnalysisResults(original.staticAnalysisResults);
-        specializationReason = SpecializationReason.create(context);
-    }
-
-    public HostedMethod cloneSpecialized(List<Pair<HostedMethod, Integer>> context) {
-        // TODO BS Use create to make a unique named HostedMethod
-        HostedMethod copy = new HostedMethod(this, context);
-        assert copy.vtableIndex == -1;
-        // isParsed will be set as false but doesnt seem to have any impact since we are already
-        // past that point in the compilation pipeline
-        return copy;
+    public HostedMethod cloneDuplicated(HostedUniverse universe, List<Pair<HostedMethod, Integer>> context) {
+        HostedMethod duplicate = new HostedMethod(this.wrapped,
+                        this.holder,
+                        this.signature,
+                        this.constantPool,
+                        this.handlers,
+                        this.compilationInfo.getDeoptOrigin(),
+                        this.name,
+                        this.uniqueShortName + System.identityHashCode(context),
+                        createLocalVariableTable(universe, this.wrapped));
+        duplicate.compilationInfo.setGraph(compilationInfo.getCompilationGraph());
+        duplicate.compilationInfo.setCompileOptions(compilationInfo.getCompileOptions());
+        duplicate.staticAnalysisResults = new StaticAnalysisResults(staticAnalysisResults);
+        duplicate.specializationReason = SpecializationReason.create(context);
+        return duplicate;
     }
 
     @Override
