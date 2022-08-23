@@ -1905,7 +1905,7 @@ suite = {
               "./" : [
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/include"
               ],
-              "./cmake/" : [
+              "./native/cmake/" : [
                 "file:cmake/toolchain-native.cmake",
               ],
               "./native/lib/" : [
