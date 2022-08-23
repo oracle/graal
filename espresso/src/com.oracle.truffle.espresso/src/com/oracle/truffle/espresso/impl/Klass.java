@@ -396,7 +396,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     public Object getMetaQualifiedName() {
         assert isMetaObject();
-        return getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+        return getTypeName();
     }
 
     @ExportMessage
@@ -498,6 +498,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @CompilationFinal //
     private Class<?> dispatch;
+
+    @CompilationFinal //
+    private StaticObject typeName;
 
     protected Object prepareThread;
 
@@ -677,6 +680,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
         return result;
+    }
+
+    public final StaticObject getTypeName() {
+        if (typeName == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            typeName = (StaticObject) getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+        }
+        return typeName;
     }
 
     /**
