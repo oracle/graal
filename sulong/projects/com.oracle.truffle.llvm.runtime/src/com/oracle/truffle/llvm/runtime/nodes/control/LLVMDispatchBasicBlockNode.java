@@ -118,12 +118,6 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
             }
             LLVMBasicBlockNode bb = bodyNodes[basicBlockIndex];
 
-            // lazily insert the basic block into the AST
-            bb.initialize();
-
-            // the newly inserted block may have been instrumented
-            bb = bodyNodes[basicBlockIndex];
-
             // execute all statements
             bb.execute(frame);
 
@@ -382,14 +376,6 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
     @Override
     public void setOSRMetadata(Object osrMetadata) {
         this.osrMetadata = osrMetadata;
-    }
-
-    @Override
-    public void prepareOSR(int target) {
-        // Force initialization to prevent OSR from deoptimizing once it hits new code.
-        for (LLVMBasicBlockNode basicBlock : bodyNodes) {
-            basicBlock.initialize();
-        }
     }
 
     @Override
