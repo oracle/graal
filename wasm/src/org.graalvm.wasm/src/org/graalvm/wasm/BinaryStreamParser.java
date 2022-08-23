@@ -191,16 +191,8 @@ public abstract class BinaryStreamParser {
         return (int) ((bits >>> 32) & 0xffff_ffffL);
     }
 
-    protected static int peekFloatAsInt32(byte[] data, int offset) {
-        return peek4(data, offset);
-    }
-
     protected int readFloatAsInt32() {
         return read4();
-    }
-
-    protected static long peekFloatAsInt64(byte[] data, int offset) {
-        return peek8(data, offset);
     }
 
     protected long readFloatAsInt64() {
@@ -234,10 +226,6 @@ public abstract class BinaryStreamParser {
         return peek1(data, offset);
     }
 
-    protected byte peek1(int ahead) {
-        return peek1(data, offset + ahead);
-    }
-
     public static byte peek1(byte[] data, int initialOffset) {
         // Inlined version of Assert.assertUnsignedIntLess(offset, data.length,
         // Failure.UNEXPECTED_END);
@@ -245,10 +233,6 @@ public abstract class BinaryStreamParser {
             throw WasmException.format(Failure.UNEXPECTED_END, "The binary is truncated at: %d", initialOffset);
         }
         return data[initialOffset];
-    }
-
-    public boolean canRead() {
-        return offset >= 0 && offset < data.length;
     }
 
     public static byte rawPeek1(byte[] data, int initialOffset) {
