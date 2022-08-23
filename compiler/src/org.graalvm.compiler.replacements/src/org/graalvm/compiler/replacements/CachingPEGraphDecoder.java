@@ -58,9 +58,7 @@ import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhas
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and
@@ -73,14 +71,13 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     protected final Providers providers;
     protected final GraphBuilderConfiguration graphBuilderConfig;
     protected final OptimisticOptimizations optimisticOpts;
-    private final AllowAssumptions allowAssumptions;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> localGraphCache;
     private final Supplier<AutoCloseable> createPersistentCachedGraphScope;
     private final BasePhase<? super CoreProviders> postParsingPhase;
 
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
+                    LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache, Supplier<AutoCloseable> createPersistentCachedGraphScope,
@@ -94,7 +91,6 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
-        this.allowAssumptions = allowAssumptions;
         this.postParsingPhase = postParsingPhase;
         this.persistentGraphCache = persistentGraphCache;
         this.createPersistentCachedGraphScope = createPersistentCachedGraphScope;
@@ -134,7 +130,14 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     @SuppressWarnings("try")
     private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, CanonicalizerPhase canonicalizer) {
-        StructuredGraph graphToEncode;// @formatter:off
+        StructuredGraph graphToEncode;
+        /*
+         * Always parse graphs without assumptions, this is required when graphs are cached across
+         * compilations. If the shared graph cache is disabled (--engine.EncodedGraphCache=false) a
+         * compilation-local cache is used and graphs can contain assumptions, but this offer little
+         * to no benefit. Assumptions can be added/enabled later during PE/compilation.
+         */
+        // @formatter:off
         graphToEncode = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).
                 profileProvider(null).
                 trackNodeSourcePosition(graphBuilderConfig.trackNodeSourcePosition()).
@@ -164,8 +167,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         EncodedGraph result = persistentGraphCache.get(method);
         if (result == null && method.hasBytecodes()) {
             try (AutoCloseable scope = createPersistentCachedGraphScope.get()) {
-                // Encoded graphs that can be cached across compilations are wrapped by "scopes"
-                // provided by createCachedGraphScope.
+                // Encoded graphs creation must be wrapped by "scopes" provided by
+                // createCachedGraphScope.
                 result = createGraph(method, intrinsicBytecodeProvider);
             } catch (Throwable ex) {
                 throw debug.handle(ex);
@@ -185,8 +188,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         result = persistentGraphCache.get(method);
         if (result == null) {
             result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider);
-            // Cached graph from previous compilation may not have source positions, re-parse and store
-            // in compilation-local cache.
+            // Cached graph from previous compilation may not have source positions, re-parse and
+            // store in compilation-local cache.
             if (result != null && !result.trackNodeSourcePosition() && graph.trackNodeSourcePosition()) {
                 assert method.hasBytecodes();
                 result = createGraph(method, intrinsicBytecodeProvider);

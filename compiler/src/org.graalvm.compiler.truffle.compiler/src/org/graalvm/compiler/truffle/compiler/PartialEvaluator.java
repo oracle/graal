@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -417,7 +416,6 @@ public abstract class PartialEvaluator {
 
         Providers compilationUnitProviders = config.lastTier().providers().copyWith(compilationLocalConstantProvider);
         return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
-                        AllowAssumptions.ifNonNull(context.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope, false);
     }
